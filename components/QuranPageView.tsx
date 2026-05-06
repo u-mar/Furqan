@@ -151,6 +151,8 @@ export default function QuranPageView({
 
   const qcfFontFamily = `QCFPage${pageNumber}V2`
 
+  const needsQuranFonts = hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah)
+
   return (
     <div
       className="mx-auto w-full max-w-[980px] px-0 py-2 sm:px-2"
@@ -158,7 +160,7 @@ export default function QuranPageView({
       lang="ar"
       aria-label="Hidden Quran page"
     >
-      {hasQcfGlyphs && (
+      {needsQuranFonts && (
         <style>{`
           @font-face {
             font-family: '${qcfFontFamily}';
@@ -170,6 +172,17 @@ export default function QuranPageView({
             src: url('https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf') format('truetype');
             font-display: swap;
           }
+          .surah-header {
+            font-family: 'SurahNameV2';
+            font-size: clamp(12px, 2vw, 18px) !important;
+            line-height: 1;
+          }
+          .basmalah-ornament {
+            font-family: 'SurahNameV2';
+            font-size: clamp(14px, 2.5vw, 20px) !important;
+            line-height: 1;
+            opacity: 0.9;
+          }
         `}</style>
       )}
 
@@ -179,8 +192,8 @@ export default function QuranPageView({
             key={line.lineNumber}
             className={cn(
               'flex min-h-[2.05em] flex-row items-center justify-center gap-x-[0.04em] text-[clamp(22px,4vw,38px)] leading-[1.22]',
-              line.isSurahHeader && 'min-h-[1.45em]',
-              line.isBasmalah && 'min-h-[1.45em] text-[clamp(19px,3.5vw,30px)]'
+              line.isSurahHeader && 'min-h-[1.45em] text-[clamp(14px,2.5vw,22px)]',
+              line.isBasmalah && 'min-h-[1.45em] text-[clamp(16px,3vw,26px)]'
             )}
             style={{
               fontFamily: line.isSurahHeader
@@ -191,7 +204,7 @@ export default function QuranPageView({
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (
-              <div className="flex w-full items-center justify-center gap-3 text-stone-950 dark:text-stone-100">
+              <div className="flex w-full items-center justify-center gap-3 text-stone-950 dark:text-stone-100 surah-header">
                 <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
                 <span>{`surah${String(line.chapterNumber).padStart(3, '0')}`}</span>
                 <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
