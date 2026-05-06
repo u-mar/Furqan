@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens ── */
+:root {
+  --hifdh-bg: #fafaf9;
+  --hifdh-surface: #ffffff;
+  --hifdh-border: rgba(0, 0, 0, 0.08);
+  --hifdh-border-md: rgba(0, 0, 0, 0.14);
+  --hifdh-accent: #0f766e;
+  --hifdh-accent-light: #f0fdfa;
+  --hifdh-text: #1c1917;
+  --hifdh-muted: #78716c;
+  --hifdh-hint: #a8a29e;
+  --hifdh-correct-bg: #ecfdf5;
+  --hifdh-correct-text: #047857;
+  --hifdh-wrong-bg: #fef2f2;
+  --hifdh-wrong-text: #b91c1c;
+  --hifdh-missed-bg: #fffbeb;
+  --hifdh-missed-text: #b45309;
+  --font-hifdh-serif: Georgia, 'Times New Roman', serif;
+}
+
+.dark {
+  --hifdh-bg: #0f1110;
+  --hifdh-surface: #151715;
+  --hifdh-border: rgba(255, 255, 255, 0.09);
+  --hifdh-border-md: rgba(255, 255, 255, 0.14);
+  --hifdh-accent: #2dd4bf;
+  --hifdh-accent-light: rgba(45, 212, 191, 0.1);
+  --hifdh-text: #f5f5f4;
+  --hifdh-muted: #a8a29e;
+  --hifdh-hint: #78716c;
+}
+
+html,
+body {
+  background: var(--hifdh-bg);
+}
+
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('https://fonts.qurancdn.com/kfgqpc-uthmanic-script-hafs-regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Arabic text ── */
+.arabic-text {
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Scheherazade New',
+    'Amiri', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.2;
+  font-size: clamp(22px, 5vw, 30px);
+}
+
+.mushaf-word-hidden {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  user-select: none;
+}
+
+.mushaf-word-hidden::selection {
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.basmalah-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(78vw, 24rem);
+  color: var(--hifdh-text);
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Amiri', serif;
+  font-size: clamp(42px, 9vw, 72px);
+  line-height: 0.95;
+}
+
+.basmalah-ornament::before,
+.basmalah-ornament::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  max-width: 4.5rem;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--hifdh-text) 28%, transparent)
+  );
+}
+
+.basmalah-ornament::before {
+  margin-left: 0.75rem;
+}
+
+.basmalah-ornament::after {
+  margin-right: 0.75rem;
+  transform: rotate(180deg);
+}
+
+/* ── Recording pulse ── */
+@keyframes hifdh-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.recording-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: #fee2e2;
+  animation: hifdh-pulse 1.3s ease-out infinite;
+}
+
+/* ── Waveform bar (live mic viz) ── */
+@keyframes hifdh-wave {
+  from {
+    transform: scaleY(0.15);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.hifdh-wave-bar {
+  height: 100%;
+  max-height: 2.5rem;
+  animation: hifdh-wave 0.45s ease-in-out infinite alternate;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .recording-pulse::before {
+    animation: none;
+    opacity: 0;
+  }
+
+  .hifdh-wave-bar {
+    animation: none;
+    transform: scaleY(0.5);
+  }
+}
