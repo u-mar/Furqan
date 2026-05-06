@@ -174,7 +174,7 @@ export default function QuranPageView({
           }
           .surah-header {
             font-family: 'SurahNameV2';
-            font-size: clamp(12px, 2vw, 18px) !important;
+            font-size: clamp(16px, 2.8vw, 24px) !important;
             line-height: 1;
           }
           .basmalah-ornament {
@@ -192,8 +192,8 @@ export default function QuranPageView({
             key={line.lineNumber}
             className={cn(
               'flex min-h-[2.05em] flex-row items-center justify-center gap-x-[0.04em] text-[clamp(22px,4vw,38px)] leading-[1.22]',
-              line.isSurahHeader && 'min-h-[1.45em] text-[clamp(14px,2.5vw,22px)]',
-              line.isBasmalah && 'min-h-[1.45em] text-[clamp(16px,3vw,26px)]'
+              line.isSurahHeader && 'min-h-[1.45em] text-[clamp(16px,2.8vw,24px)]',
+              line.isBasmalah && 'min-h-[1.45em] text-[clamp(14px,2.5vw,20px)]'
             )}
             style={{
               fontFamily: line.isSurahHeader
