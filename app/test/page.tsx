@@ -3,9 +3,10 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import ThemeToggle from '@/components/ThemeToggle'
+import Button from '@/components/ui/Button'
 import Pill from '@/components/ui/Pill'
 import {
   getChapters,
@@ -35,8 +36,21 @@ function TestPageContent() {
   const [revealedAyahs, setRevealedAyahs] = useState<Set<string>>(new Set())
   const [phase, setPhase] = useState<Phase>('idle')
   const [loading, setLoading] = useState(true)
+  const [online, setOnline] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [scopePages, setScopePages] = useState<number[]>([])
   const [randomNonce, setRandomNonce] = useState(0)
+
+  useEffect(() => {
+    const sync = () => setOnline(typeof navigator !== 'undefined' && navigator.onLine)
+    sync()
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
+    return () => {
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
+    }
+  }, [])
 
   useEffect(() => {
     getChapters()
@@ -89,12 +103,16 @@ function TestPageContent() {
           visualPageMap[randomVerse.verse_key] ||
           (await getVisualPageForVerse(randomVerse.verse_key, randomVerse.page_number || 1))
         const pageVersesList = await getMushafPage(startPage)
+        const availablePages = Array.from(
+          new Set(verses.map((verse) => visualPageMap[verse.verse_key] || verse.page_number || 1))
+        ).sort((a, b) => a - b)
 
         setStartVerseKey(randomVerse.verse_key)
         setQuestionVerseKey(randomVerse.verse_key)
         setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
         setPageVerses(pageVersesList)
         setCurrentPage(startPage)
+        setScopePages(availablePages)
         setRevealedAyahs(new Set([randomVerse.verse_key]))
         setPhase('testing')
       } catch (err) {
@@ -111,6 +129,67 @@ function TestPageContent() {
     setRevealedAyahs(nextRevealedAyahs)
   }
 
+  const handleNextPage = () => {
+    const currentIndex = scopePages.indexOf(currentPage)
+    const nextPage = scopePages[currentIndex + 1]
+
+    if (nextPage) {
+      loadPageVerses(nextPage)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    const currentIndex = scopePages.indexOf(currentPage)
+    const previousPage = scopePages[currentIndex - 1]
+
+    if (previousPage) {
+      loadPageVerses(previousPage)
+    }
+  }
+
+  const loadPageVerses = async (page: number) => {
+    try {
+      let verses: Verse[] = []
+
+      if (mode === 'surah') {
+        verses = await getVersesByChapter(surah)
+      } else if (mode === 'juz') {
+        verses = await getVersesByJuz(juz)
+      } else {
+        const chapterVerses = await getVersesByChapter(surah)
+        verses = chapterVerses.filter((v) => {
+          const ayahNumber = Number(v.verse_key.split(':')[1])
+          return ayahNumber >= startAyah && ayahNumber <= endAyah
+        })
+      }
+
+      const pageVersesList = await getMushafPage(page)
+      const visualPageMap =
+        mode === 'juz'
+          ? await getVisualPagesForScope({ juz })
+          : await getVisualPagesForScope({ chapter: surah })
+
+      const pageVerseKeys = new Set(
+        verses.filter((v) => (visualPageMap[v.verse_key] || v.page_number) === page).map((v) => v.verse_key)
+      )
+
+      let startVerse: Verse | undefined
+      if (questionVerseKey && pageVerseKeys.has(questionVerseKey)) {
+        startVerse = verses.find((v) => v.verse_key === questionVerseKey)
+      } else {
+        startVerse = verses.find((v) => (visualPageMap[v.verse_key] || v.page_number) === page) || pageVersesList[0]
+      }
+
+      setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
+      setPageVerses(pageVersesList)
+      setCurrentPage(page)
+      setStartVerseKey(startVerse?.verse_key || '')
+      setPhase('testing')
+    } catch (err) {
+      console.error('Failed to load page:', err)
+    }
+  }
+
   const handleNewRandom = () => {
     setRandomNonce((prev) => prev + 1)
   }
@@ -123,6 +202,10 @@ function TestPageContent() {
       : pageVerses.filter((v) => scopeVerseKeys.has(v.verse_key))
   const totalCount = revealablePageVerses.length
   const progress = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0
+  const currentPageIndex = scopePages.indexOf(currentPage)
+  const hasPreviousPage = currentPageIndex > 0
+  const hasNextPage = currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
+  const pageComplete = totalCount > 0 && revealedCount >= totalCount
 
   if (loading) {
     return (
@@ -183,6 +266,12 @@ function TestPageContent() {
               </div>
             </div>
 
+            {pageComplete && (
+              <p className="mb-3 text-center text-xs text-[var(--hifdh-muted)]">
+                Page complete. Continue when you are ready.
+              </p>
+            )}
+
             <div className="mb-5">
               <QuranPageView
                 verses={pageVerses}
@@ -193,14 +282,45 @@ function TestPageContent() {
               />
             </div>
 
-            <div className="mx-auto max-w-3xl">
-              <button
-                onClick={handleNewRandom}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-teal-800 dark:bg-teal-600 dark:text-stone-950 dark:hover:bg-teal-500"
+            <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
+              <Button
+                variant={pageComplete && hasNextPage ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={handleNextPage}
+                disabled={!hasNextPage}
               >
-                <RefreshCw className="h-4 w-4" />
+                {pageComplete ? 'Continue' : 'Next page'}
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={!hasPreviousPage}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+                Previous page
+              </Button>
+            </div>
+
+            {!online && (
+              <div className="mx-auto mb-4 max-w-3xl rounded-lg bg-amber-50 p-3 text-[12px] text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
+                <div className="flex items-start gap-2">
+                  <WifiOff className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
+                  <p>
+                    You are offline. The page view works without internet. Transcription will be
+                    available when you're back online.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mx-auto max-w-3xl">
+              <Button variant="primary" size="lg" className="w-full" onClick={handleNewRandom}>
+                <RefreshCw className="h-4 w-4" aria-hidden />
                 New random verse
-              </button>
+              </Button>
             </div>
           </>
         )}
