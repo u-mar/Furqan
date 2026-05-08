@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:api.quran.com)"
+      "WebFetch(domain:api.quran.com)",
+      "Bash(mkdir -p /tmp/claude/mutashabihat_parts)",
+      "Read(//tmp/claude/**)"
     ]
   }
 }
