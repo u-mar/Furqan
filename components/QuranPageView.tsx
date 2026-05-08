@@ -43,9 +43,7 @@ function getVerseWords(verse: Verse): PageWord[] {
         return {
           id: String(word.id),
           verseKey: verse.verse_key,
-          text: isEndMark
-            ? word.text_qpc_hafs || word.text_uthmani
-            : word.code_v2 || word.text_qpc_hafs || word.text_uthmani,
+          text: word.code_v2 || word.text_qpc_hafs || word.text_uthmani,
           fallbackText: word.text_qpc_hafs || word.text_uthmani,
           lineNumber: word.line_number || 1,
           pageNumber,
