@@ -222,14 +222,9 @@ export default function QuranPageView({
               return word.isEndMark ? (
                 <span
                   key={word.id}
-                  className="inline-flex items-center mx-0.5"
-                  dir="ltr"
+                  className="inline-flex items-center justify-center w-[1.2em] h-[1.1em] text-[0.55em] text-teal-700 dark:text-teal-300 mx-0.5"
                 >
-                  <span className="text-[0.55em] text-teal-700 dark:text-teal-300">۝</span>
-                  <span className="text-[0.5em] font-medium leading-[0.8] text-stone-700 dark:text-stone-300">
-                    {word.text}
-                  </span>
-                  <span className="text-[0.55em] text-teal-700 dark:text-teal-300">۝</span>
+                  {word.text}
                 </span>
               ) : (
                 <button
