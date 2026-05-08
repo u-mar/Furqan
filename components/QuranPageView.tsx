@@ -213,13 +213,20 @@ export default function QuranPageView({
               <div className="basmalah-ornament" aria-label={BASMALAH}>
                 <span aria-hidden="true">{BASMALAH_ORNAMENT}</span>
               </div>
-            ) : (
+) : (
               line.words.map((word) => {
               const isRevealed = revealedAyahs.has(word.verseKey)
               const isNext = word.verseKey === nextVerseKey
               const shouldShowText = isRevealed || word.isEndMark
 
-              return (
+              return word.isEndMark ? (
+                <span
+                  key={word.id}
+                  className="inline-flex items-center justify-center w-[1.15em] h-[1.15em] text-[0.55em] leading-none rounded-full bg-stone-300/70 dark:bg-stone-600/60 text-stone-600 dark:text-stone-300 mx-0.5"
+                >
+                  {word.text}
+                </span>
+              ) : (
                 <button
                   key={word.id}
                   type="button"
@@ -229,27 +236,20 @@ export default function QuranPageView({
                   disabled={!isNext}
                   className={cn(
                     'mushaf-word appearance-none border-0 bg-transparent p-0 text-stone-950 transition-opacity dark:text-stone-100',
-                    isNext && !word.isEndMark
+                    isNext
                       ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-300'
                       : 'cursor-default',
-                    !shouldShowText && 'mushaf-word-hidden select-none !text-transparent',
-                    word.isEndMark && 'text-[0.62em] text-stone-500 dark:text-stone-400'
+                    !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                   )}
-                  style={{
-                    fontFamily: word.isEndMark
-                      ? "'UthmanicHafs', 'Traditional Arabic', serif"
-                      : undefined,
-                  }}
                   aria-label={isNext ? `Reveal verse ${word.verseKey}` : undefined}
                   aria-hidden={!isNext}
                   title={isNext ? `Reveal ${word.verseKey}` : undefined}
                   dangerouslySetInnerHTML={{
-                    __html: hasQcfGlyphs && !word.isEndMark ? word.text : word.fallbackText,
+                    __html: hasQcfGlyphs ? word.text : word.fallbackText,
                   }}
                 />
               )
-              })
-            )}
+            }))}
           </div>
         ))}
       </div>
