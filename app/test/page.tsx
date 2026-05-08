@@ -100,7 +100,23 @@ function TestPageContent() {
           mode === 'juz'
             ? await getVisualPagesForScope({ juz })
             : await getVisualPagesForScope({ chapter: surah })
-        const randomVerse = verses[Math.floor(Math.random() * verses.length)]
+        
+        const pageToVerses = new Map<number, Verse[]>()
+        for (const v of verses) {
+          const page = visualPageMap[v.verse_key] || v.page_number || 1
+          if (!pageToVerses.has(page)) pageToVerses.set(page, [])
+          pageToVerses.get(page)!.push(v)
+        }
+        
+        const candidateVerses = verses.filter(v => {
+          const page = visualPageMap[v.verse_key] || v.page_number || 1
+          const pageVerses = pageToVerses.get(page) || []
+          const verseIdx = pageVerses.findIndex(pv => pv.verse_key === v.verse_key)
+          return verseIdx > 0 && verseIdx < pageVerses.length - 1
+        })
+        
+        const safeCandidates = candidateVerses.length > 0 ? candidateVerses : verses
+        const randomVerse = safeCandidates[Math.floor(Math.random() * safeCandidates.length)]
         const startPage =
           visualPageMap[randomVerse.verse_key] ||
           (await getVisualPageForVerse(randomVerse.verse_key, randomVerse.page_number || 1))
@@ -192,7 +208,7 @@ function TestPageContent() {
       setPageVerses(pageVersesList)
       setCurrentPage(page)
       setStartVerseKey(startVerse?.verse_key || '')
-      setRevealedAyahs(new Set(startVerse ? [startVerse.verse_key] : []))
+      setPhase('testing')
       setNavDirection(null)
       setPhase('testing')
     } catch (err) {
