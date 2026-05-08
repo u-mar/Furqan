@@ -33,6 +33,7 @@ function TestPageContent() {
   const [scopeVerseKeys, setScopeVerseKeys] = useState<Set<string>>(new Set())
   const [startVerseKey, setStartVerseKey] = useState<string>('')
   const [questionVerseKey, setQuestionVerseKey] = useState<string>('')
+  const [questionPage, setQuestionPage] = useState<number>(1)
   const [revealedAyahs, setRevealedAyahs] = useState<Set<string>>(new Set())
   const [phase, setPhase] = useState<Phase>('idle')
   const [loading, setLoading] = useState(true)
@@ -110,6 +111,7 @@ function TestPageContent() {
 
         setStartVerseKey(randomVerse.verse_key)
         setQuestionVerseKey(randomVerse.verse_key)
+        setQuestionPage(startPage)
         setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
         setPageVerses(pageVersesList)
         setCurrentPage(startPage)
@@ -211,7 +213,7 @@ function TestPageContent() {
   const totalCount = revealablePageVerses.length
   const progress = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0
   const currentPageIndex = scopePages.indexOf(currentPage)
-  const hasPreviousPage = currentPageIndex > 0
+  const hasPreviousPage = currentPageIndex > 0 && currentPage > questionPage
   const hasNextPage = currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
 
   if (loading) {
