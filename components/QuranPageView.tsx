@@ -220,7 +220,7 @@ export default function QuranPageView({
               return word.isEndMark ? (
                 <span
                   key={word.id}
-                  className="inline-flex items-center justify-center w-[1.15em] h-[1.15em] text-[0.55em] leading-none rounded-full bg-stone-300/70 dark:bg-stone-600/60 text-stone-600 dark:text-stone-300 mx-0.5"
+                  className="inline-block mx-0.5"
                 >
                   {word.text}
                 </span>
