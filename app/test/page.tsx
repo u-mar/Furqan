@@ -205,7 +205,6 @@ function TestPageContent() {
   const currentPageIndex = scopePages.indexOf(currentPage)
   const hasPreviousPage = currentPageIndex > 0
   const hasNextPage = currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
-  const pageComplete = totalCount > 0 && revealedCount >= totalCount
 
   if (loading) {
     return (
@@ -266,12 +265,6 @@ function TestPageContent() {
               </div>
             </div>
 
-            {pageComplete && (
-              <p className="mb-3 text-center text-xs text-[var(--hifdh-muted)]">
-                Page complete. Continue when you are ready.
-              </p>
-            )}
-
             <div className="mb-5">
               <QuranPageView
                 verses={pageVerses}
@@ -284,13 +277,13 @@ function TestPageContent() {
 
             <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
               <Button
-                variant={pageComplete && hasNextPage ? 'primary' : 'ghost'}
+                variant="ghost"
                 size="sm"
                 onClick={handleNextPage}
                 disabled={!hasNextPage}
               >
-                {pageComplete ? 'Continue' : 'Next page'}
                 <ChevronRight className="h-4 w-4" aria-hidden />
+                Next page
               </Button>
 
               <Button
