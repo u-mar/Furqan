@@ -9,11 +9,6 @@ import type { Chapter, ScopeMode } from '@/types'
 
 type Mode = 'juz' | 'surah' | 'range'
 
-const juzToFirstSurah = [
-  1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-  22, 23, 24, 25, 26, 27, 28, 29, 30,
-]
-
 export default function Home() {
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [mode, setMode] = useState<Mode>('juz')
@@ -37,11 +32,10 @@ export default function Home() {
 
   const selection = useMemo(() => {
     if (mode === 'juz' && selectedJuz) {
-      const firstSurah = surahMap.get(juzToFirstSurah[selectedJuz - 1])
       return {
         label: `Juz ${selectedJuz}`,
-        detail: firstSurah ? starts(firstSurah.englishName) : `Juz ${selectedJuz}`,
-        arabic: firstSurah?.name || '',
+        detail: '',
+        arabic: '',
       }
     }
     if (mode === 'surah' && selectedSurah) {
@@ -57,9 +51,9 @@ export default function Home() {
         detail:
           rangeFrom.surah.id === rangeTo.surah.id
             ? `${rangeFrom.surah.englishName} ${rangeFrom.ayah}–${rangeTo.ayah}`
-            : `${starts(rangeFrom.surah.englishName)} → ${starts(rangeTo.surah.englishName)}`,
+            : `${rangeFrom.surah.englishName} → ${rangeTo.surah.englishName}`,
         arabic:
-          rangeFrom.surah.id === rangeTo.surah.id ? rangeFrom.surah.name : `${rangeFrom.surah.name} → ${rangeTo.surah.name}`,
+          rangeFrom.surah.id === rangeTo.surah.id ? rangeFrom.surah.name : '',
       }
     }
     return null
@@ -177,11 +171,15 @@ export default function Home() {
           <div className="mb-4 rounded-xl border border-teal-200 bg-white px-4 py-3 dark:border-teal-800 dark:bg-stone-900">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-[var(--hifdh-text)]">{selection.label}</span>
-              <span className="arabic-text text-base text-teal-600 dark:text-teal-400">
-                {selection.arabic.length > 20 ? selection.arabic.slice(0, 15) + '…' : selection.arabic}
-              </span>
+              {selection.arabic && (
+                <span className="arabic-text text-base text-teal-600 dark:text-teal-400">
+                  {selection.arabic.length > 20 ? selection.arabic.slice(0, 15) + '…' : selection.arabic}
+                </span>
+              )}
             </div>
-            <div className="mt-1 text-sm text-[var(--hifdh-muted)]">{selection.detail}</div>
+            {mode !== 'juz' && selection.detail && (
+              <div className="mt-1 text-sm text-[var(--hifdh-muted)]">{selection.detail}</div>
+            )}
           </div>
         )}
 
@@ -211,39 +209,24 @@ function JuzGrid({
   selected: number | null
   onSelect: (juz: number) => void
 }) {
-  const surahMap = useMemo(() => {
-    const map = new Map<number, Chapter>()
-    chapters.forEach((c) => map.set(c.id, c))
-    return map
-  }, [chapters])
-
   return (
     <div className="mb-5 grid grid-cols-6 gap-2">
-      {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => {
-        const firstSurah = surahMap.get(juzToFirstSurah[juz - 1])
-        const name = firstSurah ? starts(firstSurah.name_simple || firstSurah.englishName) : ''
-        return (
-          <button
-            key={juz}
-            onClick={() => onSelect(juz)}
-            className={cn(
-              'aspect-square rounded-lg text-sm font-medium transition-colors',
-              selected === juz
-                ? 'bg-teal-700 text-white dark:bg-teal-600 dark:text-stone-950'
-                : 'bg-stone-200 text-stone-600 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
-            )}
-            title={name}
-          >
-            {juz}
-          </button>
-        )
-      })}
+      {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
+        <button
+          key={juz}
+          onClick={() => onSelect(juz)}
+          className={cn(
+            'aspect-square rounded-lg text-sm font-medium transition-colors',
+            selected === juz
+              ? 'bg-teal-700 text-white dark:bg-teal-600 dark:text-stone-950'
+              : 'bg-stone-200 text-stone-600 hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700'
+          )}
+        >
+          {juz}
+        </button>
+      ))}
     </div>
   )
-}
-
-function starts(s: string) {
-  return s.replace(/^(Al-|An-|The )/i, '')
 }
 
 function SurahList({
