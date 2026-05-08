@@ -32,6 +32,7 @@ function TestPageContent() {
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
   const [scopeVerseKeys, setScopeVerseKeys] = useState<Set<string>>(new Set())
   const [startVerseKey, setStartVerseKey] = useState<string>('')
+  const [questionVerseKey, setQuestionVerseKey] = useState<string>('')
   const [revealedAyahs, setRevealedAyahs] = useState<Set<string>>(new Set())
   const [phase, setPhase] = useState<Phase>('idle')
   const [loading, setLoading] = useState(true)
@@ -107,6 +108,7 @@ function TestPageContent() {
         ).sort((a, b) => a - b)
 
         setStartVerseKey(randomVerse.verse_key)
+        setQuestionVerseKey(randomVerse.verse_key)
         setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
         setPageVerses(pageVersesList)
         setCurrentPage(startPage)
@@ -166,14 +168,22 @@ function TestPageContent() {
         mode === 'juz'
           ? await getVisualPagesForScope({ juz })
           : await getVisualPagesForScope({ chapter: surah })
-      const startVerse =
-        verses.find((v) => (visualPageMap[v.verse_key] || v.page_number) === page) || pageVersesList[0]
+
+      const pageVerseKeys = new Set(
+        verses.filter((v) => (visualPageMap[v.verse_key] || v.page_number) === page).map((v) => v.verse_key)
+      )
+
+      let startVerse: Verse | undefined
+      if (questionVerseKey && pageVerseKeys.has(questionVerseKey)) {
+        startVerse = verses.find((v) => v.verse_key === questionVerseKey)
+      } else {
+        startVerse = verses.find((v) => (visualPageMap[v.verse_key] || v.page_number) === page) || pageVersesList[0]
+      }
 
       setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
       setPageVerses(pageVersesList)
       setCurrentPage(page)
       setStartVerseKey(startVerse?.verse_key || '')
-      setRevealedAyahs(new Set())
       setPhase('testing')
     } catch (err) {
       console.error('Failed to load page:', err)
