@@ -252,7 +252,7 @@ function TestPageContent() {
       <header className="sticky top-0 z-20 border-b border-[var(--hifdh-border)] bg-[var(--hifdh-bg)]/90 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <div>
-            <p className="font-serif text-base font-medium leading-tight text-[var(--hifdh-text)]">
+            <p className="font-serif text-lg font-medium leading-tight text-[var(--hifdh-text)]">
               {surahTitle}
             </p>
             <p className="text-[11px] text-[var(--hifdh-muted)]">
