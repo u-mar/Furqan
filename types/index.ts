@@ -1,3 +1,15 @@
+export interface Session {
+  id: string
+  verseKey: string
+  surahName: string
+  score: number
+  canonical: string
+  transcript: string
+  timestamp: number
+}
+
+export type SessionStore = Session[]
+
 export interface Chapter {
   id: number
   name: string
@@ -31,3 +43,12 @@ export interface VerseWord {
 
 export type ScopeMode = 'surah' | 'juz' | 'range'
 
+export type DiffStatus = 'correct' | 'wrong' | 'missed' | 'extra'
+
+export type Op = 'match' | 'substitution' | 'deletion' | 'insertion'
+
+export interface WordResult {
+  canonical: string
+  hypothesis: string
+  op: Op
+}
