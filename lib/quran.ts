@@ -48,15 +48,7 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 }
 
 export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
-  try {
-    const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`)
-    if (!response.ok) {
-      throw new Error(`Failed to load Mushaf page: ${response.statusText}`)
-    }
-    return (await response.json()) as Verse[]
-  } catch {
-    return getVersesByPage(pageNumber)
-  }
+  return getVersesByPage(pageNumber)
 }
 
 export async function getVisualPageForVerse(verseKey: string, fallbackPage: number): Promise<number> {
