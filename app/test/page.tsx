@@ -284,16 +284,6 @@ function TestPageContent() {
 
             <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePreviousPage}
-                disabled={!hasPreviousPage}
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-                Previous page
-              </Button>
-
-              <Button
                 variant={pageComplete && hasNextPage ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={handleNextPage}
@@ -301,6 +291,16 @@ function TestPageContent() {
               >
                 {pageComplete ? 'Continue' : 'Next page'}
                 <ChevronRight className="h-4 w-4" aria-hidden />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={!hasPreviousPage}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+                Previous page
               </Button>
             </div>
 
