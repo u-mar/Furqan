@@ -13,6 +13,7 @@ export type SessionStore = Session[]
 export interface Chapter {
   id: number
   name: string
+  name_simple?: string
   englishName: string
   versesCount: number
 }

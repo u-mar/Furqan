@@ -1,46 +1,33 @@
 'use client'
 
-import { Moon, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
-
-type Theme = 'light' | 'dark'
-
-function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
-  document.documentElement.style.colorScheme = theme
-}
+import { Moon, Sun } from 'lucide-react'
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('light')
+  const [mounted, setMounted] = useState(false)
+  const [dark, setDark] = useState(false)
 
   useEffect(() => {
-    const savedTheme = window.localStorage.getItem('hifdh_theme') as Theme | null
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light')
-
-    setTheme(initialTheme)
-    applyTheme(initialTheme)
+    setMounted(true)
+    setDark(document.documentElement.classList.contains('dark'))
   }, [])
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(nextTheme)
-    window.localStorage.setItem('hifdh_theme', nextTheme)
-    applyTheme(nextTheme)
+  if (!mounted) {
+    return <div className="h-9 w-9" />
+  }
+
+  const toggle = () => {
+    document.documentElement.classList.toggle('dark')
+    setDark(!dark)
   }
 
   return (
     <button
-      type="button"
-      onClick={toggleTheme}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      onClick={toggle}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700"
+      aria-label="Toggle theme"
     >
-      {theme === 'dark' ? (
-        <Sun className="h-4 w-4" aria-hidden />
-      ) : (
-        <Moon className="h-4 w-4" aria-hidden />
-      )}
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
   )
 }
