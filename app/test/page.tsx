@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import ThemeToggle from '@/components/ThemeToggle'
 import Button from '@/components/ui/Button'
-import Pill from '@/components/ui/Pill'
 import {
   getChapters,
   getMushafPage,
@@ -285,10 +284,6 @@ function TestPageContent() {
                   aria-valuemin={0}
                   aria-valuemax={100}
                 />
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Pill variant="success">{revealedCount} revealed</Pill>
-                <Pill variant="accent">{totalCount} total</Pill>
               </div>
             </div>
 
