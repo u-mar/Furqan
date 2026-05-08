@@ -40,6 +40,7 @@ function TestPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [scopePages, setScopePages] = useState<number[]>([])
   const [randomNonce, setRandomNonce] = useState(0)
+  const [navDirection, setNavDirection] = useState<'forward' | 'backward' | null>(null)
 
   useEffect(() => {
     const sync = () => setOnline(typeof navigator !== 'undefined' && navigator.onLine)
@@ -134,6 +135,7 @@ function TestPageContent() {
     const nextPage = scopePages[currentIndex + 1]
 
     if (nextPage) {
+      setNavDirection('forward')
       loadPageVerses(nextPage)
     }
   }
@@ -143,6 +145,7 @@ function TestPageContent() {
     const previousPage = scopePages[currentIndex - 1]
 
     if (previousPage) {
+      setNavDirection('backward')
       loadPageVerses(previousPage)
     }
   }
@@ -176,6 +179,9 @@ function TestPageContent() {
       let startVerse: Verse | undefined
       if (questionVerseKey && pageVerseKeys.has(questionVerseKey)) {
         startVerse = verses.find((v) => v.verse_key === questionVerseKey)
+      } else if (navDirection === 'backward') {
+        const pageVersesInScope = verses.filter((v) => pageVerseKeys.has(v.verse_key))
+        startVerse = pageVersesInScope[pageVersesInScope.length - 1]
       } else {
         startVerse = verses.find((v) => (visualPageMap[v.verse_key] || v.page_number) === page) || pageVersesList[0]
       }
@@ -184,6 +190,8 @@ function TestPageContent() {
       setPageVerses(pageVersesList)
       setCurrentPage(page)
       setStartVerseKey(startVerse?.verse_key || '')
+      setRevealedAyahs(new Set(startVerse ? [startVerse.verse_key] : []))
+      setNavDirection(null)
       setPhase('testing')
     } catch (err) {
       console.error('Failed to load page:', err)
