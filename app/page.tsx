@@ -218,13 +218,6 @@ export default function Home() {
           )}
           {appMode === 'read' ? 'Begin Reading' : 'Begin Session'}
         </Link>
-
-        <Link
-          href="/mutashabihat"
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--hifdh-border)] py-2.5 text-sm text-[var(--hifdh-muted)] transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-300"
-        >
-          Mutashabihat
-        </Link>
       </div>
     </main>
   )
