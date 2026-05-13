@@ -228,8 +228,9 @@ function TestPageContent() {
   const totalCount = revealablePageVerses.length
   const progress = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0
   const currentPageIndex = scopePages.indexOf(currentPage)
-  const hasPreviousPage = currentPageIndex > 0
-  const hasNextPage = currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
+  const hasPreviousPage = currentPageIndex > 0 && currentPage > questionPage
+  const pageComplete = totalCount > 0 && revealedCount >= totalCount
+  const hasNextPage = pageComplete && currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
 
   if (loading) {
     return (
