@@ -47,6 +47,12 @@ body {
   font-display: swap;
 }
 
+.amiri {
+  font-family: var(--font-amiri), 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
+  direction: rtl;
+  text-align: right;
+}
+
 /* ── Arabic text ── */
 .arabic-text {
   font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Scheherazade New',

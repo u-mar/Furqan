@@ -2,16 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Play, Moon, Sun, ChevronRight, X } from 'lucide-react'
+import { Play, BookOpen, ChevronRight, X } from 'lucide-react'
 import { getChapters } from '@/lib/quran'
 import { cn } from '@/lib/cn'
-import type { Chapter, ScopeMode } from '@/types'
+import ThemeToggle from '@/components/ThemeToggle'
+import type { Chapter } from '@/types'
 
-type Mode = 'juz' | 'surah' | 'range'
+type ScopeTab = 'juz' | 'surah' | 'range'
+type AppMode = 'read' | 'test'
 
 export default function Home() {
+  const [appMode, setAppMode] = useState<AppMode>('read')
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [mode, setMode] = useState<Mode>('juz')
+  const [scope, setScope] = useState<ScopeTab>('surah')
   const [selectedJuz, setSelectedJuz] = useState<number | null>(null)
   const [selectedSurah, setSelectedSurah] = useState<Chapter | null>(null)
   const [rangeFrom, setRangeFrom] = useState<{ surah: Chapter; ayah: number } | null>(null)
@@ -24,64 +27,61 @@ export default function Home() {
     getChapters().then(setChapters).finally(() => setLoading(false))
   }, [])
 
-  const surahMap = useMemo(() => {
-    const map = new Map<number, Chapter>()
-    chapters.forEach((c) => map.set(c.id, c))
-    return map
-  }, [chapters])
+  useEffect(() => {
+    if (appMode === 'read' && scope === 'range') setScope('surah')
+  }, [appMode, scope])
 
   const selection = useMemo(() => {
-    if (mode === 'juz' && selectedJuz) {
-      return {
-        label: `Juz ${selectedJuz}`,
-        detail: '',
-        arabic: '',
-      }
+    if (scope === 'juz' && selectedJuz) {
+      return { label: `Juz ${selectedJuz}`, detail: '', arabic: '' }
     }
-    if (mode === 'surah' && selectedSurah) {
+    if (scope === 'surah' && selectedSurah) {
       return {
         label: `Surah ${selectedSurah.id}`,
         detail: selectedSurah.englishName,
         arabic: selectedSurah.name,
       }
     }
-    if (mode === 'range' && rangeFrom && rangeTo) {
+    if (scope === 'range' && rangeFrom && rangeTo) {
       return {
-        label: `Range`,
+        label: 'Range',
         detail:
           rangeFrom.surah.id === rangeTo.surah.id
             ? `${rangeFrom.surah.englishName} ${rangeFrom.ayah}–${rangeTo.ayah}`
             : `${rangeFrom.surah.englishName} → ${rangeTo.surah.englishName}`,
-        arabic:
-          rangeFrom.surah.id === rangeTo.surah.id ? rangeFrom.surah.name : '',
+        arabic: rangeFrom.surah.id === rangeTo.surah.id ? rangeFrom.surah.name : '',
       }
     }
     return null
-  }, [mode, selectedJuz, selectedSurah, rangeFrom, rangeTo, surahMap])
+  }, [scope, selectedJuz, selectedSurah, rangeFrom, rangeTo])
 
   const canBegin = useMemo(() => {
-    if (mode === 'range') return rangeFrom && rangeTo && rangeFrom.ayah <= rangeTo.ayah
+    if (scope === 'range') return rangeFrom && rangeTo && rangeFrom.ayah <= rangeTo.ayah
     return !!selection
-  }, [mode, selection, rangeFrom, rangeTo])
+  }, [scope, selection, rangeFrom, rangeTo])
 
   const testHref = useMemo(() => {
-    const params = new URLSearchParams({ mode })
-    if (mode === 'juz' && selectedJuz) {
-      params.set('juz', String(selectedJuz))
-    } else if (mode === 'surah' && selectedSurah) {
-      params.set('surah', String(selectedSurah.id))
-    } else if (mode === 'range' && rangeFrom && rangeTo) {
+    const params = new URLSearchParams({ mode: scope })
+    if (scope === 'juz' && selectedJuz) params.set('juz', String(selectedJuz))
+    else if (scope === 'surah' && selectedSurah) params.set('surah', String(selectedSurah.id))
+    else if (scope === 'range' && rangeFrom && rangeTo) {
       params.set('mode', 'range')
       params.set('surah', String(rangeFrom.surah.id))
       params.set('startAyah', String(rangeFrom.ayah))
       params.set('endAyah', String(rangeTo.ayah))
     }
     return `/test?${params.toString()}`
-  }, [mode, selectedJuz, selectedSurah, rangeFrom, rangeTo])
+  }, [scope, selectedJuz, selectedSurah, rangeFrom, rangeTo])
 
-  function starts(s: string) {
-    return s.replace(/^(Al-|An-|The )/i, '')
-  }
+  const readHref = useMemo(() => {
+    const params = new URLSearchParams({ mode: scope })
+    if (scope === 'juz' && selectedJuz) params.set('juz', String(selectedJuz))
+    else if (scope === 'surah' && selectedSurah) params.set('surah', String(selectedSurah.id))
+    return `/read?${params.toString()}`
+  }, [scope, selectedJuz, selectedSurah])
+
+  const ctaHref = appMode === 'read' ? readHref : testHref
+  const scopeTabs: ScopeTab[] = appMode === 'read' ? ['juz', 'surah'] : ['juz', 'surah', 'range']
 
   if (loading) {
     return (
@@ -96,7 +96,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[var(--hifdh-bg)] text-[var(--hifdh-text)]">
       <div className="mx-auto max-w-md px-4 py-6">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-5 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-xl font-normal text-[var(--hifdh-text)]">
               Hifdh Practice
@@ -108,12 +108,31 @@ export default function Home() {
           <ThemeToggle />
         </header>
 
+        {/* App mode */}
+        <div className="mb-4 flex gap-0.5 rounded-full bg-stone-200 p-0.5 dark:bg-stone-800">
+          {(['read', 'test'] as AppMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setAppMode(m)}
+              className={cn(
+                'flex-1 rounded-full py-2 text-sm font-medium transition-colors',
+                appMode === m
+                  ? 'bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100'
+                  : 'text-stone-500 dark:text-stone-400'
+              )}
+            >
+              {m === 'read' ? 'Read' : 'Test'}
+            </button>
+          ))}
+        </div>
+
+        {/* Scope tabs */}
         <div className="mb-5 flex gap-0.5 rounded-full bg-stone-200 p-0.5 dark:bg-stone-800">
-          {(['juz', 'surah', 'range'] as Mode[]).map((m) => (
+          {scopeTabs.map((m) => (
             <button
               key={m}
               onClick={() => {
-                setMode(m)
+                setScope(m)
                 setSelectedJuz(null)
                 setSelectedSurah(null)
                 setRangeFrom(null)
@@ -121,7 +140,7 @@ export default function Home() {
               }}
               className={cn(
                 'flex-1 rounded-full py-2 text-sm font-medium transition-colors',
-                mode === m
+                scope === m
                   ? 'bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100'
                   : 'text-stone-500 dark:text-stone-400'
               )}
@@ -131,15 +150,15 @@ export default function Home() {
           ))}
         </div>
 
-        {mode === 'juz' && (
-          <JuzGrid chapters={chapters} selected={selectedJuz} onSelect={setSelectedJuz} />
+        {scope === 'juz' && (
+          <JuzGrid selected={selectedJuz} onSelect={setSelectedJuz} />
         )}
 
-        {mode === 'surah' && (
+        {scope === 'surah' && (
           <SurahList chapters={chapters} selected={selectedSurah} onSelect={setSelectedSurah} />
         )}
 
-        {mode === 'range' && (
+        {scope === 'range' && (
           <RangePicker
             chapters={chapters}
             rangeFrom={rangeFrom}
@@ -177,23 +196,34 @@ export default function Home() {
                 </span>
               )}
             </div>
-            {mode !== 'juz' && selection.detail && (
+            {scope !== 'juz' && selection.detail && (
               <div className="mt-1 text-sm text-[var(--hifdh-muted)]">{selection.detail}</div>
             )}
           </div>
         )}
 
         <Link
-          href={testHref}
+          href={ctaHref}
           className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors',
+            'mb-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-colors',
             canBegin
               ? 'bg-teal-700 text-white hover:bg-teal-800 dark:bg-teal-600 dark:text-stone-950 dark:hover:bg-teal-500'
               : 'cursor-not-allowed bg-stone-200 text-stone-400 dark:bg-stone-800 dark:text-stone-600'
           )}
         >
-          <Play className="h-4 w-4" />
-          Begin session
+          {appMode === 'read' ? (
+            <BookOpen className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+          {appMode === 'read' ? 'Begin Reading' : 'Begin Session'}
+        </Link>
+
+        <Link
+          href="/mutashabihat"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--hifdh-border)] py-2.5 text-sm text-[var(--hifdh-muted)] transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-300"
+        >
+          Mutashabihat
         </Link>
       </div>
     </main>
@@ -201,11 +231,9 @@ export default function Home() {
 }
 
 function JuzGrid({
-  chapters,
   selected,
   onSelect,
 }: {
-  chapters: Chapter[]
   selected: number | null
   onSelect: (juz: number) => void
 }) {
@@ -295,9 +323,7 @@ function RangePicker({
   return (
     <div className="mb-5 space-y-4">
       <div>
-        <div className="mb-2 text-xs font-medium uppercase text-[var(--hifdh-muted)]">
-          From
-        </div>
+        <div className="mb-2 text-xs font-medium uppercase text-[var(--hifdh-muted)]">From</div>
         <div className="flex gap-2">
           <button
             onClick={onFromToggle}
@@ -376,28 +402,5 @@ function RangePicker({
         </div>
       )}
     </div>
-  )
-}
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(false)
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains('dark'))
-  }, [])
-
-  const toggle = () => {
-    document.documentElement.classList.toggle('dark')
-    setDark(!dark)
-  }
-
-  return (
-    <button
-      onClick={toggle}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700"
-      aria-label="Toggle theme"
-    >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
   )
 }
