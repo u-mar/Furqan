@@ -27,9 +27,28 @@ async function loadQuranData(): Promise<QuranData> {
   }
 }
 
+let cachedChapters: Chapter[] | null = null
+
 export async function getChapters(): Promise<Chapter[]> {
-  const data = await loadQuranData()
-  return data.chapters
+  if (cachedChapters) return cachedChapters
+
+  try {
+    const response = await fetch('/quran-chapters.json')
+    if (!response.ok) throw new Error()
+    const data = (await response.json()) as {
+      chapters: Array<{ id: number; name_arabic: string; name_simple: string; verses_count: number }>
+    }
+    cachedChapters = data.chapters.map((c) => ({
+      id: c.id,
+      name: c.name_arabic,
+      englishName: c.name_simple,
+      versesCount: c.verses_count,
+    }))
+    return cachedChapters
+  } catch {
+    const data = await loadQuranData()
+    return data.chapters
+  }
 }
 
 export async function getVersesByChapter(chapterNumber: number): Promise<Verse[]> {
