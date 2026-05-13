@@ -228,9 +228,8 @@ function TestPageContent() {
   const totalCount = revealablePageVerses.length
   const progress = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0
   const currentPageIndex = scopePages.indexOf(currentPage)
-  const hasPreviousPage = currentPageIndex > 0 && currentPage > questionPage
-  const pageComplete = totalCount > 0 && revealedCount >= totalCount
-  const hasNextPage = pageComplete && currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
+  const hasPreviousPage = currentPageIndex > 0
+  const hasNextPage = currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
 
   if (loading) {
     return (
@@ -307,7 +306,6 @@ function TestPageContent() {
                 disabled={!hasNextPage}
               >
                 <ChevronRight className="h-4 w-4" aria-hidden />
-                Next page
               </Button>
 
               <Button
@@ -317,7 +315,6 @@ function TestPageContent() {
                 disabled={!hasPreviousPage}
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden />
-                Previous page
               </Button>
             </div>
 
