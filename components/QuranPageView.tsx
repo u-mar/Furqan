@@ -89,14 +89,12 @@ export default function QuranPageView({
         const headerLine = firstLine - (hasBasmalah ? 2 : 1)
         const basmalahLine = firstLine - 1
 
-        if (headerLine >= 1) {
-          markerMap.set(headerLine, {
-            chapterNumber,
-            isSurahHeader: true,
-          })
-        }
+        markerMap.set(headerLine, {
+          chapterNumber,
+          isSurahHeader: true,
+        })
 
-        if (hasBasmalah && basmalahLine >= 1) {
+        if (hasBasmalah) {
           markerMap.set(basmalahLine, {
             chapterNumber,
             isBasmalah: true,
@@ -113,14 +111,25 @@ export default function QuranPageView({
       }
     }
 
-    const sortedLines = Array.from({ length: 15 }, (_, index) => {
-      const lineNumber = index + 1
-      return {
+    const extraLineNumbers = Array.from(markerMap.keys())
+      .filter((n) => n < 1)
+      .sort((a, b) => a - b)
+
+    const sortedLines = [
+      ...extraLineNumbers.map((lineNumber) => ({
         lineNumber,
         words: lineMap.get(lineNumber) || [],
         ...markerMap.get(lineNumber),
-      }
-    })
+      })),
+      ...Array.from({ length: 15 }, (_, index) => {
+        const lineNumber = index + 1
+        return {
+          lineNumber,
+          words: lineMap.get(lineNumber) || [],
+          ...markerMap.get(lineNumber),
+        }
+      }),
+    ]
 
     const firstUnrevealed =
       startIndex >= 0
