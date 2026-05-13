@@ -16,6 +16,8 @@ import {
 } from '@/lib/quran'
 import type { Chapter, ScopeMode, Verse } from '@/types'
 
+const TOTAL_PAGES = 604
+
 function ReadPageContent() {
   const searchParams = useSearchParams()
   const mode = (searchParams.get('mode') || 'surah') as ScopeMode
@@ -25,7 +27,6 @@ function ReadPageContent() {
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
   const [currentPage, setCurrentPage] = useState(1)
-  const [scopePages, setScopePages] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,15 +50,12 @@ function ReadPageContent() {
             ? await getVisualPagesForScope({ juz })
             : await getVisualPagesForScope({ chapter: surah })
 
-        const allPages = Array.from(
-          new Set(verses.map((v) => visualPageMap[v.verse_key] || v.page_number || 1))
-        ).sort((a, b) => a - b)
+        const startPage = Math.min(
+          ...verses.map((v) => visualPageMap[v.verse_key] || v.page_number || 1)
+        )
 
-        const firstPage = allPages[0] || 1
-        const firstPageVerses = await getMushafPage(firstPage)
-
-        setScopePages(allPages)
-        setCurrentPage(firstPage)
+        const firstPageVerses = await getMushafPage(startPage)
+        setCurrentPage(startPage)
         setPageVerses(firstPageVerses)
       } catch (err) {
         console.error('Failed to load scope:', err)
@@ -79,12 +77,8 @@ function ReadPageContent() {
     }
   }
 
-  const currentPageIndex = scopePages.indexOf(currentPage)
-
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
-
-  const scopeLabel = mode === 'surah' ? `Surah ${surah}` : `Juz ${juz}`
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
@@ -115,9 +109,7 @@ function ReadPageContent() {
             <p className="truncate font-serif text-lg font-medium leading-tight text-[var(--hifdh-text)]">
               {surahTitle}
             </p>
-            <p className="text-[11px] text-[var(--hifdh-muted)]">
-              {scopeLabel} · Page {currentPage}
-            </p>
+            <p className="text-[11px] text-[var(--hifdh-muted)]">Page {currentPage}</p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
@@ -152,10 +144,8 @@ function ReadPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              const next = scopePages[currentPageIndex + 1]
-              if (next) loadPage(next)
-            }}
+            onClick={() => currentPage < TOTAL_PAGES && loadPage(currentPage + 1)}
+            disabled={currentPage >= TOTAL_PAGES}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
             Next page
@@ -164,10 +154,8 @@ function ReadPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              const prev = scopePages[currentPageIndex - 1]
-              if (prev) loadPage(prev)
-            }}
+            onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
+            disabled={currentPage <= 1}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
             Previous page
