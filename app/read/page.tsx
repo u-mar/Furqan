@@ -148,7 +148,6 @@ function ReadPageContent() {
             disabled={currentPage >= TOTAL_PAGES}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
-            Next page
           </Button>
 
           <Button
@@ -158,7 +157,6 @@ function ReadPageContent() {
             disabled={currentPage <= 1}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
-            Previous page
           </Button>
         </div>
       </div>
