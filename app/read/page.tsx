@@ -37,18 +37,11 @@ function ReadPageContent() {
     async function loadScope() {
       setLoading(true)
       try {
-        let verses: Verse[] = []
-        if (mode === 'surah') {
-          verses = await getVersesByChapter(surah)
-        } else if (mode === 'juz') {
-          verses = await getVersesByJuz(juz)
-        }
+        const [verses, visualPageMap] = await Promise.all([
+          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
+          mode === 'juz' ? getVisualPagesForScope({ juz }) : getVisualPagesForScope({ chapter: surah }),
+        ])
         if (verses.length === 0) throw new Error('No verses found')
-
-        const visualPageMap =
-          mode === 'juz'
-            ? await getVisualPagesForScope({ juz })
-            : await getVisualPagesForScope({ chapter: surah })
 
         const startPage = Math.min(
           ...verses.map((v) => visualPageMap[v.verse_key] || v.page_number || 1)

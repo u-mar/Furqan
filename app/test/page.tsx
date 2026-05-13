@@ -30,6 +30,8 @@ function TestPageContent() {
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
   const [scopeVerseKeys, setScopeVerseKeys] = useState<Set<string>>(new Set())
+  const [cachedScopeVerses, setCachedScopeVerses] = useState<Verse[]>([])
+  const [cachedVisualPageMap, setCachedVisualPageMap] = useState<Record<string, number>>({})
   const [startVerseKey, setStartVerseKey] = useState<string>('')
   const [questionVerseKey, setQuestionVerseKey] = useState<string>('')
   const [questionPage, setQuestionPage] = useState<number>(1)
@@ -77,28 +79,25 @@ function TestPageContent() {
       setLoading(true)
 
       try {
-        let verses: Verse[] = []
+        const [rawVerses, visualPageMap] = await Promise.all([
+          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
+          mode === 'juz' ? getVisualPagesForScope({ juz }) : getVisualPagesForScope({ chapter: surah }),
+        ])
 
-        if (mode === 'surah') {
-          verses = await getVersesByChapter(surah)
-        } else if (mode === 'juz') {
-          verses = await getVersesByJuz(juz)
-        } else {
-          const chapterVerses = await getVersesByChapter(surah)
-          verses = chapterVerses.filter((v) => {
-            const ayahNumber = Number(v.verse_key.split(':')[1])
-            return ayahNumber >= startAyah && ayahNumber <= endAyah
-          })
-        }
+        const verses =
+          mode === 'range'
+            ? rawVerses.filter((v) => {
+                const n = Number(v.verse_key.split(':')[1])
+                return n >= startAyah && n <= endAyah
+              })
+            : rawVerses
 
         if (verses.length === 0) {
           throw new Error('No verses found in this selection.')
         }
 
-        const visualPageMap =
-          mode === 'juz'
-            ? await getVisualPagesForScope({ juz })
-            : await getVisualPagesForScope({ chapter: surah })
+        setCachedScopeVerses(verses)
+        setCachedVisualPageMap(visualPageMap)
         
         const pageToVerses = new Map<number, Verse[]>()
         for (const v of verses) {
@@ -169,47 +168,31 @@ function TestPageContent() {
 
   const loadPageVerses = async (page: number) => {
     try {
-      let verses: Verse[] = []
-
-      if (mode === 'surah') {
-        verses = await getVersesByChapter(surah)
-      } else if (mode === 'juz') {
-        verses = await getVersesByJuz(juz)
-      } else {
-        const chapterVerses = await getVersesByChapter(surah)
-        verses = chapterVerses.filter((v) => {
-          const ayahNumber = Number(v.verse_key.split(':')[1])
-          return ayahNumber >= startAyah && ayahNumber <= endAyah
-        })
-      }
-
       const pageVersesList = await getMushafPage(page)
-      const visualPageMap =
-        mode === 'juz'
-          ? await getVisualPagesForScope({ juz })
-          : await getVisualPagesForScope({ chapter: surah })
 
       const pageVerseKeys = new Set(
-        verses.filter((v) => (visualPageMap[v.verse_key] || v.page_number) === page).map((v) => v.verse_key)
+        cachedScopeVerses
+          .filter((v) => (cachedVisualPageMap[v.verse_key] || v.page_number) === page)
+          .map((v) => v.verse_key)
       )
 
       let startVerse: Verse | undefined
       if (questionVerseKey && pageVerseKeys.has(questionVerseKey)) {
-        startVerse = verses.find((v) => v.verse_key === questionVerseKey)
+        startVerse = cachedScopeVerses.find((v) => v.verse_key === questionVerseKey)
       } else if (navDirection === 'backward') {
-        const pageVersesInScope = verses.filter((v) => pageVerseKeys.has(v.verse_key))
+        const pageVersesInScope = cachedScopeVerses.filter((v) => pageVerseKeys.has(v.verse_key))
         startVerse = pageVersesInScope[pageVersesInScope.length - 1]
       } else {
-        startVerse = verses.find((v) => (visualPageMap[v.verse_key] || v.page_number) === page) || pageVersesList[0]
+        startVerse =
+          cachedScopeVerses.find((v) => (cachedVisualPageMap[v.verse_key] || v.page_number) === page) ||
+          pageVersesList[0]
       }
 
-      setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
       setPageVerses(pageVersesList)
       setCurrentPage(page)
       setStartVerseKey(startVerse?.verse_key || '')
       setPhase('testing')
       setNavDirection(null)
-      setPhase('testing')
     } catch (err) {
       console.error('Failed to load page:', err)
     }
