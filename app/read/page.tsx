@@ -80,8 +80,6 @@ function ReadPageContent() {
   }
 
   const currentPageIndex = scopePages.indexOf(currentPage)
-  const hasPrev = currentPageIndex > 0
-  const hasNext = currentPageIndex < scopePages.length - 1
 
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
@@ -154,8 +152,10 @@ function ReadPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => hasNext && loadPage(scopePages[currentPageIndex + 1])}
-            disabled={!hasNext}
+            onClick={() => {
+              const next = scopePages[currentPageIndex + 1]
+              if (next) loadPage(next)
+            }}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />
             Next page
@@ -164,8 +164,10 @@ function ReadPageContent() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => hasPrev && loadPage(scopePages[currentPageIndex - 1])}
-            disabled={!hasPrev}
+            onClick={() => {
+              const prev = scopePages[currentPageIndex - 1]
+              if (prev) loadPage(prev)
+            }}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
             Previous page
