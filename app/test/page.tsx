@@ -306,7 +306,7 @@ function TestPageContent() {
                 onClick={handleNextPage}
                 disabled={!hasNextPage}
               >
-                <ChevronRight className="h-4 w-4" aria-hidden />
+                <ChevronLeft className="h-4 w-4" aria-hidden />
               </Button>
 
               <Button
@@ -315,7 +315,7 @@ function TestPageContent() {
                 onClick={handlePreviousPage}
                 disabled={!hasPreviousPage}
               >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
+                <ChevronRight className="h-4 w-4" aria-hidden />
               </Button>
             </div>
 

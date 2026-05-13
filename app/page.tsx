@@ -179,7 +179,7 @@ export default function Home() {
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="mb-3 flex gap-3">
           <Link
             href={canRead ? readHref : '#'}
             onClick={(e) => !canRead && e.preventDefault()}
@@ -207,6 +207,12 @@ export default function Home() {
             Hifdh
           </Link>
         </div>
+        <Link
+          href="/mutashabihat"
+          className="block w-full text-center text-xs text-[var(--hifdh-muted)] transition-colors hover:text-[var(--hifdh-text)]"
+        >
+          Mutashabihat
+        </Link>
       </div>
     </main>
   )

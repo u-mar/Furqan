@@ -147,7 +147,7 @@ function ReadPageContent() {
             onClick={() => currentPage < TOTAL_PAGES && loadPage(currentPage + 1)}
             disabled={currentPage >= TOTAL_PAGES}
           >
-            <ChevronRight className="h-4 w-4" aria-hidden />
+            <ChevronLeft className="h-4 w-4" aria-hidden />
             Next page
           </Button>
 
@@ -157,7 +157,7 @@ function ReadPageContent() {
             onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
             disabled={currentPage <= 1}
           >
-            <ChevronLeft className="h-4 w-4" aria-hidden />
+            <ChevronRight className="h-4 w-4" aria-hidden />
             Previous page
           </Button>
         </div>
