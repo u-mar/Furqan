@@ -14,10 +14,7 @@ import {
   getVersesByJuz,
   getVisualPagesForScope,
 } from '@/lib/quran'
-import { cn } from '@/lib/cn'
 import type { Chapter, ScopeMode, Verse } from '@/types'
-
-type ViewMode = 'page' | 'scroll'
 
 function ReadPageContent() {
   const searchParams = useSearchParams()
@@ -26,11 +23,9 @@ function ReadPageContent() {
   const juz = Number(searchParams.get('juz') || '1')
 
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [allVerses, setAllVerses] = useState<Verse[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [scopePages, setScopePages] = useState<number[]>([])
-  const [viewMode, setViewMode] = useState<ViewMode>('page')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -61,7 +56,6 @@ function ReadPageContent() {
         const firstPage = allPages[0] || 1
         const firstPageVerses = await getMushafPage(firstPage)
 
-        setAllVerses(verses)
         setScopePages(allPages)
         setCurrentPage(firstPage)
         setPageVerses(firstPageVerses)
@@ -89,7 +83,6 @@ function ReadPageContent() {
   const hasPrev = currentPageIndex > 0
   const hasNext = currentPageIndex < scopePages.length - 1
 
-  // In reading mode all page text is visible — pass pageVerses as both revealable and revealed
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
 
@@ -125,27 +118,10 @@ function ReadPageContent() {
               {surahTitle}
             </p>
             <p className="text-[11px] text-[var(--hifdh-muted)]">
-              {scopeLabel}
-              {viewMode === 'page' && ` · Page ${currentPage}`}
+              {scopeLabel} · Page {currentPage}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <div className="mr-1 flex gap-0.5 rounded-full bg-stone-200 p-0.5 dark:bg-stone-800">
-              {(['page', 'scroll'] as ViewMode[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setViewMode(m)}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                    viewMode === m
-                      ? 'bg-white text-stone-900 shadow-sm dark:bg-stone-700 dark:text-stone-100'
-                      : 'text-stone-500 dark:text-stone-400'
-                  )}
-                >
-                  {m === 'page' ? 'Page' : 'Scroll'}
-                </button>
-              ))}
-            </div>
             <ThemeToggle />
             <Link
               href={testHref}
@@ -164,104 +140,39 @@ function ReadPageContent() {
       </header>
 
       <div className="mx-auto w-full px-3 pb-12 pt-4 sm:px-5">
-        {viewMode === 'page' ? (
-          <>
-            <div className="mb-5">
-              <QuranPageView
-                verses={pageVerses}
-                startVerseKey={startVerseKey}
-                revealableVerseKeys={pageVerseKeys}
-                revealedAyahs={pageVerseKeys}
-                onReveal={() => {}}
-              />
-            </div>
+        <div className="mb-5">
+          <QuranPageView
+            verses={pageVerses}
+            startVerseKey={startVerseKey}
+            revealableVerseKeys={pageVerseKeys}
+            revealedAyahs={pageVerseKeys}
+            onReveal={() => {}}
+          />
+        </div>
 
-            <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => hasNext && loadPage(scopePages[currentPageIndex + 1])}
-                disabled={!hasNext}
-              >
-                <ChevronRight className="h-4 w-4" aria-hidden />
-                Next page
-              </Button>
+        <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => hasNext && loadPage(scopePages[currentPageIndex + 1])}
+            disabled={!hasNext}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+            Next page
+          </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => hasPrev && loadPage(scopePages[currentPageIndex - 1])}
-                disabled={!hasPrev}
-              >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-                Previous page
-              </Button>
-            </div>
-          </>
-        ) : (
-          <ScrollView verses={allVerses} chapters={chapters} />
-        )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => hasPrev && loadPage(scopePages[currentPageIndex - 1])}
+            disabled={!hasPrev}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+            Previous page
+          </Button>
+        </div>
       </div>
     </main>
-  )
-}
-
-function ScrollView({ verses, chapters }: { verses: Verse[]; chapters: Chapter[] }) {
-  const surahGroups = useMemo(() => {
-    const map = new Map<number, { chapter: Chapter | undefined; verses: Verse[] }>()
-    for (const v of verses) {
-      const surahNum = Number(v.verse_key.split(':')[0])
-      if (!map.has(surahNum)) {
-        map.set(surahNum, { chapter: chapters.find((c) => c.id === surahNum), verses: [] })
-      }
-      map.get(surahNum)!.verses.push(v)
-    }
-    return Array.from(map.entries()).sort(([a], [b]) => a - b)
-  }, [verses, chapters])
-
-  return (
-    <div className="mx-auto max-w-3xl py-4">
-      {surahGroups.map(([surahNum, { chapter, verses: surahVerses }]) => (
-        <div key={surahNum} className="mb-16">
-          <div className="mb-6 flex items-center gap-3">
-            <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
-            <div className="text-center">
-              <p className="amiri text-2xl font-bold text-stone-800 dark:text-stone-200">
-                {chapter?.name || `سورة ${surahNum}`}
-              </p>
-              <p className="mt-0.5 text-[11px] uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                {chapter?.englishName || `Surah ${surahNum}`}
-              </p>
-            </div>
-            <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
-          </div>
-
-          <p
-            className="arabic-text text-right text-stone-900 dark:text-stone-100"
-            dir="rtl"
-            lang="ar"
-          >
-            {surahVerses.map((verse) => {
-              const ayahNum = Number(verse.verse_key.split(':')[1])
-              return (
-                <span key={verse.verse_key}>
-                  {verse.text_uthmani}
-                  {' '}
-                  <span
-                    aria-label={`Verse ${ayahNum}`}
-                    className="inline-flex h-[1.15em] min-w-[1.15em] items-center justify-center rounded-full border border-stone-300 px-1 font-sans text-[0.42em] tabular-nums text-stone-500 dark:border-stone-700 dark:text-stone-400"
-                    style={{ verticalAlign: 'middle' }}
-                  >
-                    {ayahNum}
-                  </span>
-                  {' '}
-                </span>
-              )
-            })}
-          </p>
-        </div>
-      ))}
-    </div>
   )
 }
 
