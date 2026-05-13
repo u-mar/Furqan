@@ -28,6 +28,9 @@ yarn-error.log*
 *.swp
 *.swo
 
+# Claude Code
+.claude/
+
 # TypeScript
 *.tsbuildinfo
 tsconfig.tsbuildinfo
