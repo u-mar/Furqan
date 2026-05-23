@@ -9,7 +9,7 @@ import {
   Calendar,
   Settings,
   Play,
-  ChevronDown,
+  Pause,
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
@@ -18,8 +18,10 @@ import QuranPageView from '@/components/QuranPageView'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
+import ReciterPicker from '@/components/read/ReciterPicker'
 import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
+import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { getAppSettings } from '@/lib/app-settings'
 import { cn } from '@/lib/cn'
 import {
@@ -53,7 +55,9 @@ function ReadPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
-  const { mushafStyle } = useAppSettings()
+  const resumeAfterLoad = useRef(false)
+  const currentPageRef = useRef(1)
+  const { mushafStyle, reciterId } = useAppSettings()
 
   const loadPage = useCallback(async (page: number) => {
     const next = clampPage(page)
@@ -89,6 +93,35 @@ function ReadPageContent() {
       setPageLoading(false)
     }
   }, [pageVerses.length])
+
+  const { state: recitation, toggle: toggleRecitation, stop: stopRecitation, start: startRecitation } =
+    usePageRecitation({
+      reciterId,
+      verses: pageVerses,
+      onPageFinished: () => {
+        const page = currentPageRef.current
+        if (page < TOTAL_MUSHAF_PAGES) {
+          resumeAfterLoad.current = true
+          void loadPage(page + 1)
+        }
+      },
+    })
+
+  useEffect(() => {
+    if (resumeAfterLoad.current && pageVerses.length > 0) {
+      resumeAfterLoad.current = false
+      startRecitation()
+    }
+  }, [pageVerses, startRecitation])
+
+  const navigatePage = useCallback(
+    (page: number) => {
+      resumeAfterLoad.current = false
+      stopRecitation()
+      void loadPage(page)
+    },
+    [loadPage, stopRecitation]
+  )
 
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
@@ -136,17 +169,26 @@ function ReadPageContent() {
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
   const juzPart = juzForChapter(currentSurahNum)
 
+  currentPageRef.current = currentPage
+
+  const handleRecitationToggle = () => {
+    if (!recitation.playing && !recitation.highlightedVerseKey) {
+      setUiVisible(true)
+    }
+    toggleRecitation()
+  }
+
   const toggleUi = () => setUiVisible((v) => !v)
 
   // Mushaf-style: swipe right = next page, swipe left = previous page
   const swipe = useSwipe({
     onSwipeLeft: () => {
       didSwipe.current = true
-      if (currentPage > 1) loadPage(currentPage - 1)
+      if (currentPage > 1) navigatePage(currentPage - 1)
     },
     onSwipeRight: () => {
       didSwipe.current = true
-      if (currentPage < TOTAL_MUSHAF_PAGES) loadPage(currentPage + 1)
+      if (currentPage < TOTAL_MUSHAF_PAGES) navigatePage(currentPage + 1)
     },
   })
 
@@ -241,6 +283,7 @@ function ReadPageContent() {
             readMode
             mushafStyle={mushafStyle}
             pageNumber={currentPage}
+            highlightedVerseKey={recitation.highlightedVerseKey}
           />
         )}
       </div>
@@ -303,28 +346,29 @@ function ReadPageContent() {
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
+          <ReciterPicker reciterId={reciterId} />
           <button
             type="button"
-            className="flex items-center gap-1 text-sm font-medium text-teal-400"
-            aria-label="Select reciter"
+            onClick={handleRecitationToggle}
+            disabled={showTranslation || pageVerses.length === 0}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
+            aria-label={recitation.playing ? 'Pause recitation' : 'Play recitation'}
           >
-            Mahmoud Al-Husary
-            <ChevronDown className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            className="rounded-full p-1 text-teal-400 hover:bg-white/5"
-            aria-label="Play recitation"
-          >
-            <Play className="h-6 w-6 fill-current" />
+            {recitation.loading ? (
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
+            ) : recitation.playing ? (
+              <Pause className="h-6 w-6 fill-current" />
+            ) : (
+              <Play className="h-6 w-6 fill-current" />
+            )}
           </button>
         </div>
 
         <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-3 py-3 backdrop-blur">
           <button
             type="button"
-            onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
+            onClick={() => currentPage > 1 && navigatePage(currentPage - 1)}
             disabled={currentPage <= 1}
             className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
             aria-label="Previous page"
@@ -342,8 +386,8 @@ function ReadPageContent() {
               max={TOTAL_MUSHAF_PAGES}
               value={sliderPage}
               onChange={(e) => setSliderPage(Number(e.target.value))}
-              onMouseUp={() => loadPage(sliderPage)}
-              onTouchEnd={() => loadPage(sliderPage)}
+              onMouseUp={() => navigatePage(sliderPage)}
+              onTouchEnd={() => navigatePage(sliderPage)}
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-300 accent-teal-600 dark:bg-stone-700 dark:accent-teal-500"
               aria-label="Page slider"
             />
@@ -355,7 +399,7 @@ function ReadPageContent() {
 
           <button
             type="button"
-            onClick={() => currentPage < TOTAL_MUSHAF_PAGES && loadPage(currentPage + 1)}
+            onClick={() => currentPage < TOTAL_MUSHAF_PAGES && navigatePage(currentPage + 1)}
             disabled={currentPage >= TOTAL_MUSHAF_PAGES}
             className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
             aria-label="Next page"
@@ -365,7 +409,10 @@ function ReadPageContent() {
 
           <button
             type="button"
-            onClick={() => setShowTranslation((v) => !v)}
+            onClick={() => {
+              stopRecitation()
+              setShowTranslation((v) => !v)
+            }}
             className={cn(
               'rounded-lg p-2 hover:bg-white/5',
               showTranslation ? 'bg-teal-600/20 text-teal-400' : 'text-teal-400'
@@ -392,7 +439,7 @@ function ReadPageContent() {
         currentSurahId={currentSurahNum}
         onClose={() => setDrawerOpen(false)}
         onSelectSurah={handleSelectSurah}
-        onGoToPage={loadPage}
+        onGoToPage={navigatePage}
       />
 
       {uiVisible && (

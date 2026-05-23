@@ -160,6 +160,26 @@ html.dark .mushaf-reader-immersive {
   opacity: 0.95;
 }
 
+.mushaf-word--reciting {
+  background: rgba(45, 212, 191, 0.28);
+  border-radius: 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+html:not(.dark) .mushaf-word--reciting {
+  background: rgba(13, 148, 136, 0.22);
+}
+
+.mushaf-fit-line:has(.mushaf-word--reciting) {
+  opacity: 1;
+}
+
+.mushaf-fit-grid:has(.mushaf-word--reciting) .mushaf-fit-line:not(:has(.mushaf-word--reciting)) {
+  opacity: 0.55;
+  transition: opacity 0.25s ease;
+}
+
 .mushaf-page-badge {
   background: var(--mushaf-read-badge-bg);
   color: var(--mushaf-read-badge-text);

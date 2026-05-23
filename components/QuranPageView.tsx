@@ -11,6 +11,8 @@ interface QuranPageViewProps {
   revealableVerseKeys: Set<string>
   revealedAyahs: Set<string>
   onReveal: (verseKey: string) => void
+  /** Verse key currently being recited (e.g. "2:255") — highlights on mushaf. */
+  highlightedVerseKey?: string | null
   /** Full-screen: 15 lines fit viewport, no scroll. */
   readMode?: boolean
   readOnly?: boolean
@@ -81,6 +83,7 @@ export default function QuranPageView({
   readOnly = false,
   mushafStyle = 'uthmani-glyphs',
   pageNumber: pageNumberProp,
+  highlightedVerseKey = null,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
   const useGlyphs = mushafStyle === 'uthmani-glyphs'
@@ -255,16 +258,18 @@ export default function QuranPageView({
                 const isRevealed = revealedAyahs.has(word.verseKey)
                 const isNext = word.verseKey === nextVerseKey
                 const shouldShowText = isRevealed || word.isEndMark
+                const isReciting = highlightedVerseKey === word.verseKey
 
                 const wordClass = cn(
                   'mushaf-word inline-block border-0 bg-transparent p-0',
                   textClass,
+                  isReciting && 'mushaf-word--reciting',
                   !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                 )
 
                 if (word.isEndMark) {
                   return (
-                    <span key={word.id} className="mx-0.5 inline-block opacity-90">
+                    <span key={word.id} className={cn('mx-0.5 inline-block opacity-90', isReciting && 'mushaf-word--reciting')}>
                       {word.text}
                     </span>
                   )
