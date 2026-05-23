@@ -4,17 +4,24 @@
 
 @layer base {
   html {
-    @apply bg-[#0a0a0a];
+    background: var(--app-bg);
+    color: var(--app-text);
   }
 
   body {
-    @apply bg-[#0a0a0a] text-stone-100 antialiased;
+    background: var(--app-bg);
+    color: var(--app-text);
+    @apply antialiased;
   }
 }
 
-/* Dark-first design tokens (app default) */
 :root {
   color-scheme: dark;
+  --app-bg: #0a0a0a;
+  --app-surface: #1c1c1e;
+  --app-border: rgba(255, 255, 255, 0.09);
+  --app-text: #f5f5f4;
+  --app-muted: #a8a29e;
   --hifdh-bg: #0a0a0a;
   --hifdh-surface: #141414;
   --hifdh-border: rgba(255, 255, 255, 0.09);
@@ -33,11 +40,29 @@
   --font-hifdh-serif: Georgia, 'Times New Roman', serif;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+  --app-bg: #f5f5f4;
+  --app-surface: #ffffff;
+  --app-border: rgba(0, 0, 0, 0.1);
+  --app-text: #1c1917;
+  --app-muted: #78716c;
+  --hifdh-bg: #fafaf9;
+  --hifdh-surface: #ffffff;
+  --hifdh-border: rgba(0, 0, 0, 0.1);
+  --hifdh-text: #1c1917;
+  --hifdh-muted: #78716c;
+}
+
 html,
 body {
   min-height: 100%;
-  background: #0a0a0a;
-  color: #f5f5f4;
+  background: var(--app-bg);
+  color: var(--app-text);
 }
 
 @font-face {

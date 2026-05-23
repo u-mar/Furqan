@@ -9,7 +9,7 @@ interface AppShellProps {
 /** Full viewport shell — edge-to-edge on laptop, same on mobile. */
 export default function AppShell({ children, className }: AppShellProps) {
   return (
-    <div className={cn('min-h-[100dvh] w-full bg-[#0a0a0a] text-white', className)}>
+    <div className={cn('min-h-[100dvh] w-full bg-[var(--app-bg)] text-[var(--app-text)]', className)}>
       {children}
     </div>
   )

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { cn } from '@/lib/cn'
+import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
 interface QuranPageViewProps {
@@ -14,6 +15,7 @@ interface QuranPageViewProps {
   darkMushaf?: boolean
   /** When true, words are not clickable (read-only). */
   readOnly?: boolean
+  mushafStyle?: MushafStyle
 }
 
 interface PageWord {
@@ -37,18 +39,20 @@ interface PageLine {
 const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
 const BASMALAH_ORNAMENT = '﷽'
 
-function getVerseWords(verse: Verse): PageWord[] {
+function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
   if (verse.words && verse.words.length > 0) {
     return verse.words
       .filter((word) => word.text_uthmani.trim().length > 0)
       .map((word: VerseWord) => {
         const isEndMark = word.char_type_name === 'end'
         const pageNumber = word.v2_page || word.page_number || verse.page_number || 1
+        const glyphText = word.code_v2 || word.text_qpc_hafs || word.text_uthmani
+        const plainText = word.text_qpc_hafs || word.text_uthmani
         return {
           id: String(word.id),
           verseKey: verse.verse_key,
-          text: word.code_v2 || word.text_qpc_hafs || word.text_uthmani,
-          fallbackText: word.text_qpc_hafs || word.text_uthmani,
+          text: useGlyphs ? glyphText : plainText,
+          fallbackText: plainText,
           lineNumber: word.line_number || 1,
           pageNumber,
           isEndMark,
@@ -75,8 +79,10 @@ export default function QuranPageView({
   onReveal,
   darkMushaf = false,
   readOnly = false,
+  mushafStyle = 'uthmani-glyphs',
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
+  const useGlyphs = mushafStyle === 'uthmani-glyphs'
 
   const { lines, nextVerseKey, pageNumber, hasQcfGlyphs } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()
@@ -85,7 +91,7 @@ export default function QuranPageView({
     let detectedQcfGlyphs = false
 
     for (const verse of verses) {
-      const verseWords = getVerseWords(verse)
+      const verseWords = getVerseWords(verse, useGlyphs)
       const chapterNumber = Number(verse.verse_key.split(':')[0])
       const verseNumber = Number(verse.verse_key.split(':')[1])
       const firstLine = verseWords[0]?.lineNumber
@@ -110,7 +116,8 @@ export default function QuranPageView({
 
       for (const word of verseWords) {
         detectedPageNumber = word.pageNumber
-        detectedQcfGlyphs = detectedQcfGlyphs || Boolean(verse.words?.some((item) => item.code_v2))
+        detectedQcfGlyphs =
+          useGlyphs && (detectedQcfGlyphs || Boolean(verse.words?.some((item) => item.code_v2)))
         const lineWords = lineMap.get(word.lineNumber) || []
         lineWords.push(word)
         lineMap.set(word.lineNumber, lineWords)
@@ -152,7 +159,7 @@ export default function QuranPageView({
       pageNumber: detectedPageNumber,
       hasQcfGlyphs: detectedQcfGlyphs,
     }
-  }, [revealedAyahs, revealableVerseKeys, startIndex, verses])
+  }, [revealedAyahs, revealableVerseKeys, startIndex, verses, useGlyphs])
 
   if (startIndex === -1) {
     return (
@@ -164,7 +171,8 @@ export default function QuranPageView({
 
   const qcfFontFamily = `QCFPage${pageNumber}V2`
 
-  const needsQuranFonts = hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah)
+  const needsQuranFonts =
+    useGlyphs && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
   return (
     <div

@@ -3,6 +3,7 @@ import { Amiri } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import InstallPrompt from '@/components/InstallPrompt'
 import PwaRegister from '@/components/PwaRegister'
+import SettingsProvider from '@/components/settings/SettingsProvider'
 import './globals.css'
 
 const amiri = Amiri({
@@ -43,11 +44,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`dark ${amiri.variable}`}>
-      <body className="min-h-[100dvh] bg-[#0a0a0a] text-white antialiased">
-        <AppShell>{children}</AppShell>
-        <PwaRegister />
-        <InstallPrompt />
+    <html lang="en" className={amiri.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=s.theme==='light'?'light':'dark';document.documentElement.classList.toggle('dark',t==='dark');document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)] antialiased">
+        <SettingsProvider>
+          <AppShell>{children}</AppShell>
+          <PwaRegister />
+          <InstallPrompt />
+        </SettingsProvider>
       </body>
     </html>
   )

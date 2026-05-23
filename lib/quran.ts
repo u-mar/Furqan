@@ -1,4 +1,10 @@
 import type { Chapter, Verse } from '@/types'
+import { getAppSettings } from '@/lib/app-settings'
+import {
+  getLocalMushafPage,
+  isOfflineReady,
+  prefetchMushafPages,
+} from '@/lib/local-quran-store'
 
 interface QuranData {
   chapters: Chapter[]
@@ -67,8 +73,19 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 }
 
 export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
+  const settings = typeof window !== 'undefined' ? getAppSettings() : null
+  const preferLocal = settings?.offlineDownloaded || isOfflineReady()
+
+  if (preferLocal && isOfflineReady()) {
+    const local = getLocalMushafPage(pageNumber)
+    if (local && local.length > 0) {
+      prefetchMushafPages(pageNumber, 3)
+      return local
+    }
+  }
+
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 45_000)
+  const timeout = window.setTimeout(() => controller.abort(), preferLocal ? 8_000 : 45_000)
 
   try {
     const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`, {
@@ -82,7 +99,14 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     if (verses.length === 0) {
       throw new Error('No verses returned for this page')
     }
+    prefetchMushafPages(pageNumber, 1)
     return verses
+  } catch (err) {
+    if (isOfflineReady()) {
+      const fallback = getLocalMushafPage(pageNumber)
+      if (fallback?.length) return fallback
+    }
+    throw err
   } finally {
     window.clearTimeout(timeout)
   }

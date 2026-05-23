@@ -18,6 +18,8 @@ import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import { useSwipe } from '@/hooks/useSwipe'
+import { useAppSettings } from '@/hooks/useAppSettings'
+import { getAppSettings } from '@/lib/app-settings'
 import { cn } from '@/lib/cn'
 import {
   clampPage,
@@ -30,6 +32,7 @@ import {
   getVersesByChapter,
   getVisualPageForVerse,
 } from '@/lib/quran'
+import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
@@ -46,12 +49,30 @@ function ReadPageContent() {
   const [showTranslation, setShowTranslation] = useState(false)
   const [sliderPage, setSliderPage] = useState(1)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
+  const { mushafStyle, theme } = useAppSettings()
+  const darkMushaf = theme === 'dark'
 
   const loadPage = useCallback(async (page: number) => {
     const next = clampPage(page)
-    setLoading(true)
     setLoadError(null)
+
+    const instant = isOfflineReady() ? getLocalMushafPage(next) : null
+    if (instant && instant.length > 0) {
+      setPageVerses(instant)
+      setCurrentPage(next)
+      setSliderPage(next)
+      setLoading(false)
+      setPageLoading(false)
+      localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
+      prefetchMushafPages(next, 3)
+      return
+    }
+
+    if (pageVerses.length === 0) setLoading(true)
+    else setPageLoading(true)
+
     try {
       const verses = await getMushafPage(next)
       setPageVerses(verses)
@@ -64,11 +85,18 @@ function ReadPageContent() {
       setLoadError(message)
     } finally {
       setLoading(false)
+      setPageLoading(false)
     }
-  }, [])
+  }, [pageVerses.length])
 
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
+    const settings = getAppSettings()
+    if (settings.offlineDownloaded && !isOfflineReady()) {
+      import('@/lib/local-quran-store').then(({ hydrateOfflineFromDisk }) => {
+        hydrateOfflineFromDisk().catch(() => {})
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -127,7 +155,7 @@ function ReadPageContent() {
 
   if (loading && pageVerses.length === 0 && !loadError) {
     return (
-      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#0a0a0a] px-6">
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--app-bg)] px-6">
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500"
           role="status"
@@ -140,7 +168,7 @@ function ReadPageContent() {
 
   if (loadError && pageVerses.length === 0) {
     return (
-      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#0a0a0a] px-6 text-center">
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--app-bg)] px-6 text-center">
         <p className="text-sm text-red-400">{loadError}</p>
         <p className="text-xs text-stone-500">
           Check your Wi‑Fi connection. The first load can take up to a minute.
@@ -152,19 +180,28 @@ function ReadPageContent() {
         >
           Retry
         </button>
-        <Link href="/" className="text-sm text-stone-400 underline">
-          Back to home
+        <Link href="/settings" className="text-sm text-[var(--app-muted)] underline">
+          Download offline in Settings
         </Link>
       </main>
     )
   }
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-[#0a0a0a] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+      {pageLoading && (
+        <div
+          className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"
+          role="status"
+          aria-label="Loading page"
+        >
+          <div className="h-full w-1/3 animate-pulse bg-teal-500" />
+        </div>
+      )}
       {/* Top bar */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between bg-[#141414]/95 px-4 py-3 backdrop-blur transition-transform duration-300',
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)]/95 px-4 py-3 backdrop-blur transition-transform duration-300 dark:bg-[#141414]/95',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -189,9 +226,14 @@ function ReadPageContent() {
           <button type="button" className="rounded-lg p-2 text-teal-400 hover:bg-white/5" aria-label="Calendar">
             <Calendar className="h-5 w-5" />
           </button>
-          <button type="button" className="rounded-lg p-2 text-teal-400 hover:bg-white/5" aria-label="Settings">
+          <Link
+            href="/settings"
+            className="rounded-lg p-2 text-teal-600 hover:bg-black/5 dark:text-teal-400 dark:hover:bg-white/5"
+            aria-label="Settings"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Settings className="h-5 w-5" />
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -217,8 +259,9 @@ function ReadPageContent() {
               revealableVerseKeys={pageVerseKeys}
               revealedAyahs={pageVerseKeys}
               onReveal={() => {}}
-              darkMushaf
+              darkMushaf={darkMushaf}
               readOnly
+              mushafStyle={mushafStyle}
             />
           )}
         </div>
@@ -232,7 +275,7 @@ function ReadPageContent() {
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl bg-[#1a1a1a] px-4 py-3">
+        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 dark:bg-[#1a1a1a]">
           <button
             type="button"
             className="flex items-center gap-1 text-sm font-medium text-teal-400"
@@ -250,7 +293,7 @@ function ReadPageContent() {
           </button>
         </div>
 
-        <div className="mx-auto flex max-w-lg items-center gap-3 rounded-xl bg-[#141414]/90 px-3 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-lg items-center gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)]/90 px-3 py-3 backdrop-blur dark:bg-[#141414]/90">
           <button
             type="button"
             onClick={() => currentPage > 1 && loadPage(currentPage - 1)}

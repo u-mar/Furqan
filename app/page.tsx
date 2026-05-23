@@ -54,13 +54,13 @@ export default function Home() {
           <span className="rounded-md bg-amber-400 px-2.5 py-1 text-[11px] font-bold leading-none text-black lg:px-3 lg:py-1.5 lg:text-xs">
             Pro
           </span>
-          <button
-            type="button"
+          <Link
+            href="/settings"
             className="rounded-lg p-1.5 text-stone-300 transition-colors hover:bg-white/10 hover:text-white lg:p-2"
-            aria-label="Menu"
+            aria-label="Settings"
           >
             <Menu className="h-6 w-6 lg:h-7 lg:w-7" strokeWidth={2} />
-          </button>
+          </Link>
         </div>
       </header>
 

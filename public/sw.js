@@ -1,5 +1,5 @@
-const CACHE = 'al-quran-v1'
-const PRECACHE = ['/']
+const CACHE = 'al-quran-v2'
+const PRECACHE = ['/', '/quran-data.json', '/quran-chapters.json']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
