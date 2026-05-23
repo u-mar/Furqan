@@ -112,12 +112,63 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+/* Mushaf reader — paper-like page in light & dark */
+.mushaf-reader {
+  --mushaf-sheet-bg: #f8f4ea;
+  --mushaf-sheet-text: #1c1917;
+  --mushaf-sheet-muted: #78716c;
+  --mushaf-sheet-border: rgba(120, 90, 50, 0.18);
+  --mushaf-sheet-shadow: 0 8px 32px rgba(28, 25, 23, 0.08), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  --mushaf-line-gap: 0.35rem;
+}
+
+html.dark .mushaf-reader {
+  --mushaf-sheet-bg: #1c1915;
+  --mushaf-sheet-text: #ece8df;
+  --mushaf-sheet-muted: #a8a29e;
+  --mushaf-sheet-border: rgba(212, 196, 168, 0.12);
+  --mushaf-sheet-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.mushaf-page-sheet {
+  background: var(--mushaf-sheet-bg);
+  color: var(--mushaf-sheet-text);
+  border: 1px solid var(--mushaf-sheet-border);
+  box-shadow: var(--mushaf-sheet-shadow);
+  border-radius: 6px;
+}
+
+.mushaf-page-line {
+  min-height: 2.35em;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  text-align: center;
+  font-size: clamp(1.35rem, 4.8vw, 2rem);
+}
+
+.mushaf-page-line--header {
+  min-height: 2em;
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+}
+
+.mushaf-page-line--basmalah {
+  min-height: 1.85em;
+  font-size: clamp(1.5rem, 5vw, 2.25rem);
+  opacity: 0.92;
+}
+
+.mushaf-page-footer {
+  color: var(--mushaf-sheet-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
 .basmalah-ornament {
   display: flex;
   align-items: center;
   justify-content: center;
   width: min(78vw, 24rem);
-  color: var(--hifdh-text);
+  color: var(--mushaf-sheet-text);
   font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Amiri', serif;
   font-size: clamp(42px, 9vw, 72px);
   line-height: 0.95;
@@ -129,7 +180,7 @@ body {
   height: 1px;
   flex: 1;
   max-width: 4.5rem;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2));
+  background: linear-gradient(90deg, transparent, var(--mushaf-sheet-border));
 }
 
 .basmalah-ornament::before {

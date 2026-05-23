@@ -12,6 +12,7 @@ import {
   ChevronDown,
   MessageSquareText,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
@@ -51,8 +52,7 @@ function ReadPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
-  const { mushafStyle, theme } = useAppSettings()
-  const darkMushaf = theme === 'dark'
+  const { mushafStyle } = useAppSettings()
 
   const loadPage = useCallback(async (page: number) => {
     const next = clampPage(page)
@@ -134,14 +134,15 @@ function ReadPageContent() {
 
   const toggleUi = () => setUiVisible((v) => !v)
 
+  // Mushaf-style: swipe right = next page, swipe left = previous page
   const swipe = useSwipe({
     onSwipeLeft: () => {
       didSwipe.current = true
-      if (currentPage < TOTAL_MUSHAF_PAGES) loadPage(currentPage + 1)
+      if (currentPage > 1) loadPage(currentPage - 1)
     },
     onSwipeRight: () => {
       didSwipe.current = true
-      if (currentPage > 1) loadPage(currentPage - 1)
+      if (currentPage < TOTAL_MUSHAF_PAGES) loadPage(currentPage + 1)
     },
   })
 
@@ -237,34 +238,33 @@ function ReadPageContent() {
         </div>
       </header>
 
-      {/* Mushaf — tap toggles chrome; swipe changes page */}
+      {/* Mushaf — tap toggles chrome; swipe changes page (RTL: right = forward) */}
       <div
-        className="h-full overflow-y-auto overscroll-none px-2 pb-28 pt-10 sm:pt-12"
+        className="mushaf-reader h-full overflow-y-auto overscroll-none px-3 pb-32 pt-3 sm:px-4 sm:pt-4"
         onClick={handleContentTap}
         onTouchStart={swipe.onTouchStart}
         onTouchEnd={swipe.onTouchEnd}
         role="presentation"
       >
-        <div className="mx-auto max-w-lg px-2">
-          {showTranslation ? (
-            <MushafTranslationView
-              verses={pageVerses}
-              page={currentPage}
-              chapters={chapters}
-            />
-          ) : (
-            <QuranPageView
-              verses={pageVerses}
-              startVerseKey={startVerseKey}
-              revealableVerseKeys={pageVerseKeys}
-              revealedAyahs={pageVerseKeys}
-              onReveal={() => {}}
-              darkMushaf={darkMushaf}
-              readOnly
-              mushafStyle={mushafStyle}
-            />
-          )}
-        </div>
+        {showTranslation ? (
+          <MushafTranslationView
+            verses={pageVerses}
+            page={currentPage}
+            chapters={chapters}
+          />
+        ) : (
+          <QuranPageView
+            verses={pageVerses}
+            startVerseKey={startVerseKey}
+            revealableVerseKeys={pageVerseKeys}
+            revealedAyahs={pageVerseKeys}
+            onReveal={() => {}}
+            readOnly
+            readMode
+            mushafStyle={mushafStyle}
+            pageNumber={currentPage}
+          />
+        )}
       </div>
 
       {/* Bottom controls */}
@@ -293,29 +293,47 @@ function ReadPageContent() {
           </button>
         </div>
 
-        <div className="mx-auto flex max-w-lg items-center gap-3 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)]/90 px-3 py-3 backdrop-blur dark:bg-[#141414]/90">
+        <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)]/95 px-3 py-3 backdrop-blur">
           <button
             type="button"
             onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="flex flex-col items-center text-teal-400 disabled:opacity-30"
+            className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-6 w-6" />
-            <span className="text-xs font-medium">{currentPage}</span>
+            <ChevronRight className="h-6 w-6" />
           </button>
 
-          <input
-            type="range"
-            min={1}
-            max={TOTAL_MUSHAF_PAGES}
-            value={sliderPage}
-            onChange={(e) => setSliderPage(Number(e.target.value))}
-            onMouseUp={() => loadPage(sliderPage)}
-            onTouchEnd={() => loadPage(sliderPage)}
-            className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-stone-700 accent-teal-500"
-            aria-label="Page slider"
-          />
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--app-muted)]">
+              Page
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={TOTAL_MUSHAF_PAGES}
+              value={sliderPage}
+              onChange={(e) => setSliderPage(Number(e.target.value))}
+              onMouseUp={() => loadPage(sliderPage)}
+              onTouchEnd={() => loadPage(sliderPage)}
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-300 accent-teal-600 dark:bg-stone-700 dark:accent-teal-500"
+              aria-label="Page slider"
+            />
+            <span className="text-sm font-semibold tabular-nums text-[var(--app-text)]">
+              {currentPage}
+              <span className="font-normal text-[var(--app-muted)]"> / {TOTAL_MUSHAF_PAGES}</span>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => currentPage < TOTAL_MUSHAF_PAGES && loadPage(currentPage + 1)}
+            disabled={currentPage >= TOTAL_MUSHAF_PAGES}
+            className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
+            aria-label="Next page"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
 
           <button
             type="button"
@@ -366,7 +384,7 @@ export default function ReadPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[100dvh] items-center justify-center bg-[#0a0a0a]">
+        <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--app-bg)]">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
         </main>
       }

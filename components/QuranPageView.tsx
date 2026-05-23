@@ -11,11 +11,11 @@ interface QuranPageViewProps {
   revealableVerseKeys: Set<string>
   revealedAyahs: Set<string>
   onReveal: (verseKey: string) => void
-  /** Dark mushaf reader (full-screen read mode). */
-  darkMushaf?: boolean
-  /** When true, words are not clickable (read-only). */
+  /** Full-screen read mode (paper sheet styling). */
+  readMode?: boolean
   readOnly?: boolean
   mushafStyle?: MushafStyle
+  pageNumber?: number
 }
 
 interface PageWord {
@@ -77,9 +77,10 @@ export default function QuranPageView({
   revealableVerseKeys,
   revealedAyahs,
   onReveal,
-  darkMushaf = false,
+  readMode = false,
   readOnly = false,
   mushafStyle = 'uthmani-glyphs',
+  pageNumber: pageNumberProp,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
   const useGlyphs = mushafStyle === 'uthmani-glyphs'
@@ -156,14 +157,14 @@ export default function QuranPageView({
     return {
       lines: sortedLines,
       nextVerseKey: firstUnrevealed,
-      pageNumber: detectedPageNumber,
+      pageNumber: pageNumberProp ?? detectedPageNumber,
       hasQcfGlyphs: detectedQcfGlyphs,
     }
-  }, [revealedAyahs, revealableVerseKeys, startIndex, verses, useGlyphs])
+  }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, verses, useGlyphs])
 
   if (startIndex === -1) {
     return (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-300">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-500">
         <p>Starting verse not found on this page.</p>
       </div>
     )
@@ -174,12 +175,13 @@ export default function QuranPageView({
   const needsQuranFonts =
     useGlyphs && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
+  const wordColor = 'text-[var(--mushaf-sheet-text)]'
+
   return (
     <div
       className={cn(
-        'mx-auto w-full max-w-[980px] px-0 sm:px-2',
-        readOnly && darkMushaf ? 'py-0' : 'py-2',
-        darkMushaf && 'text-white'
+        'mx-auto w-full',
+        readMode ? 'max-w-[min(100%,42rem)]' : 'max-w-[980px] px-0 sm:px-2 py-2'
       )}
       dir="rtl"
       lang="ar"
@@ -199,36 +201,32 @@ export default function QuranPageView({
           }
           .surah-header {
             font-family: 'SurahNameV2';
-            font-size: clamp(28px, 5vw, 44px) !important;
+            font-size: clamp(1.75rem, 6vw, 2.75rem) !important;
             line-height: 1;
           }
-          .basmalah-ornament {
+          .basmalah-ornament-inline {
             font-family: 'SurahNameV2';
-            font-size: clamp(24px, 4vw, 36px) !important;
+            font-size: clamp(1.5rem, 5vw, 2.25rem) !important;
             line-height: 1;
-            opacity: 0.9;
           }
         `}</style>
       )}
 
       <div
         className={cn(
-          'flex flex-col',
-          readOnly && darkMushaf
-            ? 'justify-start gap-0.5 pt-4 pb-6'
-            : 'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
+          'mushaf-page-sheet flex flex-col',
+          readMode ? 'px-3 py-5 sm:px-5 sm:py-6' : 'rounded-lg p-4',
+          !readMode && 'min-h-[calc(100vh-12rem)] sm:min-h-[760px] justify-between'
         )}
+        style={{ gap: readMode ? 'var(--mushaf-line-gap)' : undefined }}
       >
         {lines.map((line) => (
           <div
             key={line.lineNumber}
             className={cn(
-              'flex min-h-[2.05em] flex-row items-center justify-center gap-x-[0.04em] text-[clamp(22px,4vw,38px)] leading-[1.22]',
-              readOnly && darkMushaf && 'min-h-[2.15em]',
-              line.isSurahHeader && 'min-h-[1.45em] text-[clamp(28px,5vw,44px)]',
-              line.isBasmalah && 'min-h-[1.45em] text-[clamp(24px,4vw,36px)]',
-              readOnly && darkMushaf && line.isSurahHeader && 'mt-2',
-              readOnly && darkMushaf && line.isBasmalah && 'mt-1'
+              'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
+              line.isSurahHeader && 'mushaf-page-line--header surah-header',
+              line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
             )}
             style={{
               fontFamily: line.isSurahHeader
@@ -239,83 +237,73 @@ export default function QuranPageView({
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (
-              <div
-                className={cn(
-                  'flex w-full items-center justify-center gap-3 surah-header',
-                  darkMushaf ? 'text-white' : 'text-stone-950 dark:text-stone-100'
-                )}
-              >
-                <span
-                  className={cn(
-                    'h-px flex-1',
-                    darkMushaf ? 'bg-stone-700' : 'bg-stone-200 dark:bg-stone-800'
-                  )}
-                  aria-hidden
-                />
+              <div className={cn('flex w-full items-center justify-center gap-3', wordColor)}>
+                <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
                 <span>{`surah${String(line.chapterNumber).padStart(3, '0')}`}</span>
-                <span
-                  className={cn(
-                    'h-px flex-1',
-                    darkMushaf ? 'bg-stone-700' : 'bg-stone-200 dark:bg-stone-800'
-                  )}
-                  aria-hidden
-                />
+                <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
               </div>
             ) : line.isBasmalah ? (
-              <div className="basmalah-ornament" aria-label={BASMALAH}>
+              <div aria-label={BASMALAH}>
                 <span aria-hidden="true">{BASMALAH_ORNAMENT}</span>
               </div>
-) : (
+            ) : (
               line.words.map((word) => {
-              const isRevealed = revealedAyahs.has(word.verseKey)
-              const isNext = word.verseKey === nextVerseKey
-              const shouldShowText = isRevealed || word.isEndMark
+                const isRevealed = revealedAyahs.has(word.verseKey)
+                const isNext = word.verseKey === nextVerseKey
+                const shouldShowText = isRevealed || word.isEndMark
 
-              const wordClass = cn(
-                'mushaf-word inline-block border-0 bg-transparent p-0',
-                darkMushaf ? 'text-white' : 'text-stone-950 dark:text-stone-100',
-                !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
-              )
-
-              if (word.isEndMark) {
-                return (
-                  <span key={word.id} className="mx-0.5 inline-block">
-                    {word.text}
-                  </span>
+                const wordClass = cn(
+                  'mushaf-word inline-block border-0 bg-transparent p-0',
+                  wordColor,
+                  !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                 )
-              }
 
-              if (readOnly || !isNext) {
+                if (word.isEndMark) {
+                  return (
+                    <span key={word.id} className="mx-0.5 inline-block opacity-80">
+                      {word.text}
+                    </span>
+                  )
+                }
+
+                if (readOnly || !isNext) {
+                  return (
+                    <span
+                      key={word.id}
+                      className={wordClass}
+                      dangerouslySetInnerHTML={{
+                        __html: hasQcfGlyphs ? word.text : word.fallbackText,
+                      }}
+                    />
+                  )
+                }
+
                 return (
-                  <span
+                  <button
                     key={word.id}
-                    className={wordClass}
+                    type="button"
+                    onClick={() => onReveal(word.verseKey)}
+                    className={cn(
+                      wordClass,
+                      'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600'
+                    )}
+                    aria-label={`Reveal verse ${word.verseKey}`}
+                    title={`Reveal ${word.verseKey}`}
                     dangerouslySetInnerHTML={{
                       __html: hasQcfGlyphs ? word.text : word.fallbackText,
                     }}
                   />
                 )
-              }
-
-              return (
-                <button
-                  key={word.id}
-                  type="button"
-                  onClick={() => onReveal(word.verseKey)}
-                  className={cn(
-                    wordClass,
-                    'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-300'
-                  )}
-                  aria-label={`Reveal verse ${word.verseKey}`}
-                  title={`Reveal ${word.verseKey}`}
-                  dangerouslySetInnerHTML={{
-                    __html: hasQcfGlyphs ? word.text : word.fallbackText,
-                  }}
-                />
-              )
-            }))}
+              })
+            )}
           </div>
         ))}
+
+        {readMode && (
+          <footer className="mushaf-page-footer mt-4 flex justify-center border-t border-[var(--mushaf-sheet-border)] pt-3">
+            {pageNumber}
+          </footer>
+        )}
       </div>
     </div>
   )

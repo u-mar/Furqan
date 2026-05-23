@@ -273,7 +273,6 @@ function TestPageContent() {
                 revealableVerseKeys={scopeVerseKeys}
                 revealedAyahs={revealedAyahs}
                 onReveal={handleReveal}
-                darkMushaf
               />
             </div>
 
