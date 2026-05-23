@@ -21,21 +21,21 @@ const idleState: PageRecitationState = {
 interface UsePageRecitationOptions {
   reciterId: string
   verses: Verse[]
-  onPageFinished?: () => void
 }
 
-export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePageRecitationOptions) {
+export function usePageRecitation({ reciterId, verses }: UsePageRecitationOptions) {
   const [state, setState] = useState<PageRecitationState>(idleState)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
   const indexRef = useRef(0)
   const versesRef = useRef(verses)
   const reciterRef = useRef(reciterId)
-  const onPageFinishedRef = useRef(onPageFinished)
+  const playModeRef = useRef<'page' | 'single'>('page')
+  const playingRef = useRef(false)
 
   versesRef.current = verses
-  onPageFinishedRef.current = onPageFinished
   reciterRef.current = reciterId
+  playingRef.current = state.playing
 
   const stop = useCallback(() => {
     sessionRef.current += 1
@@ -45,6 +45,19 @@ export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePage
       audio.src = ''
     }
     indexRef.current = 0
+    playModeRef.current = 'page'
+    setState(idleState)
+  }, [])
+
+  const finishPlayback = useCallback(() => {
+    sessionRef.current += 1
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+      audio.src = ''
+    }
+    indexRef.current = 0
+    playModeRef.current = 'page'
     setState(idleState)
   }, [])
 
@@ -54,8 +67,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePage
     if (!audio || session !== sessionRef.current) return
 
     if (index >= list.length) {
-      setState((s) => ({ ...s, playing: false, loading: false, highlightedVerseKey: null }))
-      onPageFinishedRef.current?.()
+      finishPlayback()
       return
     }
 
@@ -88,50 +100,53 @@ export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePage
         ...s,
         loading: false,
         playing: false,
+        highlightedVerseKey: null,
         error: `Could not play ayah ${ayah}`,
       }))
     }
-  }, [])
+  }, [finishPlayback])
 
   const start = useCallback(() => {
+    stop()
+    playModeRef.current = 'page'
     sessionRef.current += 1
     void playIndex(0, sessionRef.current)
-  }, [playIndex])
+  }, [playIndex, stop])
 
-  const toggle = useCallback(() => {
-    if (state.loading) return
-
-    if (state.playing) {
-      audioRef.current?.pause()
-      setState((s) => ({ ...s, playing: false }))
-      return
-    }
-
-    if (state.highlightedVerseKey) {
-      audioRef.current
-        ?.play()
-        .then(() => setState((s) => ({ ...s, playing: true, error: null })))
-        .catch(() => setState((s) => ({ ...s, error: 'Playback failed' })))
-      return
-    }
-
-    start()
-  }, [start, state.highlightedVerseKey, state.loading, state.playing])
+  const playVerse = useCallback(
+    (verseKey: string) => {
+      const index = versesRef.current.findIndex((v) => v.verse_key === verseKey)
+      if (index < 0) return
+      stop()
+      playModeRef.current = 'single'
+      sessionRef.current += 1
+      void playIndex(index, sessionRef.current)
+    },
+    [playIndex, stop]
+  )
 
   useEffect(() => {
     const audio = new Audio()
     audioRef.current = audio
 
     const onEnded = () => {
+      if (playModeRef.current === 'single') {
+        finishPlayback()
+        return
+      }
       void playIndex(indexRef.current + 1, sessionRef.current)
     }
 
     const onError = () => {
+      if (playModeRef.current === 'single') {
+        finishPlayback()
+        return
+      }
       const next = indexRef.current + 1
       if (next < versesRef.current.length) {
         void playIndex(next, sessionRef.current)
       } else {
-        setState((s) => ({ ...s, playing: false, loading: false, highlightedVerseKey: null }))
+        finishPlayback()
       }
     }
 
@@ -144,14 +159,29 @@ export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePage
       audio.pause()
       audio.src = ''
     }
-  }, [playIndex])
+  }, [finishPlayback, playIndex])
 
   useEffect(() => {
-    if (!state.highlightedVerseKey) return
+    const versesKey = verses.map((v) => v.verse_key).join(',')
+    if (!versesKey) return
+    sessionRef.current += 1
+    const audio = audioRef.current
+    if (audio) {
+      audio.pause()
+      audio.src = ''
+    }
+    indexRef.current = 0
+    playModeRef.current = 'page'
+    setState(idleState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verses.map((v) => v.verse_key).join(',')])
+
+  useEffect(() => {
+    if (!playingRef.current) return
     sessionRef.current += 1
     void playIndex(indexRef.current, sessionRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId])
 
-  return { state, toggle, stop, start }
+  return { state, stop, start, playVerse }
 }

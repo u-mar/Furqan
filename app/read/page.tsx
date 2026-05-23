@@ -9,7 +9,7 @@ import {
   Calendar,
   Settings,
   Play,
-  Pause,
+  Square,
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
@@ -19,9 +19,11 @@ import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
+import AyahActionSheet from '@/components/read/AyahActionSheet'
 import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
+import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { getAppSettings } from '@/lib/app-settings'
 import { cn } from '@/lib/cn'
 import {
@@ -55,9 +57,11 @@ function ReadPageContent() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
-  const resumeAfterLoad = useRef(false)
-  const currentPageRef = useRef(1)
+  const longPressBlockTap = useRef(false)
+  const pageVersesRef = useRef<Verse[]>([])
+  const initialLoadDone = useRef(false)
   const { mushafStyle, reciterId } = useAppSettings()
+  const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
 
   const loadPage = useCallback(async (page: number) => {
     const next = clampPage(page)
@@ -65,6 +69,7 @@ function ReadPageContent() {
 
     const instant = isOfflineReady() ? getLocalMushafPage(next) : null
     if (instant && instant.length > 0) {
+      pageVersesRef.current = instant
       setPageVerses(instant)
       setCurrentPage(next)
       setSliderPage(next)
@@ -75,11 +80,12 @@ function ReadPageContent() {
       return
     }
 
-    if (pageVerses.length === 0) setLoading(true)
+    if (pageVersesRef.current.length === 0) setLoading(true)
     else setPageLoading(true)
 
     try {
       const verses = await getMushafPage(next)
+      pageVersesRef.current = verses
       setPageVerses(verses)
       setCurrentPage(next)
       setSliderPage(next)
@@ -92,31 +98,27 @@ function ReadPageContent() {
       setLoading(false)
       setPageLoading(false)
     }
-  }, [pageVerses.length])
+  }, [])
 
-  const { state: recitation, toggle: toggleRecitation, stop: stopRecitation, start: startRecitation } =
+  const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse } =
     usePageRecitation({
       reciterId,
       verses: pageVerses,
-      onPageFinished: () => {
-        const page = currentPageRef.current
-        if (page < TOTAL_MUSHAF_PAGES) {
-          resumeAfterLoad.current = true
-          void loadPage(page + 1)
-        }
-      },
     })
 
-  useEffect(() => {
-    if (resumeAfterLoad.current && pageVerses.length > 0) {
-      resumeAfterLoad.current = false
-      startRecitation()
-    }
-  }, [pageVerses, startRecitation])
+  const arabicByKey = useMemo(
+    () => Object.fromEntries(pageVerses.map((v) => [v.verse_key, v.text_uthmani])),
+    [pageVerses]
+  )
+  const { byKey: translationByKey, loading: ayahTranslationLoading } = usePageTranslations(
+    currentPage,
+    Boolean(ayahMenu),
+    pageVerses.map((v) => v.verse_key),
+    arabicByKey
+  )
 
   const navigatePage = useCallback(
     (page: number) => {
-      resumeAfterLoad.current = false
       stopRecitation()
       void loadPage(page)
     },
@@ -134,16 +136,20 @@ function ReadPageContent() {
   }, [])
 
   useEffect(() => {
+    if (initialLoadDone.current) return
+    initialLoadDone.current = true
     const saved =
       initialPage > 0
         ? initialPage
         : typeof window !== 'undefined'
           ? Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1')
           : 1
-    loadPage(clampPage(saved || 1))
-  }, [initialPage, loadPage])
+    void loadPage(clampPage(saved || 1))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPage])
 
   const goToSurah = async (surahId: number) => {
+    stopRecitation()
     const verses = await getVersesByChapter(surahId)
     const first = verses[0]
     if (!first) return
@@ -169,13 +175,20 @@ function ReadPageContent() {
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
   const juzPart = juzForChapter(currentSurahNum)
 
-  currentPageRef.current = currentPage
-
   const handleRecitationToggle = () => {
-    if (!recitation.playing && !recitation.highlightedVerseKey) {
-      setUiVisible(true)
+    if (recitation.playing || recitation.loading || recitation.highlightedVerseKey) {
+      stopRecitation()
+      return
     }
-    toggleRecitation()
+    setUiVisible(true)
+    startRecitation()
+  }
+
+  const handleAyahLongPress = (verseKey: string) => {
+    longPressBlockTap.current = true
+    const verse = pageVerses.find((v) => v.verse_key === verseKey)
+    if (!verse) return
+    setAyahMenu({ verseKey, arabic: verse.text_uthmani })
   }
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -195,6 +208,10 @@ function ReadPageContent() {
   const handleContentTap = () => {
     if (didSwipe.current) {
       didSwipe.current = false
+      return
+    }
+    if (longPressBlockTap.current) {
+      longPressBlockTap.current = false
       return
     }
     toggleUi()
@@ -274,6 +291,7 @@ function ReadPageContent() {
           />
         ) : (
           <QuranPageView
+            key={`${currentPage}-${mushafStyle}`}
             verses={pageVerses}
             startVerseKey={startVerseKey}
             revealableVerseKeys={pageVerseKeys}
@@ -284,6 +302,7 @@ function ReadPageContent() {
             mushafStyle={mushafStyle}
             pageNumber={currentPage}
             highlightedVerseKey={recitation.highlightedVerseKey}
+            onAyahLongPress={handleAyahLongPress}
           />
         )}
       </div>
@@ -353,12 +372,12 @@ function ReadPageContent() {
             onClick={handleRecitationToggle}
             disabled={showTranslation || pageVerses.length === 0}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
-            aria-label={recitation.playing ? 'Pause recitation' : 'Play recitation'}
+            aria-label={recitation.playing ? 'Stop recitation' : 'Play page recitation'}
           >
             {recitation.loading ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
             ) : recitation.playing ? (
-              <Pause className="h-6 w-6 fill-current" />
+              <Square className="h-5 w-5 fill-current" />
             ) : (
               <Play className="h-6 w-6 fill-current" />
             )}
@@ -440,6 +459,25 @@ function ReadPageContent() {
         onClose={() => setDrawerOpen(false)}
         onSelectSurah={handleSelectSurah}
         onGoToPage={navigatePage}
+      />
+
+      <AyahActionSheet
+        open={Boolean(ayahMenu)}
+        verseKey={ayahMenu?.verseKey ?? ''}
+        arabicText={ayahMenu?.arabic ?? ''}
+        translation={
+          ayahMenu ? translationByKey[ayahMenu.verseKey]?.translation ?? null : null
+        }
+        translationLoading={ayahTranslationLoading}
+        onClose={() => setAyahMenu(null)}
+        onPlay={() => {
+          if (ayahMenu) playVerse(ayahMenu.verseKey)
+        }}
+        onShowTranslation={() => {
+          stopRecitation()
+          setShowTranslation(true)
+          setUiVisible(true)
+        }}
       />
 
       {uiVisible && (
