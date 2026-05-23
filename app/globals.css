@@ -99,6 +99,11 @@ body {
   font-size: clamp(22px, 5vw, 30px);
 }
 
+.ayah-sheet-arabic {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
 .mushaf-word-hidden {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;

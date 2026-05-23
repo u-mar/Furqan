@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Play, Languages, X, ChevronLeft, Square, SkipForward } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -12,7 +13,6 @@ interface AyahActionSheetProps {
   hasNextAyah: boolean
   open: boolean
   isReciting: boolean
-  isRecitingThisAyah: boolean
   onClose: () => void
   onPlay: () => void
   onStopRecitation: () => void
@@ -27,21 +27,21 @@ export default function AyahActionSheet({
   hasNextAyah,
   open,
   isReciting,
-  isRecitingThisAyah,
   onClose,
   onPlay,
   onStopRecitation,
   onNextAyah,
 }: AyahActionSheetProps) {
   const [view, setView] = useState<'menu' | 'translation' | 'playing'>('menu')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!open) setView('menu')
   }, [open])
-
-  useEffect(() => {
-    if (open && isRecitingThisAyah) setView('playing')
-  }, [open, isRecitingThisAyah])
 
   useEffect(() => {
     if (!open) return
@@ -55,25 +55,11 @@ export default function AyahActionSheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose, view])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const ayahNum = verseKey.split(':')[1] || ''
   const surahNum = verseKey.split(':')[0] || ''
-
-  const arabicBlock = (
-    <div className="mb-4 rounded-xl border border-teal-500/30 bg-[#222] px-4 py-4">
-      <p className="mb-1 text-center text-xs font-medium uppercase tracking-wide text-teal-400/80">
-        {surahNum}:{ayahNum}
-      </p>
-      <p
-        className="arabic-text text-center text-[1.35rem] leading-[2.2] text-white"
-        dir="rtl"
-        lang="ar"
-      >
-        {arabicText}
-      </p>
-    </div>
-  )
+  const displayArabic = arabicText.trim() || 'Arabic text unavailable for this ayah.'
 
   const nextAyahButton = (
     <button
@@ -90,16 +76,16 @@ export default function AyahActionSheet({
     </button>
   )
 
-  return (
+  const sheet = (
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[100] bg-black/45"
         aria-label="Close"
         onClick={onClose}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-2xl border border-white/10 bg-[#141414] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl"
+        className="fixed inset-x-0 bottom-0 z-[101] mx-auto max-w-lg rounded-t-2xl border border-white/10 bg-[#141414] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={
@@ -136,16 +122,24 @@ export default function AyahActionSheet({
           </button>
         </div>
 
-        {arabicBlock}
+        <div className="mb-4 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain rounded-xl border-2 border-teal-500/50 bg-[#1a1a1a] px-4 py-4">
+          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-teal-400">
+            {surahNum}:{ayahNum}
+          </p>
+          <p
+            className="amiri arabic-text ayah-sheet-arabic text-center text-[clamp(1.25rem,5vw,1.65rem)] leading-[2.2]"
+            dir="rtl"
+            lang="ar"
+          >
+            {displayArabic}
+          </p>
+        </div>
 
         {view === 'menu' && (
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => {
-                onPlay()
-                setView('playing')
-              }}
+              onClick={onPlay}
               className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl bg-teal-600 text-white"
             >
               <Play className="h-5 w-5 fill-current" />
@@ -199,12 +193,11 @@ export default function AyahActionSheet({
               </button>
             </div>
             {nextAyahButton}
-            {isReciting && !isRecitingThisAyah && (
-              <p className="text-center text-xs text-stone-500">Playing another ayah…</p>
-            )}
           </div>
         )}
       </div>
     </>
   )
+
+  return createPortal(sheet, document.body)
 }

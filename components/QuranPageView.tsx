@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { loadPageFont, loadSurahNameFont, prefetchPageFonts, qcfFontFamily } from '@/lib/mushaf-fonts'
@@ -221,6 +221,16 @@ export default function QuranPageView({
   }, [hasQcfGlyphs, needsQuranFonts, pageNumber])
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
+  const gridRef = useRef<HTMLDivElement>(null)
+  const focusKey = highlightedVerseKey || selectedVerseKey
+
+  useEffect(() => {
+    if (!focusKey || !readMode) return
+    const root = gridRef.current
+    if (!root) return
+    const line = root.querySelector(`[data-verse-keys~="${focusKey}"]`)
+    line?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [focusKey, readMode])
 
   if (startIndex === -1) {
     return (
@@ -257,6 +267,7 @@ export default function QuranPageView({
       )}
 
       <div
+        ref={gridRef}
         className={cn(
           readMode
             ? cn(
@@ -269,9 +280,12 @@ export default function QuranPageView({
               )
         )}
       >
-        {lines.map((line) => (
+        {lines.map((line) => {
+          const lineVerseKeys = [...new Set(line.words.map((w) => w.verseKey))].join(' ')
+          return (
           <div
             key={line.lineNumber}
+            data-verse-keys={lineVerseKeys}
             className={cn(
               readMode
                 ? cn(
@@ -385,7 +399,8 @@ export default function QuranPageView({
               })
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

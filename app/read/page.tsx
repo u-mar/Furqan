@@ -43,6 +43,7 @@ import {
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { prefetchPageFonts } from '@/lib/mushaf-fonts'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
@@ -234,12 +235,19 @@ function ReadPageContent() {
     startRecitation()
   }
 
-  const handleAyahLongPress = (verseKey: string) => {
-    longPressBlockTap.current = true
-    const verse = pageVerses.find((v) => v.verse_key === verseKey)
-    if (!verse) return
-    setAyahMenu({ verseKey, arabic: verse.text_uthmani })
-  }
+  const handleAyahLongPress = useCallback(
+    (verseKey: string) => {
+      longPressBlockTap.current = true
+      stopRecitation()
+      const verse = pageVerses.find((v) => v.verse_key === verseKey)
+      if (!verse) return
+      setAyahMenu({
+        verseKey,
+        arabic: getVerseArabicText(verse),
+      })
+    },
+    [pageVerses, stopRecitation]
+  )
 
   const getNextVerseOnPage = useCallback(
     (verseKey: string) => {
@@ -254,27 +262,13 @@ function ReadPageContent() {
     if (!ayahMenu) return
     const next = getNextVerseOnPage(ayahMenu.verseKey)
     if (!next) return
-    setAyahMenu({ verseKey: next.verse_key, arabic: next.text_uthmani })
+    setAyahMenu({ verseKey: next.verse_key, arabic: getVerseArabicText(next) })
     if (isActive) playVerse(next.verse_key)
   }, [ayahMenu, getNextVerseOnPage, isActive, playVerse])
 
   const ayahMenuHasNext = ayahMenu ? Boolean(getNextVerseOnPage(ayahMenu.verseKey)) : false
-  const isRecitingAyahMenu =
-    Boolean(ayahMenu) && recitation.highlightedVerseKey === ayahMenu?.verseKey
 
-  const mushafSelectedVerseKey =
-    isActive && recitation.highlightedVerseKey
-      ? recitation.highlightedVerseKey
-      : ayahMenu?.verseKey ?? null
-
-  useEffect(() => {
-    if (!ayahMenu || !isActive || !recitation.highlightedVerseKey) return
-    if (recitation.highlightedVerseKey === ayahMenu.verseKey) return
-    const verse = pageVerses.find((v) => v.verse_key === recitation.highlightedVerseKey)
-    if (verse) {
-      setAyahMenu({ verseKey: verse.verse_key, arabic: verse.text_uthmani })
-    }
-  }, [ayahMenu, isActive, recitation.highlightedVerseKey, pageVerses])
+  const mushafSelectedVerseKey = ayahMenu?.verseKey ?? null
 
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
@@ -632,13 +626,13 @@ function ReadPageContent() {
         translationLoading={ayahTranslationLoading}
         hasNextAyah={ayahMenuHasNext}
         isReciting={isActive}
-        isRecitingThisAyah={isRecitingAyahMenu}
-        onClose={() => {
-          stopRecitation()
-          setAyahMenu(null)
-        }}
+        onClose={() => setAyahMenu(null)}
         onPlay={() => {
-          if (ayahMenu) playVerse(ayahMenu.verseKey, { continueOnPage: true })
+          if (!ayahMenu) return
+          const key = ayahMenu.verseKey
+          setUiVisible(false)
+          setAyahMenu(null)
+          playVerse(key, { continueOnPage: true })
         }}
         onStopRecitation={stopRecitation}
         onNextAyah={handleAyahMenuNext}
