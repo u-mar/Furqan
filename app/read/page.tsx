@@ -241,6 +241,27 @@ function ReadPageContent() {
     setAyahMenu({ verseKey, arabic: verse.text_uthmani })
   }
 
+  const getNextVerseOnPage = useCallback(
+    (verseKey: string) => {
+      const idx = pageVerses.findIndex((v) => v.verse_key === verseKey)
+      if (idx < 0 || idx >= pageVerses.length - 1) return null
+      return pageVerses[idx + 1]
+    },
+    [pageVerses]
+  )
+
+  const handleAyahMenuNext = useCallback(() => {
+    if (!ayahMenu) return
+    const next = getNextVerseOnPage(ayahMenu.verseKey)
+    if (!next) return
+    setAyahMenu({ verseKey: next.verse_key, arabic: next.text_uthmani })
+    if (isActive) playVerse(next.verse_key)
+  }, [ayahMenu, getNextVerseOnPage, isActive, playVerse])
+
+  const ayahMenuHasNext = ayahMenu ? Boolean(getNextVerseOnPage(ayahMenu.verseKey)) : false
+  const isRecitingAyahMenu =
+    Boolean(ayahMenu) && recitation.highlightedVerseKey === ayahMenu?.verseKey
+
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
       const keys = new Set(verses.map((v) => v.verse_key))
@@ -595,10 +616,18 @@ function ReadPageContent() {
           ayahMenu ? translationByKey[ayahMenu.verseKey]?.translation ?? null : null
         }
         translationLoading={ayahTranslationLoading}
-        onClose={() => setAyahMenu(null)}
+        hasNextAyah={ayahMenuHasNext}
+        isReciting={isActive}
+        isRecitingThisAyah={isRecitingAyahMenu}
+        onClose={() => {
+          stopRecitation()
+          setAyahMenu(null)
+        }}
         onPlay={() => {
           if (ayahMenu) playVerse(ayahMenu.verseKey)
         }}
+        onStopRecitation={stopRecitation}
+        onNextAyah={handleAyahMenuNext}
       />
 
       {uiVisible && (
