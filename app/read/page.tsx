@@ -100,7 +100,7 @@ function ReadPageContent() {
     }
   }, [])
 
-  const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse } =
+  const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse, isActive } =
     usePageRecitation({
       reciterId,
       verses: pageVerses,
@@ -176,7 +176,7 @@ function ReadPageContent() {
   const juzPart = juzForChapter(currentSurahNum)
 
   const handleRecitationToggle = () => {
-    if (recitation.playing || recitation.loading || recitation.highlightedVerseKey) {
+    if (isActive) {
       stopRecitation()
       return
     }
@@ -372,11 +372,11 @@ function ReadPageContent() {
             onClick={handleRecitationToggle}
             disabled={showTranslation || pageVerses.length === 0}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
-            aria-label={recitation.playing ? 'Stop recitation' : 'Play page recitation'}
+            aria-label={isActive ? 'Stop recitation' : 'Play page recitation'}
           >
             {recitation.loading ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
-            ) : recitation.playing ? (
+            ) : isActive ? (
               <Square className="h-5 w-5 fill-current" />
             ) : (
               <Play className="h-6 w-6 fill-current" />
@@ -405,8 +405,12 @@ function ReadPageContent() {
               max={TOTAL_MUSHAF_PAGES}
               value={sliderPage}
               onChange={(e) => setSliderPage(Number(e.target.value))}
-              onMouseUp={() => navigatePage(sliderPage)}
-              onTouchEnd={() => navigatePage(sliderPage)}
+              onMouseUp={() => {
+                if (sliderPage !== currentPage) navigatePage(sliderPage)
+              }}
+              onTouchEnd={() => {
+                if (sliderPage !== currentPage) navigatePage(sliderPage)
+              }}
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-300 accent-teal-600 dark:bg-stone-700 dark:accent-teal-500"
               aria-label="Page slider"
             />
@@ -472,11 +476,6 @@ function ReadPageContent() {
         onClose={() => setAyahMenu(null)}
         onPlay={() => {
           if (ayahMenu) playVerse(ayahMenu.verseKey)
-        }}
-        onShowTranslation={() => {
-          stopRecitation()
-          setShowTranslation(true)
-          setUiVisible(true)
         }}
       />
 
