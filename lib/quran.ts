@@ -156,8 +156,8 @@ export async function getVerseByKey(verseKey: string): Promise<Verse> {
   return verse
 }
 
-export function everyAyahUrl(surah: number, ayah: number): string {
+export function everyAyahUrl(surah: number, ayah: number, reciterFolder = 'Alafasy_128kbps'): string {
   const surahPadded = String(surah).padStart(3, '0')
   const ayahPadded = String(ayah).padStart(3, '0')
-  return `https://everyayah.com/data/Alafasy_128kbps/${surahPadded}${ayahPadded}.mp3`
+  return `https://everyayah.com/data/${reciterFolder}/${surahPadded}${ayahPadded}.mp3`
 }

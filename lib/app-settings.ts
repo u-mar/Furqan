@@ -7,14 +7,18 @@ export interface AppSettings {
   theme: ThemeMode
   mushafStyle: MushafStyle
   offlineDownloaded: boolean
+  reciterId: string
 }
 
 const STORAGE_KEY = 'al_quran_settings'
+
+import { DEFAULT_RECITER_ID } from '@/lib/reciters'
 
 const defaults: AppSettings = {
   theme: 'dark',
   mushafStyle: 'uthmani-glyphs',
   offlineDownloaded: false,
+  reciterId: DEFAULT_RECITER_ID,
 }
 
 export function getAppSettings(): AppSettings {
@@ -27,6 +31,10 @@ export function getAppSettings(): AppSettings {
       theme: parsed.theme === 'light' ? 'light' : 'dark',
       mushafStyle: parsed.mushafStyle === 'indopak' ? 'indopak' : 'uthmani-glyphs',
       offlineDownloaded: Boolean(parsed.offlineDownloaded),
+      reciterId:
+        typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
+          ? parsed.reciterId
+          : DEFAULT_RECITER_ID,
     }
   } catch {
     return defaults

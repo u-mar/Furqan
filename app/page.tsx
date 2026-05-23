@@ -8,7 +8,7 @@ import PromoBanner from '@/components/home/PromoBanner'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   IconMemorize,
-  IconMore,
+  IconListen,
   IconRead,
   IconTest,
 } from '@/components/home/TileIcons'
@@ -38,11 +38,11 @@ const tiles = [
     enabled: false,
   },
   {
-    id: 'more',
-    label: '—',
-    href: null,
-    Icon: IconMore,
-    enabled: false,
+    id: 'listen',
+    label: 'Listen',
+    href: '/listen',
+    Icon: IconListen,
+    enabled: true,
   },
 ] as const
 

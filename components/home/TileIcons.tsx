@@ -28,10 +28,12 @@ export function IconMemorize({ className }: { className?: string }) {
   )
 }
 
-export function IconMore({ className }: { className?: string }) {
+export function IconListen({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
-      <path d="M14 6h6v36h-6V6zm14 0h6v36h-6V6z" />
+      <path d="M24 6a12 12 0 0 0-12 12v8a12 12 0 0 0 24 0V18A12 12 0 0 0 24 6zm-8 12a8 8 0 0 1 16 0v8a8 8 0 0 1-16 0v-8z" opacity="0.35" />
+      <path d="M24 4c-9.9 0-18 8.1-18 18v6c0 2.2 1.8 4 4 4h2v-6h-2v-6c0-7.7 6.3-14 14-14s14 6.3 14 14v6h-2v6h2c2.2 0 4-1.8 4-4v-6c0-9.9-8.1-18-18-18z" />
+      <path d="M12 36h4v6h-4v-6zm20 0h4v6h-4v-6z" />
     </svg>
   )
 }
