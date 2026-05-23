@@ -22,6 +22,7 @@ import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
 import AyahActionSheet from '@/components/read/AyahActionSheet'
+import MushafPageCarousel, { type PageSlideDirection } from '@/components/read/MushafPageCarousel'
 import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
@@ -65,45 +66,69 @@ function ReadPageContent() {
   const initialLoadDone = useRef(false)
   const { mushafStyle, reciterId, verticalPages } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
+  const [pageSlide, setPageSlide] = useState<{
+    direction: PageSlideDirection
+    incomingVerses: Verse[]
+    incomingPage: number
+  } | null>(null)
 
-  const loadPage = useCallback(async (page: number) => {
+  const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
-    setLoadError(null)
-
     const instant = isOfflineReady() ? getLocalMushafPage(next) : null
-    if (instant && instant.length > 0) {
-      pageVersesRef.current = instant
-      setPageVerses(instant)
-      setCurrentPage(next)
-      setSliderPage(next)
-      setLoading(false)
-      setPageLoading(false)
-      localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
-      prefetchMushafPages(next, 3)
-      prefetchPageFonts(next, 2)
-      return
-    }
-
-    if (pageVersesRef.current.length === 0) setLoading(true)
-    else setPageLoading(true)
-
-    try {
-      const verses = await getMushafPage(next)
-      pageVersesRef.current = verses
-      setPageVerses(verses)
-      setCurrentPage(next)
-      setSliderPage(next)
-      localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
-      prefetchPageFonts(next, 2)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load page'
-      console.error('Failed to load page:', err)
-      setLoadError(message)
-    } finally {
-      setLoading(false)
-      setPageLoading(false)
-    }
+    if (instant && instant.length > 0) return instant
+    return getMushafPage(next)
   }, [])
+
+  const applyPage = useCallback((page: number, verses: Verse[]) => {
+    pageVersesRef.current = verses
+    setPageVerses(verses)
+    setCurrentPage(page)
+    setSliderPage(page)
+    setLoadError(null)
+    localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
+    prefetchMushafPages(page, 3)
+    prefetchPageFonts(page, 2)
+  }, [])
+
+  const loadPage = useCallback(
+    async (page: number) => {
+      const next = clampPage(page)
+      setLoadError(null)
+
+      const instant = isOfflineReady() ? getLocalMushafPage(next) : null
+      if (instant && instant.length > 0) {
+        applyPage(next, instant)
+        setLoading(false)
+        setPageLoading(false)
+        return
+      }
+
+      if (pageVersesRef.current.length === 0) setLoading(true)
+      else setPageLoading(true)
+
+      try {
+        const verses = await getMushafPage(next)
+        applyPage(next, verses)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load page'
+        console.error('Failed to load page:', err)
+        setLoadError(message)
+      } finally {
+        setLoading(false)
+        setPageLoading(false)
+      }
+    },
+    [applyPage]
+  )
+
+  const handleSlideSettled = useCallback(() => {
+    setPageSlide((slide) => {
+      if (!slide) return null
+      applyPage(slide.incomingPage, slide.incomingVerses)
+      setPageLoading(false)
+      return null
+    })
+  }, [applyPage])
 
   const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse, isActive } =
     usePageRecitation({
@@ -123,11 +148,30 @@ function ReadPageContent() {
   )
 
   const navigatePage = useCallback(
-    (page: number) => {
+    async (page: number) => {
+      const next = clampPage(page)
+      if (next === currentPage || pageSlide) return
       stopRecitation()
-      void loadPage(page)
+
+      if (!verticalPages || showTranslation) {
+        void loadPage(next)
+        return
+      }
+
+      setPageLoading(true)
+      setLoadError(null)
+      try {
+        const incomingVerses = await fetchVersesForPage(next)
+        const direction: PageSlideDirection = next > currentPage ? 'next' : 'prev'
+        setPageSlide({ direction, incomingVerses, incomingPage: next })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load page'
+        console.error('Failed to load page:', err)
+        setLoadError(message)
+        setPageLoading(false)
+      }
     },
-    [loadPage, stopRecitation]
+    [currentPage, fetchVersesForPage, loadPage, pageSlide, showTranslation, stopRecitation, verticalPages]
   )
 
   useEffect(() => {
@@ -196,14 +240,39 @@ function ReadPageContent() {
     setAyahMenu({ verseKey, arabic: verse.text_uthmani })
   }
 
+  const renderMushafPage = useCallback(
+    (verses: Verse[], pageNum: number) => {
+      const keys = new Set(verses.map((v) => v.verse_key))
+      const start = verses[0]?.verse_key || ''
+      return (
+        <QuranPageView
+          key={pageNum}
+          verses={verses}
+          startVerseKey={start}
+          revealableVerseKeys={keys}
+          revealedAyahs={keys}
+          onReveal={() => {}}
+          readOnly
+          readMode
+          mushafStyle={mushafStyle}
+          pageNumber={pageNum}
+          highlightedVerseKey={recitation.highlightedVerseKey}
+          selectedVerseKey={ayahMenu?.verseKey ?? null}
+          onAyahLongPress={handleAyahLongPress}
+        />
+      )
+    },
+    [ayahMenu?.verseKey, mushafStyle, recitation.highlightedVerseKey]
+  )
+
   const toggleUi = () => setUiVisible((v) => !v)
 
   const goNextPage = useCallback(() => {
-    if (currentPage < TOTAL_MUSHAF_PAGES) navigatePage(currentPage + 1)
+    if (currentPage < TOTAL_MUSHAF_PAGES) void navigatePage(currentPage + 1)
   }, [currentPage, navigatePage])
 
   const goPrevPage = useCallback(() => {
-    if (currentPage > 1) navigatePage(currentPage - 1)
+    if (currentPage > 1) void navigatePage(currentPage - 1)
   }, [currentPage, navigatePage])
 
   const swipe = useSwipe(
@@ -306,8 +375,8 @@ function ReadPageContent() {
           showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
         )}
         onClick={handleContentTap}
-        onTouchStart={showTranslation ? undefined : swipe.onTouchStart}
-        onTouchEnd={showTranslation ? undefined : swipe.onTouchEnd}
+        onTouchStart={showTranslation || pageSlide ? undefined : swipe.onTouchStart}
+        onTouchEnd={showTranslation || pageSlide ? undefined : swipe.onTouchEnd}
         role="presentation"
       >
         {showTranslation ? (
@@ -317,6 +386,21 @@ function ReadPageContent() {
             chapters={chapters}
             highlightedVerseKey={recitation.highlightedVerseKey}
           />
+        ) : verticalPages ? (
+          <MushafPageCarousel
+            vertical
+            slide={
+              pageSlide
+                ? {
+                    direction: pageSlide.direction,
+                    incoming: renderMushafPage(pageSlide.incomingVerses, pageSlide.incomingPage),
+                  }
+                : null
+            }
+            onSettled={handleSlideSettled}
+          >
+            {renderMushafPage(pageVerses, currentPage)}
+          </MushafPageCarousel>
         ) : (
           <QuranPageView
             verses={pageVerses}

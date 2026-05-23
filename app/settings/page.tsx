@@ -232,7 +232,7 @@ export default function SettingsPage() {
           </h2>
           <SettingsToggle
             title="Vertical pages"
-            description="Swipe up/down to turn pages. Off uses left/right mushaf swipes."
+            description="Next page slides up from below (like horizontal page turns). Off uses left/right swipes."
             enabled={verticalPages}
             onToggle={() => saveVerticalPages(!verticalPages)}
           />
