@@ -24,6 +24,7 @@ import { getAppSettings } from '@/lib/app-settings'
 import { cn } from '@/lib/cn'
 import {
   clampPage,
+  juzForChapter,
   LAST_READ_PAGE_KEY,
   TOTAL_MUSHAF_PAGES,
 } from '@/lib/mushaf'
@@ -131,6 +132,9 @@ function ReadPageContent() {
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
+  const surahTitle =
+    chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
+  const juzPart = juzForChapter(currentSurahNum)
 
   const toggleUi = () => setUiVisible((v) => !v)
 
@@ -156,7 +160,7 @@ function ReadPageContent() {
 
   if (loading && pageVerses.length === 0 && !loadError) {
     return (
-      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--app-bg)] px-6">
+      <main className="mushaf-reader-immersive flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6">
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500"
           role="status"
@@ -189,7 +193,7 @@ function ReadPageContent() {
   }
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+    <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
       {pageLoading && (
         <div
           className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"
@@ -199,10 +203,63 @@ function ReadPageContent() {
           <div className="h-full w-1/3 animate-pulse bg-teal-500" />
         </div>
       )}
-      {/* Top bar */}
+
+      {/* Minimal header — always visible (like reference app) */}
+      <div
+        className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]"
+        dir="ltr"
+      >
+        <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
+        <span className="text-sm text-[var(--mushaf-read-meta)]">Part {juzPart}</span>
+      </div>
+
+      {/* Mushaf body — fixed fit when reading; scroll when translation */}
+      <div
+        className={cn(
+          'relative min-h-0 flex-1 px-4',
+          showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
+        )}
+        onClick={handleContentTap}
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
+        role="presentation"
+      >
+        {showTranslation ? (
+          <MushafTranslationView
+            verses={pageVerses}
+            page={currentPage}
+            chapters={chapters}
+          />
+        ) : (
+          <QuranPageView
+            verses={pageVerses}
+            startVerseKey={startVerseKey}
+            revealableVerseKeys={pageVerseKeys}
+            revealedAyahs={pageVerseKeys}
+            onReveal={() => {}}
+            readOnly
+            readMode
+            mushafStyle={mushafStyle}
+            pageNumber={currentPage}
+          />
+        )}
+      </div>
+
+      {/* Page badge — bottom left */}
+      {!showTranslation && (
+        <div
+          className="mushaf-page-badge pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-5 z-10 rounded-md px-2.5 py-1 text-sm font-medium tabular-nums"
+          dir="ltr"
+          aria-hidden
+        >
+          {currentPage}
+        </div>
+      )}
+
+      {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-surface)]/95 px-4 py-3 backdrop-blur transition-transform duration-300 dark:bg-[#141414]/95',
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur transition-transform duration-300',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -238,35 +295,6 @@ function ReadPageContent() {
         </div>
       </header>
 
-      {/* Mushaf — tap toggles chrome; swipe changes page (RTL: right = forward) */}
-      <div
-        className="mushaf-reader h-full overflow-y-auto overscroll-none px-3 pb-32 pt-3 sm:px-4 sm:pt-4"
-        onClick={handleContentTap}
-        onTouchStart={swipe.onTouchStart}
-        onTouchEnd={swipe.onTouchEnd}
-        role="presentation"
-      >
-        {showTranslation ? (
-          <MushafTranslationView
-            verses={pageVerses}
-            page={currentPage}
-            chapters={chapters}
-          />
-        ) : (
-          <QuranPageView
-            verses={pageVerses}
-            startVerseKey={startVerseKey}
-            revealableVerseKeys={pageVerseKeys}
-            revealedAyahs={pageVerseKeys}
-            onReveal={() => {}}
-            readOnly
-            readMode
-            mushafStyle={mushafStyle}
-            pageNumber={currentPage}
-          />
-        )}
-      </div>
-
       {/* Bottom controls */}
       <div
         className={cn(
@@ -275,7 +303,7 @@ function ReadPageContent() {
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 dark:bg-[#1a1a1a]">
+        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
           <button
             type="button"
             className="flex items-center gap-1 text-sm font-medium text-teal-400"
@@ -293,7 +321,7 @@ function ReadPageContent() {
           </button>
         </div>
 
-        <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)]/95 px-3 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-3 py-3 backdrop-blur">
           <button
             type="button"
             onClick={() => currentPage > 1 && loadPage(currentPage - 1)}

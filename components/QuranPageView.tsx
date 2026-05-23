@@ -11,7 +11,7 @@ interface QuranPageViewProps {
   revealableVerseKeys: Set<string>
   revealedAyahs: Set<string>
   onReveal: (verseKey: string) => void
-  /** Full-screen read mode (paper sheet styling). */
+  /** Full-screen: 15 lines fit viewport, no scroll. */
   readMode?: boolean
   readOnly?: boolean
   mushafStyle?: MushafStyle
@@ -102,16 +102,10 @@ export default function QuranPageView({
         const headerLine = firstLine - (hasBasmalah ? 2 : 1)
         const basmalahLine = firstLine - 1
 
-        markerMap.set(headerLine, {
-          chapterNumber,
-          isSurahHeader: true,
-        })
+        markerMap.set(headerLine, { chapterNumber, isSurahHeader: true })
 
         if (hasBasmalah) {
-          markerMap.set(basmalahLine, {
-            chapterNumber,
-            isBasmalah: true,
-          })
+          markerMap.set(basmalahLine, { chapterNumber, isBasmalah: true })
         }
       }
 
@@ -171,18 +165,14 @@ export default function QuranPageView({
   }
 
   const qcfFontFamily = `QCFPage${pageNumber}V2`
-
   const needsQuranFonts =
     useGlyphs && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
-  const wordColor = 'text-[var(--mushaf-sheet-text)]'
+  const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
 
   return (
     <div
-      className={cn(
-        'mx-auto w-full',
-        readMode ? 'max-w-[min(100%,42rem)]' : 'max-w-[980px] px-0 sm:px-2 py-2'
-      )}
+      className={cn('w-full', readMode ? 'h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
       dir="rtl"
       lang="ar"
       aria-label="Quran page"
@@ -201,12 +191,10 @@ export default function QuranPageView({
           }
           .surah-header {
             font-family: 'SurahNameV2';
-            font-size: clamp(1.75rem, 6vw, 2.75rem) !important;
             line-height: 1;
           }
           .basmalah-ornament-inline {
             font-family: 'SurahNameV2';
-            font-size: clamp(1.5rem, 5vw, 2.25rem) !important;
             line-height: 1;
           }
         `}</style>
@@ -214,19 +202,29 @@ export default function QuranPageView({
 
       <div
         className={cn(
-          'mushaf-page-sheet flex flex-col',
-          readMode ? 'px-3 py-5 sm:px-5 sm:py-6' : 'rounded-lg p-4',
-          !readMode && 'min-h-[calc(100vh-12rem)] sm:min-h-[760px] justify-between'
+          readMode
+            ? 'mushaf-fit-grid h-full'
+            : cn(
+                'mushaf-page-sheet flex flex-col rounded-lg p-4',
+                'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
+              )
         )}
-        style={{ gap: readMode ? 'var(--mushaf-line-gap)' : undefined }}
       >
         {lines.map((line) => (
           <div
             key={line.lineNumber}
             className={cn(
-              'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
-              line.isSurahHeader && 'mushaf-page-line--header surah-header',
-              line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
+              readMode
+                ? cn(
+                    'mushaf-fit-line flex-row flex-wrap gap-x-[0.05em]',
+                    line.isSurahHeader && 'mushaf-fit-line--header surah-header',
+                    line.isBasmalah && 'mushaf-fit-line--basmalah basmalah-ornament-inline'
+                  )
+                : cn(
+                    'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
+                    line.isSurahHeader && 'mushaf-page-line--header surah-header',
+                    line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
+                  )
             )}
             style={{
               fontFamily: line.isSurahHeader
@@ -237,10 +235,16 @@ export default function QuranPageView({
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (
-              <div className={cn('flex w-full items-center justify-center gap-3', wordColor)}>
-                <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
+              <div className={cn('flex w-full items-center justify-center gap-3', textClass)}>
+                {!readMode && (
+                  <>
+                    <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
+                  </>
+                )}
                 <span>{`surah${String(line.chapterNumber).padStart(3, '0')}`}</span>
-                <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
+                {!readMode && (
+                  <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
+                )}
               </div>
             ) : line.isBasmalah ? (
               <div aria-label={BASMALAH}>
@@ -254,13 +258,13 @@ export default function QuranPageView({
 
                 const wordClass = cn(
                   'mushaf-word inline-block border-0 bg-transparent p-0',
-                  wordColor,
+                  textClass,
                   !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                 )
 
                 if (word.isEndMark) {
                   return (
-                    <span key={word.id} className="mx-0.5 inline-block opacity-80">
+                    <span key={word.id} className="mx-0.5 inline-block opacity-90">
                       {word.text}
                     </span>
                   )
@@ -288,7 +292,6 @@ export default function QuranPageView({
                       'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600'
                     )}
                     aria-label={`Reveal verse ${word.verseKey}`}
-                    title={`Reveal ${word.verseKey}`}
                     dangerouslySetInnerHTML={{
                       __html: hasQcfGlyphs ? word.text : word.fallbackText,
                     }}
@@ -298,12 +301,6 @@ export default function QuranPageView({
             )}
           </div>
         ))}
-
-        {readMode && (
-          <footer className="mushaf-page-footer mt-4 flex justify-center border-t border-[var(--mushaf-sheet-border)] pt-3">
-            {pageNumber}
-          </footer>
-        )}
       </div>
     </div>
   )

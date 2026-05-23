@@ -112,22 +112,74 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-/* Mushaf reader — paper-like page in light & dark */
+/* Immersive read screen (reference: full black, text fits viewport) */
+.mushaf-reader-immersive {
+  --mushaf-read-bg: #ffffff;
+  --mushaf-read-text: #1a1a1a;
+  --mushaf-read-meta: #9ca3af;
+  --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
+  --mushaf-read-badge-text: #6b7280;
+  background: var(--mushaf-read-bg);
+  color: var(--mushaf-read-text);
+}
+
+html.dark .mushaf-reader-immersive {
+  --mushaf-read-bg: #000000;
+  --mushaf-read-text: #ffffff;
+  --mushaf-read-meta: #9ca3af;
+  --mushaf-read-badge-bg: #2a2a2a;
+  --mushaf-read-badge-text: #d1d5db;
+}
+
+.mushaf-fit-grid {
+  display: grid;
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+  height: 100%;
+  width: 100%;
+}
+
+.mushaf-fit-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  text-align: center;
+  color: var(--mushaf-read-text);
+  font-size: clamp(0.7rem, 2.55dvh, 1.45rem);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+}
+
+.mushaf-fit-line--header {
+  font-size: clamp(0.95rem, 3.4dvh, 1.75rem);
+}
+
+.mushaf-fit-line--basmalah {
+  font-size: clamp(0.85rem, 2.9dvh, 1.55rem);
+  opacity: 0.95;
+}
+
+.mushaf-page-badge {
+  background: var(--mushaf-read-badge-bg);
+  color: var(--mushaf-read-badge-text);
+}
+
+/* Translation scroll mode */
 .mushaf-reader {
   --mushaf-sheet-bg: #f8f4ea;
   --mushaf-sheet-text: #1c1917;
   --mushaf-sheet-muted: #78716c;
   --mushaf-sheet-border: rgba(120, 90, 50, 0.18);
   --mushaf-sheet-shadow: 0 8px 32px rgba(28, 25, 23, 0.08), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  --mushaf-line-gap: 0.35rem;
 }
 
 html.dark .mushaf-reader {
-  --mushaf-sheet-bg: #1c1915;
-  --mushaf-sheet-text: #ece8df;
-  --mushaf-sheet-muted: #a8a29e;
-  --mushaf-sheet-border: rgba(212, 196, 168, 0.12);
-  --mushaf-sheet-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --mushaf-sheet-bg: #0a0a0a;
+  --mushaf-sheet-text: #ffffff;
+  --mushaf-sheet-muted: #9ca3af;
+  --mushaf-sheet-border: rgba(255, 255, 255, 0.08);
+  --mushaf-sheet-shadow: none;
 }
 
 .mushaf-page-sheet {

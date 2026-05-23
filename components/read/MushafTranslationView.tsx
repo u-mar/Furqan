@@ -1,7 +1,6 @@
 'use client'
 
 import { cn } from '@/lib/cn'
-import { juzForChapter } from '@/lib/mushaf'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import type { Chapter, Verse } from '@/types'
 
@@ -28,14 +27,6 @@ export default function MushafTranslationView({
   const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, v.text_uthmani]))
   const { rows, loading } = usePageTranslations(page, true, verseKeys, arabicByKey)
 
-  function surahMeta(verseKey: string) {
-    const id = surahNumber(verseKey)
-    return {
-      title: chapters.find((c) => c.id === id)?.englishName || `Surah ${id}`,
-      part: juzForChapter(id),
-    }
-  }
-
   const displayRows =
     rows.length > 0
       ? rows
@@ -48,62 +39,56 @@ export default function MushafTranslationView({
   if (loading && rows.length === 0) {
     return (
       <div className="flex justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-300 border-t-teal-600 dark:border-stone-700 dark:border-t-teal-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-300 border-t-teal-600 dark:border-stone-600 dark:border-t-teal-500" />
       </div>
     )
   }
 
   return (
-    <div className="relative mx-auto max-w-[min(100%,42rem)] pb-16">
-      <div className="mushaf-page-sheet space-y-5 px-4 py-5 sm:px-5">
-        {displayRows.map((row, index) => {
-          const num = verseNumber(row.verse_key)
-          const prevSurah = index > 0 ? surahNumber(displayRows[index - 1].verse_key) : 0
-          const curSurah = surahNumber(row.verse_key)
-          const showHeader = curSurah !== prevSurah
-          const { title, part } = surahMeta(row.verse_key)
+    <div className="space-y-8 pb-8">
+      {displayRows.map((row, index) => {
+        const num = verseNumber(row.verse_key)
+        const prevSurah = index > 0 ? surahNumber(displayRows[index - 1].verse_key) : 0
+        const curSurah = surahNumber(row.verse_key)
+        const showHeader = curSurah !== prevSurah
+        const surahTitle =
+          chapters.find((c) => c.id === curSurah)?.englishName || `Surah ${curSurah}`
 
-          return (
-            <article key={row.verse_key} className="space-y-3">
-              {showHeader && (
-                <div className="flex items-center justify-between border-b border-[var(--mushaf-sheet-border)] px-1 pb-2 pt-1">
-                  <span className="text-sm font-medium text-[var(--mushaf-sheet-muted)]">{title}</span>
-                  <span className="text-sm text-[var(--mushaf-sheet-muted)]">Juz {part}</span>
-                </div>
-              )}
-              <p
-                className="arabic-text text-center text-[var(--mushaf-sheet-text)]"
-                dir="rtl"
-                lang="ar"
-              >
-                {row.text_uthmani}
-                <span
-                  className="mx-1 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border border-[var(--mushaf-sheet-border)] px-1 text-[0.65rem] font-medium text-[var(--mushaf-sheet-muted)]"
-                  aria-label={`Verse ${num}`}
-                >
-                  {num}
-                </span>
-              </p>
-
-              <div className="rounded-xl border border-[var(--mushaf-sheet-border)] bg-[var(--app-surface)] px-4 py-3.5">
-                <p className="text-left text-[15px] leading-relaxed text-[var(--app-text)]">
-                  <span className="text-[var(--app-muted)]">({num})</span>{' '}
-                  {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
-                </p>
+        return (
+          <article key={row.verse_key} className="space-y-4">
+            {showHeader && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
               </div>
-            </article>
-          )
-        })}
-      </div>
+            )}
+            <p
+              className="text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]"
+              dir="rtl"
+              lang="ar"
+            >
+              {row.text_uthmani}
+              <span
+                className="mx-1 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border border-[var(--mushaf-read-meta)]/40 px-1 text-[0.65rem] font-medium text-[var(--mushaf-read-meta)]"
+                aria-label={`Verse ${num}`}
+              >
+                {num}
+              </span>
+            </p>
 
-      <div
-        className={cn(
-          'pointer-events-none fixed bottom-28 left-1/2 z-10 -translate-x-1/2',
-          'mushaf-page-footer rounded-full border border-[var(--mushaf-sheet-border)] bg-[var(--mushaf-sheet-bg)]/95 px-4 py-1'
-        )}
-      >
-        {page}
-      </div>
+            <div
+              className={cn(
+                'rounded-2xl px-4 py-3.5',
+                'bg-stone-100 dark:bg-[#1a1a1a]'
+              )}
+            >
+              <p className="text-left text-[15px] leading-relaxed text-[var(--mushaf-read-text)]">
+                <span className="text-[var(--mushaf-read-meta)]">({num})</span>{' '}
+                {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
+              </p>
+            </div>
+          </article>
+        )
+      })}
     </div>
   )
 }
