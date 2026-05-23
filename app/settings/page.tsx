@@ -107,6 +107,7 @@ export default function SettingsPage() {
   const [offline, setOffline] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [progressLabel, setProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -143,9 +144,14 @@ export default function SettingsPage() {
     setDownloading(true)
     setError(null)
     setProgress(0)
+    setProgressLabel('')
     try {
-      await downloadOfflineQuran(setProgress)
-      setAppSettings({ offlineDownloaded: true })
+      await downloadOfflineQuran((p) => {
+        setProgress(p.percent)
+        setProgressLabel(p.label)
+      })
+      setAppSettings({ mushafStyle: 'uthmani-glyphs', offlineDownloaded: true })
+      setMushafStyle('uthmani-glyphs')
       setOffline(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed')
@@ -224,13 +230,13 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <SettingsRow
               title="Uthmani (Mushaf)"
-              description="Madani layout with glyph fonts — like a printed mushaf"
+              description="Printed Madani layout — recommended for offline (glyphs + fonts)"
               selected={mushafStyle === 'uthmani-glyphs'}
               onClick={() => saveMushaf('uthmani-glyphs')}
             />
             <SettingsRow
               title="IndoPak (Naskh)"
-              description="Naskh-style text — faster offline, no per-page font downloads"
+              description="Plain Naskh text — lighter, no per-page glyph fonts"
               selected={mushafStyle === 'indopak'}
               onClick={() => saveMushaf('indopak')}
             />
@@ -284,12 +290,12 @@ export default function SettingsPage() {
             {offline ? (
               <div className="mb-4 flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Quran saved — instant page swipes
+                Full mushaf saved — Madani glyphs work offline
               </div>
             ) : (
               <p className="mb-4 text-sm leading-relaxed text-[var(--app-muted)]">
-                Download once (~45 MB) so swiping between pages works without waiting on the
-                network.
+                One-time download (~50–80 MB): Quran text with proper page layout plus all
+                mushaf fonts. Looks the same as online.
               </p>
             )}
 
@@ -302,7 +308,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <p className="text-center text-xs font-medium text-[var(--app-muted)]">
-                  {progress}%
+                  {progress}%{progressLabel ? ` · ${progressLabel}` : ''}
                 </p>
               </div>
             )}

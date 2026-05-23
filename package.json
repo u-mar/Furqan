@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:mobile": "next dev --hostname 0.0.0.0",
-    "build": "next build",
+    "build": "node scripts/ensure-mushaf-fonts.js && next build",
     "start": "next start",
     "lint": "eslint .",
-    "download-quran": "bash scripts/download-quran-data.sh"
+    "download-quran": "node scripts/download-quran-data.js",
+    "download-quran:text": "node scripts/download-quran-data.js --skip-fonts",
+    "download-quran:fonts": "node scripts/download-quran-data.js --fonts-only"
   },
   "dependencies": {
     "clsx": "^2.1.1",

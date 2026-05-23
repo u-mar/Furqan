@@ -1,6 +1,8 @@
 import type { Verse, VerseWord } from '@/types'
+import { cacheAllMushafFonts, clearOfflineFontsCachedFlag } from '@/lib/offline-font-cache'
 
 interface QuranDataFile {
+  bundleVersion?: number
   chapters: unknown[]
   verses: Verse[]
 }
@@ -8,6 +10,12 @@ interface QuranDataFile {
 let verses: Verse[] | null = null
 let pageIndex: Map<number, Verse[]> | null = null
 const hotCache = new Map<number, Verse[]>()
+
+export interface OfflineDownloadProgress {
+  percent: number
+  phase: 'text' | 'fonts' | 'ready'
+  label: string
+}
 
 function sortVerses(a: Verse, b: Verse): number {
   const [ac, av] = a.verse_key.split(':').map(Number)
@@ -90,28 +98,33 @@ export function prefetchMushafPages(center: number, radius = 2): void {
   }
 }
 
-function ingestQuranData(data: QuranDataFile, onProgress?: (percent: number) => void): void {
+function ingestQuranData(data: QuranDataFile): void {
   verses = data.verses
   pageIndex = buildPageIndex(verses)
   hotCache.clear()
   prefetchMushafPages(1, 3)
-  onProgress?.(100)
+}
+
+function report(
+  onProgress: ((p: OfflineDownloadProgress) => void) | undefined,
+  patch: OfflineDownloadProgress
+): void {
+  onProgress?.(patch)
 }
 
 export async function downloadOfflineQuran(
-  onProgress?: (percent: number) => void
+  onProgress?: (progress: OfflineDownloadProgress) => void
 ): Promise<void> {
-  onProgress?.(0)
+  report(onProgress, { percent: 0, phase: 'text', label: 'Downloading Quran text…' })
 
   const response = await fetch('/quran-data.json', { cache: 'no-store' })
   if (!response.ok) {
-    throw new Error('Could not download Quran data. Ensure quran-data.json is deployed.')
+    throw new Error('Could not download Quran data. Run npm run download-quran on the server first.')
   }
 
   const total = Number(response.headers.get('content-length') || 0)
   const body = response.body
 
-  // Stream with progress only when we know the size — never call .text() on the same response.
   if (body && total > 0) {
     const reader = body.getReader()
     const decoder = new TextDecoder()
@@ -124,7 +137,11 @@ export async function downloadOfflineQuran(
       if (!value?.length) continue
       parts.push(value)
       received += value.length
-      onProgress?.(Math.min(99, Math.round((received / total) * 100)))
+      report(onProgress, {
+        percent: Math.min(55, Math.round((received / total) * 55)),
+        phase: 'text',
+        label: 'Downloading Quran text…',
+      })
     }
 
     const merged = new Uint8Array(received)
@@ -135,18 +152,44 @@ export async function downloadOfflineQuran(
     }
 
     const loaded = decoder.decode(merged)
-    onProgress?.(99)
-    ingestQuranData(JSON.parse(loaded) as QuranDataFile, onProgress)
-    return
+    const data = JSON.parse(loaded) as QuranDataFile
+    report(onProgress, { percent: 58, phase: 'text', label: 'Preparing pages…' })
+    ingestQuranData(data)
+  } else {
+    report(onProgress, { percent: 10, phase: 'text', label: 'Downloading Quran text…' })
+    const buffer = await response.arrayBuffer()
+    report(onProgress, { percent: 55, phase: 'text', label: 'Preparing pages…' })
+    const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
+    ingestQuranData(data)
   }
 
-  // No Content-Length (or no stream): read body once via arrayBuffer.
-  onProgress?.(10)
-  const buffer = await response.arrayBuffer()
-  onProgress?.(85)
-  const loaded = new TextDecoder().decode(buffer)
-  onProgress?.(95)
-  ingestQuranData(JSON.parse(loaded) as QuranDataFile, onProgress)
+  const glyphCount = (verses || []).reduce(
+    (n, v) => n + (v.words?.filter((w) => w.code_v2).length || 0),
+    0
+  )
+  if (glyphCount === 0) {
+    throw new Error(
+      'This Quran file is outdated (no mushaf glyphs). Ask the host to run: npm run download-quran'
+    )
+  }
+
+  report(onProgress, {
+    percent: 60,
+    phase: 'fonts',
+    label: 'Downloading mushaf fonts…',
+  })
+
+  await cacheAllMushafFonts((fontProgress) => {
+    const fontSlice = 35
+    const base = 60
+    report(onProgress, {
+      percent: base + Math.round((fontProgress.percent / 100) * fontSlice),
+      phase: 'fonts',
+      label: `Mushaf fonts ${fontProgress.done}/${fontProgress.total}`,
+    })
+  })
+
+  report(onProgress, { percent: 100, phase: 'ready', label: 'Ready — full mushaf offline' })
 }
 
 /** Hydrate from already-fetched bundle (e.g. after settings flag set). */
@@ -156,6 +199,12 @@ export async function hydrateOfflineFromDisk(): Promise<void> {
   if (!response.ok) throw new Error('Offline Quran file missing')
   const buffer = await response.arrayBuffer()
   const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
-  verses = data.verses
-  pageIndex = buildPageIndex(verses)
+  ingestQuranData(data)
+}
+
+export function clearOfflineStore(): void {
+  verses = null
+  pageIndex = null
+  hotCache.clear()
+  clearOfflineFontsCachedFlag()
 }

@@ -34,3 +34,7 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 tsconfig.tsbuildinfo
+
+# Offline bundle (large binaries — run npm run download-quran locally or on CI)
+public/fonts/qcf/
+download-quran-log.txt

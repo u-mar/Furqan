@@ -19,15 +19,31 @@ A personal Quran memorization (hifdh) tool. Browse the Mushaf by surah, juz, or 
 npm install
 ```
 
-### 2. Download Quran data
+### 2. Download Quran data (required for beautiful offline mushaf)
 
-The app needs a local copy of the Quran data to work offline. Run this once:
+Run once before deploy (or when updating the bundle). This fetches **all 604 Madani pages** with QCF glyph data plus mushaf fonts:
 
 ```bash
 npm run download-quran
 ```
 
-This fetches all verses from [api.quran.com](https://api.quran.com) and writes them to `public/quran-data.json` (~44 MB). The chapter index (`public/quran-chapters.json`) is already included in the repo.
+This writes:
+
+- `public/quran-data.json` — verses with `code_v2` line-accurate layout (~50 MB)
+- `public/fonts/qcf/p1.woff2` … `p604.woff2` — page fonts for offline rendering
+- `public/fonts/surah-name-v2.ttf` — surah headers
+- `public/offline-manifest.json` — bundle metadata
+
+Options:
+
+```bash
+npm run download-quran:text   # text only, skip fonts
+npm run download-quran:fonts    # fonts only (if text already downloaded)
+```
+
+Then in the app: **Settings → Download for offline** (caches fonts in the browser if not bundled).
+
+The old bash script only downloaded plain text (no glyphs) — always use the Node script above.
 
 ### 3. Run the dev server
 

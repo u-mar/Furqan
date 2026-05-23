@@ -1,6 +1,6 @@
-const QCF_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2'
-const SURAH_NAME_URL =
-  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf'
+import { resolveQcfFontUrl, resolveSurahNameFontUrl } from '@/lib/offline-font-cache'
+
+export { qcfCdnFontUrl, qcfLocalFontUrl } from '@/lib/qcf-font-cdn'
 
 const loadedPages = new Set<number>()
 const loadingPages = new Map<number, Promise<boolean>>()
@@ -11,8 +11,12 @@ export function qcfFontFamily(page: number): string {
   return `QCFPage${page}V2`
 }
 
-export function qcfFontUrl(page: number): string {
-  return `${QCF_BASE}/p${page}.woff2`
+export function prefetchPageFonts(center: number, radius = 2): void {
+  if (typeof window === 'undefined') return
+  void loadSurahNameFont()
+  for (let p = center - radius; p <= center + radius; p += 1) {
+    if (p >= 1 && p <= 604) void loadPageFont(p)
+  }
 }
 
 export async function loadSurahNameFont(): Promise<boolean> {
@@ -26,7 +30,8 @@ export async function loadSurahNameFont(): Promise<boolean> {
         surahNameLoaded = true
         return true
       }
-      const face = new FontFace('SurahNameV2', `url(${SURAH_NAME_URL})`, { display: 'swap' })
+      const url = await resolveSurahNameFontUrl()
+      const face = new FontFace('SurahNameV2', `url(${url})`, { display: 'swap' })
       const loaded = await face.load()
       document.fonts.add(loaded)
       surahNameLoaded = true
@@ -56,7 +61,8 @@ export async function loadPageFont(page: number): Promise<boolean> {
         loadedPages.add(page)
         return true
       }
-      const face = new FontFace(family, `url(${qcfFontUrl(page)})`, { display: 'block' })
+      const url = await resolveQcfFontUrl(page)
+      const face = new FontFace(family, `url(${url})`, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
       loadedPages.add(page)
@@ -70,12 +76,4 @@ export async function loadPageFont(page: number): Promise<boolean> {
 
   loadingPages.set(page, task)
   return task
-}
-
-export function prefetchPageFonts(center: number, radius = 2): void {
-  if (typeof window === 'undefined') return
-  void loadSurahNameFont()
-  for (let p = center - radius; p <= center + radius; p += 1) {
-    if (p >= 1 && p <= 604) void loadPageFont(p)
-  }
 }
