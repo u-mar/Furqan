@@ -1,8 +1,15 @@
 'use client'
 
-import Link from 'next/link'
+import {
+  ChevronLeft,
+  Download,
+  CheckCircle2,
+  Sun,
+  Moon,
+  BookOpen,
+  Wifi,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { ChevronLeft, Download, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import {
   applyThemeToDocument,
@@ -16,6 +23,34 @@ import {
   hydrateOfflineFromDisk,
   isOfflineReady,
 } from '@/lib/local-quran-store'
+
+function SettingsRow({
+  title,
+  description,
+  selected,
+  onClick,
+}: {
+  title: string
+  description: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex min-h-[56px] w-full flex-col justify-center rounded-2xl border px-4 py-3.5 text-left transition-colors active:scale-[0.99]',
+        selected
+          ? 'border-teal-500 bg-teal-500/10'
+          : 'border-[var(--app-border)] bg-[var(--app-surface)]'
+      )}
+    >
+      <p className="font-medium text-[var(--app-text)]">{title}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-[var(--app-muted)]">{description}</p>
+    </button>
+  )
+}
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>('dark')
@@ -75,115 +110,115 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto max-w-lg px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))]">
-        <header className="mb-8 flex items-center gap-3 border-b border-[var(--app-border)] pb-4">
-          <Link
+      <div className="mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header className="sticky top-0 z-10 -mx-4 mb-6 flex items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-bg)]/95 px-4 pb-4 pt-2 backdrop-blur-md">
+          <a
             href="/"
-            className="rounded-lg p-2 text-teal-600 hover:bg-[var(--app-surface)] dark:text-teal-400"
-            aria-label="Back"
+            className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-teal-600 transition-colors hover:bg-[var(--app-surface)] active:scale-95 dark:text-teal-400"
+            aria-label="Back to home"
           >
-            <ChevronLeft className="h-6 w-6" />
-          </Link>
-          <h1 className="text-xl font-bold">Settings</h1>
+            <ChevronLeft className="h-7 w-7" />
+          </a>
+          <h1 className="text-xl font-bold tracking-tight">Settings</h1>
         </header>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <Sun className="h-3.5 w-3.5" />
             Appearance
           </h2>
-          <div className="flex gap-2 rounded-xl bg-[var(--app-surface)] p-1">
-            {(['light', 'dark'] as ThemeMode[]).map((mode) => (
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--app-surface)] p-1.5">
+            {(
+              [
+                { mode: 'light' as ThemeMode, Icon: Sun, label: 'Light' },
+                { mode: 'dark' as ThemeMode, Icon: Moon, label: 'Dark' },
+              ] as const
+            ).map(({ mode, Icon, label }) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => saveTheme(mode)}
                 className={cn(
-                  'flex-1 rounded-lg py-2.5 text-sm font-medium capitalize transition-colors',
+                  'flex min-h-[52px] items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
                   theme === mode
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-teal-600 text-white shadow-sm'
                     : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'
                 )}
               >
-                {mode}
+                <Icon className="h-4 w-4" />
+                {label}
               </button>
             ))}
           </div>
+          <p className="mt-2 text-xs text-[var(--app-muted)]">
+            Light mode applies to the home screen and reader.
+          </p>
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <BookOpen className="h-3.5 w-3.5" />
             Quran script
           </h2>
           <div className="space-y-2">
-            <button
-              type="button"
+            <SettingsRow
+              title="Uthmani (Mushaf)"
+              description="Madani layout with glyph fonts — like a printed mushaf"
+              selected={mushafStyle === 'uthmani-glyphs'}
               onClick={() => saveMushaf('uthmani-glyphs')}
-              className={cn(
-                'w-full rounded-xl border px-4 py-4 text-left transition-colors',
-                mushafStyle === 'uthmani-glyphs'
-                  ? 'border-teal-500 bg-teal-500/10'
-                  : 'border-[var(--app-border)] bg-[var(--app-surface)]'
-              )}
-            >
-              <p className="font-medium">Uthmani (Mushaf)</p>
-              <p className="mt-1 text-xs text-[var(--app-muted)]">
-                Madani layout with glyph fonts — best for reading like a printed mushaf
-              </p>
-            </button>
-            <button
-              type="button"
+            />
+            <SettingsRow
+              title="IndoPak (Naskh)"
+              description="Naskh-style text — faster offline, no per-page font downloads"
+              selected={mushafStyle === 'indopak'}
               onClick={() => saveMushaf('indopak')}
-              className={cn(
-                'w-full rounded-xl border px-4 py-4 text-left transition-colors',
-                mushafStyle === 'indopak'
-                  ? 'border-teal-500 bg-teal-500/10'
-                  : 'border-[var(--app-border)] bg-[var(--app-surface)]'
-              )}
-            >
-              <p className="font-medium">IndoPak (Naskh)</p>
-              <p className="mt-1 text-xs text-[var(--app-muted)]">
-                Naskh-style text — faster offline, no per-page font downloads
-              </p>
-            </button>
+            />
           </div>
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <Wifi className="h-3.5 w-3.5" />
             Offline reading
           </h2>
-          <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
+          <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
             {offline ? (
-              <div className="mb-4 flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Quran saved for instant page turns
+                Quran saved — instant page swipes
               </div>
             ) : (
-              <p className="mb-4 text-sm text-[var(--app-muted)]">
-                Download once (~45 MB) so swiping between pages is instant without waiting on the
+              <p className="mb-4 text-sm leading-relaxed text-[var(--app-muted)]">
+                Download once (~45 MB) so swiping between pages works without waiting on the
                 network.
               </p>
             )}
 
             {downloading && (
               <div className="mb-4">
-                <div className="mb-2 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
                   <div
-                    className="h-full bg-teal-500 transition-all"
+                    className="h-full bg-teal-500 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="text-center text-xs text-[var(--app-muted)]">{progress}%</p>
+                <p className="text-center text-xs font-medium text-[var(--app-muted)]">
+                  {progress}%
+                </p>
               </div>
             )}
 
-            {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
+            {error && (
+              <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            )}
 
             <button
               type="button"
               disabled={downloading}
               onClick={handleDownload}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
               {offline ? 'Re-download Quran' : 'Download for offline'}
@@ -194,7 +229,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={downloading}
                 onClick={handleUseBundled}
-                className="mt-2 w-full py-2 text-center text-xs text-[var(--app-muted)] underline"
+                className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs text-[var(--app-muted)] underline-offset-2 hover:underline disabled:opacity-50"
               >
                 Already on server? Load bundled file
               </button>
@@ -202,12 +237,12 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <Link
+        <a
           href="/read"
-          className="block rounded-xl border border-[var(--app-border)] py-3 text-center text-sm font-medium text-teal-600 dark:text-teal-400"
+          className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] text-sm font-semibold text-teal-600 transition-colors active:scale-[0.99] dark:text-teal-400"
         >
           Open reader
-        </Link>
+        </a>
       </div>
     </main>
   )

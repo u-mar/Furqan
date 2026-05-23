@@ -3,7 +3,14 @@ import { ImageResponse } from 'next/og'
 export const size = { width: 180, height: 180 }
 export const contentType = 'image/png'
 
-export default function AppleIcon() {
+const AMIRI_WOFF =
+  'https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUr0td-Y.woff'
+
+const BISMILLAH = 'بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'
+
+export default async function AppleIcon() {
+  const font = await fetch(AMIRI_WOFF).then((res) => res.arrayBuffer())
+
   return new ImageResponse(
     (
       <div
@@ -13,22 +20,26 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(145deg, #065f46 0%, #000 55%)',
-          borderRadius: 36,
+          background: 'linear-gradient(160deg, #064e3b 0%, #0a0a0a 60%)',
+          padding: 16,
         }}
       >
         <div
           style={{
-            color: '#fbbf24',
-            fontSize: 88,
-            fontWeight: 700,
-            fontFamily: 'serif',
+            color: '#5eead4',
+            fontSize: 22,
+            fontFamily: 'Amiri',
+            lineHeight: 1.6,
+            textAlign: 'center',
           }}
         >
-          ق
+          {BISMILLAH}
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [{ name: 'Amiri', data: font, style: 'normal', weight: 400 }],
+    }
   )
 }

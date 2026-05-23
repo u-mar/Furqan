@@ -3,7 +3,12 @@ import { ImageResponse } from 'next/og'
 export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 
-export default function Icon() {
+const AMIRI_WOFF =
+  'https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUr0td-Y.woff'
+
+export default async function Icon() {
+  const font = await fetch(AMIRI_WOFF).then((res) => res.arrayBuffer())
+
   return new ImageResponse(
     (
       <div
@@ -13,21 +18,26 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#000',
-          borderRadius: 8,
+          background: '#0a0a0a',
+          borderRadius: 6,
         }}
       >
         <div
           style={{
-            color: '#fbbf24',
-            fontSize: 20,
-            fontWeight: 700,
+            color: '#2dd4bf',
+            fontSize: 11,
+            fontFamily: 'Amiri',
+            lineHeight: 1.1,
+            textAlign: 'center',
           }}
         >
-          ق
+          بسم
         </div>
       </div>
     ),
-    { ...size }
+    {
+      ...size,
+      fonts: [{ name: 'Amiri', data: font, style: 'normal', weight: 400 }],
+    }
   )
 }

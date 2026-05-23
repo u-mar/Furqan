@@ -68,7 +68,7 @@ export default function PromoBanner({ className }: { className?: string }) {
             onClick={() => setActive(i)}
             className={cn(
               'h-2 w-2 rounded-full transition-colors',
-              i === active ? 'bg-emerald-500' : 'bg-stone-600 hover:bg-stone-500'
+              i === active ? 'bg-emerald-500' : 'bg-[var(--app-muted)]/40 hover:bg-[var(--app-muted)]/60'
             )}
           />
         ))}

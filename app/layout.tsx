@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Amiri } from 'next/font/google'
 import AppShell from '@/components/AppShell'
+import AppSplash from '@/components/AppSplash'
 import InstallPrompt from '@/components/InstallPrompt'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
@@ -54,6 +55,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)] antialiased">
         <SettingsProvider>
+          <AppSplash />
           <AppShell>{children}</AppShell>
           <PwaRegister />
           <InstallPrompt />

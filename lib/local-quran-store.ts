@@ -90,37 +90,7 @@ export function prefetchMushafPages(center: number, radius = 2): void {
   }
 }
 
-export async function downloadOfflineQuran(
-  onProgress?: (percent: number) => void
-): Promise<void> {
-  onProgress?.(0)
-
-  const response = await fetch('/quran-data.json')
-  if (!response.ok) {
-    throw new Error('Could not download Quran data. Ensure quran-data.json is deployed.')
-  }
-
-  const total = Number(response.headers.get('content-length') || 0)
-  let loaded = ''
-  const reader = response.body?.getReader()
-
-  if (reader && total > 0) {
-    const decoder = new TextDecoder()
-    let received = 0
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      received += value.length
-      loaded += decoder.decode(value, { stream: true })
-      onProgress?.(Math.min(99, Math.round((received / total) * 100)))
-    }
-    loaded += decoder.decode()
-  } else {
-    loaded = await response.text()
-    onProgress?.(50)
-  }
-
-  const data = JSON.parse(loaded) as QuranDataFile
+function ingestQuranData(data: QuranDataFile, onProgress?: (percent: number) => void): void {
   verses = data.verses
   pageIndex = buildPageIndex(verses)
   hotCache.clear()
@@ -128,12 +98,64 @@ export async function downloadOfflineQuran(
   onProgress?.(100)
 }
 
+export async function downloadOfflineQuran(
+  onProgress?: (percent: number) => void
+): Promise<void> {
+  onProgress?.(0)
+
+  const response = await fetch('/quran-data.json', { cache: 'no-store' })
+  if (!response.ok) {
+    throw new Error('Could not download Quran data. Ensure quran-data.json is deployed.')
+  }
+
+  const total = Number(response.headers.get('content-length') || 0)
+  const body = response.body
+
+  // Stream with progress only when we know the size — never call .text() on the same response.
+  if (body && total > 0) {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let received = 0
+    const parts: Uint8Array[] = []
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value?.length) continue
+      parts.push(value)
+      received += value.length
+      onProgress?.(Math.min(99, Math.round((received / total) * 100)))
+    }
+
+    const merged = new Uint8Array(received)
+    let offset = 0
+    for (const part of parts) {
+      merged.set(part, offset)
+      offset += part.length
+    }
+
+    const loaded = decoder.decode(merged)
+    onProgress?.(99)
+    ingestQuranData(JSON.parse(loaded) as QuranDataFile, onProgress)
+    return
+  }
+
+  // No Content-Length (or no stream): read body once via arrayBuffer.
+  onProgress?.(10)
+  const buffer = await response.arrayBuffer()
+  onProgress?.(85)
+  const loaded = new TextDecoder().decode(buffer)
+  onProgress?.(95)
+  ingestQuranData(JSON.parse(loaded) as QuranDataFile, onProgress)
+}
+
 /** Hydrate from already-fetched bundle (e.g. after settings flag set). */
 export async function hydrateOfflineFromDisk(): Promise<void> {
   if (pageIndex) return
-  const response = await fetch('/quran-data.json')
+  const response = await fetch('/quran-data.json', { cache: 'no-store' })
   if (!response.ok) throw new Error('Offline Quran file missing')
-  const data = (await response.json()) as QuranDataFile
+  const buffer = await response.arrayBuffer()
+  const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
   verses = data.verses
   pageIndex = buildPageIndex(verses)
 }

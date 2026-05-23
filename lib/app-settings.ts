@@ -52,4 +52,13 @@ export function applyThemeToDocument(theme: ThemeMode): void {
     root.classList.add('dark')
     root.style.colorScheme = 'dark'
   }
+
+  const themeColor = theme === 'light' ? '#f5f5f4' : '#0a0a0a'
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', themeColor)
 }
