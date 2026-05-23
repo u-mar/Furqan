@@ -128,11 +128,11 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
   }, [playIndex])
 
   const playVerse = useCallback(
-    (verseKey: string) => {
+    (verseKey: string, options?: { continueOnPage?: boolean }) => {
       const index = versesRef.current.findIndex((v) => v.verse_key === verseKey)
       if (index < 0) return
       sessionRef.current += 1
-      playModeRef.current = 'single'
+      playModeRef.current = options?.continueOnPage === false ? 'single' : 'page'
       indexRef.current = index
       void playIndex(index, sessionRef.current)
     },

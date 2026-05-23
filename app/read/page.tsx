@@ -262,6 +262,20 @@ function ReadPageContent() {
   const isRecitingAyahMenu =
     Boolean(ayahMenu) && recitation.highlightedVerseKey === ayahMenu?.verseKey
 
+  const mushafSelectedVerseKey =
+    isActive && recitation.highlightedVerseKey
+      ? recitation.highlightedVerseKey
+      : ayahMenu?.verseKey ?? null
+
+  useEffect(() => {
+    if (!ayahMenu || !isActive || !recitation.highlightedVerseKey) return
+    if (recitation.highlightedVerseKey === ayahMenu.verseKey) return
+    const verse = pageVerses.find((v) => v.verse_key === recitation.highlightedVerseKey)
+    if (verse) {
+      setAyahMenu({ verseKey: verse.verse_key, arabic: verse.text_uthmani })
+    }
+  }, [ayahMenu, isActive, recitation.highlightedVerseKey, pageVerses])
+
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
       const keys = new Set(verses.map((v) => v.verse_key))
@@ -279,12 +293,12 @@ function ReadPageContent() {
           mushafStyle={mushafStyle}
           pageNumber={pageNum}
           highlightedVerseKey={recitation.highlightedVerseKey}
-          selectedVerseKey={ayahMenu?.verseKey ?? null}
+          selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
         />
       )
     },
-    [ayahMenu?.verseKey, mushafStyle, recitation.highlightedVerseKey]
+    [handleAyahLongPress, mushafSelectedVerseKey, mushafStyle, recitation.highlightedVerseKey]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -436,7 +450,7 @@ function ReadPageContent() {
             mushafStyle={mushafStyle}
             pageNumber={currentPage}
             highlightedVerseKey={recitation.highlightedVerseKey}
-            selectedVerseKey={ayahMenu?.verseKey ?? null}
+            selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
           />
         )}
@@ -624,7 +638,7 @@ function ReadPageContent() {
           setAyahMenu(null)
         }}
         onPlay={() => {
-          if (ayahMenu) playVerse(ayahMenu.verseKey)
+          if (ayahMenu) playVerse(ayahMenu.verseKey, { continueOnPage: true })
         }}
         onStopRecitation={stopRecitation}
         onNextAyah={handleAyahMenuNext}
