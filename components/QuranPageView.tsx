@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
+import { loadPageFont, loadSurahNameFont, prefetchPageFonts, qcfFontFamily } from '@/lib/mushaf-fonts'
 import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
@@ -14,6 +15,8 @@ interface QuranPageViewProps {
   onReveal: (verseKey: string) => void
   /** Verse key currently being recited (e.g. "2:255") — highlights on mushaf. */
   highlightedVerseKey?: string | null
+  /** Verse key selected via long-press (action menu open). */
+  selectedVerseKey?: string | null
   /** Full-screen: 15 lines fit viewport, no scroll. */
   readMode?: boolean
   readOnly?: boolean
@@ -112,6 +115,7 @@ export default function QuranPageView({
   mushafStyle = 'uthmani-glyphs',
   pageNumber: pageNumberProp,
   highlightedVerseKey = null,
+  selectedVerseKey = null,
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
@@ -188,7 +192,7 @@ export default function QuranPageView({
     }
   }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, verses, useGlyphs])
 
-  const qcfFontFamily = `QCFPage${pageNumber}V2`
+  const qcfFamily = qcfFontFamily(pageNumber)
   const needsQuranFonts =
     useGlyphs && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
@@ -200,21 +204,21 @@ export default function QuranPageView({
       setGlyphsReady(true)
       return
     }
+
     setGlyphsReady(false)
     let cancelled = false
-    const family = qcfFontFamily
-    void document.fonts
-      .load(`32px "${family}"`)
-      .then(() => {
-        if (!cancelled) setGlyphsReady(true)
-      })
-      .catch(() => {
-        if (!cancelled) setGlyphsReady(true)
-      })
+
+    void (async () => {
+      await loadSurahNameFont()
+      const ok = await loadPageFont(pageNumber)
+      if (!cancelled) setGlyphsReady(true)
+      if (ok) prefetchPageFonts(pageNumber, 2)
+    })()
+
     return () => {
       cancelled = true
     }
-  }, [hasQcfGlyphs, needsQuranFonts, pageNumber, qcfFontFamily])
+  }, [hasQcfGlyphs, needsQuranFonts, pageNumber])
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
 
@@ -228,23 +232,13 @@ export default function QuranPageView({
 
   return (
     <div
-      className={cn('w-full', readMode ? 'h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+      className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
       dir="rtl"
       lang="ar"
       aria-label="Quran page"
     >
       {needsQuranFonts && (
         <style>{`
-          @font-face {
-            font-family: '${qcfFontFamily}';
-            src: url('https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${pageNumber}.woff2') format('woff2');
-            font-display: block;
-          }
-          @font-face {
-            font-family: 'SurahNameV2';
-            src: url('https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf') format('truetype');
-            font-display: swap;
-          }
           .surah-header {
             font-family: 'SurahNameV2';
             line-height: 1;
@@ -256,10 +250,19 @@ export default function QuranPageView({
         `}</style>
       )}
 
+      {!glyphsReady && readMode && needsQuranFonts && hasQcfGlyphs && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
+        </div>
+      )}
+
       <div
         className={cn(
           readMode
-            ? cn('mushaf-fit-grid h-full transition-opacity duration-200', glyphsReady ? 'opacity-100' : 'opacity-0')
+            ? cn(
+                'mushaf-fit-grid h-full transition-opacity duration-150',
+                glyphsReady ? 'opacity-100' : 'pointer-events-none opacity-0'
+              )
             : cn(
                 'mushaf-page-sheet flex flex-col rounded-lg p-4',
                 'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
@@ -286,7 +289,7 @@ export default function QuranPageView({
               fontFamily: line.isSurahHeader
                 ? 'SurahNameV2'
                 : hasQcfGlyphs
-                  ? qcfFontFamily
+                  ? qcfFamily
                   : "'UthmanicHafs', 'Traditional Arabic', serif",
             }}
           >
@@ -312,11 +315,13 @@ export default function QuranPageView({
                 const isNext = word.verseKey === nextVerseKey
                 const shouldShowText = isRevealed || word.isEndMark
                 const isReciting = highlightedVerseKey === word.verseKey
+                const isSelected = selectedVerseKey === word.verseKey
 
                 const wordClass = cn(
                   'mushaf-word inline-block border-0 bg-transparent p-0',
                   textClass,
                   isReciting && 'mushaf-word--reciting',
+                  isSelected && !isReciting && 'mushaf-word--selected',
                   !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                 )
 
@@ -326,14 +331,25 @@ export default function QuranPageView({
                       <MushafWord
                         key={word.id}
                         word={word}
-                        className={cn('mx-0.5 inline-block opacity-90', isReciting && 'mushaf-word--reciting')}
+                        className={cn(
+                          'mx-0.5 inline-block opacity-90',
+                          isReciting && 'mushaf-word--reciting',
+                          isSelected && !isReciting && 'mushaf-word--selected'
+                        )}
                         html={word.text}
                         onAyahLongPress={ayahLongPress}
                       />
                     )
                   }
                   return (
-                    <span key={word.id} className={cn('mx-0.5 inline-block opacity-90', isReciting && 'mushaf-word--reciting')}>
+                    <span
+                      key={word.id}
+                      className={cn(
+                        'mx-0.5 inline-block opacity-90',
+                        isReciting && 'mushaf-word--reciting',
+                        isSelected && !isReciting && 'mushaf-word--selected'
+                      )}
+                    >
                       {word.text}
                     </span>
                   )

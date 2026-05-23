@@ -45,11 +45,26 @@ export default function AyahActionSheet({
   const ayahNum = verseKey.split(':')[1] || ''
   const surahNum = verseKey.split(':')[0] || ''
 
+  const arabicBlock = (
+    <div className="mb-4 rounded-xl border border-teal-500/30 bg-[#222] px-4 py-4">
+      <p className="mb-1 text-center text-xs font-medium uppercase tracking-wide text-teal-400/80">
+        {surahNum}:{ayahNum}
+      </p>
+      <p
+        className="arabic-text text-center text-[1.35rem] leading-[2.2] text-white"
+        dir="rtl"
+        lang="ar"
+      >
+        {arabicText}
+      </p>
+    </div>
+  )
+
   return (
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]"
+        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={onClose}
       />
@@ -70,9 +85,7 @@ export default function AyahActionSheet({
               Back
             </button>
           ) : (
-            <p className="text-sm font-medium text-stone-400">
-              {surahNum}:{ayahNum}
-            </p>
+            <p className="text-sm font-medium text-stone-400">Ayah options</p>
           )}
           <button
             type="button"
@@ -84,16 +97,10 @@ export default function AyahActionSheet({
           </button>
         </div>
 
-        <p
-          className="arabic-text mb-4 text-center text-[var(--mushaf-read-text)]"
-          dir="rtl"
-          lang="ar"
-        >
-          {arabicText}
-        </p>
+        {arabicBlock}
 
         {view === 'menu' ? (
-          <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => {
@@ -117,9 +124,9 @@ export default function AyahActionSheet({
         ) : (
           <div className="rounded-xl bg-[#1a1a1a] px-4 py-3.5">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-stone-500">
-              Translation · Ayah {ayahNum}
+              Translation
             </p>
-            <p className="text-left text-[15px] leading-relaxed text-stone-200">
+            <p className="text-left text-[15px] leading-relaxed text-stone-100">
               {translationLoading
                 ? 'Loading translation…'
                 : translation || 'Translation unavailable.'}
@@ -130,3 +137,4 @@ export default function AyahActionSheet({
     </>
   )
 }
+

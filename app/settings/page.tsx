@@ -8,6 +8,7 @@ import {
   Moon,
   BookOpen,
   Wifi,
+  ArrowUpDown,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
@@ -52,9 +53,51 @@ function SettingsRow({
   )
 }
 
+function SettingsToggle({
+  title,
+  description,
+  enabled,
+  onToggle,
+}: {
+  title: string
+  description: string
+  enabled: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={onToggle}
+      className="flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
+    >
+      <div className="min-w-0">
+        <p className="font-medium text-[var(--app-text)]">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--app-muted)]">{description}</p>
+      </div>
+      <span
+        className={cn(
+          'relative h-7 w-12 shrink-0 rounded-full transition-colors',
+          enabled ? 'bg-teal-600' : 'bg-stone-300 dark:bg-stone-600'
+        )}
+        aria-hidden
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+            enabled ? 'translate-x-5' : 'translate-x-0.5'
+          )}
+        />
+      </span>
+    </button>
+  )
+}
+
 export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [mushafStyle, setMushafStyle] = useState<MushafStyle>('uthmani-glyphs')
+  const [verticalPages, setVerticalPages] = useState(false)
   const [offline, setOffline] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -64,6 +107,7 @@ export default function SettingsPage() {
     const s = getAppSettings()
     setTheme(s.theme)
     setMushafStyle(s.mushafStyle)
+    setVerticalPages(s.verticalPages)
     setOffline(s.offlineDownloaded || isOfflineReady())
   }, [])
 
@@ -76,6 +120,11 @@ export default function SettingsPage() {
   function saveMushaf(next: MushafStyle) {
     setMushafStyle(next)
     setAppSettings({ mushafStyle: next })
+  }
+
+  function saveVerticalPages(next: boolean) {
+    setVerticalPages(next)
+    setAppSettings({ verticalPages: next })
   }
 
   async function handleDownload() {
@@ -174,6 +223,19 @@ export default function SettingsPage() {
               onClick={() => saveMushaf('indopak')}
             />
           </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            Reader
+          </h2>
+          <SettingsToggle
+            title="Vertical pages"
+            description="Swipe up/down to turn pages. Off uses left/right mushaf swipes."
+            enabled={verticalPages}
+            onToggle={() => saveVerticalPages(!verticalPages)}
+          />
         </section>
 
         <section className="mb-8">

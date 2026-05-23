@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import type { Chapter, Verse } from '@/types'
@@ -8,6 +9,7 @@ interface MushafTranslationViewProps {
   verses: Verse[]
   page: number
   chapters: Chapter[]
+  highlightedVerseKey?: string | null
 }
 
 function verseNumber(verseKey: string): number {
@@ -22,10 +24,12 @@ export default function MushafTranslationView({
   verses,
   page,
   chapters,
+  highlightedVerseKey = null,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, v.text_uthmani]))
   const { rows, loading } = usePageTranslations(page, true, verseKeys, arabicByKey)
+  const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
   const displayRows =
     rows.length > 0
@@ -35,6 +39,13 @@ export default function MushafTranslationView({
           text_uthmani: v.text_uthmani,
           translation: '',
         }))
+
+  useEffect(() => {
+    if (!highlightedVerseKey) return
+    const el = ayahRefs.current.get(highlightedVerseKey)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }, [highlightedVerseKey])
 
   if (loading && rows.length === 0) {
     return (
@@ -53,22 +64,42 @@ export default function MushafTranslationView({
         const showHeader = curSurah !== prevSurah
         const surahTitle =
           chapters.find((c) => c.id === curSurah)?.englishName || `Surah ${curSurah}`
+        const isReciting = highlightedVerseKey === row.verse_key
 
         return (
-          <article key={row.verse_key} className="space-y-4">
+          <article
+            key={row.verse_key}
+            ref={(node) => {
+              if (node) ayahRefs.current.set(row.verse_key, node)
+              else ayahRefs.current.delete(row.verse_key)
+            }}
+            id={`translation-ayah-${row.verse_key.replace(':', '-')}`}
+            className={cn(
+              'space-y-4 rounded-2xl px-2 py-2 transition-colors duration-300',
+              isReciting && 'mushaf-translation-ayah--reciting'
+            )}
+          >
             {showHeader && (
               <div className="flex items-center justify-between px-1">
                 <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
               </div>
             )}
             <p
-              className="text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]"
+              className={cn(
+                'text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]',
+                isReciting && 'mushaf-translation-arabic--reciting'
+              )}
               dir="rtl"
               lang="ar"
             >
               {row.text_uthmani}
               <span
-                className="mx-1 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border border-[var(--mushaf-read-meta)]/40 px-1 text-[0.65rem] font-medium text-[var(--mushaf-read-meta)]"
+                className={cn(
+                  'mx-1 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border px-1 text-[0.65rem] font-medium',
+                  isReciting
+                    ? 'border-teal-500/60 text-teal-400'
+                    : 'border-[var(--mushaf-read-meta)]/40 text-[var(--mushaf-read-meta)]'
+                )}
                 aria-label={`Verse ${num}`}
               >
                 {num}
@@ -78,7 +109,7 @@ export default function MushafTranslationView({
             <div
               className={cn(
                 'rounded-2xl px-4 py-3.5',
-                'bg-stone-100 dark:bg-[#1a1a1a]'
+                isReciting ? 'bg-teal-500/15 ring-1 ring-teal-500/30' : 'bg-stone-100 dark:bg-[#1a1a1a]'
               )}
             >
               <p className="text-left text-[15px] leading-relaxed text-[var(--mushaf-read-text)]">
@@ -92,3 +123,5 @@ export default function MushafTranslationView({
     </div>
   )
 }
+
+

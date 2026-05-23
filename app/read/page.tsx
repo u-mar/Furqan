@@ -13,6 +13,8 @@ import {
   MessageSquareText,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
@@ -39,6 +41,7 @@ import {
   getVisualPageForVerse,
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
+import { prefetchPageFonts } from '@/lib/mushaf-fonts'
 import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
@@ -60,7 +63,7 @@ function ReadPageContent() {
   const longPressBlockTap = useRef(false)
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
-  const { mushafStyle, reciterId } = useAppSettings()
+  const { mushafStyle, reciterId, verticalPages } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
 
   const loadPage = useCallback(async (page: number) => {
@@ -77,6 +80,7 @@ function ReadPageContent() {
       setPageLoading(false)
       localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
       prefetchMushafPages(next, 3)
+      prefetchPageFonts(next, 2)
       return
     }
 
@@ -90,6 +94,7 @@ function ReadPageContent() {
       setCurrentPage(next)
       setSliderPage(next)
       localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
+      prefetchPageFonts(next, 2)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load page'
       console.error('Failed to load page:', err)
@@ -193,17 +198,39 @@ function ReadPageContent() {
 
   const toggleUi = () => setUiVisible((v) => !v)
 
-  // Mushaf-style: swipe right = next page, swipe left = previous page
-  const swipe = useSwipe({
-    onSwipeLeft: () => {
-      didSwipe.current = true
-      if (currentPage > 1) navigatePage(currentPage - 1)
-    },
-    onSwipeRight: () => {
-      didSwipe.current = true
-      if (currentPage < TOTAL_MUSHAF_PAGES) navigatePage(currentPage + 1)
-    },
-  })
+  const goNextPage = useCallback(() => {
+    if (currentPage < TOTAL_MUSHAF_PAGES) navigatePage(currentPage + 1)
+  }, [currentPage, navigatePage])
+
+  const goPrevPage = useCallback(() => {
+    if (currentPage > 1) navigatePage(currentPage - 1)
+  }, [currentPage, navigatePage])
+
+  const swipe = useSwipe(
+    verticalPages
+      ? {
+          direction: 'vertical',
+          onSwipeUp: () => {
+            didSwipe.current = true
+            goNextPage()
+          },
+          onSwipeDown: () => {
+            didSwipe.current = true
+            goPrevPage()
+          },
+        }
+      : {
+          direction: 'horizontal',
+          onSwipeLeft: () => {
+            didSwipe.current = true
+            goPrevPage()
+          },
+          onSwipeRight: () => {
+            didSwipe.current = true
+            goNextPage()
+          },
+        }
+  )
 
   const handleContentTap = () => {
     if (didSwipe.current) {
@@ -279,8 +306,8 @@ function ReadPageContent() {
           showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
         )}
         onClick={handleContentTap}
-        onTouchStart={swipe.onTouchStart}
-        onTouchEnd={swipe.onTouchEnd}
+        onTouchStart={showTranslation ? undefined : swipe.onTouchStart}
+        onTouchEnd={showTranslation ? undefined : swipe.onTouchEnd}
         role="presentation"
       >
         {showTranslation ? (
@@ -288,10 +315,10 @@ function ReadPageContent() {
             verses={pageVerses}
             page={currentPage}
             chapters={chapters}
+            highlightedVerseKey={recitation.highlightedVerseKey}
           />
         ) : (
           <QuranPageView
-            key={`${currentPage}-${mushafStyle}`}
             verses={pageVerses}
             startVerseKey={startVerseKey}
             revealableVerseKeys={pageVerseKeys}
@@ -302,6 +329,7 @@ function ReadPageContent() {
             mushafStyle={mushafStyle}
             pageNumber={currentPage}
             highlightedVerseKey={recitation.highlightedVerseKey}
+            selectedVerseKey={ayahMenu?.verseKey ?? null}
             onAyahLongPress={handleAyahLongPress}
           />
         )}
@@ -370,7 +398,7 @@ function ReadPageContent() {
           <button
             type="button"
             onClick={handleRecitationToggle}
-            disabled={showTranslation || pageVerses.length === 0}
+            disabled={pageVerses.length === 0}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
             aria-label={isActive ? 'Stop recitation' : 'Play page recitation'}
           >
@@ -387,12 +415,16 @@ function ReadPageContent() {
         <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-3 py-3 backdrop-blur">
           <button
             type="button"
-            onClick={() => currentPage > 1 && navigatePage(currentPage - 1)}
+            onClick={goPrevPage}
             disabled={currentPage <= 1}
             className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
             aria-label="Previous page"
           >
-            <ChevronRight className="h-6 w-6" />
+            {verticalPages ? (
+              <ChevronUp className="h-6 w-6" />
+            ) : (
+              <ChevronRight className="h-6 w-6" />
+            )}
           </button>
 
           <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
@@ -422,12 +454,16 @@ function ReadPageContent() {
 
           <button
             type="button"
-            onClick={() => currentPage < TOTAL_MUSHAF_PAGES && navigatePage(currentPage + 1)}
+            onClick={goNextPage}
             disabled={currentPage >= TOTAL_MUSHAF_PAGES}
             className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
             aria-label="Next page"
           >
-            <ChevronLeft className="h-6 w-6" />
+            {verticalPages ? (
+              <ChevronDown className="h-6 w-6" />
+            ) : (
+              <ChevronLeft className="h-6 w-6" />
+            )}
           </button>
 
           <button

@@ -167,22 +167,52 @@ html.dark .mushaf-reader-immersive {
   -webkit-box-decoration-break: clone;
 }
 
+.mushaf-word--selected {
+  background: rgba(45, 212, 191, 0.35);
+  border-radius: 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  outline: 1px solid rgba(45, 212, 191, 0.55);
+  outline-offset: 1px;
+}
+
 html:not(.dark) .mushaf-word--reciting {
   background: rgba(13, 148, 136, 0.22);
 }
 
-.mushaf-fit-line:has(.mushaf-word--reciting) {
+html:not(.dark) .mushaf-word--selected {
+  background: rgba(13, 148, 136, 0.28);
+  outline-color: rgba(13, 148, 136, 0.45);
+}
+
+.mushaf-fit-line:has(.mushaf-word--reciting),
+.mushaf-fit-line:has(.mushaf-word--selected) {
   opacity: 1;
 }
 
-.mushaf-fit-grid:has(.mushaf-word--reciting) .mushaf-fit-line:not(:has(.mushaf-word--reciting)) {
-  opacity: 0.55;
+.mushaf-fit-grid:has(.mushaf-word--reciting) .mushaf-fit-line:not(:has(.mushaf-word--reciting)),
+.mushaf-fit-grid:has(.mushaf-word--selected) .mushaf-fit-line:not(:has(.mushaf-word--selected)) {
+  opacity: 0.45;
   transition: opacity 0.25s ease;
 }
 
 .mushaf-page-badge {
   background: var(--mushaf-read-badge-bg);
   color: var(--mushaf-read-badge-text);
+}
+
+.mushaf-translation-ayah--reciting {
+  background: rgba(45, 212, 191, 0.08);
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.25);
+}
+
+.mushaf-translation-arabic--reciting {
+  color: var(--mushaf-read-text);
+}
+
+html:not(.dark) .mushaf-translation-ayah--reciting {
+  background: rgba(13, 148, 136, 0.08);
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
 }
 
 /* Translation scroll mode */

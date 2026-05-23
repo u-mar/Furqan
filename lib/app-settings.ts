@@ -8,6 +8,8 @@ export interface AppSettings {
   mushafStyle: MushafStyle
   offlineDownloaded: boolean
   reciterId: string
+  /** Swipe up/down to turn pages instead of left/right. */
+  verticalPages: boolean
 }
 
 const STORAGE_KEY = 'al_quran_settings'
@@ -19,6 +21,7 @@ const defaults: AppSettings = {
   mushafStyle: 'uthmani-glyphs',
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
+  verticalPages: false,
 }
 
 export function getAppSettings(): AppSettings {
@@ -35,6 +38,7 @@ export function getAppSettings(): AppSettings {
         typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
           ? parsed.reciterId
           : DEFAULT_RECITER_ID,
+      verticalPages: Boolean(parsed.verticalPages),
     }
   } catch {
     return defaults
