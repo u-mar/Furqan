@@ -65,8 +65,9 @@ export async function loadPageFont(page: number): Promise<boolean> {
       const face = new FontFace(family, `url(${url})`, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
-      loadedPages.add(page)
-      return document.fonts.check(`16px "${family}"`)
+      const ok = document.fonts.check(`16px "${family}"`)
+      if (ok) loadedPages.add(page)
+      return ok
     } catch {
       return false
     } finally {
@@ -76,4 +77,8 @@ export async function loadPageFont(page: number): Promise<boolean> {
 
   loadingPages.set(page, task)
   return task
+}
+
+export function isPageFontLoaded(page: number): boolean {
+  return loadedPages.has(page)
 }

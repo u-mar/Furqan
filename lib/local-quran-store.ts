@@ -1,5 +1,5 @@
 import type { Verse, VerseWord } from '@/types'
-import { cacheAllMushafFonts, clearOfflineFontsCachedFlag } from '@/lib/offline-font-cache'
+import { cacheAllMushafFonts, clearOfflineFontsCachedFlag, verifyMushafFontsCached } from '@/lib/offline-font-cache'
 
 interface QuranDataFile {
   bundleVersion?: number
@@ -188,6 +188,12 @@ export async function downloadOfflineQuran(
       label: `Mushaf fonts ${fontProgress.done}/${fontProgress.total}`,
     })
   })
+
+  const fontsOk = await verifyMushafFontsCached()
+  if (!fontsOk) {
+    clearOfflineFontsCachedFlag()
+    throw new Error('Mushaf fonts were not saved. Stay on Wi‑Fi and try again.')
+  }
 
   report(onProgress, { percent: 100, phase: 'ready', label: 'Ready — full mushaf offline' })
 }

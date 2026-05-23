@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'al-quran-v5'
-const STATIC_CACHE = 'al-quran-static-v5'
+const CACHE_VERSION = 'al-quran-v6'
+const STATIC_CACHE = 'al-quran-static-v6'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
 const PRECACHE = ['/quran-chapters.json']
@@ -45,6 +45,12 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname === '/sw.js') {
     event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Mushaf page fonts + bundled assets — cache-first for offline reading.
+  if (url.pathname.startsWith('/fonts/')) {
+    event.respondWith(cacheFirst(event.request))
     return
   }
 

@@ -75,7 +75,14 @@ function MushafWord({
 function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
   if (verse.words && verse.words.length > 0) {
     return verse.words
-      .filter((word) => word.text_uthmani.trim().length > 0)
+      .filter((word) => {
+        if (word.char_type_name === 'end') return true
+        return (
+          word.text_uthmani.trim().length > 0 ||
+          Boolean(word.text_qpc_hafs?.trim()) ||
+          Boolean(word.code_v2)
+        )
+      })
       .map((word: VerseWord) => {
         const isEndMark = word.char_type_name === 'end'
         const pageNumber = word.v2_page || word.page_number || verse.page_number || 1
@@ -198,20 +205,26 @@ export default function QuranPageView({
 
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
   const [glyphsReady, setGlyphsReady] = useState(!needsQuranFonts || !hasQcfGlyphs)
+  const [qcfFontReady, setQcfFontReady] = useState(false)
 
   useEffect(() => {
     if (!needsQuranFonts || !hasQcfGlyphs) {
+      setQcfFontReady(false)
       setGlyphsReady(true)
       return
     }
 
     setGlyphsReady(false)
+    setQcfFontReady(false)
     let cancelled = false
 
     void (async () => {
       await loadSurahNameFont()
       const ok = await loadPageFont(pageNumber)
-      if (!cancelled) setGlyphsReady(true)
+      if (!cancelled) {
+        setQcfFontReady(ok)
+        setGlyphsReady(true)
+      }
       if (ok) prefetchPageFonts(pageNumber, 2)
     })()
 
@@ -219,6 +232,10 @@ export default function QuranPageView({
       cancelled = true
     }
   }, [hasQcfGlyphs, needsQuranFonts, pageNumber])
+
+  /** QCF glyph codes only render correctly with the per-page font — otherwise use plain Arabic. */
+  const useQcfRendering = hasQcfGlyphs && qcfFontReady
+  const plainFontStack = "'UthmanicHafs', var(--font-amiri), 'Amiri', 'Traditional Arabic', serif"
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
   const gridRef = useRef<HTMLDivElement>(null)
@@ -302,9 +319,9 @@ export default function QuranPageView({
             style={{
               fontFamily: line.isSurahHeader
                 ? 'SurahNameV2'
-                : hasQcfGlyphs
+                : useQcfRendering
                   ? qcfFamily
-                  : "'UthmanicHafs', 'Traditional Arabic', serif",
+                  : plainFontStack,
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (
@@ -339,6 +356,8 @@ export default function QuranPageView({
                   !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
                 )
 
+                const wordHtml = useQcfRendering ? word.text : word.fallbackText
+
                 if (word.isEndMark) {
                   if (ayahLongPress) {
                     return (
@@ -350,7 +369,7 @@ export default function QuranPageView({
                           isReciting && 'mushaf-word--reciting',
                           isSelected && !isReciting && 'mushaf-word--selected'
                         )}
-                        html={word.text}
+                        html={wordHtml}
                         onAyahLongPress={ayahLongPress}
                       />
                     )
@@ -364,7 +383,7 @@ export default function QuranPageView({
                         isSelected && !isReciting && 'mushaf-word--selected'
                       )}
                     >
-                      {word.text}
+                      {wordHtml}
                     </span>
                   )
                 }
@@ -374,8 +393,8 @@ export default function QuranPageView({
                     <MushafWord
                       key={word.id}
                       word={word}
-                      className={wordClass}
-                      html={hasQcfGlyphs ? word.text : word.fallbackText}
+                      className={cn(wordClass, !useQcfRendering && 'arabic-text')}
+                      html={wordHtml}
                       onAyahLongPress={ayahLongPress}
                     />
                   )
@@ -388,12 +407,11 @@ export default function QuranPageView({
                     onClick={() => onReveal(word.verseKey)}
                     className={cn(
                       wordClass,
+                      !useQcfRendering && 'arabic-text',
                       'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600'
                     )}
                     aria-label={`Reveal verse ${word.verseKey}`}
-                    dangerouslySetInnerHTML={{
-                      __html: hasQcfGlyphs ? word.text : word.fallbackText,
-                    }}
+                    dangerouslySetInnerHTML={{ __html: wordHtml }}
                   />
                 )
               })

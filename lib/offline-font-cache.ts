@@ -103,10 +103,21 @@ async function cacheFont(
     const existing = await cache.match(cacheKey)
     if (existing) return true
 
-    const response = await fetch(requestUrl, { mode: 'cors' })
+    const response = await fetch(requestUrl, { mode: 'cors', cache: 'no-cache' })
     if (!response.ok) return false
     await cache.put(cacheKey, response.clone())
     return true
+  } catch {
+    return false
+  }
+}
+
+export async function verifyMushafFontsCached(): Promise<boolean> {
+  if (typeof caches === 'undefined') return false
+  try {
+    const cache = await caches.open(CACHE_NAME)
+    const sample = await cache.match(qcfLocalFontUrl(1))
+    return Boolean(sample)
   } catch {
     return false
   }
@@ -140,6 +151,7 @@ export async function cacheAllMushafFonts(
 
   const concurrency = 6
   let nextPage = 1
+  let saved = 0
 
   async function worker(): Promise<void> {
     while (nextPage <= TOTAL_MUSHAF_FONT_PAGES) {
@@ -148,9 +160,11 @@ export async function cacheAllMushafFonts(
 
       const localKey = qcfLocalFontUrl(page)
       const bundledOk = await cacheFont(cache, localKey, localKey)
+      let ok = bundledOk
       if (!bundledOk) {
-        await cacheFont(cache, qcfCdnFontUrl(page), localKey)
+        ok = await cacheFont(cache, qcfCdnFontUrl(page), localKey)
       }
+      if (ok) saved += 1
 
       done += 1
       report()
@@ -158,6 +172,13 @@ export async function cacheAllMushafFonts(
   }
 
   await Promise.all(Array.from({ length: concurrency }, () => worker()))
+
+  if (saved < 500) {
+    clearOfflineFontsCachedFlag()
+    throw new Error(
+      `Only ${saved} of ${TOTAL_MUSHAF_FONT_PAGES} mushaf fonts saved. Stay on Wi‑Fi and try again.`
+    )
+  }
 
   markOfflineFontsCached()
   onProgress?.({ done: total, total, percent: 100 })
