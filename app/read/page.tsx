@@ -1,158 +1,320 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Menu,
+  Search,
+  Calendar,
+  Settings,
+  Play,
+  ChevronDown,
+  MessageSquareText,
+  ChevronLeft,
+} from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
-import ThemeToggle from '@/components/ThemeToggle'
-import Button from '@/components/ui/Button'
+import SurahSearchModal from '@/components/read/SurahSearchModal'
+import ContentsDrawer from '@/components/read/ContentsDrawer'
+import MushafTranslationView from '@/components/read/MushafTranslationView'
+import { useSwipe } from '@/hooks/useSwipe'
+import { cn } from '@/lib/cn'
+import {
+  clampPage,
+  LAST_READ_PAGE_KEY,
+  TOTAL_MUSHAF_PAGES,
+} from '@/lib/mushaf'
 import {
   getChapters,
   getMushafPage,
   getVersesByChapter,
-  getVersesByJuz,
-  getVisualPagesForScope,
+  getVisualPageForVerse,
 } from '@/lib/quran'
-import type { Chapter, ScopeMode, Verse } from '@/types'
-
-const TOTAL_PAGES = 604
+import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
   const searchParams = useSearchParams()
-  const mode = (searchParams.get('mode') || 'surah') as ScopeMode
-  const surah = Number(searchParams.get('surah') || '1')
-  const juz = Number(searchParams.get('juz') || '1')
+  const initialPage = Number(searchParams.get('page') || '0')
 
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [uiVisible, setUiVisible] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [showTranslation, setShowTranslation] = useState(false)
+  const [sliderPage, setSliderPage] = useState(1)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const didSwipe = useRef(false)
+
+  const loadPage = useCallback(async (page: number) => {
+    const next = clampPage(page)
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const verses = await getMushafPage(next)
+      setPageVerses(verses)
+      setCurrentPage(next)
+      setSliderPage(next)
+      localStorage.setItem(LAST_READ_PAGE_KEY, String(next))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load page'
+      console.error('Failed to load page:', err)
+      setLoadError(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
   }, [])
 
   useEffect(() => {
-    async function loadScope() {
-      setLoading(true)
-      try {
-        const [verses, visualPageMap] = await Promise.all([
-          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
-          mode === 'juz' ? getVisualPagesForScope({ juz }) : getVisualPagesForScope({ chapter: surah }),
-        ])
-        if (verses.length === 0) throw new Error('No verses found')
+    const saved =
+      initialPage > 0
+        ? initialPage
+        : typeof window !== 'undefined'
+          ? Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1')
+          : 1
+    loadPage(clampPage(saved || 1))
+  }, [initialPage, loadPage])
 
-        const startPage = Math.min(
-          ...verses.map((v) => visualPageMap[v.verse_key] || v.page_number || 1)
-        )
+  const goToSurah = async (surahId: number) => {
+    const verses = await getVersesByChapter(surahId)
+    const first = verses[0]
+    if (!first) return
+    const page = await getVisualPageForVerse(first.verse_key, first.page_number || 1)
+    await loadPage(page)
+  }
 
-        const firstPageVerses = await getMushafPage(startPage)
-        setCurrentPage(startPage)
-        setPageVerses(firstPageVerses)
-      } catch (err) {
-        console.error('Failed to load scope:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadScope()
-  }, [mode, surah, juz])
+  const handleSelectSurah = async (surahId: number) => {
+    setSearchOpen(false)
+    setDrawerOpen(false)
+    await goToSurah(surahId)
+  }
 
-  const loadPage = async (page: number) => {
-    try {
-      const verses = await getMushafPage(page)
-      setPageVerses(verses)
-      setCurrentPage(page)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch (err) {
-      console.error('Failed to load page:', err)
-    }
+  const openSearch = () => {
+    setUiVisible(true)
+    setSearchOpen(true)
   }
 
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
-  const surahTitle =
-    chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
 
-  const testHref =
-    mode === 'surah' ? `/test?mode=surah&surah=${surah}` : `/test?mode=juz&juz=${juz}`
+  const toggleUi = () => setUiVisible((v) => !v)
 
-  if (loading) {
+  const swipe = useSwipe({
+    onSwipeLeft: () => {
+      didSwipe.current = true
+      if (currentPage < TOTAL_MUSHAF_PAGES) loadPage(currentPage + 1)
+    },
+    onSwipeRight: () => {
+      didSwipe.current = true
+      if (currentPage > 1) loadPage(currentPage - 1)
+    },
+  })
+
+  const handleContentTap = () => {
+    if (didSwipe.current) {
+      didSwipe.current = false
+      return
+    }
+    toggleUi()
+  }
+
+  if (loading && pageVerses.length === 0 && !loadError) {
     return (
-      <main className="min-h-screen bg-[var(--hifdh-bg)]">
-        <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-24">
-          <div
-            className="mb-4 h-8 w-8 rounded-full border-2 border-stone-200 border-t-teal-700 motion-safe:animate-spin"
-            role="status"
-            aria-label="Loading"
-          />
-          <p className="text-sm text-[var(--hifdh-muted)]">Loading…</p>
-        </div>
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#0a0a0a] px-6">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500"
+          role="status"
+          aria-label="Loading"
+        />
+        <p className="text-sm text-stone-500">Loading page…</p>
+      </main>
+    )
+  }
+
+  if (loadError && pageVerses.length === 0) {
+    return (
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[#0a0a0a] px-6 text-center">
+        <p className="text-sm text-red-400">{loadError}</p>
+        <p className="text-xs text-stone-500">
+          Check your Wi‑Fi connection. The first load can take up to a minute.
+        </p>
+        <button
+          type="button"
+          onClick={() => loadPage(currentPage)}
+          className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white"
+        >
+          Retry
+        </button>
+        <Link href="/" className="text-sm text-stone-400 underline">
+          Back to home
+        </Link>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hifdh-bg)] text-[var(--hifdh-text)]">
-      <header className="sticky top-0 z-20 border-b border-[var(--hifdh-border)] bg-[var(--hifdh-bg)]/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate font-serif text-lg font-medium leading-tight text-[var(--hifdh-text)]">
-              {surahTitle}
-            </p>
-            <p className="text-[11px] text-[var(--hifdh-muted)]">Page {currentPage}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggle />
-            <Link
-              href={testHref}
-              className="rounded-full px-3 py-2 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/20"
-            >
-              Test
-            </Link>
-            <Link
-              href="/"
-              className="rounded-full px-3 py-2 text-xs text-[var(--hifdh-muted)] transition-colors hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-            >
-              Back
-            </Link>
-          </div>
+    <main className="relative h-[100dvh] overflow-hidden bg-[#0a0a0a] text-white">
+      {/* Top bar */}
+      <header
+        className={cn(
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between bg-[#141414]/95 px-4 py-3 backdrop-blur transition-transform duration-300',
+          uiVisible ? 'translate-y-0' : '-translate-y-full'
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className="rounded-lg p-2 text-teal-400 hover:bg-white/5"
+          aria-label="Open contents"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={openSearch}
+            className="rounded-lg p-2 text-teal-400 hover:bg-white/5"
+            aria-label="Search surah"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+          <button type="button" className="rounded-lg p-2 text-teal-400 hover:bg-white/5" aria-label="Calendar">
+            <Calendar className="h-5 w-5" />
+          </button>
+          <button type="button" className="rounded-lg p-2 text-teal-400 hover:bg-white/5" aria-label="Settings">
+            <Settings className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
-      <div className="mx-auto w-full px-3 pb-12 pt-4 sm:px-5">
-        <div className="mb-5">
-          <QuranPageView
-            verses={pageVerses}
-            startVerseKey={startVerseKey}
-            revealableVerseKeys={pageVerseKeys}
-            revealedAyahs={pageVerseKeys}
-            onReveal={() => {}}
-          />
-        </div>
-
-        <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => currentPage < TOTAL_PAGES && loadPage(currentPage + 1)}
-            disabled={currentPage >= TOTAL_PAGES}
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
-            disabled={currentPage <= 1}
-          >
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </Button>
+      {/* Mushaf — tap toggles chrome; swipe changes page */}
+      <div
+        className="h-full overflow-y-auto overscroll-none px-2 pb-28 pt-10 sm:pt-12"
+        onClick={handleContentTap}
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
+        role="presentation"
+      >
+        <div className="mx-auto max-w-lg px-2">
+          {showTranslation ? (
+            <MushafTranslationView
+              verses={pageVerses}
+              page={currentPage}
+              chapters={chapters}
+            />
+          ) : (
+            <QuranPageView
+              verses={pageVerses}
+              startVerseKey={startVerseKey}
+              revealableVerseKeys={pageVerseKeys}
+              revealedAyahs={pageVerseKeys}
+              onReveal={() => {}}
+              darkMushaf
+              readOnly
+            />
+          )}
         </div>
       </div>
+
+      {/* Bottom controls */}
+      <div
+        className={cn(
+          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4 transition-transform duration-300',
+          uiVisible ? 'translate-y-0' : 'translate-y-full'
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto flex max-w-lg items-center justify-between rounded-xl bg-[#1a1a1a] px-4 py-3">
+          <button
+            type="button"
+            className="flex items-center gap-1 text-sm font-medium text-teal-400"
+            aria-label="Select reciter"
+          >
+            Mahmoud Al-Husary
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="rounded-full p-1 text-teal-400 hover:bg-white/5"
+            aria-label="Play recitation"
+          >
+            <Play className="h-6 w-6 fill-current" />
+          </button>
+        </div>
+
+        <div className="mx-auto flex max-w-lg items-center gap-3 rounded-xl bg-[#141414]/90 px-3 py-3 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => currentPage > 1 && loadPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="flex flex-col items-center text-teal-400 disabled:opacity-30"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-6 w-6" />
+            <span className="text-xs font-medium">{currentPage}</span>
+          </button>
+
+          <input
+            type="range"
+            min={1}
+            max={TOTAL_MUSHAF_PAGES}
+            value={sliderPage}
+            onChange={(e) => setSliderPage(Number(e.target.value))}
+            onMouseUp={() => loadPage(sliderPage)}
+            onTouchEnd={() => loadPage(sliderPage)}
+            className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-stone-700 accent-teal-500"
+            aria-label="Page slider"
+          />
+
+          <button
+            type="button"
+            onClick={() => setShowTranslation((v) => !v)}
+            className={cn(
+              'rounded-lg p-2 hover:bg-white/5',
+              showTranslation ? 'bg-teal-600/20 text-teal-400' : 'text-teal-400'
+            )}
+            aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
+            aria-pressed={showTranslation}
+          >
+            <MessageSquareText className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
+      <SurahSearchModal
+        open={searchOpen}
+        chapters={chapters}
+        currentSurahId={currentSurahNum}
+        onClose={() => setSearchOpen(false)}
+        onSelectSurah={handleSelectSurah}
+      />
+
+      <ContentsDrawer
+        open={drawerOpen}
+        chapters={chapters}
+        currentSurahId={currentSurahNum}
+        onClose={() => setDrawerOpen(false)}
+        onSelectSurah={handleSelectSurah}
+        onGoToPage={loadPage}
+      />
+
+      {uiVisible && (
+        <Link
+          href="/"
+          className="absolute left-4 top-16 z-20 rounded-full bg-black/50 px-3 py-1 text-xs text-stone-400"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Home
+        </Link>
+      )}
     </main>
   )
 }
@@ -161,11 +323,8 @@ export default function ReadPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[var(--hifdh-bg)]">
-          <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-24">
-            <div className="mb-4 h-8 w-8 rounded-full border-2 border-stone-200 border-t-teal-700 motion-safe:animate-spin" />
-            <p className="text-sm text-stone-500">Loading…</p>
-          </div>
+        <main className="flex min-h-[100dvh] items-center justify-center bg-[#0a0a0a]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
         </main>
       }
     >

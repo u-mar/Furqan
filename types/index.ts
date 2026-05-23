@@ -39,6 +39,7 @@ export interface VerseWord {
   page_number?: number
   v2_page?: number
   char_type_name?: 'word' | 'end' | string
+  translation?: { text: string; language_name?: string }
 }
 
 export type ScopeMode = 'surah' | 'juz' | 'range'

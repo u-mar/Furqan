@@ -67,14 +67,24 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 }
 
 export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 45_000)
+
   try {
-    const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`)
+    const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`, {
+      signal: controller.signal,
+    })
     if (!response.ok) {
-      throw new Error(`Failed to load Mushaf page: ${response.statusText}`)
+      const body = (await response.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error || `Failed to load page (${response.status})`)
     }
-    return (await response.json()) as Verse[]
-  } catch {
-    return getVersesByPage(pageNumber)
+    const verses = (await response.json()) as Verse[]
+    if (verses.length === 0) {
+      throw new Error('No verses returned for this page')
+    }
+    return verses
+  } finally {
+    window.clearTimeout(timeout)
   }
 }
 

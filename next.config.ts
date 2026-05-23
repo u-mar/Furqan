@@ -1,9 +1,10 @@
 import type { NextConfig } from 'next'
 
-const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean)
+const allowedDevOrigins = [
+  '192.168.100.188',
+  '192.168.56.1',
+  ...(process.env.ALLOWED_DEV_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+]
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

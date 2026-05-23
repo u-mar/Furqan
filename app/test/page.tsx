@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
-import ThemeToggle from '@/components/ThemeToggle'
 import Button from '@/components/ui/Button'
 import {
   getChapters,
@@ -217,50 +216,47 @@ function TestPageContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[var(--hifdh-bg)]">
-        <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-24">
+      <main className="min-h-[100dvh]">
+        <div className="flex flex-col items-center justify-center px-4 py-24">
           <div
-            className="mb-4 h-8 w-8 rounded-full border-2 border-stone-200 border-t-teal-700 motion-safe:animate-spin"
+            className="mb-4 h-8 w-8 rounded-full border-2 border-stone-700 border-t-teal-500 motion-safe:animate-spin"
             role="status"
             aria-label="Loading"
           />
-          <p className="text-sm text-[var(--hifdh-muted)]">Loading session…</p>
+          <p className="text-sm text-stone-400">Loading session…</p>
         </div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-[var(--hifdh-bg)] text-[var(--hifdh-text)]">
-      <header className="sticky top-0 z-20 border-b border-[var(--hifdh-border)] bg-[var(--hifdh-bg)]/90 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+    <main className="min-h-[100dvh] text-white">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0a0a0a]/95 px-4 py-3 backdrop-blur lg:px-6">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="font-serif text-lg font-medium leading-tight text-[var(--hifdh-text)]">
+            <p className="font-serif text-lg font-medium leading-tight text-white">
               {surahTitle}
             </p>
-            <p className="text-[11px] text-[var(--hifdh-muted)]">
+            <p className="text-[11px] text-stone-400">
               {scopeLabel} · {modeSubtitle} · Page {currentPage}
             </p>
           </div>
-          <div className="flex items-center gap-1">
-            <ThemeToggle />
-            <Link
-              href="/"
-              className="rounded-full px-3 py-2 text-xs text-[var(--hifdh-muted)] transition-colors hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-800 dark:hover:text-stone-100"
-            >
-              Change scope
-            </Link>
-          </div>
+          <Link
+            href="/test/select"
+            className="rounded-full px-3 py-2 text-xs text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            Change scope
+          </Link>
         </div>
       </header>
 
-      <div className="mx-auto w-full px-3 pb-12 pt-4 sm:px-5">
+      <div className="w-full px-3 pb-12 pt-4 sm:px-5 lg:px-8">
         {phase === 'testing' && (
           <>
             <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-800">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-800">
                 <div
-                  className="h-full bg-teal-600 transition-all duration-300 dark:bg-teal-400"
+                  className="h-full bg-teal-500 transition-all duration-300"
                   style={{ width: `${progress}%` }}
                   role="progressbar"
                   aria-valuenow={progress}
@@ -277,6 +273,7 @@ function TestPageContent() {
                 revealableVerseKeys={scopeVerseKeys}
                 revealedAyahs={revealedAyahs}
                 onReveal={handleReveal}
+                darkMushaf
               />
             </div>
 
@@ -303,7 +300,7 @@ function TestPageContent() {
             </div>
 
             {!online && (
-              <div className="mx-auto mb-4 max-w-3xl rounded-lg bg-amber-50 p-3 text-[12px] text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">
+              <div className="mx-auto mb-4 max-w-3xl rounded-lg bg-amber-500/10 p-3 text-[12px] text-amber-200">
                 <div className="flex items-start gap-2">
                   <WifiOff className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
                   <p>
@@ -331,11 +328,8 @@ export default function TestPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[var(--hifdh-bg)]">
-          <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-24">
-            <div className="mb-4 h-8 w-8 rounded-full border-2 border-stone-200 border-t-teal-700 motion-safe:animate-spin" />
-            <p className="text-sm text-stone-500">Loading…</p>
-          </div>
+        <main className="flex min-h-[100dvh] items-center justify-center">
+          <div className="h-8 w-8 rounded-full border-2 border-stone-700 border-t-teal-500 motion-safe:animate-spin" />
         </main>
       }
     >

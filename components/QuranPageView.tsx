@@ -10,6 +10,10 @@ interface QuranPageViewProps {
   revealableVerseKeys: Set<string>
   revealedAyahs: Set<string>
   onReveal: (verseKey: string) => void
+  /** Dark mushaf reader (full-screen read mode). */
+  darkMushaf?: boolean
+  /** When true, words are not clickable (read-only). */
+  readOnly?: boolean
 }
 
 interface PageWord {
@@ -69,6 +73,8 @@ export default function QuranPageView({
   revealableVerseKeys,
   revealedAyahs,
   onReveal,
+  darkMushaf = false,
+  readOnly = false,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
 
@@ -150,7 +156,7 @@ export default function QuranPageView({
 
   if (startIndex === -1) {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-red-700">
+      <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-300">
         <p>Starting verse not found on this page.</p>
       </div>
     )
@@ -162,10 +168,14 @@ export default function QuranPageView({
 
   return (
     <div
-      className="mx-auto w-full max-w-[980px] px-0 py-2 sm:px-2"
+      className={cn(
+        'mx-auto w-full max-w-[980px] px-0 sm:px-2',
+        readOnly && darkMushaf ? 'py-0' : 'py-2',
+        darkMushaf && 'text-white'
+      )}
       dir="rtl"
       lang="ar"
-      aria-label="Hidden Quran page"
+      aria-label="Quran page"
     >
       {needsQuranFonts && (
         <style>{`
@@ -193,14 +203,24 @@ export default function QuranPageView({
         `}</style>
       )}
 
-      <div className="flex min-h-[calc(100vh-12rem)] flex-col justify-between sm:min-h-[760px]">
+      <div
+        className={cn(
+          'flex flex-col',
+          readOnly && darkMushaf
+            ? 'justify-start gap-0.5 pt-4 pb-6'
+            : 'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
+        )}
+      >
         {lines.map((line) => (
           <div
             key={line.lineNumber}
             className={cn(
               'flex min-h-[2.05em] flex-row items-center justify-center gap-x-[0.04em] text-[clamp(22px,4vw,38px)] leading-[1.22]',
+              readOnly && darkMushaf && 'min-h-[2.15em]',
               line.isSurahHeader && 'min-h-[1.45em] text-[clamp(28px,5vw,44px)]',
-              line.isBasmalah && 'min-h-[1.45em] text-[clamp(24px,4vw,36px)]'
+              line.isBasmalah && 'min-h-[1.45em] text-[clamp(24px,4vw,36px)]',
+              readOnly && darkMushaf && line.isSurahHeader && 'mt-2',
+              readOnly && darkMushaf && line.isBasmalah && 'mt-1'
             )}
             style={{
               fontFamily: line.isSurahHeader
@@ -211,10 +231,27 @@ export default function QuranPageView({
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (
-              <div className="flex w-full items-center justify-center gap-3 text-stone-950 dark:text-stone-100 surah-header">
-                <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
+              <div
+                className={cn(
+                  'flex w-full items-center justify-center gap-3 surah-header',
+                  darkMushaf ? 'text-white' : 'text-stone-950 dark:text-stone-100'
+                )}
+              >
+                <span
+                  className={cn(
+                    'h-px flex-1',
+                    darkMushaf ? 'bg-stone-700' : 'bg-stone-200 dark:bg-stone-800'
+                  )}
+                  aria-hidden
+                />
                 <span>{`surah${String(line.chapterNumber).padStart(3, '0')}`}</span>
-                <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" aria-hidden />
+                <span
+                  className={cn(
+                    'h-px flex-1',
+                    darkMushaf ? 'bg-stone-700' : 'bg-stone-200 dark:bg-stone-800'
+                  )}
+                  aria-hidden
+                />
               </div>
             ) : line.isBasmalah ? (
               <div className="basmalah-ornament" aria-label={BASMALAH}>
@@ -226,31 +263,43 @@ export default function QuranPageView({
               const isNext = word.verseKey === nextVerseKey
               const shouldShowText = isRevealed || word.isEndMark
 
-              return word.isEndMark ? (
-                <span
-                  key={word.id}
-                  className="inline-block mx-0.5"
-                >
-                  {word.text}
-                </span>
-              ) : (
+              const wordClass = cn(
+                'mushaf-word inline-block border-0 bg-transparent p-0',
+                darkMushaf ? 'text-white' : 'text-stone-950 dark:text-stone-100',
+                !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
+              )
+
+              if (word.isEndMark) {
+                return (
+                  <span key={word.id} className="mx-0.5 inline-block">
+                    {word.text}
+                  </span>
+                )
+              }
+
+              if (readOnly || !isNext) {
+                return (
+                  <span
+                    key={word.id}
+                    className={wordClass}
+                    dangerouslySetInnerHTML={{
+                      __html: hasQcfGlyphs ? word.text : word.fallbackText,
+                    }}
+                  />
+                )
+              }
+
+              return (
                 <button
                   key={word.id}
                   type="button"
-                  onClick={() => {
-                    if (isNext) onReveal(word.verseKey)
-                  }}
-                  disabled={!isNext}
+                  onClick={() => onReveal(word.verseKey)}
                   className={cn(
-                    'mushaf-word appearance-none border-0 bg-transparent p-0 text-stone-950 transition-opacity dark:text-stone-100',
-                    isNext
-                      ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-300'
-                      : 'cursor-default',
-                    !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
+                    wordClass,
+                    'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-300'
                   )}
-                  aria-label={isNext ? `Reveal verse ${word.verseKey}` : undefined}
-                  aria-hidden={!isNext}
-                  title={isNext ? `Reveal ${word.verseKey}` : undefined}
+                  aria-label={`Reveal verse ${word.verseKey}`}
+                  title={`Reveal ${word.verseKey}`}
                   dangerouslySetInnerHTML={{
                     __html: hasQcfGlyphs ? word.text : word.fallbackText,
                   }}

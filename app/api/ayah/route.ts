@@ -4,20 +4,22 @@ import {
   getVerseByKey,
   getVersesByChapter,
   getVersesByJuz,
-  getVersesByPage,
 } from '@/lib/quran'
+import { getTranslationsByPageServer, getVersesByPageServer } from '@/lib/quran-server'
 import type { Verse } from '@/types'
 
 const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
+const API_TIMEOUT_MS = 20_000
 
 async function fetchQcfPage(page: number): Promise<Verse[]> {
-const params = new URLSearchParams({
+  const params = new URLSearchParams({
     words: 'true',
     word_fields: 'code_v2,text_qpc_hafs,text_uthmani,line_number,v2_page,page_number,char_type_name',
     mushaf: '1',
   })
   const response = await fetch(`${QURAN_API_BASE}/verses/by_page/${page}?${params.toString()}`, {
     next: { revalidate: 60 * 60 * 24 * 30 },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -61,6 +63,7 @@ async function fetchVerseVisualPage(verseKey: string): Promise<number | null> {
   const params = new URLSearchParams({ verse_key: verseKey })
   const response = await fetch(`${QURAN_API_BASE}/quran/verses/code_v2?${params.toString()}`, {
     next: { revalidate: 60 * 60 * 24 * 30 },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -74,6 +77,7 @@ async function fetchVerseVisualPage(verseKey: string): Promise<number | null> {
 async function fetchVisualPages(params: URLSearchParams): Promise<Record<string, number>> {
   const response = await fetch(`${QURAN_API_BASE}/quran/verses/code_v2?${params.toString()}`, {
     next: { revalidate: 60 * 60 * 24 * 30 },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -82,6 +86,55 @@ async function fetchVisualPages(params: URLSearchParams): Promise<Record<string,
 
   const data = (await response.json()) as { verses?: Array<{ verse_key: string; v2_page?: number }> }
   return Object.fromEntries((data.verses || []).map((verse) => [verse.verse_key, verse.v2_page || 1]))
+}
+
+interface TranslationItem {
+  verse_key: string
+  text_uthmani: string
+  translation: string
+}
+
+async function fetchTranslationsFromAlQuranCloud(page: number): Promise<TranslationItem[]> {
+  const response = await fetch(`https://api.alquran.cloud/v1/page/${page}/en.sahih`, {
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
+  })
+  if (!response.ok) throw new Error('AlQuran Cloud translation failed')
+
+  const payload = (await response.json()) as {
+    data?: {
+      ayahs?: Array<{
+        text: string
+        numberInSurah: number
+        surah: { number: number }
+      }>
+    }
+  }
+
+  const offline = await getVersesByPageServer(page)
+  const arabicByKey = Object.fromEntries(offline.map((v) => [v.verse_key, v.text_uthmani]))
+
+  return (payload.data?.ayahs || []).map((a) => {
+    const verse_key = `${a.surah.number}:${a.numberInSurah}`
+    return {
+      verse_key,
+      text_uthmani: arabicByKey[verse_key] || '',
+      translation: a.text,
+    }
+  })
+}
+
+async function fetchTranslationsForPage(page: number): Promise<TranslationItem[]> {
+  try {
+    const cloud = await fetchTranslationsFromAlQuranCloud(page)
+    if (cloud.length > 0 && cloud.some((r) => r.translation.length > 0)) {
+      return cloud
+    }
+  } catch (err) {
+    console.warn('AlQuran Cloud translations failed:', err)
+  }
+
+  const offline = await getTranslationsByPageServer(page)
+  return offline.filter((r) => r.translation.length > 0)
 }
 
 export async function GET(request: NextRequest) {
@@ -129,11 +182,27 @@ export async function GET(request: NextRequest) {
 
       try {
         const verses = await fetchVisualQcfPage(page)
-        return NextResponse.json(verses)
-      } catch {
-        const verses = await getVersesByPage(page)
-        return NextResponse.json(verses)
+        if (verses.length > 0) {
+          return NextResponse.json(verses)
+        }
+      } catch (err) {
+        console.warn(`Quran API page ${page} failed, using offline data:`, err)
       }
+
+      const verses = await getVersesByPageServer(page)
+      if (verses.length === 0) {
+        return NextResponse.json({ error: 'No verses found for this page' }, { status: 404 })
+      }
+      return NextResponse.json(verses)
+    }
+
+    if (type === 'translations') {
+      const page = Number(searchParams.get('page'))
+      if (!page || page < 1 || page > 604) {
+        return NextResponse.json({ error: 'valid page parameter required' }, { status: 400 })
+      }
+      const items = await fetchTranslationsForPage(page)
+      return NextResponse.json(items)
     }
 
     if (type === 'visual-page') {
@@ -169,7 +238,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'type parameter required (chapters, verse, chapter-verses, juz-verses, page, visual-page, visual-pages)' },
+      {
+        error:
+          'type parameter required (chapters, verse, chapter-verses, juz-verses, page, translations, visual-page, visual-pages)',
+      },
       { status: 400 }
     )
   } catch (error) {

@@ -1,5 +1,8 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Amiri } from 'next/font/google'
+import AppShell from '@/components/AppShell'
+import InstallPrompt from '@/components/InstallPrompt'
+import PwaRegister from '@/components/PwaRegister'
 import './globals.css'
 
 const amiri = Amiri({
@@ -9,19 +12,29 @@ const amiri = Amiri({
   display: 'swap',
 })
 
-const themeScript = `
-  try {
-    const savedTheme = localStorage.getItem('hifdh_theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    document.documentElement.style.colorScheme = theme;
-  } catch {}
-`
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#000000',
+}
 
 export const metadata: Metadata = {
-  title: 'Hifdh Practice',
-  description: 'Test your Quran memorization with word-by-word feedback',
+  title: 'Al Quran',
+  description: 'Read the Quran and practice your hifdh',
+  applicationName: 'Al Quran',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Al Quran',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [{ url: '/icon', type: 'image/png' }],
+    apple: [{ url: '/apple-icon', type: 'image/png' }],
+  },
 }
 
 export default function RootLayout({
@@ -30,11 +43,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={amiri.variable}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body className="bg-[var(--hifdh-bg)] text-[var(--hifdh-text)] antialiased">{children}</body>
+    <html lang="en" className={`dark ${amiri.variable}`}>
+      <body className="min-h-[100dvh] bg-[#0a0a0a] text-white antialiased">
+        <AppShell>{children}</AppShell>
+        <PwaRegister />
+        <InstallPrompt />
+      </body>
     </html>
   )
 }
