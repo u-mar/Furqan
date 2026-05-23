@@ -64,7 +64,7 @@ function ReadPageContent() {
   const longPressBlockTap = useRef(false)
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
-  const { mushafStyle, reciterId, verticalPages } = useAppSettings()
+  const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [pageSlide, setPageSlide] = useState<{
     direction: PageSlideDirection
@@ -144,7 +144,8 @@ function ReadPageContent() {
     currentPage,
     Boolean(ayahMenu),
     pageVerses.map((v) => v.verse_key),
-    arabicByKey
+    arabicByKey,
+    translationLanguage
   )
 
   const navigatePage = useCallback(
@@ -384,6 +385,7 @@ function ReadPageContent() {
             verses={pageVerses}
             page={currentPage}
             chapters={chapters}
+            translationLanguage={translationLanguage}
             highlightedVerseKey={recitation.highlightedVerseKey}
           />
         ) : verticalPages ? (

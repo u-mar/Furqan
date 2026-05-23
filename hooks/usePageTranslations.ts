@@ -8,11 +8,14 @@ export interface TranslationRow {
   translation: string
 }
 
+import type { TranslationLanguageId } from '@/lib/translations'
+
 export function usePageTranslations(
   page: number,
   enabled: boolean,
   verseKeys: string[],
-  arabicByKey: Record<string, string>
+  arabicByKey: Record<string, string>,
+  translationLanguage: TranslationLanguageId = 'en'
 ) {
   const [rows, setRows] = useState<TranslationRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -24,7 +27,7 @@ export function usePageTranslations(
     }
 
     setLoading(true)
-    fetch(`/api/ayah?type=translations&page=${page}`)
+    fetch(`/api/ayah?type=translations&page=${page}&lang=${translationLanguage}`)
       .then((r) => r.json())
       .then((data) => {
         if (!Array.isArray(data)) {
@@ -47,7 +50,7 @@ export function usePageTranslations(
       })
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
-  }, [page, enabled, verseKeys.join(','), JSON.stringify(arabicByKey)])
+  }, [page, enabled, translationLanguage, verseKeys.join(','), JSON.stringify(arabicByKey)])
 
   const byKey = Object.fromEntries(rows.map((r) => [r.verse_key, r]))
 

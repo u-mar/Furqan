@@ -10,11 +10,18 @@ export interface AppSettings {
   reciterId: string
   /** Swipe up/down to turn pages instead of left/right. */
   verticalPages: boolean
+  /** Translation text language in read mode. */
+  translationLanguage: TranslationLanguageId
 }
 
 const STORAGE_KEY = 'al_quran_settings'
 
 import { DEFAULT_RECITER_ID } from '@/lib/reciters'
+import {
+  DEFAULT_TRANSLATION_LANGUAGE,
+  type TranslationLanguageId,
+  isTranslationLanguageId,
+} from '@/lib/translations'
 
 const defaults: AppSettings = {
   theme: 'dark',
@@ -22,6 +29,7 @@ const defaults: AppSettings = {
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
+  translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
 }
 
 export function getAppSettings(): AppSettings {
@@ -39,6 +47,10 @@ export function getAppSettings(): AppSettings {
           ? parsed.reciterId
           : DEFAULT_RECITER_ID,
       verticalPages: Boolean(parsed.verticalPages),
+      translationLanguage:
+        parsed.translationLanguage && isTranslationLanguageId(parsed.translationLanguage)
+          ? parsed.translationLanguage
+          : DEFAULT_TRANSLATION_LANGUAGE,
     }
   } catch {
     return defaults

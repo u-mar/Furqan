@@ -9,6 +9,7 @@ import {
   BookOpen,
   Wifi,
   ArrowUpDown,
+  Languages,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
@@ -19,6 +20,10 @@ import {
   type MushafStyle,
   type ThemeMode,
 } from '@/lib/app-settings'
+import {
+  TRANSLATION_LANGUAGES,
+  type TranslationLanguageId,
+} from '@/lib/translations'
 import {
   downloadOfflineQuran,
   hydrateOfflineFromDisk,
@@ -98,6 +103,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [mushafStyle, setMushafStyle] = useState<MushafStyle>('uthmani-glyphs')
   const [verticalPages, setVerticalPages] = useState(false)
+  const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -108,6 +114,7 @@ export default function SettingsPage() {
     setTheme(s.theme)
     setMushafStyle(s.mushafStyle)
     setVerticalPages(s.verticalPages)
+    setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
   }, [])
 
@@ -125,6 +132,11 @@ export default function SettingsPage() {
   function saveVerticalPages(next: boolean) {
     setVerticalPages(next)
     setAppSettings({ verticalPages: next })
+  }
+
+  function saveTranslationLanguage(next: TranslationLanguageId) {
+    setTranslationLanguage(next)
+    setAppSettings({ translationLanguage: next })
   }
 
   async function handleDownload() {
@@ -223,6 +235,31 @@ export default function SettingsPage() {
               onClick={() => saveMushaf('indopak')}
             />
           </div>
+        </section>
+
+        <section className="mb-8">
+          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <Languages className="h-3.5 w-3.5" />
+            Translation language
+          </h2>
+          <div className="space-y-2">
+            {TRANSLATION_LANGUAGES.map((lang) => (
+              <SettingsRow
+                key={lang.id}
+                title={lang.label}
+                description={
+                  lang.id === 'en'
+                    ? 'Sahih International (English)'
+                    : 'Mahmud Muhammad Abduh (Somali)'
+                }
+                selected={translationLanguage === lang.id}
+                onClick={() => saveTranslationLanguage(lang.id)}
+              />
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-[var(--app-muted)]">
+            Used in Read translation mode and when you long-press an ayah.
+          </p>
         </section>
 
         <section className="mb-8">

@@ -3,12 +3,14 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
+import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
 
 interface MushafTranslationViewProps {
   verses: Verse[]
   page: number
   chapters: Chapter[]
+  translationLanguage: TranslationLanguageId
   highlightedVerseKey?: string | null
 }
 
@@ -24,11 +26,12 @@ export default function MushafTranslationView({
   verses,
   page,
   chapters,
+  translationLanguage,
   highlightedVerseKey = null,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, v.text_uthmani]))
-  const { rows, loading } = usePageTranslations(page, true, verseKeys, arabicByKey)
+  const { rows, loading } = usePageTranslations(page, true, verseKeys, arabicByKey, translationLanguage)
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
   const displayRows =

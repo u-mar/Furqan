@@ -6,6 +6,7 @@ import {
   getVersesByJuz,
 } from '@/lib/quran'
 import { getTranslationsByPageServer, getVersesByPageServer } from '@/lib/quran-server'
+import { getTranslationLanguage } from '@/lib/translations'
 import type { Verse } from '@/types'
 
 const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
@@ -94,8 +95,11 @@ interface TranslationItem {
   translation: string
 }
 
-async function fetchTranslationsFromAlQuranCloud(page: number): Promise<TranslationItem[]> {
-  const response = await fetch(`https://api.alquran.cloud/v1/page/${page}/en.sahih`, {
+async function fetchTranslationsFromAlQuranCloud(
+  page: number,
+  editionId: string
+): Promise<TranslationItem[]> {
+  const response = await fetch(`https://api.alquran.cloud/v1/page/${page}/${editionId}`, {
     signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error('AlQuran Cloud translation failed')
@@ -123,9 +127,9 @@ async function fetchTranslationsFromAlQuranCloud(page: number): Promise<Translat
   })
 }
 
-async function fetchTranslationsForPage(page: number): Promise<TranslationItem[]> {
+async function fetchTranslationsForPage(page: number, editionId: string): Promise<TranslationItem[]> {
   try {
-    const cloud = await fetchTranslationsFromAlQuranCloud(page)
+    const cloud = await fetchTranslationsFromAlQuranCloud(page, editionId)
     if (cloud.length > 0 && cloud.some((r) => r.translation.length > 0)) {
       return cloud
     }
@@ -133,8 +137,12 @@ async function fetchTranslationsForPage(page: number): Promise<TranslationItem[]
     console.warn('AlQuran Cloud translations failed:', err)
   }
 
-  const offline = await getTranslationsByPageServer(page)
-  return offline.filter((r) => r.translation.length > 0)
+  if (editionId === 'en.sahih') {
+    const offline = await getTranslationsByPageServer(page)
+    return offline.filter((r) => r.translation.length > 0)
+  }
+
+  return []
 }
 
 export async function GET(request: NextRequest) {
@@ -201,7 +209,9 @@ export async function GET(request: NextRequest) {
       if (!page || page < 1 || page > 604) {
         return NextResponse.json({ error: 'valid page parameter required' }, { status: 400 })
       }
-      const items = await fetchTranslationsForPage(page)
+      const lang = searchParams.get('lang') || 'en'
+      const editionId = getTranslationLanguage(lang).editionId
+      const items = await fetchTranslationsForPage(page, editionId)
       return NextResponse.json(items)
     }
 
