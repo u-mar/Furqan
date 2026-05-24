@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Dices, MicVocal, Sparkles, Users } from 'lucide-react'
+import { ChevronLeft, Dices, MicVocal, Users } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { cn } from '@/lib/cn'
 
@@ -9,7 +9,7 @@ const modes = [
   {
     id: 'random',
     label: 'Randomize',
-    description: 'Random ayah within a surah, juz, or range',
+    description: 'Random ayah within surah, juz, or surah range',
     href: '/test/select/random',
     Icon: Dices,
     enabled: true,
@@ -17,10 +17,10 @@ const modes = [
   {
     id: 'subac',
     label: 'Subac',
-    description: 'Group session — each person their own ayah',
-    href: '/test/select/subac',
+    description: 'Group reading — each person their own ayah',
+    href: null,
     Icon: Users,
-    enabled: true,
+    enabled: false,
   },
   {
     id: 'tajweed',
@@ -28,14 +28,6 @@ const modes = [
     description: 'Tajweed rules & pronunciation',
     href: null,
     Icon: MicVocal,
-    enabled: false,
-  },
-  {
-    id: 'custom',
-    label: 'Custom',
-    description: 'Ayah range & blind mode',
-    href: null,
-    Icon: Sparkles,
     enabled: false,
   },
 ] as const
@@ -59,35 +51,44 @@ export default function TestSelectPage() {
         </div>
       </header>
 
-      <section aria-label="Test modes" className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
+      <section
+        aria-label="Test modes"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4"
+      >
         {modes.map((mode) => {
           const { Icon } = mode
           const inner = (
             <div
               className={cn(
-                'relative flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 py-4 shadow-[var(--home-card-shadow)] transition-all duration-200',
-                'lg:aspect-auto lg:min-h-[160px] lg:gap-3',
+                'relative flex min-h-[140px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-6 shadow-[var(--home-card-shadow)] transition-all duration-200',
                 mode.enabled &&
-                  'hover:border-teal-500/30 active:scale-[0.97] lg:hover:scale-[1.01]',
-                !mode.enabled && 'opacity-60'
+                  'hover:border-teal-500/35 hover:shadow-md active:scale-[0.98]',
+                !mode.enabled && 'opacity-65'
               )}
             >
               {!mode.enabled && (
-                <span className="absolute right-2.5 top-2.5 rounded-full bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-muted)]">
+                <span className="absolute right-3 top-3 rounded-full bg-[var(--app-surface)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">
                   Soon
                 </span>
               )}
-              <Icon
+              <div
                 className={cn(
-                  'h-10 w-10 lg:h-12 lg:w-12',
-                  mode.enabled ? 'text-teal-600 dark:text-teal-400' : 'text-[var(--app-muted)]'
+                  'flex h-14 w-14 items-center justify-center rounded-2xl',
+                  mode.enabled ? 'bg-teal-500/15' : 'bg-[var(--app-surface)]'
                 )}
-                strokeWidth={1.75}
-              />
-              <span className="text-center text-sm font-semibold text-[var(--app-text)] lg:text-base">
+              >
+                <Icon
+                  className={cn(
+                    'h-7 w-7',
+                    mode.enabled ? 'text-teal-600 dark:text-teal-400' : 'text-[var(--app-muted)]'
+                  )}
+                  strokeWidth={1.75}
+                />
+              </div>
+              <span className="text-center text-base font-semibold text-[var(--app-text)]">
                 {mode.label}
               </span>
-              <span className="line-clamp-2 text-center text-[10px] leading-snug text-[var(--app-muted)] lg:text-xs">
+              <span className="line-clamp-2 max-w-[200px] text-center text-xs leading-snug text-[var(--app-muted)]">
                 {mode.description}
               </span>
             </div>

@@ -3,7 +3,14 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ChevronLeft, ChevronRight, RefreshCw, WifiOff } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Dices,
+  RefreshCw,
+  WifiOff,
+} from 'lucide-react'
+import HomeScreen from '@/components/home/HomeScreen'
 import QuranPageView from '@/components/QuranPageView'
 import Button from '@/components/ui/Button'
 import {
@@ -14,6 +21,7 @@ import {
   getVisualPageForVerse,
   getVisualPagesForScope,
 } from '@/lib/quran'
+import { cn } from '@/lib/cn'
 import type { Chapter, ScopeMode, ScopeType, Verse } from '@/types'
 
 type Phase = 'idle' | 'testing'
@@ -27,14 +35,54 @@ function resolveScopeType(mode: ScopeMode, scopeParam: string | null): ScopeType
   return 'surah'
 }
 
+async function loadScopeVerses(
+  scope: ScopeType,
+  surah: number,
+  juz: number,
+  startSurah: number,
+  endSurah: number
+): Promise<{ verses: Verse[]; visualPageMap: Record<string, number> }> {
+  if (scope === 'juz') {
+    const [verses, visualPageMap] = await Promise.all([
+      getVersesByJuz(juz),
+      getVisualPagesForScope({ juz }),
+    ])
+    return { verses, visualPageMap }
+  }
+
+  if (scope === 'range') {
+    const from = Math.min(startSurah, endSurah)
+    const to = Math.max(startSurah, endSurah)
+    const verses: Verse[] = []
+    const visualPageMap: Record<string, number> = {}
+
+    for (let chapterId = from; chapterId <= to; chapterId++) {
+      const [chapterVerses, chapterMap] = await Promise.all([
+        getVersesByChapter(chapterId),
+        getVisualPagesForScope({ chapter: chapterId }),
+      ])
+      verses.push(...chapterVerses)
+      Object.assign(visualPageMap, chapterMap)
+    }
+
+    return { verses, visualPageMap }
+  }
+
+  const [verses, visualPageMap] = await Promise.all([
+    getVersesByChapter(surah),
+    getVisualPagesForScope({ chapter: surah }),
+  ])
+  return { verses, visualPageMap }
+}
+
 function TestPageContent() {
   const searchParams = useSearchParams()
-  const mode = (searchParams.get('mode') || 'surah') as ScopeMode
+  const mode = (searchParams.get('mode') || 'random') as ScopeMode
   const scope = resolveScopeType(mode, searchParams.get('scope'))
   const surah = Number(searchParams.get('surah') || '1')
   const juz = Number(searchParams.get('juz') || '1')
-  const startAyah = Number(searchParams.get('startAyah') || '1')
-  const endAyah = Number(searchParams.get('endAyah') || '1')
+  const startSurah = Number(searchParams.get('startSurah') || searchParams.get('surah') || '1')
+  const endSurah = Number(searchParams.get('endSurah') || searchParams.get('surah') || '1')
   const participants = Math.max(2, Number(searchParams.get('participants') || '2'))
 
   const [chapters, setChapters] = useState<Chapter[]>([])
@@ -77,13 +125,13 @@ function TestPageContent() {
     scope === 'juz'
       ? `Juz ${juz}`
       : scope === 'range'
-        ? `Surah ${surah} · ${startAyah}–${endAyah}`
+        ? `Surah ${Math.min(startSurah, endSurah)}–${Math.max(startSurah, endSurah)}`
         : `Surah ${surah}`
 
-  const modeSubtitle =
-    mode === 'random' ? 'Random' : mode === 'subac' ? 'Subac' : scope === 'juz' ? 'Juz' : scope === 'range' ? 'Range' : 'Surah'
+  const modeSubtitle = mode === 'random' ? 'Random' : mode === 'subac' ? 'Subac' : scope
 
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
+  const currentAyahNum = Number(startVerseKey.split(':')[1] || 0)
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
 
@@ -92,20 +140,13 @@ function TestPageContent() {
       setLoading(true)
 
       try {
-        const [rawVerses, visualPageMap] = await Promise.all([
-          scope === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
-          scope === 'juz'
-            ? getVisualPagesForScope({ juz })
-            : getVisualPagesForScope({ chapter: surah }),
-        ])
-
-        const verses =
-          scope === 'range'
-            ? rawVerses.filter((v) => {
-                const n = Number(v.verse_key.split(':')[1])
-                return n >= startAyah && n <= endAyah
-              })
-            : rawVerses
+        const { verses, visualPageMap } = await loadScopeVerses(
+          scope,
+          surah,
+          juz,
+          startSurah,
+          endSurah
+        )
 
         if (verses.length === 0) {
           throw new Error('No verses found in this selection.')
@@ -117,7 +158,9 @@ function TestPageContent() {
         let targetVerse: Verse
 
         if (mode === 'subac') {
-          const assignments = verses.slice(0, Math.min(participants, verses.length)).map((v) => v.verse_key)
+          const assignments = verses
+            .slice(0, Math.min(participants, verses.length))
+            .map((v) => v.verse_key)
           setSubacAssignments(assignments)
           setCurrentParticipant(0)
           const firstKey = assignments[0]
@@ -165,17 +208,15 @@ function TestPageContent() {
       }
     }
     loadScope()
-  }, [mode, scope, surah, juz, startAyah, endAyah, participants, randomNonce])
+  }, [mode, scope, surah, juz, startSurah, endSurah, participants, randomNonce])
 
   const handleReveal = (verseKey: string) => {
-    const nextRevealedAyahs = new Set([...revealedAyahs, verseKey])
-    setRevealedAyahs(nextRevealedAyahs)
+    setRevealedAyahs(new Set([...revealedAyahs, verseKey]))
   }
 
   const handleNextPage = () => {
     const currentIndex = scopePages.indexOf(currentPage)
     const nextPage = scopePages[currentIndex + 1]
-
     if (nextPage) {
       setNavDirection('forward')
       loadPageVerses(nextPage)
@@ -185,7 +226,6 @@ function TestPageContent() {
   const handlePreviousPage = () => {
     const currentIndex = scopePages.indexOf(currentPage)
     const previousPage = scopePages[currentIndex - 1]
-
     if (previousPage) {
       setNavDirection('backward')
       loadPageVerses(previousPage)
@@ -195,7 +235,6 @@ function TestPageContent() {
   const loadPageVerses = async (page: number) => {
     try {
       const pageVersesList = await getMushafPage(page)
-
       const pageVerseKeys = new Set(
         cachedScopeVerses
           .filter((v) => (cachedVisualPageMap[v.verse_key] || v.page_number) === page)
@@ -210,8 +249,9 @@ function TestPageContent() {
         startVerse = pageVersesInScope[pageVersesInScope.length - 1]
       } else {
         startVerse =
-          cachedScopeVerses.find((v) => (cachedVisualPageMap[v.verse_key] || v.page_number) === page) ||
-          pageVersesList[0]
+          cachedScopeVerses.find(
+            (v) => (cachedVisualPageMap[v.verse_key] || v.page_number) === page
+          ) || pageVersesList[0]
       }
 
       setPageVerses(pageVersesList)
@@ -224,9 +264,7 @@ function TestPageContent() {
     }
   }
 
-  const handleNewRandom = () => {
-    setRandomNonce((prev) => prev + 1)
-  }
+  const handleNewRandom = () => setRandomNonce((prev) => prev + 1)
 
   const handleNextParticipant = async () => {
     const next = currentParticipant + 1
@@ -260,11 +298,6 @@ function TestPageContent() {
       ? new Set([subacAssignments[currentParticipant]])
       : scopeVerseKeys
 
-  const subacProgress =
-    subacAssignments.length > 0
-      ? Math.round(((currentParticipant + 1) / subacAssignments.length) * 100)
-      : 0
-
   const revealedCount = revealedAyahs.size
   const startIndex = pageVerses.findIndex((v) => v.verse_key === startVerseKey)
   const revealablePageVerses =
@@ -273,145 +306,163 @@ function TestPageContent() {
       : pageVerses.filter((v) => scopeVerseKeys.has(v.verse_key))
   const totalCount = revealablePageVerses.length
   const progress =
-    mode === 'subac'
-      ? subacProgress
+    mode === 'subac' && subacAssignments.length > 0
+      ? Math.round(((currentParticipant + 1) / subacAssignments.length) * 100)
       : totalCount > 0
         ? Math.round((revealedCount / totalCount) * 100)
         : 0
+
   const currentPageIndex = scopePages.indexOf(currentPage)
   const hasPreviousPage = currentPageIndex > 0 && currentPage > questionPage
   const pageComplete = totalCount > 0 && revealedCount >= totalCount
-  const hasNextPage = pageComplete && currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
+  const hasNextPage =
+    pageComplete && currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
+
+  const isAyahRevealed = startVerseKey ? revealedAyahs.has(startVerseKey) : false
 
   if (loading) {
     return (
-      <main className="min-h-[100dvh]">
-        <div className="flex flex-col items-center justify-center px-4 py-24">
-          <div
-            className="mb-4 h-8 w-8 rounded-full border-2 border-stone-700 border-t-teal-500 motion-safe:animate-spin"
-            role="status"
-            aria-label="Loading"
-          />
-          <p className="text-sm text-stone-400">Loading session…</p>
-        </div>
-      </main>
+      <HomeScreen className="flex flex-col items-center justify-center">
+        <div
+          className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--app-border)] border-t-teal-600"
+          role="status"
+          aria-label="Loading"
+        />
+        <p className="mt-4 text-sm text-[var(--app-muted)]">Preparing your test…</p>
+      </HomeScreen>
     )
   }
 
   return (
-    <main className="min-h-[100dvh] text-white">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0a0a0a]/95 px-4 py-3 backdrop-blur lg:px-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-serif text-lg font-medium leading-tight text-white">
-              {surahTitle}
-            </p>
-            <p className="text-[11px] text-stone-400">
+    <HomeScreen className="pb-28">
+      <header className="mb-4 flex items-start justify-between gap-3 border-b border-[var(--home-card-border)] pb-4">
+        <div className="flex min-w-0 items-start gap-2">
+          <Link
+            href="/test/select/random"
+            className="mt-0.5 flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]"
+            aria-label="Back to setup"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Dices className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" />
+              <p className="truncate text-lg font-bold text-[var(--app-text)]">{surahTitle}</p>
+            </div>
+            <p className="mt-0.5 text-xs text-[var(--app-muted)]">
               {mode === 'subac' && subacAssignments.length > 0
-                ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · ${scopeLabel} · Page ${currentPage}`
+                ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · ${scopeLabel}`
                 : `${scopeLabel} · ${modeSubtitle} · Page ${currentPage}`}
             </p>
           </div>
-          <Link
-            href="/test/select"
-            className="rounded-full px-3 py-2 text-xs text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            Change scope
-          </Link>
         </div>
+        <Link
+          href="/test/select"
+          className="shrink-0 rounded-full border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-1.5 text-xs font-medium text-[var(--app-muted)] transition-colors hover:text-[var(--app-text)]"
+        >
+          Change
+        </Link>
       </header>
 
-      <div className="w-full px-3 pb-12 pt-4 sm:px-5 lg:px-8">
-        {phase === 'testing' && (
-          <>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-stone-800">
-                <div
-                  className="h-full bg-teal-500 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                  role="progressbar"
-                  aria-valuenow={progress}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
-              </div>
-            </div>
-
-            <div className="mb-5">
-              <QuranPageView
-                verses={pageVerses}
-                startVerseKey={startVerseKey}
-                revealableVerseKeys={activeRevealKeys}
-                revealedAyahs={revealedAyahs}
-                onReveal={handleReveal}
+      {phase === 'testing' && (
+        <>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--app-surface)]">
+              <div
+                className="h-full rounded-full bg-teal-600 transition-all duration-300 dark:bg-teal-500"
+                style={{ width: `${progress}%` }}
+                role="progressbar"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
               />
             </div>
+            <span className="text-xs font-medium tabular-nums text-[var(--app-muted)]">
+              {progress}%
+            </span>
+          </div>
 
-            {mode === 'subac' && subacAssignments[currentParticipant] && (
-              <p className="mx-auto mb-4 max-w-3xl text-center text-sm text-stone-400">
-                Ayah{' '}
-                <span className="font-medium text-teal-400">
-                  {subacAssignments[currentParticipant].split(':')[1]}
-                </span>{' '}
-                — tap to reveal when ready
-              </p>
-            )}
-
-            <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={!hasNextPage}
+          {startVerseKey && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-teal-500/15 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-300">
+                Ayah {currentAyahNum}
+              </span>
+              <span
+                className={cn(
+                  'rounded-full px-3 py-1 text-xs font-medium',
+                  isAyahRevealed
+                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-[var(--app-surface)] text-[var(--app-muted)]'
+                )}
               >
-                <ChevronLeft className="h-4 w-4" aria-hidden />
-              </Button>
+                {isAyahRevealed ? 'Revealed' : 'Tap ayah to reveal'}
+              </span>
+            </div>
+          )}
 
+          <div className="mb-5 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
+            <QuranPageView
+              verses={pageVerses}
+              startVerseKey={startVerseKey}
+              revealableVerseKeys={activeRevealKeys}
+              revealedAyahs={revealedAyahs}
+              onReveal={handleReveal}
+            />
+          </div>
+
+          {!online && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-900 dark:text-amber-200">
+              <WifiOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p>Offline — mushaf works; transcription needs internet.</p>
+            </div>
+          )}
+
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--home-card-border)] bg-[var(--app-bg)]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+            <div className="mx-auto flex max-w-lg items-center gap-2">
               <Button
-                variant="ghost"
-                size="sm"
+                variant="secondary"
+                size="md"
+                className="shrink-0 px-3"
                 onClick={handlePreviousPage}
                 disabled={!hasPreviousPage}
+                aria-label="Previous page"
               >
-                <ChevronRight className="h-4 w-4" aria-hidden />
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-            </div>
 
-            {!online && (
-              <div className="mx-auto mb-4 max-w-3xl rounded-lg bg-amber-500/10 p-3 text-[12px] text-amber-200">
-                <div className="flex items-start gap-2">
-                  <WifiOff className="h-4 w-4 shrink-0 mt-0.5" aria-hidden />
-                  <p>
-                    You are offline. The page view works without internet. Transcription will be
-                    available when you're back online.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="mx-auto max-w-3xl">
               {mode === 'subac' ? (
                 <Button
                   variant="primary"
                   size="lg"
-                  className="w-full"
+                  className="flex-1"
                   onClick={handleNextParticipant}
                   disabled={currentParticipant >= subacAssignments.length - 1}
                 >
-                  <ChevronRight className="h-4 w-4" aria-hidden />
                   Next person
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button variant="primary" size="lg" className="w-full" onClick={handleNewRandom}>
-                  <RefreshCw className="h-4 w-4" aria-hidden />
-                  New random verse
+                <Button variant="primary" size="lg" className="flex-1" onClick={handleNewRandom}>
+                  <RefreshCw className="h-4 w-4" />
+                  New random ayah
                 </Button>
               )}
+
+              <Button
+                variant="secondary"
+                size="md"
+                className="shrink-0 px-3"
+                onClick={handleNextPage}
+                disabled={!hasNextPage}
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          </>
-        )}
-      </div>
-    </main>
+          </div>
+        </>
+      )}
+    </HomeScreen>
   )
 }
 
@@ -419,9 +470,9 @@ export default function TestPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[100dvh] items-center justify-center">
-          <div className="h-8 w-8 rounded-full border-2 border-stone-700 border-t-teal-500 motion-safe:animate-spin" />
-        </main>
+        <HomeScreen className="flex items-center justify-center">
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--app-border)] border-t-teal-600" />
+        </HomeScreen>
       }
     >
       <TestPageContent />

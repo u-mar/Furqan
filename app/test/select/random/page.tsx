@@ -12,7 +12,7 @@ export default function TestRandomSetupPage() {
   return (
     <TestScopeSetup
       title="Randomize"
-      subtitle="Pick surah, juz, or ayah range — tests will be random within it"
+      subtitle="Pick surah, juz, or a surah-to-surah range — then get random ayahs within it"
       backHref="/test/select"
       startLabel="Start random test"
       buildHref={buildRandomHref}

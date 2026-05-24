@@ -402,7 +402,9 @@ export default function QuranPageView({
                     className={cn(
                       wordClass,
                       !useQcfRendering && 'arabic-text',
-                      'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600'
+                      'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600',
+                      !shouldShowText &&
+                        'min-h-[1.4em] min-w-[2.5rem] rounded bg-stone-200/90 ring-1 ring-teal-600/35 dark:bg-stone-700/60 dark:ring-teal-400/40'
                     )}
                     aria-label={`Reveal verse ${word.verseKey}`}
                     dangerouslySetInnerHTML={{ __html: wordHtml }}
