@@ -14,17 +14,28 @@ import {
   getVisualPageForVerse,
   getVisualPagesForScope,
 } from '@/lib/quran'
-import type { Chapter, ScopeMode, Verse } from '@/types'
+import type { Chapter, ScopeMode, ScopeType, Verse } from '@/types'
 
 type Phase = 'idle' | 'testing'
+
+function resolveScopeType(mode: ScopeMode, scopeParam: string | null): ScopeType {
+  if (scopeParam === 'juz' || scopeParam === 'range' || scopeParam === 'surah') {
+    return scopeParam
+  }
+  if (mode === 'juz') return 'juz'
+  if (mode === 'range') return 'range'
+  return 'surah'
+}
 
 function TestPageContent() {
   const searchParams = useSearchParams()
   const mode = (searchParams.get('mode') || 'surah') as ScopeMode
+  const scope = resolveScopeType(mode, searchParams.get('scope'))
   const surah = Number(searchParams.get('surah') || '1')
   const juz = Number(searchParams.get('juz') || '1')
   const startAyah = Number(searchParams.get('startAyah') || '1')
   const endAyah = Number(searchParams.get('endAyah') || '1')
+  const participants = Math.max(2, Number(searchParams.get('participants') || '2'))
 
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
@@ -41,7 +52,8 @@ function TestPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [scopePages, setScopePages] = useState<number[]>([])
   const [randomNonce, setRandomNonce] = useState(0)
-  const [randomSurah, setRandomSurah] = useState<number | null>(null)
+  const [subacAssignments, setSubacAssignments] = useState<string[]>([])
+  const [currentParticipant, setCurrentParticipant] = useState(0)
   const [navDirection, setNavDirection] = useState<'forward' | 'backward' | null>(null)
 
   useEffect(() => {
@@ -62,18 +74,14 @@ function TestPageContent() {
   }, [])
 
   const scopeLabel =
-    mode === 'random'
-      ? randomSurah
-        ? `Surah ${randomSurah}`
-        : 'Random'
-      : mode === 'surah'
-        ? `Surah ${surah}`
-        : mode === 'juz'
-          ? `Juz ${juz}`
-          : `Surah ${surah} · ${startAyah}–${endAyah}`
+    scope === 'juz'
+      ? `Juz ${juz}`
+      : scope === 'range'
+        ? `Surah ${surah} · ${startAyah}–${endAyah}`
+        : `Surah ${surah}`
 
   const modeSubtitle =
-    mode === 'random' ? 'Random' : mode === 'surah' ? 'Surah' : mode === 'juz' ? 'Juz' : 'Range'
+    mode === 'random' ? 'Random' : mode === 'subac' ? 'Subac' : scope === 'juz' ? 'Juz' : scope === 'range' ? 'Range' : 'Surah'
 
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
   const surahTitle =
@@ -84,22 +92,15 @@ function TestPageContent() {
       setLoading(true)
 
       try {
-        const chapterId =
-          mode === 'random' ? Math.floor(Math.random() * 114) + 1 : surah
-
-        if (mode === 'random') {
-          setRandomSurah(chapterId)
-        }
-
         const [rawVerses, visualPageMap] = await Promise.all([
-          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(chapterId),
-          mode === 'juz'
+          scope === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
+          scope === 'juz'
             ? getVisualPagesForScope({ juz })
-            : getVisualPagesForScope({ chapter: chapterId }),
+            : getVisualPagesForScope({ chapter: surah }),
         ])
 
         const verses =
-          mode === 'range'
+          scope === 'range'
             ? rawVerses.filter((v) => {
                 const n = Number(v.verse_key.split(':')[1])
                 return n >= startAyah && n <= endAyah
@@ -112,39 +113,50 @@ function TestPageContent() {
 
         setCachedScopeVerses(verses)
         setCachedVisualPageMap(visualPageMap)
-        
-        const pageToVerses = new Map<number, Verse[]>()
-        for (const v of verses) {
-          const page = visualPageMap[v.verse_key] || v.page_number || 1
-          if (!pageToVerses.has(page)) pageToVerses.set(page, [])
-          pageToVerses.get(page)!.push(v)
+
+        let targetVerse: Verse
+
+        if (mode === 'subac') {
+          const assignments = verses.slice(0, Math.min(participants, verses.length)).map((v) => v.verse_key)
+          setSubacAssignments(assignments)
+          setCurrentParticipant(0)
+          const firstKey = assignments[0]
+          targetVerse = verses.find((v) => v.verse_key === firstKey) ?? verses[0]
+        } else {
+          const pageToVerses = new Map<number, Verse[]>()
+          for (const v of verses) {
+            const page = visualPageMap[v.verse_key] || v.page_number || 1
+            if (!pageToVerses.has(page)) pageToVerses.set(page, [])
+            pageToVerses.get(page)!.push(v)
+          }
+
+          const candidateVerses = verses.filter((v) => {
+            const page = visualPageMap[v.verse_key] || v.page_number || 1
+            const pageVersesOnPage = pageToVerses.get(page) || []
+            const verseIdx = pageVersesOnPage.findIndex((pv) => pv.verse_key === v.verse_key)
+            return verseIdx > 0 && verseIdx < pageVersesOnPage.length - 1
+          })
+
+          const safeCandidates = candidateVerses.length > 0 ? candidateVerses : verses
+          targetVerse = safeCandidates[Math.floor(Math.random() * safeCandidates.length)]
         }
-        
-        const candidateVerses = verses.filter(v => {
-          const page = visualPageMap[v.verse_key] || v.page_number || 1
-          const pageVerses = pageToVerses.get(page) || []
-          const verseIdx = pageVerses.findIndex(pv => pv.verse_key === v.verse_key)
-          return verseIdx > 0 && verseIdx < pageVerses.length - 1
-        })
-        
-        const safeCandidates = candidateVerses.length > 0 ? candidateVerses : verses
-        const randomVerse = safeCandidates[Math.floor(Math.random() * safeCandidates.length)]
+
         const startPage =
-          visualPageMap[randomVerse.verse_key] ||
-          (await getVisualPageForVerse(randomVerse.verse_key, randomVerse.page_number || 1))
+          visualPageMap[targetVerse.verse_key] ||
+          (await getVisualPageForVerse(targetVerse.verse_key, targetVerse.page_number || 1))
         const pageVersesList = await getMushafPage(startPage)
         const availablePages = Array.from(
           new Set(verses.map((verse) => visualPageMap[verse.verse_key] || verse.page_number || 1))
         ).sort((a, b) => a - b)
 
-        setStartVerseKey(randomVerse.verse_key)
-        setQuestionVerseKey(randomVerse.verse_key)
+        setStartVerseKey(targetVerse.verse_key)
+        setQuestionVerseKey(targetVerse.verse_key)
         setQuestionPage(startPage)
         setScopeVerseKeys(new Set(verses.map((v) => v.verse_key)))
         setPageVerses(pageVersesList)
         setCurrentPage(startPage)
         setScopePages(availablePages)
-        setRevealedAyahs(new Set([randomVerse.verse_key]))
+        setRevealedAyahs(new Set([targetVerse.verse_key]))
         setPhase('testing')
       } catch (err) {
         console.error('Failed to load scope:', err)
@@ -153,7 +165,7 @@ function TestPageContent() {
       }
     }
     loadScope()
-  }, [mode, surah, juz, startAyah, endAyah, randomNonce])
+  }, [mode, scope, surah, juz, startAyah, endAyah, participants, randomNonce])
 
   const handleReveal = (verseKey: string) => {
     const nextRevealedAyahs = new Set([...revealedAyahs, verseKey])
@@ -216,6 +228,43 @@ function TestPageContent() {
     setRandomNonce((prev) => prev + 1)
   }
 
+  const handleNextParticipant = async () => {
+    const next = currentParticipant + 1
+    if (next >= subacAssignments.length) return
+
+    const verseKey = subacAssignments[next]
+    const verse = cachedScopeVerses.find((v) => v.verse_key === verseKey)
+    if (!verse) return
+
+    try {
+      const page =
+        cachedVisualPageMap[verseKey] ||
+        (await getVisualPageForVerse(verseKey, verse.page_number || 1))
+      const pageVersesList = await getMushafPage(page)
+
+      setCurrentParticipant(next)
+      setStartVerseKey(verseKey)
+      setQuestionVerseKey(verseKey)
+      setQuestionPage(page)
+      setPageVerses(pageVersesList)
+      setCurrentPage(page)
+      setRevealedAyahs(new Set([verseKey]))
+      setPhase('testing')
+    } catch (err) {
+      console.error('Failed to load participant ayah:', err)
+    }
+  }
+
+  const activeRevealKeys =
+    mode === 'subac' && subacAssignments[currentParticipant]
+      ? new Set([subacAssignments[currentParticipant]])
+      : scopeVerseKeys
+
+  const subacProgress =
+    subacAssignments.length > 0
+      ? Math.round(((currentParticipant + 1) / subacAssignments.length) * 100)
+      : 0
+
   const revealedCount = revealedAyahs.size
   const startIndex = pageVerses.findIndex((v) => v.verse_key === startVerseKey)
   const revealablePageVerses =
@@ -223,7 +272,12 @@ function TestPageContent() {
       ? pageVerses.slice(startIndex).filter((v) => scopeVerseKeys.has(v.verse_key))
       : pageVerses.filter((v) => scopeVerseKeys.has(v.verse_key))
   const totalCount = revealablePageVerses.length
-  const progress = totalCount > 0 ? Math.round((revealedCount / totalCount) * 100) : 0
+  const progress =
+    mode === 'subac'
+      ? subacProgress
+      : totalCount > 0
+        ? Math.round((revealedCount / totalCount) * 100)
+        : 0
   const currentPageIndex = scopePages.indexOf(currentPage)
   const hasPreviousPage = currentPageIndex > 0 && currentPage > questionPage
   const pageComplete = totalCount > 0 && revealedCount >= totalCount
@@ -253,7 +307,9 @@ function TestPageContent() {
               {surahTitle}
             </p>
             <p className="text-[11px] text-stone-400">
-              {scopeLabel} · {modeSubtitle} · Page {currentPage}
+              {mode === 'subac' && subacAssignments.length > 0
+                ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · ${scopeLabel} · Page ${currentPage}`
+                : `${scopeLabel} · ${modeSubtitle} · Page ${currentPage}`}
             </p>
           </div>
           <Link
@@ -285,13 +341,21 @@ function TestPageContent() {
               <QuranPageView
                 verses={pageVerses}
                 startVerseKey={startVerseKey}
-                revealableVerseKeys={scopeVerseKeys}
+                revealableVerseKeys={activeRevealKeys}
                 revealedAyahs={revealedAyahs}
                 onReveal={handleReveal}
               />
             </div>
 
-            
+            {mode === 'subac' && subacAssignments[currentParticipant] && (
+              <p className="mx-auto mb-4 max-w-3xl text-center text-sm text-stone-400">
+                Ayah{' '}
+                <span className="font-medium text-teal-400">
+                  {subacAssignments[currentParticipant].split(':')[1]}
+                </span>{' '}
+                — tap to reveal when ready
+              </p>
+            )}
 
             <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between">
               <Button
@@ -326,10 +390,23 @@ function TestPageContent() {
             )}
 
             <div className="mx-auto max-w-3xl">
-              <Button variant="primary" size="lg" className="w-full" onClick={handleNewRandom}>
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                New random verse
-              </Button>
+              {mode === 'subac' ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleNextParticipant}
+                  disabled={currentParticipant >= subacAssignments.length - 1}
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                  Next person
+                </Button>
+              ) : (
+                <Button variant="primary" size="lg" className="w-full" onClick={handleNewRandom}>
+                  <RefreshCw className="h-4 w-4" aria-hidden />
+                  New random verse
+                </Button>
+              )}
             </div>
           </>
         )}

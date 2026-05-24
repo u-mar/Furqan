@@ -42,7 +42,9 @@ export interface VerseWord {
   translation?: { text: string; language_name?: string }
 }
 
-export type ScopeMode = 'surah' | 'juz' | 'range' | 'random'
+export type ScopeMode = 'surah' | 'juz' | 'range' | 'random' | 'subac'
+
+export type ScopeType = 'surah' | 'juz' | 'range'
 
 export type DiffStatus = 'correct' | 'wrong' | 'missed' | 'extra'
 

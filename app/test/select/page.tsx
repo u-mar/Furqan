@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, BookOpen, Dices, MicVocal, Sparkles } from 'lucide-react'
+import { ChevronLeft, Dices, MicVocal, Sparkles, Users } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { cn } from '@/lib/cn'
 
@@ -9,17 +9,17 @@ const modes = [
   {
     id: 'random',
     label: 'Randomize',
-    description: 'Random ayah from a random surah',
-    href: '/test?mode=random',
+    description: 'Random ayah within a surah, juz, or range',
+    href: '/test/select/random',
     Icon: Dices,
     enabled: true,
   },
   {
-    id: 'surah',
-    label: 'Surah',
-    description: 'Pick a surah to test',
-    href: '/test/select/surah',
-    Icon: BookOpen,
+    id: 'subac',
+    label: 'Subac',
+    description: 'Group session — each person their own ayah',
+    href: '/test/select/subac',
+    Icon: Users,
     enabled: true,
   },
   {
