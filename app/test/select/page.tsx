@@ -1,145 +1,117 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
-import { getChapters } from '@/lib/quran'
+import { ChevronLeft, BookOpen, Dices, MicVocal, Sparkles } from 'lucide-react'
+import HomeScreen from '@/components/home/HomeScreen'
 import { cn } from '@/lib/cn'
-import type { Chapter } from '@/types'
 
-type Mode = 'juz' | 'surah' | 'range'
+const modes = [
+  {
+    id: 'random',
+    label: 'Randomize',
+    description: 'Random ayah from a random surah',
+    href: '/test?mode=random',
+    Icon: Dices,
+    enabled: true,
+  },
+  {
+    id: 'surah',
+    label: 'Surah',
+    description: 'Pick a surah to test',
+    href: '/test/select/surah',
+    Icon: BookOpen,
+    enabled: true,
+  },
+  {
+    id: 'tajweed',
+    label: 'Tajweed',
+    description: 'Tajweed rules & pronunciation',
+    href: null,
+    Icon: MicVocal,
+    enabled: false,
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Ayah range & blind mode',
+    href: null,
+    Icon: Sparkles,
+    enabled: false,
+  },
+] as const
 
 export default function TestSelectPage() {
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [mode, setMode] = useState<Mode>('juz')
-  const [selectedJuz, setSelectedJuz] = useState<number | null>(null)
-  const [selectedSurah, setSelectedSurah] = useState<Chapter | null>(null)
-  const [rangeFrom, setRangeFrom] = useState<{ surah: Chapter; ayah: number } | null>(null)
-  const [rangeTo, setRangeTo] = useState<{ surah: Chapter; ayah: number } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    getChapters().then(setChapters).finally(() => setLoading(false))
-  }, [])
-
-  const canBegin = useMemo(() => {
-    if (mode === 'range') return rangeFrom && rangeTo && rangeFrom.ayah <= rangeTo.ayah
-    if (mode === 'juz') return !!selectedJuz
-    return !!selectedSurah
-  }, [mode, selectedJuz, selectedSurah, rangeFrom, rangeTo])
-
-  const testHref = useMemo(() => {
-    const params = new URLSearchParams({ mode })
-    if (mode === 'juz' && selectedJuz) params.set('juz', String(selectedJuz))
-    else if (mode === 'surah' && selectedSurah) params.set('surah', String(selectedSurah.id))
-    else if (mode === 'range' && rangeFrom && rangeTo) {
-      params.set('surah', String(rangeFrom.surah.id))
-      params.set('startAyah', String(rangeFrom.ayah))
-      params.set('endAyah', String(rangeTo.ayah))
-    }
-    return `/test?${params.toString()}`
-  }, [mode, selectedJuz, selectedSurah, rangeFrom, rangeTo])
-
-  if (loading) {
-    return (
-      <main className="flex min-h-[100dvh] items-center justify-center bg-[#0a0a0a]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
-      </main>
-    )
-  }
-
   return (
-    <main className="min-h-[100dvh] bg-[#0a0a0a] text-white">
-      <div className="mx-auto max-w-md px-4 py-6">
-        <header className="mb-6 flex items-center gap-3">
-          <Link href="/" className="rounded-full p-2 text-teal-400 hover:bg-white/5">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-          <h1 className="text-xl font-semibold">Test — choose scope</h1>
-        </header>
+    <HomeScreen>
+      <header className="mb-6 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4 lg:mb-8">
+        <Link
+          href="/"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]"
+          aria-label="Back to home"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
+            Test
+          </h1>
+          <p className="text-sm text-[var(--app-muted)]">Choose how you want to practice</p>
+        </div>
+      </header>
 
-        <div className="mb-5 flex gap-1 rounded-full bg-[#1a1a1a] p-1">
-          {(['juz', 'surah', 'range'] as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => {
-                setMode(m)
-                setSelectedJuz(null)
-                setSelectedSurah(null)
-                setRangeFrom(null)
-                setRangeTo(null)
-              }}
+      <section aria-label="Test modes" className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
+        {modes.map((mode) => {
+          const { Icon } = mode
+          const inner = (
+            <div
               className={cn(
-                'flex-1 rounded-full py-2 text-sm font-medium capitalize transition-colors',
-                mode === m ? 'bg-teal-600 text-white' : 'text-stone-400'
+                'relative flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 py-4 shadow-[var(--home-card-shadow)] transition-all duration-200',
+                'lg:aspect-auto lg:min-h-[160px] lg:gap-3',
+                mode.enabled &&
+                  'hover:border-teal-500/30 active:scale-[0.97] lg:hover:scale-[1.01]',
+                !mode.enabled && 'opacity-60'
               )}
             >
-              {m}
-            </button>
-          ))}
-        </div>
-
-        {mode === 'juz' && (
-          <div className="mb-6 grid grid-cols-6 gap-2">
-            {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
-              <button
-                key={juz}
-                type="button"
-                onClick={() => setSelectedJuz(juz)}
+              {!mode.enabled && (
+                <span className="absolute right-2.5 top-2.5 rounded-full bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-medium text-[var(--app-muted)]">
+                  Soon
+                </span>
+              )}
+              <Icon
                 className={cn(
-                  'aspect-square rounded-lg text-sm font-medium',
-                  selectedJuz === juz
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-[#1a1a1a] text-stone-300 hover:bg-[#252525]'
+                  'h-10 w-10 lg:h-12 lg:w-12',
+                  mode.enabled ? 'text-teal-600 dark:text-teal-400' : 'text-[var(--app-muted)]'
                 )}
+                strokeWidth={1.75}
+              />
+              <span className="text-center text-sm font-semibold text-[var(--app-text)] lg:text-base">
+                {mode.label}
+              </span>
+              <span className="line-clamp-2 text-center text-[10px] leading-snug text-[var(--app-muted)] lg:text-xs">
+                {mode.description}
+              </span>
+            </div>
+          )
+
+          if (mode.enabled && mode.href) {
+            return (
+              <Link
+                key={mode.id}
+                href={mode.href}
+                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60"
               >
-                {juz}
-              </button>
-            ))}
-          </div>
-        )}
+                {inner}
+              </Link>
+            )
+          }
 
-        {mode === 'surah' && (
-          <div className="mb-6 max-h-[50vh] overflow-y-auto rounded-xl border border-white/10">
-            {chapters.map((chapter) => (
-              <button
-                key={chapter.id}
-                type="button"
-                onClick={() => setSelectedSurah(chapter)}
-                className={cn(
-                  'flex w-full items-center border-b border-white/5 px-4 py-3 text-left last:border-0',
-                  selectedSurah?.id === chapter.id && 'bg-teal-900/30'
-                )}
-              >
-                <span className="w-8 text-stone-500">{chapter.id}</span>
-                <span className="flex-1 font-medium">{chapter.englishName}</span>
-                <span className="text-sm text-teal-400">{chapter.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {mode === 'range' && (
-          <p className="mb-6 text-sm text-stone-400">
-            Pick surah and ayah range on the home flow — use Juz or Surah for now, or extend this
-            screen later.
-          </p>
-        )}
-
-        <Link
-          href={canBegin ? testHref : '#'}
-          onClick={(e) => !canBegin && e.preventDefault()}
-          className={cn(
-            'flex w-full items-center justify-center rounded-xl py-3.5 text-sm font-semibold',
-            canBegin
-              ? 'bg-teal-600 text-white hover:bg-teal-500'
-              : 'bg-[#1a1a1a] text-stone-600'
-          )}
-        >
-          Start test
-        </Link>
-      </div>
-    </main>
+          return (
+            <div key={mode.id} className="cursor-default" aria-disabled>
+              {inner}
+            </div>
+          )
+        })}
+      </section>
+    </HomeScreen>
   )
 }

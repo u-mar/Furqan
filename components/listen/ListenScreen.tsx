@@ -10,6 +10,8 @@ import {
   Square,
   Loader2,
   Headphones,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { setAppSettings } from '@/lib/app-settings'
@@ -27,7 +29,7 @@ export default function ListenScreen() {
   const [query, setQuery] = useState('')
   const [reciterOpen, setReciterOpen] = useState(false)
 
-  const { state, playSurah, togglePlayPause, stop, isActiveSurah } = useSurahPlayer(
+  const { state, playSurah, togglePlayPause, seekRelative, stop, isActiveSurah } = useSurahPlayer(
     settings.reciterId
   )
 
@@ -188,7 +190,16 @@ export default function ListenScreen() {
                   {state.error && <span className="ml-2 text-red-500">{state.error}</span>}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => seekRelative(-15)}
+                  className="flex h-11 w-11 flex-col items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--app-muted)] active:scale-95"
+                  aria-label="Rewind 15 seconds"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span className="text-[9px] font-semibold leading-none">15</span>
+                </button>
                 <button
                   type="button"
                   onClick={togglePlayPause}
@@ -202,6 +213,15 @@ export default function ListenScreen() {
                   ) : (
                     <Play className="h-5 w-5 fill-current" />
                   )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => seekRelative(15)}
+                  className="flex h-11 w-11 flex-col items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--app-muted)] active:scale-95"
+                  aria-label="Forward 15 seconds"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  <span className="text-[9px] font-semibold leading-none">15</span>
                 </button>
                 <button
                   type="button"

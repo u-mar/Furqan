@@ -41,6 +41,7 @@ function TestPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [scopePages, setScopePages] = useState<number[]>([])
   const [randomNonce, setRandomNonce] = useState(0)
+  const [randomSurah, setRandomSurah] = useState<number | null>(null)
   const [navDirection, setNavDirection] = useState<'forward' | 'backward' | null>(null)
 
   useEffect(() => {
@@ -61,13 +62,18 @@ function TestPageContent() {
   }, [])
 
   const scopeLabel =
-    mode === 'surah'
-      ? `Surah ${surah}`
-      : mode === 'juz'
-        ? `Juz ${juz}`
-        : `Surah ${surah} · ${startAyah}–${endAyah}`
+    mode === 'random'
+      ? randomSurah
+        ? `Surah ${randomSurah}`
+        : 'Random'
+      : mode === 'surah'
+        ? `Surah ${surah}`
+        : mode === 'juz'
+          ? `Juz ${juz}`
+          : `Surah ${surah} · ${startAyah}–${endAyah}`
 
-  const modeSubtitle = mode === 'surah' ? 'Surah' : mode === 'juz' ? 'Juz' : 'Range'
+  const modeSubtitle =
+    mode === 'random' ? 'Random' : mode === 'surah' ? 'Surah' : mode === 'juz' ? 'Juz' : 'Range'
 
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
   const surahTitle =
@@ -78,9 +84,18 @@ function TestPageContent() {
       setLoading(true)
 
       try {
+        const chapterId =
+          mode === 'random' ? Math.floor(Math.random() * 114) + 1 : surah
+
+        if (mode === 'random') {
+          setRandomSurah(chapterId)
+        }
+
         const [rawVerses, visualPageMap] = await Promise.all([
-          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(surah),
-          mode === 'juz' ? getVisualPagesForScope({ juz }) : getVisualPagesForScope({ chapter: surah }),
+          mode === 'juz' ? getVersesByJuz(juz) : getVersesByChapter(chapterId),
+          mode === 'juz'
+            ? getVisualPagesForScope({ juz })
+            : getVisualPagesForScope({ chapter: chapterId }),
         ])
 
         const verses =

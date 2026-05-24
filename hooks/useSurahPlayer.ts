@@ -91,6 +91,15 @@ export function useSurahPlayer(reciterId: string) {
     [playAyah]
   )
 
+  const seekRelative = useCallback((seconds: number) => {
+    const audio = audioRef.current
+    if (!audio || !state.surahId || !audio.src) return
+
+    const duration = Number.isFinite(audio.duration) ? audio.duration : audio.currentTime + Math.abs(seconds)
+    const next = Math.max(0, Math.min(duration, audio.currentTime + seconds))
+    audio.currentTime = next
+  }, [state.surahId])
+
   const togglePlayPause = useCallback(() => {
     const audio = audioRef.current
     if (!audio || !state.surahId) return
@@ -165,6 +174,7 @@ export function useSurahPlayer(reciterId: string) {
     state,
     playSurah,
     togglePlayPause,
+    seekRelative,
     stop,
     isActiveSurah: (surahId: number) => state.surahId === surahId,
   }
