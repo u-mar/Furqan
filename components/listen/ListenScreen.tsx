@@ -86,7 +86,7 @@ export default function ListenScreen() {
               onClick={() => setReciterOpen((v) => !v)}
               className="flex min-h-[52px] w-full items-center justify-between rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-left"
             >
-              <span className="font-medium">{currentReciter.name}</span>
+              <span className="font-medium text-[var(--app-text)]">{currentReciter.name}</span>
               <ChevronDown
                 className={cn(
                   'h-5 w-5 text-[var(--app-muted)] transition-transform',
@@ -95,16 +95,16 @@ export default function ListenScreen() {
               />
             </button>
             {reciterOpen && (
-              <ul className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-[var(--home-card-border)] bg-[var(--app-surface)] py-1 shadow-xl">
+              <ul className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-1 shadow-[var(--home-card-shadow)]">
                 {RECITERS.map((r) => (
                   <li key={r.id}>
                     <button
                       type="button"
                       onClick={() => selectReciter(r.id)}
                       className={cn(
-                        'flex w-full px-4 py-3 text-left text-sm hover:bg-teal-500/10',
+                        'flex w-full px-4 py-3 text-left text-sm text-[var(--app-text)] transition-colors hover:bg-teal-500/10',
                         r.id === settings.reciterId &&
-                          'bg-teal-500/10 font-semibold text-teal-600 dark:text-teal-400'
+                          'bg-teal-500/15 font-semibold text-teal-800 dark:text-teal-400'
                       )}
                     >
                       {r.name}

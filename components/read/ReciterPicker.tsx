@@ -30,16 +30,21 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex max-w-full items-center gap-1 text-sm font-medium text-teal-400"
+        className="flex max-w-full items-center gap-1 text-sm font-medium text-teal-700 dark:text-teal-400"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="truncate">{current.name}</span>
-        <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')} />
+        <span className="truncate text-[var(--app-text)]">{current.name}</span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-[var(--app-muted)] transition-transform',
+            open && 'rotate-180'
+          )}
+        />
       </button>
       {open && (
         <ul
-          className="absolute bottom-full left-0 z-50 mb-2 max-h-52 w-64 overflow-y-auto rounded-xl border border-white/10 bg-[#1a1a1a] py-1 shadow-xl"
+          className="absolute bottom-full left-0 z-50 mb-2 max-h-52 w-64 overflow-y-auto rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-1 shadow-[var(--home-card-shadow)]"
           role="listbox"
         >
           {RECITERS.map((r) => (
@@ -51,8 +56,9 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
                   setOpen(false)
                 }}
                 className={cn(
-                  'w-full px-4 py-2.5 text-left text-sm hover:bg-teal-500/10',
-                  r.id === reciterId && 'bg-teal-500/10 font-semibold text-teal-400'
+                  'w-full px-4 py-2.5 text-left text-sm text-[var(--app-text)] transition-colors hover:bg-teal-500/10',
+                  r.id === reciterId &&
+                    'bg-teal-500/15 font-semibold text-teal-800 dark:text-teal-400'
                 )}
               >
                 {r.name}
@@ -64,4 +70,3 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
     </div>
   )
 }
-
