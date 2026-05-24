@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Languages, X, ChevronLeft, Square, SkipForward } from 'lucide-react'
+import { Play, Languages, X, ChevronLeft, Square, SkipForward, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 interface AyahActionSheetProps {
@@ -17,6 +17,10 @@ interface AyahActionSheetProps {
   onPlay: () => void
   onStopRecitation: () => void
   onNextAyah: () => void
+  somaliVoiceAvailable?: boolean
+  isSomaliVoicePlaying?: boolean
+  onPlaySomaliVoice?: () => void
+  onStopSomaliVoice?: () => void
 }
 
 export default function AyahActionSheet({
@@ -31,6 +35,10 @@ export default function AyahActionSheet({
   onPlay,
   onStopRecitation,
   onNextAyah,
+  somaliVoiceAvailable = false,
+  isSomaliVoicePlaying = false,
+  onPlaySomaliVoice,
+  onStopSomaliVoice,
 }: AyahActionSheetProps) {
   const [view, setView] = useState<'menu' | 'translation' | 'playing'>('menu')
   const [mounted, setMounted] = useState(false)
@@ -136,7 +144,7 @@ export default function AyahActionSheet({
         </div>
 
         {view === 'menu' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className={cn('grid gap-2', somaliVoiceAvailable ? 'grid-cols-3' : 'grid-cols-2')}>
             <button
               type="button"
               onClick={onPlay}
@@ -145,24 +153,50 @@ export default function AyahActionSheet({
               <Play className="h-5 w-5 fill-current" />
               <span className="text-sm font-medium">Play</span>
             </button>
+            {somaliVoiceAvailable && onPlaySomaliVoice && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSomaliVoicePlaying && onStopSomaliVoice) {
+                    onStopSomaliVoice()
+                  } else {
+                    onPlaySomaliVoice()
+                    setView('playing')
+                  }
+                }}
+                className={cn(
+                  'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border text-sm font-medium',
+                  isSomaliVoicePlaying
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                    : 'border-[var(--home-card-border)] bg-[var(--app-surface)] text-[var(--app-text)]'
+                )}
+              >
+                {isSomaliVoicePlaying ? (
+                  <Square className="h-5 w-5 fill-current" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+                <span>Somali</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setView('translation')}
-              className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-[#1a1a1a] text-teal-400"
+              className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] text-teal-700 dark:text-teal-400"
             >
               <Languages className="h-5 w-5" />
-              <span className="text-sm font-medium">Translation</span>
+              <span className="text-sm font-medium">Text</span>
             </button>
           </div>
         )}
 
         {view === 'translation' && (
           <div className="space-y-3">
-            <div className="rounded-xl bg-[#1a1a1a] px-4 py-3.5">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-stone-500">
+            <div className="rounded-xl bg-[var(--app-surface)] px-4 py-3.5">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--app-muted)]">
                 Translation
               </p>
-              <p className="text-left text-[15px] leading-relaxed text-stone-100">
+              <p className="text-left text-[15px] leading-relaxed text-[var(--app-text)]">
                 {translationLoading
                   ? 'Loading translation…'
                   : translation || 'Translation unavailable.'}

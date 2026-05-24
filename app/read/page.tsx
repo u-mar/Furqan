@@ -27,6 +27,7 @@ import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
+import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { getAppSettings } from '@/lib/app-settings'
 import { cn } from '@/lib/cn'
 import {
@@ -44,6 +45,7 @@ import {
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { prefetchPageFonts } from '@/lib/mushaf-fonts'
 import { getVerseArabicText } from '@/lib/quran-display'
+import { hasSomaliVoiceForVerse, loadSomaliVoiceManifest } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
@@ -67,6 +69,7 @@ function ReadPageContent() {
   const initialLoadDone = useRef(false)
   const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
+  const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [pageSlide, setPageSlide] = useState<{
     direction: PageSlideDirection
     incomingVerses: Verse[]
@@ -136,6 +139,31 @@ function ReadPageContent() {
       reciterId,
       verses: pageVerses,
     })
+
+  const {
+    state: somaliVoiceState,
+    playVerse: playSomaliVoice,
+    stop: stopSomaliVoice,
+    isActive: isSomaliVoiceActive,
+  } = useSomaliVoicePlayback()
+
+  useEffect(() => {
+    void loadSomaliVoiceManifest()
+  }, [])
+
+  useEffect(() => {
+    if (!ayahMenu?.verseKey) {
+      setSomaliVoiceAvailable(false)
+      return
+    }
+    let cancelled = false
+    void hasSomaliVoiceForVerse(ayahMenu.verseKey).then((ok) => {
+      if (!cancelled) setSomaliVoiceAvailable(ok)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [ayahMenu?.verseKey])
 
   const arabicByKey = useMemo(
     () => Object.fromEntries(pageVerses.map((v) => [v.verse_key, v.text_uthmani])),
@@ -626,14 +654,28 @@ function ReadPageContent() {
         translationLoading={ayahTranslationLoading}
         hasNextAyah={ayahMenuHasNext}
         isReciting={isActive}
-        onClose={() => setAyahMenu(null)}
+        somaliVoiceAvailable={somaliVoiceAvailable}
+        isSomaliVoicePlaying={
+          isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu?.verseKey
+        }
+        onClose={() => {
+          stopSomaliVoice()
+          setAyahMenu(null)
+        }}
         onPlay={() => {
           if (!ayahMenu) return
+          stopSomaliVoice()
           const key = ayahMenu.verseKey
           setUiVisible(false)
           setAyahMenu(null)
           playVerse(key, { continueOnPage: true })
         }}
+        onPlaySomaliVoice={() => {
+          if (!ayahMenu) return
+          stopRecitation()
+          void playSomaliVoice(ayahMenu.verseKey)
+        }}
+        onStopSomaliVoice={stopSomaliVoice}
         onStopRecitation={stopRecitation}
         onNextAyah={handleAyahMenuNext}
       />
