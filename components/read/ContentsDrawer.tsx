@@ -104,20 +104,41 @@ export default function ContentsDrawer({
 
   useEffect(() => {
     if (!open || topTab !== 'quarters' || quarters.length === 0) return
-    const sample = quarters.slice(0, 12)
-    for (const q of sample) {
-      if (previewText[q.verseKey]) continue
-      fetch(`/api/ayah?type=verse&verseKey=${encodeURIComponent(q.verseKey)}`)
-        .then((r) => r.json())
-        .then((v: { text_uthmani?: string }) => {
-          if (v.text_uthmani) {
-            setPreviewText((prev) => ({
-              ...prev,
-              [q.verseKey]: v.text_uthmani as string,
-            }))
-          }
-        })
-        .catch(() => {})
+    let cancelled = false
+    const missing = quarters.filter((q) => !previewText[q.verseKey])
+    const BATCH = 16
+
+    void (async () => {
+      for (let i = 0; i < missing.length; i += BATCH) {
+        if (cancelled) return
+        const batch = missing.slice(i, i + BATCH)
+        const results = await Promise.all(
+          batch.map(async (q) => {
+            try {
+              const res = await fetch(
+                `/api/ayah?type=verse&verseKey=${encodeURIComponent(q.verseKey)}`
+              )
+              if (!res.ok) return null
+              const v = (await res.json()) as { text_uthmani?: string }
+              return v.text_uthmani ? { key: q.verseKey, text: v.text_uthmani } : null
+            } catch {
+              return null
+            }
+          })
+        )
+        if (cancelled) return
+        const updates: Record<string, string> = {}
+        for (const row of results) {
+          if (row) updates[row.key] = row.text
+        }
+        if (Object.keys(updates).length > 0) {
+          setPreviewText((prev) => ({ ...prev, ...updates }))
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
   }, [open, topTab, quarters, previewText])
 
@@ -275,15 +296,16 @@ export default function ContentsDrawer({
                           className="flex w-full items-start gap-2 rounded-lg px-2 py-3 text-left hover:bg-white/5"
                         >
                           <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-teal-400">
+                              {q.surahName} · Ayah {q.ayah}
+                            </p>
                             <p
-                              className="arabic-text mb-1 line-clamp-2 text-lg leading-snug text-white"
+                              className="arabic-text mt-1 line-clamp-2 text-lg leading-snug text-white"
                               dir="rtl"
                             >
                               {previewText[q.verseKey] || '…'}
                             </p>
-                            <p className="text-xs text-stone-500">
-                              {q.surahName}: {q.ayah} · Page {q.page}
-                            </p>
+                            <p className="mt-1 text-xs text-stone-500">Page {q.page}</p>
                           </div>
                           {showRing ? (
                             <ProgressRing progress={progress} />

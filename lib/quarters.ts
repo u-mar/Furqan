@@ -1,3 +1,4 @@
+import quarterStarts from '@/lib/quarter-starts.json'
 import { JUZ_STARTS } from '@/lib/mushaf'
 import type { ChapterMeta } from '@/lib/chapters-meta'
 import { estimatePageForVerse } from '@/lib/chapters-meta'
@@ -15,37 +16,29 @@ export interface QuarterMarker {
 
 const QUARTERS_PER_JUZ = 8
 
+/** Canonical rubʿ al-ḥizb start ayahs (240), from Quran.com API. */
+const CANONICAL_QUARTER_STARTS = quarterStarts as string[]
+
+function parseVerseKey(key: string): { surah: number; ayah: number } {
+  const [s, a] = key.split(':')
+  return { surah: Number(s) || 1, ayah: Number(a) || 1 }
+}
+
 export function buildQuarterMarkers(meta: ChapterMeta[]): QuarterMarker[] {
-  const markers: QuarterMarker[] = []
   const nameById = Object.fromEntries(meta.map((c) => [c.id, c.name_simple]))
+  const markers: QuarterMarker[] = []
 
   for (let j = 0; j < JUZ_STARTS.length; j++) {
     const juz = j + 1
-    const start = JUZ_STARTS[j]
-    const end = JUZ_STARTS[j + 1]
-    const startPage = estimatePageForVerse(start.surah, start.ayah, meta)
-    const endPage = end
-      ? estimatePageForVerse(end.surah, end.ayah, meta) - 1
-      : 604
+    const baseIndex = j * QUARTERS_PER_JUZ
 
     for (let q = 0; q < QUARTERS_PER_JUZ; q++) {
-      const page =
-        q === 0
-          ? startPage
-          : Math.min(endPage, Math.round(startPage + ((endPage - startPage) * q) / QUARTERS_PER_JUZ))
+      const verseKey = CANONICAL_QUARTER_STARTS[baseIndex + q]
+      if (!verseKey) continue
 
-      let surah = start.surah
-      let ayah = start.ayah
-      if (q > 0) {
-        const progress = q / QUARTERS_PER_JUZ
-        const nextSurah = end?.surah ?? 114
-        const nextAyah = end?.ayah ?? 1
-        surah = Math.round(start.surah + (nextSurah - start.surah) * progress) || start.surah
-        ayah = q === QUARTERS_PER_JUZ - 1 && end ? end.ayah : Math.max(1, Math.round(start.ayah + progress * 40))
-        if (surah > nextSurah) surah = nextSurah
-      }
+      const { surah, ayah } = parseVerseKey(verseKey)
+      const page = estimatePageForVerse(surah, ayah, meta)
 
-      const verseKey = `${surah}:${ayah}`
       markers.push({
         id: `${juz}-${q + 1}`,
         juz,

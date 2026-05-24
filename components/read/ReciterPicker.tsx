@@ -30,11 +30,11 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex max-w-full items-center gap-1 text-sm font-medium text-teal-700 dark:text-teal-400"
+        className="flex max-w-full items-center gap-1 text-sm font-medium text-teal-600 dark:text-teal-400"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="truncate text-[var(--app-text)]">{current.name}</span>
+        <span className="truncate">{current.name}</span>
         <ChevronDown
           className={cn(
             'h-4 w-4 shrink-0 text-[var(--app-muted)] transition-transform',

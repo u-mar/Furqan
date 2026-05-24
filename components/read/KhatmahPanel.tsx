@@ -21,7 +21,6 @@ import {
   firstIncompleteDay,
   getKhatmahPlans,
   markDayComplete,
-  updateKhatmahPlan,
   type KhatmahDuration,
   type KhatmahPlan,
 } from '@/lib/khatmah'
@@ -48,7 +47,6 @@ interface KhatmahContextValue {
   handleCreate: (duration: KhatmahDuration) => void
   handleComplete: () => void
   handleDelete: () => void
-  toggleReminder: () => void
   onGoToPage: (page: number) => void
   onClose: () => void
 }
@@ -59,15 +57,6 @@ function useKhatmah(): KhatmahContextValue {
   const ctx = useContext(KhatmahContext)
   if (!ctx) throw new Error('useKhatmah must be used within KhatmahProvider')
   return ctx
-}
-
-function formatReminderTime(time24: string): string {
-  const [hStr, mStr] = time24.split(':')
-  const h = Number(hStr)
-  const m = Number(mStr) || 0
-  const hour = h % 12 || 12
-  const ampm = h >= 12 ? 'pm' : 'am'
-  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`
 }
 
 function KhatmahProvider({
@@ -143,16 +132,6 @@ function KhatmahProvider({
     setScreen('day')
   }, [activePlan, refreshPlans])
 
-  const toggleReminder = useCallback(() => {
-    if (!activePlan) return
-    updateKhatmahPlan({
-      ...activePlan,
-      reminderEnabled: !activePlan.reminderEnabled,
-      reminderTime: activePlan.reminderTime ?? '19:00',
-    })
-    refreshPlans()
-  }, [activePlan, refreshPlans])
-
   const value = useMemo<KhatmahContextValue>(
     () => ({
       plans,
@@ -169,7 +148,6 @@ function KhatmahProvider({
       handleCreate,
       handleComplete,
       handleDelete,
-      toggleReminder,
       onGoToPage,
       onClose,
     }),
@@ -184,7 +162,6 @@ function KhatmahProvider({
       handleCreate,
       handleComplete,
       handleDelete,
-      toggleReminder,
       onGoToPage,
       onClose,
     ]
@@ -405,41 +382,14 @@ export function KhatmahActionBar() {
   )
 }
 
-function KhatmahReminderSection() {
-  const { activePlan, handleDelete, screen, setScreen, setShowNew, toggleReminder } = useKhatmah()
+function KhatmahFooterActions() {
+  const { activePlan, handleDelete, screen, setScreen, setShowNew } = useKhatmah()
 
   if (screen !== 'day' || !activePlan) return null
 
   return (
     <div className="shrink-0 border-t border-white/5 px-5 pb-4 pt-4">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-stone-600">Reminder</p>
-      <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#1c1c1e] px-5 py-4">
-        <div>
-          <p className="text-sm font-medium text-white">Daily Reading</p>
-          <p className="mt-1 text-xs text-stone-500">
-            {formatReminderTime(activePlan.reminderTime ?? '19:00')}
-          </p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={activePlan.reminderEnabled ?? false}
-          onClick={toggleReminder}
-          className={cn(
-            'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-            activePlan.reminderEnabled ? 'bg-teal-500' : 'bg-stone-600'
-          )}
-        >
-          <span
-            className={cn(
-              'absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform',
-              activePlan.reminderEnabled ? 'left-[22px]' : 'left-0.5'
-            )}
-          />
-        </button>
-      </div>
-
-      <div className="mt-6 space-y-3">
+      <div className="space-y-3">
         <button
           type="button"
           onClick={() => setScreen('allDays')}
@@ -504,11 +454,11 @@ export function KhatmahDrawerLayout(props: KhatmahPanelProps) {
   return (
     <KhatmahProvider {...props}>
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        <KhatmahInner />
-        <KhatmahActionBar />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <KhatmahReminderSection />
+          <KhatmahInner />
         </div>
+        <KhatmahActionBar />
+        <KhatmahFooterActions />
       </div>
     </KhatmahProvider>
   )

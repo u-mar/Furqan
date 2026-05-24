@@ -67,6 +67,7 @@ function ReadPageContent() {
   const longPressBlockTap = useRef(false)
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
+  const contentScrollRef = useRef<HTMLDivElement>(null)
   const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
@@ -333,7 +334,7 @@ function ReadPageContent() {
     if (currentPage > 1) void navigatePage(currentPage - 1)
   }, [currentPage, navigatePage])
 
-  const swipe = useSwipe(
+  const mushafSwipe = useSwipe(
     verticalPages
       ? {
           direction: 'vertical',
@@ -358,6 +359,27 @@ function ReadPageContent() {
           },
         }
   )
+
+  /** With translation on, use horizontal swipes so vertical scroll inside the list still works. */
+  const translationPageSwipe = useSwipe({
+    direction: 'horizontal',
+    threshold: 56,
+    onSwipeLeft: () => {
+      didSwipe.current = true
+      goPrevPage()
+    },
+    onSwipeRight: () => {
+      didSwipe.current = true
+      goNextPage()
+    },
+  })
+
+  const contentSwipe = showTranslation ? translationPageSwipe : mushafSwipe
+
+  useEffect(() => {
+    if (!showTranslation) return
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [currentPage, showTranslation])
 
   const handleContentTap = () => {
     if (didSwipe.current) {
@@ -428,13 +450,14 @@ function ReadPageContent() {
 
       {/* Mushaf body — fixed fit when reading; scroll when translation */}
       <div
+        ref={contentScrollRef}
         className={cn(
           'relative min-h-0 flex-1 px-4',
           showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
         )}
-        onClick={handleContentTap}
-        onTouchStart={showTranslation || pageSlide ? undefined : swipe.onTouchStart}
-        onTouchEnd={showTranslation || pageSlide ? undefined : swipe.onTouchEnd}
+        onClick={showTranslation ? undefined : handleContentTap}
+        onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
+        onTouchEnd={pageSlide ? undefined : contentSwipe.onTouchEnd}
         role="presentation"
       >
         {showTranslation ? (
