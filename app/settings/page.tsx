@@ -150,8 +150,7 @@ export default function SettingsPage() {
         setProgress(p.percent)
         setProgressLabel(p.label)
       })
-      setAppSettings({ mushafStyle: 'uthmani-glyphs', offlineDownloaded: true })
-      setMushafStyle('uthmani-glyphs')
+      setAppSettings({ offlineDownloaded: true })
       setOffline(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Download failed')
@@ -229,16 +228,16 @@ export default function SettingsPage() {
           </h2>
           <div className="space-y-2">
             <SettingsRow
-              title="Uthmani (Mushaf)"
-              description="Printed Madani layout — recommended for offline (glyphs + fonts)"
-              selected={mushafStyle === 'uthmani-glyphs'}
-              onClick={() => saveMushaf('uthmani-glyphs')}
-            />
-            <SettingsRow
               title="IndoPak (Naskh)"
-              description="Plain Naskh text — lighter, no per-page glyph fonts"
+              description="Recommended — connected Arabic text, works offline without extra fonts"
               selected={mushafStyle === 'indopak'}
               onClick={() => saveMushaf('indopak')}
+            />
+            <SettingsRow
+              title="Uthmani (Mushaf)"
+              description="Printed Madani layout — needs Wi‑Fi or full offline font download"
+              selected={mushafStyle === 'uthmani-glyphs'}
+              onClick={() => saveMushaf('uthmani-glyphs')}
             />
           </div>
         </section>

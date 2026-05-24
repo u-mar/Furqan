@@ -25,7 +25,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafStyle: 'uthmani-glyphs',
+  mushafStyle: 'indopak',
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,

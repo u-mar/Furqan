@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { loadPageFont, loadSurahNameFont, prefetchPageFonts, qcfFontFamily } from '@/lib/mushaf-fonts'
+import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
 import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
@@ -119,14 +120,15 @@ export default function QuranPageView({
   onReveal,
   readMode = false,
   readOnly = false,
-  mushafStyle = 'uthmani-glyphs',
+  mushafStyle = 'indopak',
   pageNumber: pageNumberProp,
   highlightedVerseKey = null,
   selectedVerseKey = null,
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  const useGlyphs = mushafStyle === 'uthmani-glyphs'
+  const useGlyphs = wantsUthmaniGlyphs(mushafStyle)
+  const tryQcfFonts = shouldAttemptQcfFonts(mushafStyle)
 
   const { lines, nextVerseKey, pageNumber, hasQcfGlyphs } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()
@@ -201,30 +203,24 @@ export default function QuranPageView({
 
   const qcfFamily = qcfFontFamily(pageNumber)
   const needsQuranFonts =
-    useGlyphs && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
+    tryQcfFonts && (hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
-  const [glyphsReady, setGlyphsReady] = useState(!needsQuranFonts || !hasQcfGlyphs)
   const [qcfFontReady, setQcfFontReady] = useState(false)
 
   useEffect(() => {
     if (!needsQuranFonts || !hasQcfGlyphs) {
       setQcfFontReady(false)
-      setGlyphsReady(true)
       return
     }
 
-    setGlyphsReady(false)
     setQcfFontReady(false)
     let cancelled = false
 
     void (async () => {
       await loadSurahNameFont()
       const ok = await loadPageFont(pageNumber)
-      if (!cancelled) {
-        setQcfFontReady(ok)
-        setGlyphsReady(true)
-      }
+      if (!cancelled) setQcfFontReady(ok)
       if (ok) prefetchPageFonts(pageNumber, 2)
     })()
 
@@ -233,9 +229,8 @@ export default function QuranPageView({
     }
   }, [hasQcfGlyphs, needsQuranFonts, pageNumber])
 
-  /** QCF glyph codes only render correctly with the per-page font — otherwise use plain Arabic. */
-  const useQcfRendering = hasQcfGlyphs && qcfFontReady
-  const plainFontStack = "'UthmanicHafs', var(--font-amiri), 'Amiri', 'Traditional Arabic', serif"
+  /** Never render code_v2 without the matching page font — use plain Uthmani text instead. */
+  const useQcfRendering = tryQcfFonts && hasQcfGlyphs && qcfFontReady
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
   const gridRef = useRef<HTMLDivElement>(null)
@@ -277,9 +272,11 @@ export default function QuranPageView({
         `}</style>
       )}
 
-      {!glyphsReady && readMode && needsQuranFonts && hasQcfGlyphs && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
+      {readMode && useGlyphs && hasQcfGlyphs && needsQuranFonts && !qcfFontReady && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center pt-1">
+          <span className="rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-stone-300">
+            Plain Arabic — mushaf fonts loading…
+          </span>
         </div>
       )}
 
@@ -287,10 +284,7 @@ export default function QuranPageView({
         ref={gridRef}
         className={cn(
           readMode
-            ? cn(
-                'mushaf-fit-grid h-full transition-opacity duration-150',
-                glyphsReady ? 'opacity-100' : 'pointer-events-none opacity-0'
-              )
+            ? 'mushaf-fit-grid h-full'
             : cn(
                 'mushaf-page-sheet flex flex-col rounded-lg p-4',
                 'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
@@ -321,7 +315,7 @@ export default function QuranPageView({
                 ? 'SurahNameV2'
                 : useQcfRendering
                   ? qcfFamily
-                  : plainFontStack,
+                  : PLAIN_MUSHAF_FONT,
             }}
           >
             {line.isSurahHeader && line.chapterNumber ? (

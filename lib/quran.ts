@@ -1,5 +1,4 @@
 import type { Chapter, Verse } from '@/types'
-import { getAppSettings } from '@/lib/app-settings'
 import {
   getLocalMushafPage,
   isOfflineReady,
@@ -73,10 +72,11 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 }
 
 export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
-  const settings = typeof window !== 'undefined' ? getAppSettings() : null
-  const preferLocal = settings?.offlineDownloaded || isOfflineReady()
+  const online = typeof navigator !== 'undefined' ? navigator.onLine : true
+  const hasLocal = isOfflineReady()
+  const preferLocalOnly = hasLocal && !online
 
-  if (preferLocal && isOfflineReady()) {
+  if (preferLocalOnly) {
     const local = getLocalMushafPage(pageNumber)
     if (local && local.length > 0) {
       prefetchMushafPages(pageNumber, 3)
@@ -85,7 +85,7 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
   }
 
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), preferLocal ? 8_000 : 45_000)
+  const timeout = window.setTimeout(() => controller.abort(), online ? 45_000 : 8_000)
 
   try {
     const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`, {
@@ -102,7 +102,7 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     prefetchMushafPages(pageNumber, 1)
     return verses
   } catch (err) {
-    if (isOfflineReady()) {
+    if (hasLocal) {
       const fallback = getLocalMushafPage(pageNumber)
       if (fallback?.length) return fallback
     }
