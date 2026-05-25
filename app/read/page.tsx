@@ -579,7 +579,6 @@ function ReadPageContent() {
             chapters={chapters}
             translationLanguage={translationLanguage}
             highlightedVerseKey={highlightedVerseKey}
-            showArabic={false}
           />
         ) : verticalPages ? (
           <MushafPageCarousel

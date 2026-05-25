@@ -8,7 +8,7 @@ import { IconQuranStand } from '@/components/home/TileIcons'
 const slides = [
   {
     id: 2,
-    title: 'Community',
+    title: 'Hifdh Practice',
     off: 'Test mode',
     price: 'Free',
     cta: 'Try now',
@@ -37,14 +37,14 @@ export default function PromoBanner({ className }: { className?: string }) {
   const slide = slides[active]
 
   const ctaInner = (
-    <span className="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-sky-700 shadow-md transition-transform hover:scale-[1.02] active:scale-[0.98]">
+    <span className="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-teal-700 shadow-md shadow-teal-900/10 transition-transform hover:scale-[1.02] active:scale-[0.98]">
       {slide.cta}
     </span>
   )
 
   return (
     <section className={cn('mb-5 lg:mb-0 lg:flex lg:flex-col', className)}>
-      <div className="relative flex-1 overflow-hidden rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-500 via-cyan-400 to-blue-300 px-4 py-4 shadow-lg shadow-sky-100 lg:min-h-[140px] lg:px-6 lg:py-6">
+      <div className="relative flex-1 overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-600 via-teal-400 to-cyan-200 px-4 py-4 shadow-lg shadow-teal-100 lg:min-h-[140px] lg:px-6 lg:py-6">
         <div
           className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl"
           aria-hidden
@@ -68,7 +68,7 @@ export default function PromoBanner({ className }: { className?: string }) {
             onClick={() => setActive(i)}
             className={cn(
               'h-2 w-2 rounded-full transition-colors',
-              i === active ? 'bg-sky-500' : 'bg-sky-200 hover:bg-sky-300'
+              i === active ? 'bg-teal-500' : 'bg-teal-200 hover:bg-teal-300'
             )}
           />
         ))}

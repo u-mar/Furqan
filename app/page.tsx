@@ -50,7 +50,7 @@ export default function Home() {
   useAppSettings()
 
   return (
-    <HomeScreen className="home-blue-theme">
+    <HomeScreen className="home-teal-theme">
       <header className="mb-5 flex items-center justify-between border-b border-[var(--home-card-border)] pb-4 lg:mb-8 lg:pb-6">
         <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
           Al Quran
@@ -83,7 +83,7 @@ export default function Home() {
                   !tile.enabled && 'opacity-55'
                 )}
               >
-                <Icon className="h-12 w-12 text-sky-500 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
+                <Icon className="h-12 w-12 text-teal-500 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
                 <span className="text-center text-sm font-medium text-[var(--app-text)] lg:text-base">
                   {tile.label}
                 </span>
