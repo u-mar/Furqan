@@ -208,9 +208,11 @@ function ReadPageContent() {
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
     const settings = getAppSettings()
-    if (settings.offlineDownloaded && !isOfflineReady()) {
+    if (!isOfflineReady()) {
       import('@/lib/local-quran-store').then(({ hydrateOfflineFromDisk }) => {
-        hydrateOfflineFromDisk().catch(() => {})
+        hydrateOfflineFromDisk().catch(() => {
+          if (!settings.offlineDownloaded) return
+        })
       })
     }
   }, [])

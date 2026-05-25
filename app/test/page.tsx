@@ -366,6 +366,24 @@ function TestPageContent() {
 
       {phase === 'testing' && (
         <>
+          <section className="mb-4 rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/15 via-[var(--home-card-bg)] to-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+              Current challenge
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-[var(--app-text)]">
+                  Ayah {currentAyahNum}
+                </h2>
+                <p className="text-sm text-[var(--app-muted)]">{scopeLabel}</p>
+              </div>
+              <div className="rounded-2xl bg-[var(--app-surface)] px-3 py-2 text-right">
+                <p className="text-[10px] uppercase tracking-wider text-[var(--app-muted)]">Progress</p>
+                <p className="text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">{progress}%</p>
+              </div>
+            </div>
+          </section>
+
           <div className="mb-4 flex items-center gap-3">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--app-surface)]">
               <div

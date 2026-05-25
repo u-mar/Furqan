@@ -15,4 +15,4 @@ export function shouldAttemptQcfFonts(style: MushafStyle): boolean {
 
 /** Plain Arabic stack — always renders connected letters without QCF fonts. */
 export const PLAIN_MUSHAF_FONT =
-  "'UthmanicHafs', var(--font-amiri), 'Amiri', 'Traditional Arabic', serif"
+  "'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif"

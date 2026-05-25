@@ -7,6 +7,7 @@ import { useQcfFont } from '@/hooks/useQcfFont'
 import { qcfFontFamily } from '@/lib/mushaf-fonts'
 import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
 import { normalizeUthmaniPage, type NormalizedUthmaniVerse } from '@/lib/quran-normalizer'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
@@ -100,6 +101,63 @@ function QcfMushafPage({
         >
           {verse.text}
         </span>
+      ))}
+    </div>
+  )
+}
+
+function UnicodeMushafVerse({
+  verse,
+  highlightedVerseKey,
+  selectedVerseKey,
+  onAyahLongPress,
+}: {
+  verse: Verse
+  highlightedVerseKey?: string | null
+  selectedVerseKey?: string | null
+  onAyahLongPress?: (verseKey: string) => void
+}) {
+  const longPress = useLongPress(() => onAyahLongPress?.(verse.verse_key))
+  const text = getVerseArabicText(verse)
+  const active = highlightedVerseKey === verse.verse_key
+  const selected = selectedVerseKey === verse.verse_key
+
+  return (
+    <span
+      data-verse-keys={verse.verse_key}
+      className={cn(
+        'mushaf-unicode-verse',
+        active && 'mushaf-line--reciting',
+        selected && !active && 'mushaf-line--selected'
+      )}
+      {...(onAyahLongPress ? longPress.handlers : {})}
+    >
+      {text}
+    </span>
+  )
+}
+
+function UnicodeMushafPage({
+  verses,
+  highlightedVerseKey,
+  selectedVerseKey,
+  onAyahLongPress,
+}: {
+  verses: Verse[]
+  highlightedVerseKey?: string | null
+  selectedVerseKey?: string | null
+  onAyahLongPress?: (verseKey: string) => void
+}) {
+  return (
+    <div className="mushaf-unicode-page" style={{ fontFamily: PLAIN_MUSHAF_FONT }}>
+      {verses.map((verse) => (
+        <UnicodeMushafVerse
+          key={verse.verse_key}
+          verse={verse}
+          highlightedVerseKey={highlightedVerseKey}
+          selectedVerseKey={selectedVerseKey}
+          onAyahLongPress={onAyahLongPress}
+        />
       ))}
     </div>
   )
@@ -372,6 +430,26 @@ export default function QuranPageView({
               letterSpacing: 0,
               wordSpacing: 0,
             }}
+            highlightedVerseKey={highlightedVerseKey}
+            selectedVerseKey={selectedVerseKey}
+            onAyahLongPress={ayahLongPress}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (readOnly) {
+    return (
+      <div
+        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+        dir="rtl"
+        lang="ar"
+        aria-label="Quran page"
+      >
+        <div ref={gridRef} className="mushaf-unicode-page-wrap h-full">
+          <UnicodeMushafPage
+            verses={verses}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}

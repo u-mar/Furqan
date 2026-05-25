@@ -1,7 +1,7 @@
 export type ThemeMode = 'light' | 'dark'
 
-/** Uthmani Hafs = QCF glyph mushaf; IndoPak = Naskh-style text layout (no per-page fonts). */
-export type MushafStyle = 'uthmani-glyphs' | 'indopak'
+/** Uthmani Hafs = connected Unicode Quran text; IndoPak = Naskh-style text layout. */
+export type MushafStyle = 'uthmani' | 'uthmani-glyphs' | 'indopak'
 
 export interface AppSettings {
   theme: ThemeMode
@@ -25,7 +25,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafStyle: 'indopak',
+  mushafStyle: 'uthmani',
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
@@ -40,7 +40,10 @@ export function getAppSettings(): AppSettings {
     const parsed = JSON.parse(raw) as Partial<AppSettings>
     return {
       theme: parsed.theme === 'light' ? 'light' : 'dark',
-      mushafStyle: parsed.mushafStyle === 'indopak' ? 'indopak' : 'uthmani-glyphs',
+      mushafStyle:
+        parsed.mushafStyle === 'indopak'
+          ? 'indopak'
+          : 'uthmani',
       offlineDownloaded: Boolean(parsed.offlineDownloaded),
       reciterId:
         typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0

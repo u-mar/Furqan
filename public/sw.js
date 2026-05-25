@@ -1,8 +1,8 @@
-const CACHE_VERSION = 'al-quran-v6'
-const STATIC_CACHE = 'al-quran-static-v6'
+const CACHE_VERSION = 'al-quran-v7'
+const STATIC_CACHE = 'al-quran-static-v7'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
-const PRECACHE = ['/quran-chapters.json']
+const PRECACHE = ['/quran-chapters.json', '/quran-data.json']
 
 function isNavigationRequest(request) {
   return (

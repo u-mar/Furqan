@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Dices, Layers, Search } from 'lucide-react'
+import { ArrowRight, ChevronLeft, Dices, Layers, Search, Sparkles } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
@@ -172,10 +172,21 @@ export default function TestScopeSetup({
         </div>
       </header>
 
+      <section className="mb-5 rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/15 via-[var(--home-card-bg)] to-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+          <Sparkles className="h-4 w-4" />
+          Smart randomizer
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Choose your practice area</h2>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--app-muted)]">
+          Select a surah, juz, or range. Muyassar will pick ayahs only from that scope.
+        </p>
+      </section>
+
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
         Test within
       </p>
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
         {SCOPE_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -184,8 +195,8 @@ export default function TestScopeSetup({
             className={cn(
               'flex flex-col items-center rounded-xl border px-2 py-3 text-center transition-all',
               scope === tab.id
-                ? 'border-teal-500/50 bg-teal-500/10 shadow-sm'
-                : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-teal-500/25'
+                ? 'border-teal-500/50 bg-teal-500/15 shadow-sm'
+                : 'border-transparent bg-transparent hover:border-teal-500/25 hover:bg-[var(--app-surface)]'
             )}
           >
             <span
@@ -299,17 +310,29 @@ export default function TestScopeSetup({
 
       {extra}
 
+      <div className="mb-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 text-sm shadow-[var(--home-card-shadow)]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">Selected scope</p>
+        <p className="mt-1 font-semibold text-[var(--app-text)]">
+          {scope === 'juz'
+            ? `Juz ${config.juz}`
+            : scope === 'range'
+              ? `Surah ${config.startSurah} to ${config.endSurah}`
+              : selectedSurah?.englishName ?? `Surah ${config.surah}`}
+        </p>
+      </div>
+
       <Link
         href={href}
         onClick={(e) => !ready && e.preventDefault()}
         className={cn(
-          'mt-2 flex w-full items-center justify-center rounded-xl py-3.5 text-sm font-semibold shadow-sm transition-colors',
+          'mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold shadow-sm transition-colors',
           ready
             ? 'bg-teal-600 text-white hover:bg-teal-500 active:scale-[0.99]'
             : 'cursor-not-allowed bg-[var(--app-surface)] text-[var(--app-muted)]'
         )}
       >
         {startLabel}
+        {ready && <ArrowRight className="h-4 w-4" />}
       </Link>
     </HomeScreen>
   )

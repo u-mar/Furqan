@@ -228,16 +228,16 @@ export default function SettingsPage() {
           </h2>
           <div className="space-y-2">
             <SettingsRow
-              title="IndoPak (Naskh)"
-              description="Recommended — connected Arabic text, works offline without extra fonts"
-              selected={mushafStyle === 'indopak'}
-              onClick={() => saveMushaf('indopak')}
+              title="Uthmani Hafs"
+              description="Recommended — clean connected Quran text, stable online and offline"
+              selected={mushafStyle === 'uthmani' || mushafStyle === 'uthmani-glyphs'}
+              onClick={() => saveMushaf('uthmani')}
             />
             <SettingsRow
-              title="Uthmani (Mushaf)"
-              description="Printed Madani layout — needs Wi‑Fi or full offline font download"
-              selected={mushafStyle === 'uthmani-glyphs'}
-              onClick={() => saveMushaf('uthmani-glyphs')}
+              title="IndoPak / Naskh"
+              description="Simple Naskh-style reading layout"
+              selected={mushafStyle === 'indopak'}
+              onClick={() => saveMushaf('indopak')}
             />
           </div>
         </section>
@@ -289,12 +289,11 @@ export default function SettingsPage() {
             {offline ? (
               <div className="mb-4 flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Full mushaf saved — Madani glyphs work offline
+                Quran text saved — reader works offline
               </div>
             ) : (
               <p className="mb-4 text-sm leading-relaxed text-[var(--app-muted)]">
-                One-time download (~50–80 MB): Quran text with proper page layout plus all
-                mushaf fonts. Looks the same as online.
+                One-time download: Quran text and page data for offline reading.
               </p>
             )}
 

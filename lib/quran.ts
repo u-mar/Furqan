@@ -1,6 +1,7 @@
 import type { Chapter, Verse } from '@/types'
 import {
   getLocalMushafPage,
+  hydrateOfflineFromDisk,
   isOfflineReady,
   prefetchMushafPages,
 } from '@/lib/local-quran-store'
@@ -105,6 +106,13 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     if (hasLocal) {
       const fallback = getLocalMushafPage(pageNumber)
       if (fallback?.length) return fallback
+    }
+    try {
+      await hydrateOfflineFromDisk()
+      const fallback = getLocalMushafPage(pageNumber)
+      if (fallback?.length) return fallback
+    } catch {
+      /* bundled offline file is optional */
     }
     throw err
   } finally {

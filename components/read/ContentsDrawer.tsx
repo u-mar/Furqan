@@ -297,15 +297,17 @@ export default function ContentsDrawer({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-teal-400">
-                              {q.surahName} · Ayah {q.ayah}
+                              Quarter {q.indexInJuz} starts at {q.verseKey}
                             </p>
                             <p
-                              className="arabic-text mt-1 line-clamp-2 text-lg leading-snug text-white"
+                              className="arabic-text mt-1 line-clamp-2 text-xl leading-snug text-white"
                               dir="rtl"
                             >
                               {previewText[q.verseKey] || '…'}
                             </p>
-                            <p className="mt-1 text-xs text-stone-500">Page {q.page}</p>
+                            <p className="mt-1 text-xs text-stone-500">
+                              {q.surahName} · Ayah {q.ayah} · Page {q.page}
+                            </p>
                           </div>
                           {showRing ? (
                             <ProgressRing progress={progress} />
