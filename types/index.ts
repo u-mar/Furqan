@@ -22,6 +22,7 @@ export interface Verse {
   id: number
   verse_key: string
   text_uthmani: string
+  code_v2?: string
   verse_number?: number
   juz_number?: number
   page_number?: number

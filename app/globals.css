@@ -167,6 +167,33 @@ html.dark .mushaf-reader-immersive {
   text-rendering: optimizeLegibility;
 }
 
+.mushaf-qcf-page {
+  display: block;
+  min-height: 0;
+  overflow: hidden;
+  text-align: center;
+}
+
+.mushaf-qcf-page-content {
+  display: block;
+  direction: rtl;
+  unicode-bidi: isolate;
+  color: var(--mushaf-read-text);
+  font-size: clamp(1.25rem, 3.2dvh, 2rem);
+  line-height: 2.1;
+  letter-spacing: 0;
+  word-spacing: 0;
+  font-feature-settings: "liga" 1, "calt" 1;
+  font-variant-ligatures: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.mushaf-qcf-page-content .qcf-line {
+  font-family: inherit;
+  direction: rtl;
+  unicode-bidi: isolate;
+}
+
 .mushaf-fit-line--header {
   font-size: clamp(0.95rem, 3.4dvh, 1.75rem);
 }

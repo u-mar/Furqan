@@ -14,6 +14,7 @@ const API_TIMEOUT_MS = 20_000
 
 async function fetchQcfPage(page: number): Promise<Verse[]> {
   const params = new URLSearchParams({
+    fields: 'code_v2',
     words: 'true',
     word_fields: 'code_v2,text_qpc_hafs,text_uthmani,line_number,v2_page,page_number,char_type_name',
     mushaf: '1',
