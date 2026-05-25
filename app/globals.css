@@ -69,6 +69,21 @@ html:not(.dark) {
   --hifdh-muted: #78716c;
 }
 
+.home-blue-theme {
+  --app-bg: #f7fbff;
+  --app-surface: #eaf6ff;
+  --app-border: rgba(14, 116, 144, 0.12);
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+  --home-glow:
+    radial-gradient(ellipse 70% 45% at 50% -15%, rgba(56, 189, 248, 0.2), transparent),
+    linear-gradient(180deg, #ffffff 0%, #f0f9ff 52%, #ffffff 100%);
+  --home-card-bg: rgba(255, 255, 255, 0.88);
+  --home-card-border: rgba(125, 211, 252, 0.55);
+  --home-card-shadow: 0 14px 40px rgba(56, 189, 248, 0.12);
+  --home-location-bg: #eff6ff;
+}
+
 html,
 body {
   min-height: 100%;
@@ -198,8 +213,13 @@ html.dark .mushaf-reader-immersive {
   display: block;
   position: relative;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   padding: min(2.2dvh, 1rem) min(6vw, 2rem);
+  scrollbar-width: none;
+}
+
+.mushaf-unicode-page-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .mushaf-unicode-page-wrap::before,
@@ -223,15 +243,15 @@ html.dark .mushaf-reader-immersive {
 }
 
 .mushaf-unicode-page {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow: visible;
   color: var(--mushaf-read-text);
   direction: rtl;
   text-align: justify;
   text-align-last: center;
   unicode-bidi: isolate;
-  font-size: clamp(1.45rem, 3.15dvh, 2.15rem);
-  line-height: 2.08;
+  font-size: clamp(1.32rem, 2.8dvh, 2rem);
+  line-height: 1.98;
   letter-spacing: 0;
   word-spacing: 0.08em;
   font-kerning: normal;

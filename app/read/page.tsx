@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -67,6 +67,7 @@ function ReadPageContent() {
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
   const longPressBlockTap = useRef(false)
+  const translationTouchStart = useRef({ x: 0, y: 0 })
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
   const contentScrollRef = useRef<HTMLDivElement>(null)
@@ -447,21 +448,45 @@ function ReadPageContent() {
         }
   )
 
-  /** With translation on, use horizontal swipes so vertical scroll inside the list still works. */
-  const translationPageSwipe = useSwipe({
-    direction: 'horizontal',
-    threshold: 56,
-    onSwipeLeft: () => {
+  const handleTranslationTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0]
+    translationTouchStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  const handleTranslationTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    const touch = e.changedTouches[0]
+    const dx = touch.clientX - translationTouchStart.current.x
+    const dy = touch.clientY - translationTouchStart.current.y
+    const absX = Math.abs(dx)
+    const absY = Math.abs(dy)
+    const threshold = 56
+
+    if (absX >= threshold && absX > absY) {
       didSwipe.current = true
-      goPrevPage()
-    },
-    onSwipeRight: () => {
+      if (dx < 0) goNextPage()
+      else goPrevPage()
+      return
+    }
+
+    if (!verticalPages || absY < threshold || absY <= absX) return
+
+    const el = contentScrollRef.current
+    if (!el) return
+    const atTop = el.scrollTop <= 2
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2
+
+    if (dy < 0 && atBottom) {
       didSwipe.current = true
       goNextPage()
-    },
-  })
+    } else if (dy > 0 && atTop) {
+      didSwipe.current = true
+      goPrevPage()
+    }
+  }
 
-  const contentSwipe = showTranslation ? translationPageSwipe : mushafSwipe
+  const contentSwipe = showTranslation
+    ? { onTouchStart: handleTranslationTouchStart, onTouchEnd: handleTranslationTouchEnd }
+    : mushafSwipe
 
   useEffect(() => {
     if (!showTranslation) return
@@ -542,7 +567,7 @@ function ReadPageContent() {
           'relative min-h-0 flex-1 px-4',
           showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
         )}
-        onClick={showTranslation ? undefined : handleContentTap}
+        onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
         onTouchEnd={pageSlide ? undefined : contentSwipe.onTouchEnd}
         role="presentation"

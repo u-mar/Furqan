@@ -31,8 +31,8 @@ const tiles = [
     enabled: true,
   },
   {
-    id: 'memorize',
-    label: 'Memorize',
+    id: 'community',
+    label: 'Community',
     href: null,
     Icon: IconMemorize,
     enabled: false,
@@ -50,7 +50,7 @@ export default function Home() {
   useAppSettings()
 
   return (
-    <HomeScreen>
+    <HomeScreen className="home-blue-theme">
       <header className="mb-5 flex items-center justify-between border-b border-[var(--home-card-border)] pb-4 lg:mb-8 lg:pb-6">
         <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
           Al Quran
@@ -83,14 +83,14 @@ export default function Home() {
                   !tile.enabled && 'opacity-55'
                 )}
               >
-                <Icon className="h-12 w-12 text-amber-500 dark:text-amber-400 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
+                <Icon className="h-12 w-12 text-sky-500 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
                 <span className="text-center text-sm font-medium text-[var(--app-text)] lg:text-base">
                   {tile.label}
                 </span>
                 {'sub' in tile && tile.sub && (
                   <span className="-mt-2 text-[10px] text-[var(--app-muted)] lg:text-xs">{tile.sub}</span>
                 )}
-                {!tile.enabled && tile.id === 'memorize' && (
+                {!tile.enabled && tile.id === 'community' && (
                   <span className="-mt-1 text-[10px] text-[var(--app-muted)] lg:text-xs">Soon</span>
                 )}
               </div>

@@ -118,9 +118,19 @@ function UnicodeMushafVerse({
   onAyahLongPress?: (verseKey: string) => void
 }) {
   const longPress = useLongPress(() => onAyahLongPress?.(verse.verse_key))
-  const text = getVerseArabicText(verse)
+  const pageWords = verse.words?.filter((word) => word.char_type_name !== 'end') ?? []
+  const text =
+    pageWords.length > 0
+      ? pageWords
+          .map((word) => (word.text_uthmani || word.text_qpc_hafs || '').trim())
+          .filter(Boolean)
+          .join(' ')
+      : getVerseArabicText(verse)
+  const hasEndMark = !verse.words?.length || verse.words.some((word) => word.char_type_name === 'end')
   const active = highlightedVerseKey === verse.verse_key
   const selected = selectedVerseKey === verse.verse_key
+
+  if (!text) return null
 
   return (
     <span
@@ -133,9 +143,11 @@ function UnicodeMushafVerse({
       {...(onAyahLongPress ? longPress.handlers : {})}
     >
       {text}
-      <span className="mushaf-ayah-stop" aria-hidden="true">
-        ۝
-      </span>
+      {hasEndMark && (
+        <span className="mushaf-ayah-stop" aria-hidden="true">
+          ۝
+        </span>
+      )}
     </span>
   )
 }
