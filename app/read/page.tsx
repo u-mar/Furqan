@@ -11,6 +11,7 @@ import {
   Play,
   Square,
   MessageSquareText,
+  Languages,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -46,6 +47,7 @@ import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/l
 import { prefetchPageFonts } from '@/lib/mushaf-fonts'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { hasSomaliVoiceForVerse, loadSomaliVoiceManifest } from '@/lib/somali-voice'
+import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 
 function ReadPageContent() {
@@ -68,6 +70,9 @@ function ReadPageContent() {
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
   const contentScrollRef = useRef<HTMLDivElement>(null)
+  const somaliAutoRef = useRef(false)
+  const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
+  const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
   const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
@@ -141,12 +146,47 @@ function ReadPageContent() {
       verses: pageVerses,
     })
 
+  const findNextSomaliVerse = useCallback(async (afterVerseKey?: string | null): Promise<string | null> => {
+    const verses = pageVersesRef.current
+    const startIndex = afterVerseKey
+      ? Math.max(0, verses.findIndex((v) => v.verse_key === afterVerseKey) + 1)
+      : 0
+
+    for (const verse of verses.slice(startIndex)) {
+      if (await hasSomaliVoiceForVerse(verse.verse_key)) return verse.verse_key
+    }
+
+    return null
+  }, [])
+
+  const handleSomaliSegmentEnd = useCallback(
+    (segment: SomaliVoiceSegment) => {
+      if (!somaliAutoRef.current) return
+
+      void (async () => {
+        const nextVerseKey = await findNextSomaliVerse(segment.verseKey)
+        if (!nextVerseKey) {
+          somaliAutoRef.current = false
+          setSomaliAutoPlaying(false)
+          return
+        }
+
+        await playSomaliVoiceRef.current(nextVerseKey)
+      })()
+    },
+    [findNextSomaliVerse]
+  )
+
   const {
     state: somaliVoiceState,
     playVerse: playSomaliVoice,
     stop: stopSomaliVoice,
     isActive: isSomaliVoiceActive,
-  } = useSomaliVoicePlayback()
+  } = useSomaliVoicePlayback({ onSegmentEnd: handleSomaliSegmentEnd })
+
+  useEffect(() => {
+    playSomaliVoiceRef.current = playSomaliVoice
+  }, [playSomaliVoice])
 
   useEffect(() => {
     void loadSomaliVoiceManifest()
@@ -183,6 +223,9 @@ function ReadPageContent() {
       const next = clampPage(page)
       if (next === currentPage || pageSlide) return
       stopRecitation()
+      stopSomaliVoice()
+      somaliAutoRef.current = false
+      setSomaliAutoPlaying(false)
 
       if (!verticalPages || showTranslation) {
         void loadPage(next)
@@ -202,7 +245,16 @@ function ReadPageContent() {
         setPageLoading(false)
       }
     },
-    [currentPage, fetchVersesForPage, loadPage, pageSlide, showTranslation, stopRecitation, verticalPages]
+    [
+      currentPage,
+      fetchVersesForPage,
+      loadPage,
+      pageSlide,
+      showTranslation,
+      stopRecitation,
+      stopSomaliVoice,
+      verticalPages,
+    ]
   )
 
   useEffect(() => {
@@ -256,15 +308,48 @@ function ReadPageContent() {
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
   const juzPart = juzForChapter(currentSurahNum)
+  const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
 
   const handleRecitationToggle = () => {
     if (isActive) {
       stopRecitation()
       return
     }
+    somaliAutoRef.current = false
+    setSomaliAutoPlaying(false)
+    stopSomaliVoice()
     setUiVisible(true)
     startRecitation()
   }
+
+  const handleSomaliPageToggle = async () => {
+    if (somaliAutoPlaying || isSomaliVoiceActive) {
+      somaliAutoRef.current = false
+      setSomaliAutoPlaying(false)
+      stopSomaliVoice()
+      return
+    }
+
+    stopRecitation()
+    const firstVerseKey = await findNextSomaliVerse(null)
+    if (!firstVerseKey) return
+
+    somaliAutoRef.current = true
+    setSomaliAutoPlaying(true)
+    await playSomaliVoice(firstVerseKey)
+  }
+
+  useEffect(() => {
+    if (!somaliAutoPlaying || !somaliVoiceState.error) return
+    somaliAutoRef.current = false
+    setSomaliAutoPlaying(false)
+  }, [somaliAutoPlaying, somaliVoiceState.error])
+
+  useEffect(() => {
+    somaliAutoRef.current = false
+    setSomaliAutoPlaying(false)
+    stopSomaliVoice()
+  }, [currentPage, stopSomaliVoice])
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
@@ -317,13 +402,13 @@ function ReadPageContent() {
           readMode
           mushafStyle={mushafStyle}
           pageNumber={pageNum}
-          highlightedVerseKey={recitation.highlightedVerseKey}
+          highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
         />
       )
     },
-    [handleAyahLongPress, mushafSelectedVerseKey, mushafStyle, recitation.highlightedVerseKey]
+    [handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, mushafStyle]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -468,7 +553,8 @@ function ReadPageContent() {
             page={currentPage}
             chapters={chapters}
             translationLanguage={translationLanguage}
-            highlightedVerseKey={recitation.highlightedVerseKey}
+            highlightedVerseKey={highlightedVerseKey}
+            showArabic={false}
           />
         ) : verticalPages ? (
           <MushafPageCarousel
@@ -496,7 +582,7 @@ function ReadPageContent() {
             readMode
             mushafStyle={mushafStyle}
             pageNumber={currentPage}
-            highlightedVerseKey={recitation.highlightedVerseKey}
+            highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
           />
@@ -562,6 +648,27 @@ function ReadPageContent() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
+          <button
+            type="button"
+            onClick={handleSomaliPageToggle}
+            disabled={pageVerses.length === 0}
+            className={cn(
+              'flex h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors disabled:opacity-40',
+              somaliAutoPlaying || isSomaliVoiceActive
+                ? 'bg-teal-500/20 text-teal-300'
+                : 'text-teal-400 hover:bg-white/5'
+            )}
+            aria-label={somaliAutoPlaying || isSomaliVoiceActive ? 'Stop Somali voice' : 'Play Somali voice'}
+          >
+            {somaliVoiceState.loading ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
+            ) : somaliAutoPlaying || isSomaliVoiceActive ? (
+              <Square className="h-4 w-4 fill-current" />
+            ) : (
+              <Languages className="h-4 w-4" />
+            )}
+            <span>Somali</span>
+          </button>
           <ReciterPicker reciterId={reciterId} />
           <button
             type="button"
@@ -638,6 +745,9 @@ function ReadPageContent() {
             type="button"
             onClick={() => {
               stopRecitation()
+              stopSomaliVoice()
+              somaliAutoRef.current = false
+              setSomaliAutoPlaying(false)
               setShowTranslation((v) => !v)
             }}
             className={cn(

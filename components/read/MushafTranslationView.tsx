@@ -12,6 +12,7 @@ interface MushafTranslationViewProps {
   chapters: Chapter[]
   translationLanguage: TranslationLanguageId
   highlightedVerseKey?: string | null
+  showArabic?: boolean
 }
 
 function verseNumber(verseKey: string): number {
@@ -28,6 +29,7 @@ export default function MushafTranslationView({
   chapters,
   translationLanguage,
   highlightedVerseKey = null,
+  showArabic = true,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, v.text_uthmani]))
@@ -87,27 +89,18 @@ export default function MushafTranslationView({
                 <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
               </div>
             )}
-            <p
-              className={cn(
-                'text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]',
-                isReciting && 'mushaf-translation-arabic--reciting'
-              )}
-              dir="rtl"
-              lang="ar"
-            >
-              {row.text_uthmani}
-              <span
+            {showArabic && (
+              <p
                 className={cn(
-                  'mx-1 inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full border px-1 text-[0.65rem] font-medium',
-                  isReciting
-                    ? 'border-teal-500/60 text-teal-400'
-                    : 'border-[var(--mushaf-read-meta)]/40 text-[var(--mushaf-read-meta)]'
+                  'text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]',
+                  isReciting && 'mushaf-translation-arabic--reciting'
                 )}
-                aria-label={`Verse ${num}`}
+                dir="rtl"
+                lang="ar"
               >
-                {num}
-              </span>
-            </p>
+                {row.text_uthmani}
+              </p>
+            )}
 
             <div
               className={cn(

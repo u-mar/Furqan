@@ -19,12 +19,21 @@ const idleState: SomaliVoicePlaybackState = {
 
 const END_PADDING_SEC = 0.05
 
-export function useSomaliVoicePlayback() {
+interface UseSomaliVoicePlaybackOptions {
+  onSegmentEnd?: (segment: SomaliVoiceSegment) => void
+}
+
+export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = {}) {
   const [state, setState] = useState<SomaliVoicePlaybackState>(idleState)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const segmentRef = useRef<SomaliVoiceSegment | null>(null)
   const loadedFileRef = useRef<string | null>(null)
   const sessionRef = useRef(0)
+  const onSegmentEndRef = useRef(options.onSegmentEnd)
+
+  useEffect(() => {
+    onSegmentEndRef.current = options.onSegmentEnd
+  }, [options.onSegmentEnd])
 
   const stop = useCallback(() => {
     sessionRef.current += 1
@@ -49,13 +58,13 @@ export function useSomaliVoicePlayback() {
           verseKey: null,
           error: 'Somali voice not available for this ayah.',
         })
-        return
+        return false
       }
 
       sessionRef.current += 1
       const session = sessionRef.current
       const audio = audioRef.current
-      if (!audio) return
+      if (!audio) return false
 
       segmentRef.current = segment
 
@@ -98,6 +107,7 @@ export function useSomaliVoicePlayback() {
       } else {
         void startPlayback()
       }
+      return true
     },
     []
   )
@@ -113,12 +123,15 @@ export function useSomaliVoicePlayback() {
         audio.pause()
         segmentRef.current = null
         setState(idleState)
+        onSegmentEndRef.current?.(segment)
       }
     }
 
     const onEnded = () => {
+      const segment = segmentRef.current
       segmentRef.current = null
       setState(idleState)
+      if (segment) onSegmentEndRef.current?.(segment)
     }
 
     audio.addEventListener('timeupdate', onTimeUpdate)
