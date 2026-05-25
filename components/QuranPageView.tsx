@@ -47,6 +47,12 @@ interface PageLine {
   isBasmalah?: boolean
 }
 
+interface UnicodeLine {
+  lineNumber: number
+  text: string
+  verseKeys: string[]
+}
+
 const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
 const BASMALAH_ORNAMENT = '﷽'
 
@@ -106,34 +112,76 @@ function QcfMushafPage({
   )
 }
 
-function UnicodeMushafVerse({
-  verse,
+function buildUnicodeLines(verses: Verse[]): UnicodeLine[] {
+  const lineMap = new Map<number, { parts: string[]; verseKeys: Set<string> }>()
+
+  for (const verse of verses) {
+    if (!verse.words?.length) continue
+
+    for (const word of verse.words) {
+      if (word.char_type_name === 'end') continue
+      const lineNumber = word.line_number
+      const text = (word.text_qpc_hafs || word.text_uthmani || '').trim()
+      if (!lineNumber || !text) continue
+
+      const line = lineMap.get(lineNumber) || { parts: [], verseKeys: new Set<string>() }
+      line.parts.push(text)
+      line.verseKeys.add(verse.verse_key)
+      lineMap.set(lineNumber, line)
+    }
+  }
+
+  if (lineMap.size > 0) {
+    return Array.from({ length: 15 }, (_, index) => {
+      const lineNumber = index + 1
+      const line = lineMap.get(lineNumber)
+      return {
+        lineNumber,
+        text: line?.parts.join(' ') ?? '',
+        verseKeys: line ? Array.from(line.verseKeys) : [],
+      }
+    })
+  }
+
+  return verses.map((verse, index) => ({
+    lineNumber: index + 1,
+    text: getVerseArabicText(verse),
+    verseKeys: [verse.verse_key],
+  }))
+}
+
+function UnicodeMushafLine({
+  line,
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
 }: {
-  verse: Verse
+  line: UnicodeLine
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
 }) {
-  const longPress = useLongPress(() => onAyahLongPress?.(verse.verse_key))
-  const text = getVerseArabicText(verse)
-  const active = highlightedVerseKey === verse.verse_key
-  const selected = selectedVerseKey === verse.verse_key
+  const preferredVerseKey =
+    line.verseKeys.find((key) => key === selectedVerseKey || key === highlightedVerseKey) ||
+    line.verseKeys[0]
+  const longPress = useLongPress(() => {
+    if (preferredVerseKey) onAyahLongPress?.(preferredVerseKey)
+  })
+  const active = Boolean(highlightedVerseKey && line.verseKeys.includes(highlightedVerseKey))
+  const selected = Boolean(selectedVerseKey && line.verseKeys.includes(selectedVerseKey))
 
   return (
-    <span
-      data-verse-keys={verse.verse_key}
+    <div
+      data-verse-keys={line.verseKeys.join(' ')}
       className={cn(
-        'mushaf-unicode-verse',
+        'mushaf-unicode-line',
         active && 'mushaf-line--reciting',
         selected && !active && 'mushaf-line--selected'
       )}
       {...(onAyahLongPress ? longPress.handlers : {})}
     >
-      {text}
-    </span>
+      {line.text}
+    </div>
   )
 }
 
@@ -148,12 +196,14 @@ function UnicodeMushafPage({
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
 }) {
+  const lines = useMemo(() => buildUnicodeLines(verses), [verses])
+
   return (
     <div className="mushaf-unicode-page" style={{ fontFamily: PLAIN_MUSHAF_FONT }}>
-      {verses.map((verse) => (
-        <UnicodeMushafVerse
-          key={verse.verse_key}
-          verse={verse}
+      {lines.map((line) => (
+        <UnicodeMushafLine
+          key={line.lineNumber}
+          line={line}
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={selectedVerseKey}
           onAyahLongPress={onAyahLongPress}
