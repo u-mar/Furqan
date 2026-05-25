@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { loadPageFont, loadSurahNameFont, prefetchPageFonts, qcfFontFamily } from '@/lib/mushaf-fonts'
@@ -46,6 +46,53 @@ interface PageLine {
 
 const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
 const BASMALAH_ORNAMENT = '﷽'
+
+function verseKeysForLine(line: PageLine): string[] {
+  return [...new Set(line.words.map((w) => w.verseKey))]
+}
+
+function QcfMushafLine({
+  line,
+  className,
+  style,
+  text,
+  highlightedVerseKey,
+  selectedVerseKey,
+  onAyahLongPress,
+}: {
+  line: PageLine
+  className: string
+  style: CSSProperties
+  text: string
+  highlightedVerseKey?: string | null
+  selectedVerseKey?: string | null
+  onAyahLongPress?: (verseKey: string) => void
+}) {
+  const lineVerseKeys = verseKeysForLine(line)
+  const preferredVerseKey =
+    lineVerseKeys.find((key) => key === selectedVerseKey || key === highlightedVerseKey) ||
+    line.words.find((word) => !word.isEndMark)?.verseKey ||
+    lineVerseKeys[0]
+  const longPress = useLongPress(() => {
+    if (preferredVerseKey) onAyahLongPress?.(preferredVerseKey)
+  })
+
+  return (
+    <div
+      data-verse-keys={lineVerseKeys.join(' ')}
+      className={cn(
+        className,
+        'mushaf-qcf-line whitespace-nowrap',
+        highlightedVerseKey && lineVerseKeys.includes(highlightedVerseKey) && 'mushaf-line--reciting',
+        selectedVerseKey && lineVerseKeys.includes(selectedVerseKey) && 'mushaf-line--selected'
+      )}
+      style={style}
+      {...(onAyahLongPress ? longPress.handlers : {})}
+    >
+      {text}
+    </div>
+  )
+}
 
 function MushafWord({
   word,
@@ -231,6 +278,8 @@ export default function QuranPageView({
 
   /** Never render code_v2 without the matching page font — use plain Uthmani text instead. */
   const useQcfRendering = tryQcfFonts && hasQcfGlyphs && qcfFontReady
+  /** QCF glyphs must remain a single text node per line or Arabic shaping breaks. */
+  const useQcfLineRendering = readOnly && useQcfRendering
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
   const gridRef = useRef<HTMLDivElement>(null)
@@ -292,31 +341,49 @@ export default function QuranPageView({
         )}
       >
         {lines.map((line) => {
-          const lineVerseKeys = [...new Set(line.words.map((w) => w.verseKey))].join(' ')
+          const lineVerseKeys = verseKeysForLine(line).join(' ')
+          const lineClassName = cn(
+            readMode
+              ? cn(
+                  'mushaf-fit-line flex-row flex-wrap gap-x-[0.05em]',
+                  line.isSurahHeader && 'mushaf-fit-line--header surah-header',
+                  line.isBasmalah && 'mushaf-fit-line--basmalah basmalah-ornament-inline'
+                )
+              : cn(
+                  'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
+                  line.isSurahHeader && 'mushaf-page-line--header surah-header',
+                  line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
+                )
+          )
+          const lineStyle = {
+            fontFamily: line.isSurahHeader
+              ? 'SurahNameV2'
+              : useQcfRendering
+                ? qcfFamily
+                : PLAIN_MUSHAF_FONT,
+          }
+
+          if (useQcfLineRendering && !line.isSurahHeader && !line.isBasmalah) {
+            return (
+              <QcfMushafLine
+                key={line.lineNumber}
+                line={line}
+                className={lineClassName}
+                style={lineStyle}
+                text={line.words.map((word) => word.text).join('')}
+                highlightedVerseKey={highlightedVerseKey}
+                selectedVerseKey={selectedVerseKey}
+                onAyahLongPress={ayahLongPress}
+              />
+            )
+          }
+
           return (
           <div
             key={line.lineNumber}
             data-verse-keys={lineVerseKeys}
-            className={cn(
-              readMode
-                ? cn(
-                    'mushaf-fit-line flex-row flex-wrap gap-x-[0.05em]',
-                    line.isSurahHeader && 'mushaf-fit-line--header surah-header',
-                    line.isBasmalah && 'mushaf-fit-line--basmalah basmalah-ornament-inline'
-                  )
-                : cn(
-                    'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
-                    line.isSurahHeader && 'mushaf-page-line--header surah-header',
-                    line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
-                  )
-            )}
-            style={{
-              fontFamily: line.isSurahHeader
-                ? 'SurahNameV2'
-                : useQcfRendering
-                  ? qcfFamily
-                  : PLAIN_MUSHAF_FONT,
-            }}
+            className={lineClassName}
+            style={lineStyle}
           >
             {line.isSurahHeader && line.chapterNumber ? (
               <div className={cn('flex w-full items-center justify-center gap-3', textClass)}>

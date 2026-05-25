@@ -156,6 +156,12 @@ html.dark .mushaf-reader-immersive {
   letter-spacing: 0.01em;
 }
 
+.mushaf-qcf-line {
+  direction: rtl;
+  letter-spacing: 0;
+  unicode-bidi: isolate;
+}
+
 .mushaf-fit-line--header {
   font-size: clamp(0.95rem, 3.4dvh, 1.75rem);
 }
@@ -190,13 +196,38 @@ html:not(.dark) .mushaf-word--selected {
   outline-color: rgba(13, 148, 136, 0.45);
 }
 
+.mushaf-line--reciting {
+  background: rgba(45, 212, 191, 0.16);
+  border-radius: 0.35rem;
+}
+
+.mushaf-line--selected {
+  background: rgba(45, 212, 191, 0.22);
+  border-radius: 0.35rem;
+  outline: 1px solid rgba(45, 212, 191, 0.45);
+  outline-offset: 1px;
+}
+
+html:not(.dark) .mushaf-line--reciting {
+  background: rgba(13, 148, 136, 0.12);
+}
+
+html:not(.dark) .mushaf-line--selected {
+  background: rgba(13, 148, 136, 0.18);
+  outline-color: rgba(13, 148, 136, 0.35);
+}
+
 .mushaf-fit-line:has(.mushaf-word--reciting),
-.mushaf-fit-line:has(.mushaf-word--selected) {
+.mushaf-fit-line:has(.mushaf-word--selected),
+.mushaf-fit-line.mushaf-line--reciting,
+.mushaf-fit-line.mushaf-line--selected {
   opacity: 1;
 }
 
 .mushaf-fit-grid:has(.mushaf-word--reciting) .mushaf-fit-line:not(:has(.mushaf-word--reciting)),
-.mushaf-fit-grid:has(.mushaf-word--selected) .mushaf-fit-line:not(:has(.mushaf-word--selected)) {
+.mushaf-fit-grid:has(.mushaf-word--selected) .mushaf-fit-line:not(:has(.mushaf-word--selected)),
+.mushaf-fit-grid:has(.mushaf-line--reciting) .mushaf-fit-line:not(.mushaf-line--reciting),
+.mushaf-fit-grid:has(.mushaf-line--selected) .mushaf-fit-line:not(.mushaf-line--selected) {
   opacity: 0.45;
   transition: opacity 0.25s ease;
 }
