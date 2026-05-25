@@ -50,7 +50,7 @@ export default function Home() {
   useAppSettings()
 
   return (
-    <HomeScreen className="home-teal-theme">
+    <HomeScreen>
       <header className="mb-5 flex items-center justify-between border-b border-[var(--home-card-border)] pb-4 lg:mb-8 lg:pb-6">
         <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
           Al Quran

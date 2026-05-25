@@ -69,21 +69,6 @@ html:not(.dark) {
   --hifdh-muted: #78716c;
 }
 
-.home-teal-theme {
-  --app-bg: #f8fffd;
-  --app-surface: #ecfdf5;
-  --app-border: rgba(13, 148, 136, 0.12);
-  --app-text: #10201d;
-  --app-muted: #64748b;
-  --home-glow:
-    radial-gradient(ellipse 70% 45% at 50% -15%, rgba(45, 212, 191, 0.16), transparent),
-    linear-gradient(180deg, #ffffff 0%, #f0fdfa 58%, #ffffff 100%);
-  --home-card-bg: rgba(255, 255, 255, 0.92);
-  --home-card-border: rgba(94, 234, 212, 0.5);
-  --home-card-shadow: 0 14px 34px rgba(15, 118, 110, 0.08);
-  --home-location-bg: #f0fdfa;
-}
-
 html,
 body {
   min-height: 100%;

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
 
@@ -19,31 +20,29 @@ function verseNumber(verseKey: string): number {
   return Number(verseKey.split(':')[1] || 0)
 }
 
-function surahNumber(verseKey: string): number {
-  return Number(verseKey.split(':')[0] || 1)
-}
-
 export default function MushafTranslationView({
   verses,
   page,
-  chapters,
   translationLanguage,
   highlightedVerseKey = null,
   showArabic = true,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
-  const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, v.text_uthmani]))
-  const { rows, loading } = usePageTranslations(page, true, verseKeys, arabicByKey, translationLanguage)
+  const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, getVerseArabicText(v)]))
+  const { rows, byKey, loading } = usePageTranslations(
+    page,
+    true,
+    verseKeys,
+    arabicByKey,
+    translationLanguage
+  )
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-  const displayRows =
-    rows.length > 0
-      ? rows
-      : verses.map((v) => ({
-          verse_key: v.verse_key,
-          text_uthmani: v.text_uthmani,
-          translation: '',
-        }))
+  const displayRows = verses.map((verse) => ({
+    verse_key: verse.verse_key,
+    text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
+    translation: byKey[verse.verse_key]?.translation || '',
+  }))
 
   useEffect(() => {
     if (!highlightedVerseKey) return
@@ -62,13 +61,8 @@ export default function MushafTranslationView({
 
   return (
     <div className="space-y-8 pb-8">
-      {displayRows.map((row, index) => {
+      {displayRows.map((row) => {
         const num = verseNumber(row.verse_key)
-        const prevSurah = index > 0 ? surahNumber(displayRows[index - 1].verse_key) : 0
-        const curSurah = surahNumber(row.verse_key)
-        const showHeader = curSurah !== prevSurah
-        const surahTitle =
-          chapters.find((c) => c.id === curSurah)?.englishName || `Surah ${curSurah}`
         const isReciting = highlightedVerseKey === row.verse_key
 
         return (
@@ -84,11 +78,6 @@ export default function MushafTranslationView({
               isReciting && 'mushaf-translation-ayah--reciting'
             )}
           >
-            {showHeader && (
-              <div className="flex items-center justify-between px-1">
-                <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
-              </div>
-            )}
             {showArabic && (
               <p
                 className={cn(

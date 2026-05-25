@@ -29,7 +29,7 @@ export default function ListenScreen() {
   const [query, setQuery] = useState('')
   const [reciterOpen, setReciterOpen] = useState(false)
 
-  const { state, playSurah, togglePlayPause, seekRelative, stop, isActiveSurah } = useSurahPlayer(
+  const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } = useSurahPlayer(
     settings.reciterId
   )
 
@@ -57,7 +57,14 @@ export default function ListenScreen() {
   }
 
   const progress =
-    state.versesCount > 0 ? Math.round((state.currentAyah / state.versesCount) * 100) : 0
+    state.duration > 0 ? Math.min(100, Math.round((state.currentTime / state.duration) * 100)) : 0
+
+  function formatTime(seconds: number): string {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${String(secs).padStart(2, '0')}`
+  }
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
@@ -233,11 +240,25 @@ export default function ListenScreen() {
                 </button>
               </div>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
-              <div
-                className="h-full bg-teal-600 transition-all duration-300 dark:bg-teal-500"
-                style={{ width: `${progress}%` }}
+            <div className="space-y-1.5">
+              <input
+                type="range"
+                min={0}
+                max={state.duration || 0}
+                step={0.1}
+                value={state.currentTime}
+                onChange={(e) => seekTo(Number(e.target.value))}
+                disabled={!state.duration}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-teal-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-700 dark:accent-teal-500"
+                style={{
+                  background: `linear-gradient(to right, rgb(13 148 136) ${progress}%, rgb(229 231 235) ${progress}%)`,
+                }}
+                aria-label="Seek within current ayah"
               />
+              <div className="flex justify-between text-[11px] font-medium tabular-nums text-[var(--app-muted)]">
+                <span>{formatTime(state.currentTime)}</span>
+                <span>{formatTime(state.duration)}</span>
+              </div>
             </div>
           </div>
         </div>

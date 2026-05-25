@@ -44,7 +44,7 @@ export default function PromoBanner({ className }: { className?: string }) {
 
   return (
     <section className={cn('mb-5 lg:mb-0 lg:flex lg:flex-col', className)}>
-      <div className="relative flex-1 overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-600 via-teal-400 to-cyan-200 px-4 py-4 shadow-lg shadow-teal-100 lg:min-h-[140px] lg:px-6 lg:py-6">
+      <div className="relative flex-1 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-gradient-to-br from-teal-700 via-teal-600 to-teal-500 px-4 py-4 shadow-lg shadow-teal-900/10 lg:min-h-[140px] lg:px-6 lg:py-6">
         <div
           className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl"
           aria-hidden

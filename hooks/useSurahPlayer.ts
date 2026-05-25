@@ -8,6 +8,8 @@ export interface SurahPlayerState {
   surahName: string
   versesCount: number
   currentAyah: number
+  currentTime: number
+  duration: number
   playing: boolean
   loading: boolean
   error: string | null
@@ -18,6 +20,8 @@ const initialState: SurahPlayerState = {
   surahName: '',
   versesCount: 0,
   currentAyah: 0,
+  currentTime: 0,
+  duration: 0,
   playing: false,
   loading: false,
   error: null,
@@ -57,6 +61,8 @@ export function useSurahPlayer(reciterId: string) {
         surahName,
         versesCount,
         currentAyah: ayah,
+        currentTime: 0,
+        duration: 0,
         playing: true,
         loading: true,
         error: null,
@@ -100,6 +106,16 @@ export function useSurahPlayer(reciterId: string) {
     audio.currentTime = next
   }, [state.surahId])
 
+  const seekTo = useCallback((seconds: number) => {
+    const audio = audioRef.current
+    if (!audio || !state.surahId || !audio.src) return
+    const duration = Number.isFinite(audio.duration) ? audio.duration : state.duration
+    if (!duration) return
+    const next = Math.max(0, Math.min(duration, seconds))
+    audio.currentTime = next
+    setState((s) => ({ ...s, currentTime: next, duration }))
+  }, [state.duration, state.surahId])
+
   const togglePlayPause = useCallback(() => {
     const audio = audioRef.current
     if (!audio || !state.surahId) return
@@ -134,6 +150,21 @@ export function useSurahPlayer(reciterId: string) {
       })
     }
 
+    const onLoadedMetadata = () => {
+      setState((s) => ({
+        ...s,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+      }))
+    }
+
+    const onTimeUpdate = () => {
+      setState((s) => ({
+        ...s,
+        currentTime: audio.currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : s.duration,
+      }))
+    }
+
     const onError = () => {
       setState((s) => {
         if (!s.surahId) return s
@@ -149,10 +180,14 @@ export function useSurahPlayer(reciterId: string) {
 
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('error', onError)
+    audio.addEventListener('loadedmetadata', onLoadedMetadata)
+    audio.addEventListener('timeupdate', onTimeUpdate)
 
     return () => {
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('error', onError)
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata)
+      audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.pause()
       audio.src = ''
     }
@@ -175,6 +210,7 @@ export function useSurahPlayer(reciterId: string) {
     playSurah,
     togglePlayPause,
     seekRelative,
+    seekTo,
     stop,
     isActiveSurah: (surahId: number) => state.surahId === surahId,
   }
