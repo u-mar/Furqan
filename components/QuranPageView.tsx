@@ -51,6 +51,13 @@ function verseKeysForLine(line: PageLine): string[] {
   return [...new Set(line.words.map((w) => w.verseKey))]
 }
 
+function qcfLineText(line: PageLine): string {
+  return line.words
+    .map((word) => word.text.trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
 function QcfMushafLine({
   line,
   className,
@@ -345,12 +352,14 @@ export default function QuranPageView({
           const lineClassName = cn(
             readMode
               ? cn(
-                  'mushaf-fit-line flex-row flex-wrap gap-x-[0.05em]',
+                  'mushaf-fit-line',
+                  !useQcfLineRendering && 'flex-row flex-wrap gap-x-[0.05em]',
                   line.isSurahHeader && 'mushaf-fit-line--header surah-header',
                   line.isBasmalah && 'mushaf-fit-line--basmalah basmalah-ornament-inline'
                 )
               : cn(
-                  'mushaf-page-line flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
+                  'mushaf-page-line',
+                  !useQcfLineRendering && 'flex flex-row flex-wrap items-center justify-center gap-x-[0.06em]',
                   line.isSurahHeader && 'mushaf-page-line--header surah-header',
                   line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
                 )
@@ -361,6 +370,12 @@ export default function QuranPageView({
               : useQcfRendering
                 ? qcfFamily
                 : PLAIN_MUSHAF_FONT,
+            ...(useQcfLineRendering && !line.isSurahHeader && !line.isBasmalah
+              ? {
+                  letterSpacing: 0,
+                  wordSpacing: 0,
+                }
+              : {}),
           }
 
           if (useQcfLineRendering && !line.isSurahHeader && !line.isBasmalah) {
@@ -370,7 +385,7 @@ export default function QuranPageView({
                 line={line}
                 className={lineClassName}
                 style={lineStyle}
-                text={line.words.map((word) => word.text).join('')}
+                text={qcfLineText(line)}
                 highlightedVerseKey={highlightedVerseKey}
                 selectedVerseKey={selectedVerseKey}
                 onAyahLongPress={ayahLongPress}

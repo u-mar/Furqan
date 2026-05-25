@@ -157,9 +157,14 @@ html.dark .mushaf-reader-immersive {
 }
 
 .mushaf-qcf-line {
+  display: block;
   direction: rtl;
   letter-spacing: 0;
+  word-spacing: 0;
   unicode-bidi: isolate;
+  font-feature-settings: "liga" 1, "calt" 1;
+  font-variant-ligatures: normal;
+  text-rendering: optimizeLegibility;
 }
 
 .mushaf-fit-line--header {
