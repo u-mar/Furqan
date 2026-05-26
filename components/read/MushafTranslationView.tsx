@@ -81,13 +81,16 @@ export default function MushafTranslationView({
             {showArabic && (
               <p
                 className={cn(
-                  'text-center text-[clamp(1.15rem,4.5vw,1.5rem)] leading-[2.1] text-[var(--mushaf-read-text)]',
+                  'mushaf-translation-arabic text-center text-[clamp(1.2rem,4.8vw,1.65rem)] leading-[2.15] text-[var(--mushaf-read-text)]',
                   isReciting && 'mushaf-translation-arabic--reciting'
                 )}
                 dir="rtl"
                 lang="ar"
               >
                 {row.text_uthmani}
+                <span className="mushaf-ayah-stop" aria-hidden="true">
+                  ۝
+                </span>
               </p>
             )}
 

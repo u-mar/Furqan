@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Settings } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
+import { useState } from 'react'
 import DateCard from '@/components/home/DateCard'
 import HomeScreen from '@/components/home/HomeScreen'
 import PromoBanner from '@/components/home/PromoBanner'
@@ -35,7 +36,7 @@ const tiles = [
     label: 'Community',
     href: null,
     Icon: IconMemorize,
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'listen',
@@ -48,6 +49,7 @@ const tiles = [
 
 export default function Home() {
   useAppSettings()
+  const [communityOpen, setCommunityOpen] = useState(false)
 
   return (
     <HomeScreen>
@@ -76,22 +78,24 @@ export default function Home() {
             const inner = (
               <div
                 className={cn(
-                  'flex aspect-square flex-col items-center justify-center gap-2.5 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-2 shadow-[var(--home-card-shadow)] transition-all duration-200',
+                  'flex aspect-square flex-col items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-white px-2 shadow-[0_14px_34px_rgba(16,185,129,0.09)] transition-all duration-200',
                   'lg:aspect-auto lg:min-h-[180px] lg:gap-3 xl:min-h-[200px]',
                   tile.enabled &&
-                    'hover:border-teal-500/30 active:scale-[0.97] lg:hover:scale-[1.01] lg:active:scale-[0.99]',
+                    'hover:border-emerald-400 active:scale-[0.97] lg:hover:scale-[1.01] lg:active:scale-[0.99]',
                   !tile.enabled && 'opacity-55'
                 )}
               >
-                <Icon className="h-12 w-12 text-teal-500 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
-                <span className="text-center text-sm font-medium text-[var(--app-text)] lg:text-base">
+                <Icon className="h-12 w-12 text-emerald-600 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
+                <span className="text-center text-sm font-medium text-emerald-950 lg:text-base">
                   {tile.label}
                 </span>
                 {'sub' in tile && tile.sub && (
-                  <span className="-mt-2 text-[10px] text-[var(--app-muted)] lg:text-xs">{tile.sub}</span>
+                  <span className="-mt-2 text-[10px] text-emerald-700/70 lg:text-xs">{tile.sub}</span>
                 )}
-                {!tile.enabled && tile.id === 'community' && (
-                  <span className="-mt-1 text-[10px] text-[var(--app-muted)] lg:text-xs">Soon</span>
+                {tile.id === 'community' && (
+                  <span className="-mt-1 text-[10px] text-emerald-600 lg:text-xs">
+                    Coming soon
+                  </span>
                 )}
               </div>
             )
@@ -108,14 +112,61 @@ export default function Home() {
               )
             }
 
-            return (
-              <div key={tile.id} className="cursor-default" aria-disabled>
-                {inner}
-              </div>
-            )
+            if (tile.id === 'community') {
+              return (
+                <button
+                  key={tile.id}
+                  type="button"
+                  onClick={() => setCommunityOpen(true)}
+                  className="block rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60"
+                >
+                  {inner}
+                </button>
+              )
+            }
+
+            return <div key={tile.id}>{inner}</div>
           })}
         </div>
       </section>
+
+      {communityOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 pt-10 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="community-title"
+          onClick={() => setCommunityOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 text-[var(--app-text)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                  Coming soon
+                </p>
+                <h2 id="community-title" className="mt-1 text-xl font-bold">
+                  Community Qiraat
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCommunityOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface)]"
+                aria-label="Close community message"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-[var(--app-muted)]">
+              A public place where learners can record their own qiraat, share recitations, and listen
+              to others practicing beautifully like the sheikhs.
+            </p>
+          </div>
+        </div>
+      )}
     </HomeScreen>
   )
 }

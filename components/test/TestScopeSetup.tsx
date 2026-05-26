@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowRight, ChevronLeft, Dices, Layers, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, ChevronLeft, Dices, Layers, Search } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
@@ -172,31 +172,20 @@ export default function TestScopeSetup({
         </div>
       </header>
 
-      <section className="mb-5 rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/15 via-[var(--home-card-bg)] to-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">
-        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
-          <Sparkles className="h-4 w-4" />
-          Smart randomizer
-        </div>
-        <h2 className="text-2xl font-bold tracking-tight text-[var(--app-text)]">Choose your practice area</h2>
-        <p className="mt-1 text-sm leading-relaxed text-[var(--app-muted)]">
-          Select a surah, juz, or range. Muyassar will pick ayahs only from that scope.
-        </p>
-      </section>
-
       <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
         Test within
       </p>
-      <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
+      <div className="mb-4 grid grid-cols-3 gap-3">
         {SCOPE_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setScope(tab.id)}
             className={cn(
-              'flex flex-col items-center rounded-xl border px-2 py-3 text-center transition-all',
+              'flex aspect-square flex-col items-center justify-center rounded-2xl border px-2 text-center shadow-[var(--home-card-shadow)] transition-all',
               scope === tab.id
-                ? 'border-teal-500/50 bg-teal-500/15 shadow-sm'
-                : 'border-transparent bg-transparent hover:border-teal-500/25 hover:bg-[var(--app-surface)]'
+                ? 'border-teal-500/50 bg-teal-500/15'
+                : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-teal-500/25'
             )}
           >
             <span

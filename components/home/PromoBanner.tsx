@@ -37,16 +37,16 @@ export default function PromoBanner({ className }: { className?: string }) {
   const slide = slides[active]
 
   const ctaInner = (
-    <span className="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-teal-700 shadow-md shadow-teal-900/10 transition-transform hover:scale-[1.02] active:scale-[0.98]">
+    <span className="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-amber-700 shadow-md shadow-amber-900/10 transition-transform hover:scale-[1.02] active:scale-[0.98]">
       {slide.cta}
     </span>
   )
 
   return (
     <section className={cn('mb-5 lg:mb-0 lg:flex lg:flex-col', className)}>
-      <div className="relative flex-1 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-gradient-to-br from-teal-700 via-teal-600 to-teal-500 px-4 py-4 shadow-lg shadow-teal-900/10 lg:min-h-[140px] lg:px-6 lg:py-6">
+      <div className="relative flex-1 overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-br from-amber-600 via-amber-400 to-yellow-200 px-4 py-4 shadow-lg shadow-amber-200/40 lg:min-h-[140px] lg:px-6 lg:py-6">
         <div
-          className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/10 blur-2xl"
+          className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/25 blur-2xl"
           aria-hidden
         />
         <div className="relative flex items-center gap-3">
@@ -68,7 +68,7 @@ export default function PromoBanner({ className }: { className?: string }) {
             onClick={() => setActive(i)}
             className={cn(
               'h-2 w-2 rounded-full transition-colors',
-              i === active ? 'bg-teal-500' : 'bg-teal-200 hover:bg-teal-300'
+              i === active ? 'bg-amber-500' : 'bg-amber-200 hover:bg-amber-300'
             )}
           />
         ))}

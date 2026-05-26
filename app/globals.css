@@ -267,6 +267,22 @@ html.dark .mushaf-reader-immersive {
   text-shadow: 0 0 10px rgba(20, 184, 166, 0.35);
 }
 
+.mushaf-translation-arabic {
+  position: relative;
+  margin-inline: auto;
+  border-radius: 1rem;
+  padding: 0.7rem 1rem;
+  background: rgba(20, 184, 166, 0.06);
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
+  text-shadow: 0 0 18px rgba(20, 184, 166, 0.1);
+  box-shadow: inset 3px 0 0 rgba(20, 184, 166, 0.45), inset -3px 0 0 rgba(20, 184, 166, 0.45);
+}
+
+html.dark .mushaf-translation-arabic {
+  background: rgba(45, 212, 191, 0.08);
+  box-shadow: inset 3px 0 0 rgba(45, 212, 191, 0.5), inset -3px 0 0 rgba(45, 212, 191, 0.5);
+}
+
 .mushaf-fit-line--header {
   font-size: clamp(0.95rem, 3.4dvh, 1.75rem);
 }
