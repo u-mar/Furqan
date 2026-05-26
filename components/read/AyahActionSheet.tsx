@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Languages, X, ChevronLeft, Square, SkipForward, Volume2 } from 'lucide-react'
+import { Play, Languages, X, ChevronLeft, Square, SkipForward, Volume2, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 interface AyahActionSheetProps {
@@ -13,8 +13,10 @@ interface AyahActionSheetProps {
   hasNextAyah: boolean
   open: boolean
   isReciting: boolean
+  isBookmarked: boolean
   onClose: () => void
   onPlay: () => void
+  onToggleBookmark: () => void
   onStopRecitation: () => void
   onNextAyah: () => void
   somaliVoiceAvailable?: boolean
@@ -31,8 +33,10 @@ export default function AyahActionSheet({
   hasNextAyah,
   open,
   isReciting,
+  isBookmarked,
   onClose,
   onPlay,
+  onToggleBookmark,
   onStopRecitation,
   onNextAyah,
   somaliVoiceAvailable = false,
@@ -144,7 +148,7 @@ export default function AyahActionSheet({
         </div>
 
         {view === 'menu' && (
-          <div className={cn('grid gap-2', somaliVoiceAvailable ? 'grid-cols-3' : 'grid-cols-2')}>
+          <div className={cn('grid gap-2', somaliVoiceAvailable ? 'grid-cols-2' : 'grid-cols-3')}>
             <button
               type="button"
               onClick={onPlay}
@@ -179,6 +183,20 @@ export default function AyahActionSheet({
                 <span>Somali</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={onToggleBookmark}
+              className={cn(
+                'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border text-sm font-medium',
+                isBookmarked
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-400'
+                  : 'border-[var(--home-card-border)] bg-[var(--app-surface)] text-teal-700 dark:text-teal-400'
+              )}
+              aria-pressed={isBookmarked}
+            >
+              <Bookmark className={cn('h-5 w-5', isBookmarked && 'fill-current')} />
+              <span>{isBookmarked ? 'Saved' : 'Bookmark'}</span>
+            </button>
             <button
               type="button"
               onClick={() => setView('translation')}

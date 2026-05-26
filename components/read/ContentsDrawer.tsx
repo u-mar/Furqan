@@ -5,11 +5,10 @@ import {
   Bookmark,
   CheckCircle2,
   List,
-  MessageSquare,
-  Star,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
 import { getVerseByKey } from '@/lib/quran'
@@ -19,7 +18,7 @@ import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import type { Chapter } from '@/types'
 
 type TopTab = 'chapters' | 'quarters'
-type BottomNav = 'chapters' | 'khatmah' | 'bookmarks' | 'starred' | 'notes'
+type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
 
 const QUARTERS_PER_JUZ = 8
 
@@ -55,8 +54,6 @@ const bottomItems: { id: BottomNav; label: string; Icon: typeof List }[] = [
   { id: 'chapters', label: 'Chapters', Icon: List },
   { id: 'khatmah', label: 'Khatmah', Icon: CheckCircle2 },
   { id: 'bookmarks', label: 'Bookmarks', Icon: Bookmark },
-  { id: 'starred', label: 'Starred', Icon: Star },
-  { id: 'notes', label: 'Notes', Icon: MessageSquare },
 ]
 
 export default function ContentsDrawer({
@@ -72,6 +69,7 @@ export default function ContentsDrawer({
   const [meta, setMeta] = useState<ChapterMeta[]>([])
   const [quarters, setQuarters] = useState<QuarterMarker[]>([])
   const [previewText, setPreviewText] = useState<Record<string, string>>({})
+  const [bookmarks, setBookmarks] = useState<AyahBookmark[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -141,6 +139,11 @@ export default function ContentsDrawer({
     }
   }, [open, topTab, quarters, previewText])
 
+  useEffect(() => {
+    if (!open || bottomNav !== 'bookmarks') return
+    setBookmarks(getBookmarks())
+  }, [open, bottomNav])
+
   if (!open) return null
 
   const showContentsHeader = bottomNav === 'chapters'
@@ -196,7 +199,7 @@ export default function ContentsDrawer({
             </button>
           </div>
         )}
-        {bottomNav === 'khatmah' && (
+        {(bottomNav === 'khatmah' || bottomNav === 'bookmarks') && (
           <div className="flex justify-end px-4 pt-3">
             <button
               type="button"
@@ -209,6 +212,12 @@ export default function ContentsDrawer({
           </div>
         )}
         {showContentsHeader && <h2 className="px-4 pt-2 text-2xl font-semibold">Contents</h2>}
+        {bottomNav === 'bookmarks' && (
+          <div className="px-4 pt-1">
+            <h2 className="text-2xl font-semibold">Bookmarks</h2>
+            <p className="mt-1 text-xs text-stone-500">Long-press an ayah to save it here.</p>
+          </div>
+        )}
 
         <div
           className={cn(
@@ -323,8 +332,48 @@ export default function ContentsDrawer({
               </div>
             ))}
 
-          {(bottomNav === 'bookmarks' || bottomNav === 'starred' || bottomNav === 'notes') && (
-            <p className="px-4 py-12 text-center text-sm text-stone-500">Coming soon</p>
+          {bottomNav === 'bookmarks' && (
+            <div className="px-2 pt-3">
+              {bookmarks.length === 0 ? (
+                <p className="px-4 py-12 text-center text-sm text-stone-500">
+                  No bookmarks yet. Long-press an ayah, then tap Bookmark.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {bookmarks.map((bookmark) => (
+                    <li key={bookmark.verseKey}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onGoToPage(bookmark.page)
+                          onClose()
+                        }}
+                        className="flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left hover:bg-white/5"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-800 text-teal-400">
+                          <Bookmark className="h-4 w-4 fill-current" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-medium text-teal-400">
+                            {bookmark.surahName} · Ayah {bookmark.ayah}
+                          </span>
+                          <span
+                            className="arabic-text mt-1 line-clamp-2 block text-base leading-snug text-white"
+                            dir="rtl"
+                            lang="ar"
+                          >
+                            {bookmark.arabic}
+                          </span>
+                          <span className="mt-1 block text-xs text-stone-500">
+                            {bookmark.verseKey} · Page {bookmark.page}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
 

@@ -261,6 +261,12 @@ function KhatmahAllDaysScreen() {
   )
 }
 
+function ayahPreview(text: string | undefined): string {
+  if (!text) return ''
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  return words.length > 9 ? `${words.slice(0, 9).join(' ')}…` : words.join(' ')
+}
+
 function KhatmahDayContent() {
   const { activePlan, currentDay, focusDay, plans, screen, setActivePlanId, setSelectedDay } =
     useKhatmah()
@@ -315,14 +321,14 @@ function KhatmahDayContent() {
             </span>
           </div>
           <p
-            className="arabic-text mt-4 line-clamp-2 text-right text-lg leading-[2] text-white/90"
+            className="arabic-text mt-2 line-clamp-1 text-right text-base leading-relaxed text-white/80"
             dir="rtl"
           >
-            {boundsLoading ? '…' : bounds?.from.arabic ?? ''}
+            {boundsLoading ? '…' : ayahPreview(bounds?.from.arabic)}
           </p>
         </section>
 
-        <section className="mt-8">
+        <section className="mt-6">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-sm text-stone-400">
               To {bounds ? `${bounds.to.surahName}: ${bounds.to.ayah}` : '…'}
@@ -332,10 +338,10 @@ function KhatmahDayContent() {
             </span>
           </div>
           <p
-            className="arabic-text mt-4 line-clamp-2 text-right text-lg leading-[2] text-white/90"
+            className="arabic-text mt-2 line-clamp-1 text-right text-base leading-relaxed text-white/80"
             dir="rtl"
           >
-            {boundsLoading ? '…' : bounds?.to.arabic ?? ''}
+            {boundsLoading ? '…' : ayahPreview(bounds?.to.arabic)}
           </p>
         </section>
     </div>

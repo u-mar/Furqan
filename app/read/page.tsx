@@ -30,6 +30,7 @@ import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { getAppSettings } from '@/lib/app-settings'
+import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
 import {
   clampPage,
@@ -76,6 +77,7 @@ function ReadPageContent() {
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
   const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
+  const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [pageSlide, setPageSlide] = useState<{
     direction: PageSlideDirection
@@ -362,6 +364,7 @@ function ReadPageContent() {
         verseKey,
         arabic: getVerseArabicText(verse),
       })
+      setAyahMenuBookmarked(isBookmarked(verseKey))
     },
     [pageVerses, stopRecitation]
   )
@@ -380,8 +383,27 @@ function ReadPageContent() {
     const next = getNextVerseOnPage(ayahMenu.verseKey)
     if (!next) return
     setAyahMenu({ verseKey: next.verse_key, arabic: getVerseArabicText(next) })
+    setAyahMenuBookmarked(isBookmarked(next.verse_key))
     if (isActive) playVerse(next.verse_key)
   }, [ayahMenu, getNextVerseOnPage, isActive, playVerse])
+
+  const handleToggleBookmark = useCallback(() => {
+    if (!ayahMenu) return
+    const verse = pageVerses.find((v) => v.verse_key === ayahMenu.verseKey)
+    const [surahRaw, ayahRaw] = ayahMenu.verseKey.split(':')
+    const surahId = Number(surahRaw) || 1
+    const ayah = Number(ayahRaw) || 1
+    const surahName = chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
+    const saved = toggleBookmark({
+      verseKey: ayahMenu.verseKey,
+      surahName,
+      ayah,
+      page: currentPage,
+      arabic: verse ? getVerseArabicText(verse) : ayahMenu.arabic,
+      createdAt: Date.now(),
+    })
+    setAyahMenuBookmarked(saved)
+  }, [ayahMenu, chapters, currentPage, pageVerses])
 
   const ayahMenuHasNext = ayahMenu ? Boolean(getNextVerseOnPage(ayahMenu.verseKey)) : false
 
@@ -813,6 +835,7 @@ function ReadPageContent() {
         translationLoading={ayahTranslationLoading}
         hasNextAyah={ayahMenuHasNext}
         isReciting={isActive}
+        isBookmarked={ayahMenuBookmarked}
         somaliVoiceAvailable={somaliVoiceAvailable}
         isSomaliVoicePlaying={
           isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu?.verseKey
@@ -829,6 +852,7 @@ function ReadPageContent() {
           setAyahMenu(null)
           playVerse(key, { continueOnPage: true })
         }}
+        onToggleBookmark={handleToggleBookmark}
         onPlaySomaliVoice={() => {
           if (!ayahMenu) return
           stopRecitation()
