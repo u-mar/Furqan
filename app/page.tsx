@@ -54,7 +54,7 @@ export default function Home() {
   return (
     <HomeScreen>
       <header className="mb-5 flex items-center justify-between border-b border-[var(--home-card-border)] pb-4 lg:mb-8 lg:pb-6">
-        <h1 className="text-[1.35rem] font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
+        <h1 className="text-[1.35rem] font-bold tracking-tight text-emerald-700 dark:text-amber-400 lg:text-2xl">
           Al Quran
         </h1>
         <Link
@@ -78,22 +78,24 @@ export default function Home() {
             const inner = (
               <div
                 className={cn(
-                  'flex aspect-square flex-col items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-white px-2 shadow-[0_14px_34px_rgba(16,185,129,0.09)] transition-all duration-200',
+                  'flex aspect-square flex-col items-center justify-center gap-2.5 rounded-2xl border border-emerald-200 bg-white px-2 shadow-[0_14px_34px_rgba(16,185,129,0.09)] transition-all duration-200 dark:border-[var(--home-card-border)] dark:bg-[var(--home-card-bg)] dark:shadow-[var(--home-card-shadow)]',
                   'lg:aspect-auto lg:min-h-[180px] lg:gap-3 xl:min-h-[200px]',
                   tile.enabled &&
-                    'hover:border-emerald-400 active:scale-[0.97] lg:hover:scale-[1.01] lg:active:scale-[0.99]',
+                    'hover:border-emerald-400 active:scale-[0.97] dark:hover:border-teal-500/30 lg:hover:scale-[1.01] lg:active:scale-[0.99]',
                   !tile.enabled && 'opacity-55'
                 )}
               >
-                <Icon className="h-12 w-12 text-emerald-600 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
-                <span className="text-center text-sm font-medium text-emerald-950 lg:text-base">
+                <Icon className="h-12 w-12 text-emerald-600 dark:text-amber-400 lg:h-14 lg:w-14 xl:h-16 xl:w-16" />
+                <span className="text-center text-sm font-medium text-emerald-950 dark:text-[var(--app-text)] lg:text-base">
                   {tile.label}
                 </span>
                 {'sub' in tile && tile.sub && (
-                  <span className="-mt-2 text-[10px] text-emerald-700/70 lg:text-xs">{tile.sub}</span>
+                  <span className="-mt-2 text-[10px] text-emerald-700/70 dark:text-[var(--app-muted)] lg:text-xs">
+                    {tile.sub}
+                  </span>
                 )}
                 {tile.id === 'community' && (
-                  <span className="-mt-1 text-[10px] text-emerald-600 lg:text-xs">
+                  <span className="-mt-1 text-[10px] text-emerald-600 dark:text-[var(--app-muted)] lg:text-xs">
                     Coming soon
                   </span>
                 )}
