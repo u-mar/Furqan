@@ -12,6 +12,8 @@ import {
 import { cn } from '@/lib/cn'
 import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
+import { getVerseByKey } from '@/lib/quran'
+import { getVerseArabicText } from '@/lib/quran-display'
 import { juzForChapter, revelationLabel } from '@/lib/mushaf'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import type { Chapter } from '@/types'
@@ -115,12 +117,9 @@ export default function ContentsDrawer({
         const results = await Promise.all(
           batch.map(async (q) => {
             try {
-              const res = await fetch(
-                `/api/ayah?type=verse&verseKey=${encodeURIComponent(q.verseKey)}`
-              )
-              if (!res.ok) return null
-              const v = (await res.json()) as { text_uthmani?: string }
-              return v.text_uthmani ? { key: q.verseKey, text: v.text_uthmani } : null
+              const verse = await getVerseByKey(q.verseKey)
+              const text = getVerseArabicText(verse)
+              return text ? { key: q.verseKey, text } : null
             } catch {
               return null
             }
