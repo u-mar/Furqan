@@ -9,6 +9,8 @@ import {
   Pause,
   Square,
   Loader2,
+  Download,
+  Check,
   Headphones,
   RotateCcw,
   RotateCw,
@@ -20,6 +22,7 @@ import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { useSurahPlayer } from '@/hooks/useSurahPlayer'
+import { downloadSurahAudio, isSurahAudioDownloaded } from '@/lib/offline-audio'
 import type { Chapter } from '@/types'
 
 export default function ListenScreen() {
@@ -28,6 +31,10 @@ export default function ListenScreen() {
   const [loadingChapters, setLoadingChapters] = useState(true)
   const [query, setQuery] = useState('')
   const [reciterOpen, setReciterOpen] = useState(false)
+  const [downloadingSurah, setDownloadingSurah] = useState<number | null>(null)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [downloaded, setDownloaded] = useState<Record<number, boolean>>({})
+  const [downloadedOnly, setDownloadedOnly] = useState(false)
 
   const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } = useSurahPlayer(
     settings.reciterId
@@ -41,7 +48,19 @@ export default function ListenScreen() {
   }, [])
 
   const filtered = useMemo(() => filterChapters(chapters, query), [chapters, query])
+  const visibleChapters = useMemo(
+    () => (downloadedOnly ? filtered.filter((chapter) => downloaded[chapter.id]) : filtered),
+    [downloadedOnly, downloaded, filtered]
+  )
   const currentReciter = RECITERS.find((r) => r.id === settings.reciterId) ?? RECITERS[0]
+
+  useEffect(() => {
+    const next: Record<number, boolean> = {}
+    for (const chapter of chapters) {
+      next[chapter.id] = isSurahAudioDownloaded(currentReciter.folder, chapter.id)
+    }
+    setDownloaded(next)
+  }, [chapters, currentReciter.folder])
 
   function selectReciter(id: string) {
     setAppSettings({ reciterId: id })
@@ -54,6 +73,23 @@ export default function ListenScreen() {
       return
     }
     playSurah(chapter.id, chapter.englishName, chapter.versesCount)
+  }
+
+  async function handleDownloadSurah(chapter: Chapter) {
+    if (downloadingSurah === chapter.id) return
+    setDownloadingSurah(chapter.id)
+    setDownloadProgress(0)
+    try {
+      await downloadSurahAudio(currentReciter.folder, chapter.id, chapter.versesCount, (p) =>
+        setDownloadProgress(p)
+      )
+      setDownloaded((prev) => ({ ...prev, [chapter.id]: true }))
+    } catch {
+      // keep silent; playback remains online
+    } finally {
+      setDownloadingSurah(null)
+      setDownloadProgress(0)
+    }
   }
 
   const progress =
@@ -130,6 +166,23 @@ export default function ListenScreen() {
           placeholder="Search surah…"
           className="mb-4 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-sm placeholder:text-[var(--app-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/35"
         />
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs text-[var(--app-muted)]">
+            {visibleChapters.length} surah{visibleChapters.length === 1 ? '' : 's'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setDownloadedOnly((v) => !v)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-semibold',
+              downloadedOnly
+                ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
+                : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-[var(--app-muted)]'
+            )}
+          >
+            {downloadedOnly ? 'Downloaded only: on' : 'Downloaded only'}
+          </button>
+        </div>
 
         {loadingChapters ? (
           <div className="flex justify-center py-16">
@@ -137,22 +190,25 @@ export default function ListenScreen() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {filtered.map((chapter) => {
+            {visibleChapters.map((chapter) => {
               const active = isActiveSurah(chapter.id)
               const isPlaying = active && state.playing && !state.loading
 
               return (
                 <li key={chapter.id}>
-                  <button
-                    type="button"
-                    onClick={() => handlePlaySurah(chapter)}
+                  <div
                     className={cn(
-                      'flex min-h-[56px] w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors active:scale-[0.99]',
+                      'flex min-h-[56px] w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors',
                       active
                         ? 'border-[var(--home-sage-deep)]/55 bg-[var(--home-sage-soft)]'
-                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-sage-deep)]/25'
+                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)]'
                     )}
                   >
+                    <button
+                      type="button"
+                      onClick={() => handlePlaySurah(chapter)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]"
+                    >
                     <span
                       className={cn(
                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
@@ -178,10 +234,47 @@ export default function ListenScreen() {
                         <Play className="h-5 w-5 fill-current" />
                       )}
                     </span>
-                  </button>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDownloadSurah(chapter)}
+                      className={cn(
+                        'ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                        downloadingSurah === chapter.id
+                          ? 'border-[var(--home-sage-deep)] text-[var(--home-sage-deep)]'
+                          : downloaded[chapter.id]
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                            : 'border-[var(--home-card-border)] text-[var(--app-muted)]'
+                      )}
+                      aria-label={
+                        downloaded[chapter.id] ? 'Downloaded for offline' : 'Download surah for offline'
+                      }
+                      title={downloaded[chapter.id] ? 'Downloaded' : 'Download for offline'}
+                    >
+                      {downloadingSurah === chapter.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : downloaded[chapter.id] ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {downloadingSurah === chapter.id && (
+                    <p className="px-3 pt-1 text-[11px] text-[var(--home-sage-deep)]">
+                      Downloading… {downloadProgress}%
+                    </p>
+                  )}
                 </li>
               )
             })}
+            {visibleChapters.length === 0 && (
+              <li className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-5 text-center text-sm text-[var(--app-muted)]">
+                {downloadedOnly
+                  ? 'No downloaded surahs for this reciter yet.'
+                  : 'No surah matches your search.'}
+              </li>
+            )}
           </ul>
         )}
       </div>

@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { everyAyahAudioUrl, getReciterById } from '@/lib/reciters'
+import { getReciterById } from '@/lib/reciters'
+import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 import type { Verse } from '@/types'
 
 export interface PageRecitationState {
@@ -35,6 +36,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
   const reciterRef = useRef(reciterId)
   const playModeRef = useRef<'page' | 'single'>('page')
   const abortingRef = useRef(false)
+  const objectUrlRef = useRef<string | null>(null)
 
   versesRef.current = verses
   reciterRef.current = reciterId
@@ -45,6 +47,10 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
     const audio = audioRef.current
     if (audio) {
       audio.pause()
+      if (objectUrlRef.current) {
+        revokePlayableAyahAudioUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
       audio.removeAttribute('src')
       audio.load()
     }
@@ -61,6 +67,10 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
     const audio = audioRef.current
     if (audio) {
       audio.pause()
+      if (objectUrlRef.current) {
+        revokePlayableAyahAudioUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
       audio.removeAttribute('src')
       audio.load()
     }
@@ -91,7 +101,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       indexRef.current = index
       playbackSessionRef.current = session
       const folder = getReciterById(reciterRef.current).folder
-      const url = everyAyahAudioUrl(folder, surah, ayah)
+      const url = await getPlayableAyahAudioUrl(folder, surah, ayah)
 
       setState((s) => ({
         ...s,
@@ -102,6 +112,11 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       }))
 
       try {
+        if (objectUrlRef.current) {
+          revokePlayableAyahAudioUrl(objectUrlRef.current)
+          objectUrlRef.current = null
+        }
+        if (url.startsWith('blob:')) objectUrlRef.current = url
         audio.src = url
         await audio.play()
         if (session !== sessionRef.current) return
@@ -180,6 +195,10 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('error', onError)
       audio.pause()
+      if (objectUrlRef.current) {
+        revokePlayableAyahAudioUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
       audio.removeAttribute('src')
       audio.load()
       abortingRef.current = false

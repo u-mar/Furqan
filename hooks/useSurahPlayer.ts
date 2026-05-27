@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { everyAyahAudioUrl, getReciterById } from '@/lib/reciters'
+import { getReciterById } from '@/lib/reciters'
+import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 
 export interface SurahPlayerState {
   surahId: number | null
@@ -32,6 +33,7 @@ export function useSurahPlayer(reciterId: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
   const reciterRef = useRef(reciterId)
+  const objectUrlRef = useRef<string | null>(null)
 
   const reciterFolder = getReciterById(reciterId).folder
 
@@ -40,6 +42,10 @@ export function useSurahPlayer(reciterId: string) {
     const audio = audioRef.current
     if (audio) {
       audio.pause()
+      if (objectUrlRef.current) {
+        revokePlayableAyahAudioUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
       audio.src = ''
     }
     setState(initialState)
@@ -68,9 +74,14 @@ export function useSurahPlayer(reciterId: string) {
         error: null,
       }))
 
-      const url = everyAyahAudioUrl(reciterFolder, surahId, ayah)
+      const url = await getPlayableAyahAudioUrl(reciterFolder, surahId, ayah)
 
       try {
+        if (objectUrlRef.current) {
+          revokePlayableAyahAudioUrl(objectUrlRef.current)
+          objectUrlRef.current = null
+        }
+        if (url.startsWith('blob:')) objectUrlRef.current = url
         audio.src = url
         await audio.play()
         if (session !== sessionRef.current) return
@@ -189,6 +200,10 @@ export function useSurahPlayer(reciterId: string) {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.pause()
+      if (objectUrlRef.current) {
+        revokePlayableAyahAudioUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
       audio.src = ''
     }
   }, [playAyah])

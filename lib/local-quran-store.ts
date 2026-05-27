@@ -10,6 +10,8 @@ interface QuranDataFile {
 let verses: Verse[] | null = null
 let pageIndex: Map<number, Verse[]> | null = null
 const hotCache = new Map<number, Verse[]>()
+const OFFLINE_CACHE_NAME = 'muyassar-offline-v1'
+const QURAN_DATA_URL = '/quran-data.json'
 
 export interface OfflineDownloadProgress {
   percent: number
@@ -112,6 +114,24 @@ function report(
   onProgress?.(patch)
 }
 
+async function saveQuranBundleToCache(source: Response): Promise<void> {
+  if (typeof caches === 'undefined') return
+  const cache = await caches.open(OFFLINE_CACHE_NAME)
+  await cache.put(QURAN_DATA_URL, source.clone())
+}
+
+async function loadQuranBundleResponse(): Promise<Response> {
+  if (typeof caches !== 'undefined') {
+    const cache = await caches.open(OFFLINE_CACHE_NAME)
+    const cached = await cache.match(QURAN_DATA_URL)
+    if (cached) return cached
+  }
+
+  const response = await fetch(QURAN_DATA_URL, { cache: 'force-cache' })
+  if (!response.ok) throw new Error('Offline Quran file missing')
+  return response
+}
+
 export async function downloadOfflineQuran(
   onProgress?: (progress: OfflineDownloadProgress) => void
 ): Promise<void> {
@@ -121,6 +141,7 @@ export async function downloadOfflineQuran(
   if (!response.ok) {
     throw new Error('Could not download Quran data. Run npm run download-quran on the server first.')
   }
+  await saveQuranBundleToCache(response)
 
   const total = Number(response.headers.get('content-length') || 0)
   const body = response.body
@@ -201,8 +222,7 @@ export async function downloadOfflineQuran(
 /** Hydrate from already-fetched bundle (e.g. after settings flag set). */
 export async function hydrateOfflineFromDisk(): Promise<void> {
   if (pageIndex) return
-  const response = await fetch('/quran-data.json', { cache: 'no-store' })
-  if (!response.ok) throw new Error('Offline Quran file missing')
+  const response = await loadQuranBundleResponse()
   const buffer = await response.arrayBuffer()
   const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
   ingestQuranData(data)
