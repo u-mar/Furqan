@@ -7,6 +7,7 @@ import { useQcfFont } from '@/hooks/useQcfFont'
 import { qcfFontFamily } from '@/lib/mushaf-fonts'
 import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
 import { normalizeUthmaniPage, type NormalizedUthmaniVerse } from '@/lib/quran-normalizer'
+import MushafPageView from '@/components/mushaf/MushafPageView'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { MushafStyle } from '@/lib/app-settings'
@@ -411,6 +412,26 @@ export default function QuranPageView({
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-500">
         <p>Starting verse not found on this page.</p>
       </div>
+    )
+  }
+
+  if (readMode && readOnly) {
+    const resolvedPage =
+      pageNumberProp ??
+      verses.find((v) => v.words?.[0]?.v2_page)?.words?.[0]?.v2_page ??
+      verses.find((v) => v.page_number)?.page_number ??
+      1
+
+    return (
+      <MushafPageView
+        verses={verses}
+        pageNumber={resolvedPage}
+        immersive
+        highlightedVerseKey={highlightedVerseKey}
+        selectedVerseKey={selectedVerseKey}
+        onAyahLongPress={ayahLongPress}
+        className="h-full"
+      />
     )
   }
 

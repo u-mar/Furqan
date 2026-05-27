@@ -1,0 +1,124 @@
+/* Fixed-layout Madinah Mushaf (QCF v2) — not normal Arabic paragraph flow */
+
+.qcf-page {
+  width: 100%;
+  max-width: 800px;
+  margin-inline: auto;
+  aspect-ratio: 0.707;
+  background: var(--mushaf-read-bg, #fff);
+  padding: clamp(14px, 3.2vw, 32px) clamp(12px, 2.8vw, 28px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+.qcf-page--immersive {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: unset;
+  padding: clamp(10px, 1.8dvh, 28px) clamp(8px, 1.6dvw, 22px);
+}
+
+.qcf-page__lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+  width: 100%;
+}
+
+.qcf-line {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  line-height: 1.9;
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: translateZ(0);
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+  color: var(--mushaf-read-text, #1a1a1a);
+  touch-action: manipulation;
+}
+
+.qcf-page--immersive .qcf-line {
+  line-height: 1.75;
+}
+
+.qcf-line__glyphs {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  font-size: clamp(22px, calc((100dvh - 88px) / 15 * 0.52), 40px);
+  letter-spacing: 0;
+  word-spacing: 0;
+}
+
+.qcf-page:not(.qcf-page--immersive) .qcf-line__glyphs {
+  font-size: clamp(20px, 4.2vw, 40px);
+}
+
+.qcf-line--empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.qcf-line--surah-header {
+  justify-content: center;
+}
+
+.qcf-line__surah-name {
+  font-family: 'SurahNameV2', serif;
+  font-size: clamp(28px, 5.5vw, 52px);
+  line-height: 1;
+  letter-spacing: 0;
+  word-spacing: 0;
+}
+
+.qcf-line--basmalah .qcf-line__glyphs {
+  font-family: 'SurahNameV2', serif;
+  font-size: clamp(24px, 4.8vw, 44px);
+}
+
+.qcf-line--reciting {
+  background: rgba(45, 212, 191, 0.2);
+  border-radius: 4px;
+}
+
+.qcf-line--selected {
+  background: rgba(45, 212, 191, 0.1);
+  border-radius: 4px;
+}
+
+html:not(.dark) .qcf-line--reciting {
+  background: rgba(20, 184, 166, 0.16);
+}
+
+html:not(.dark) .qcf-line--selected {
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.qcf-page--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.qcf-page__status {
+  font-size: 0.75rem;
+  color: var(--mushaf-read-meta, #9ca3af);
+}

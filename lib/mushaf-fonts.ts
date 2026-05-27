@@ -38,7 +38,7 @@ export async function loadSurahNameFont(): Promise<boolean> {
         return true
       }
       const url = await resolveSurahNameFontUrl()
-      const face = new FontFace('SurahNameV2', `url(${url})`, { display: 'swap' })
+      const face = new FontFace('SurahNameV2', `url(${url})`, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
       surahNameLoaded = true
@@ -72,7 +72,7 @@ export async function loadPageFont(page: number): Promise<boolean> {
       if (shouldLogFontDebug()) {
         console.info('[Muyassar] Loading QCF font', { page, family, url })
       }
-      const face = new FontFace(family, `url(${url})`, { display: 'swap' })
+      const face = new FontFace(family, `url(${url})`, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
       await document.fonts.load(`16px "${family}"`)

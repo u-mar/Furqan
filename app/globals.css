@@ -103,6 +103,14 @@ body {
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'SurahNameV2';
+  src: url('/fonts/surah-name-v2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 .home-serif {
   font-family: var(--font-home-serif), Georgia, 'Times New Roman', serif;
 }

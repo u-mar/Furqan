@@ -7,6 +7,7 @@ import InstallPrompt from '@/components/InstallPrompt'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
 import './globals.css'
+import './mushaf-qcf.css'
 
 const amiri = Amiri({
   subsets: ['arabic'],

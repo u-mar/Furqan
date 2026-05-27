@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
+import MushafFontPreload from '@/components/mushaf/MushafFontPreload'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
@@ -587,6 +588,7 @@ function ReadPageContent() {
 
   return (
     <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
+      <MushafFontPreload page={currentPage} />
       {pageLoading && (
         <div
           className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"
@@ -611,7 +613,7 @@ function ReadPageContent() {
         ref={contentScrollRef}
         className={cn(
           'relative min-h-0 flex-1',
-          showTranslation ? 'overflow-y-auto overscroll-contain px-4 pb-36' : 'overflow-hidden px-1 pb-14 sm:px-2'
+          showTranslation ? 'overflow-y-auto overscroll-contain px-4 pb-36' : 'overflow-hidden px-0 pb-14'
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
