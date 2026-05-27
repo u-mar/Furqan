@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, Download, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
@@ -100,9 +99,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function SettingsPage() {
-  const searchParams = useSearchParams()
-  const returnToParam = searchParams.get('returnTo')
-  const returnHref = returnToParam && returnToParam.startsWith('/') ? returnToParam : '/'
+  const [returnHref, setReturnHref] = useState('/')
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
@@ -137,6 +134,13 @@ export default function SettingsPage() {
     const onAuthChanged = () => refreshProfile()
     window.addEventListener('auth-user-changed', onAuthChanged)
     return () => window.removeEventListener('auth-user-changed', onAuthChanged)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const returnToParam = params.get('returnTo')
+    setReturnHref(returnToParam && returnToParam.startsWith('/') ? returnToParam : '/')
   }, [])
 
   function handleLogout() {
