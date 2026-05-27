@@ -240,7 +240,7 @@ export default function ContentsDrawer({
             chaptersByPart.map(([part, partChapters]) => (
               <div key={part} className="mb-4">
                 <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500">
-                  Part {part}
+                  Juz {part}
                 </p>
                 <ul>
                   {partChapters.map((chapter) => {
@@ -287,7 +287,7 @@ export default function ContentsDrawer({
             quartersByPart.map(([part, partQuarters]) => (
               <div key={part} className="mb-4">
                 <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500">
-                  Part {part}
+                  Juz {part}
                 </p>
                 <ul>
                   {partQuarters.map((q, idx) => {

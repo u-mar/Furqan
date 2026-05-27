@@ -579,7 +579,7 @@ function ReadPageContent() {
         dir="ltr"
       >
         <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
-        <span className="text-sm text-[var(--mushaf-read-meta)]">Part {juzPart}</span>
+        <span className="text-sm text-[var(--mushaf-read-meta)]">Juz {juzPart}</span>
       </div>
 
       {/* Mushaf body — fixed fit when reading; scroll when translation */}

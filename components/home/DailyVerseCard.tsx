@@ -176,7 +176,7 @@ export default function DailyVerseCard() {
           <button
             type="button"
             onClick={handlePlayToggle}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#b8cf9e] text-[var(--home-sage-dark)] shadow-sm transition-colors hover:bg-[#c5d9ab]"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#c5d9ab] text-[#2f3d27] shadow-sm transition-colors hover:bg-[#d3e2bd] dark:bg-[#d3e2bd] dark:text-[#2f3d27]"
             aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
             {playing ? (

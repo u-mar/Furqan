@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Dices, MicVocal, Users } from 'lucide-react'
+import { ChevronLeft, Dices, MicVocal } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { cn } from '@/lib/cn'
 
@@ -9,18 +9,10 @@ const modes = [
   {
     id: 'random',
     label: 'Randomize',
-    description: 'Random ayah within surah, juz, or surah range',
+    description: 'Random ayah within a juz or surah range',
     href: '/test/select/random',
     Icon: Dices,
     enabled: true,
-  },
-  {
-    id: 'subac',
-    label: 'Subac',
-    description: 'Group reading — each person their own ayah',
-    href: null,
-    Icon: Users,
-    enabled: false,
   },
   {
     id: 'tajweed',
@@ -38,16 +30,16 @@ export default function TestSelectPage() {
       <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4 lg:mb-7">
         <Link
           href="/"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--home-heading)]"
           aria-label="Back to home"
         >
           <ChevronLeft className="h-6 w-6" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--app-text)] lg:text-2xl">
+          <h1 className="home-serif text-xl font-semibold tracking-tight text-[var(--home-heading)] lg:text-2xl">
             Test
           </h1>
-          <p className="text-sm text-[var(--app-muted)]">Choose how you want to practice</p>
+          <p className="text-sm text-[var(--home-muted)]">Choose how you want to practice</p>
         </div>
       </header>
 
@@ -62,7 +54,7 @@ export default function TestSelectPage() {
               className={cn(
                 'relative flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 text-center shadow-[var(--home-card-shadow)] transition-all duration-200',
                 mode.enabled &&
-                  'hover:border-teal-500/35 active:scale-[0.97] lg:hover:scale-[1.01]',
+                  'hover:border-[var(--home-sage-deep)]/45 active:scale-[0.97] lg:hover:scale-[1.01]',
                 !mode.enabled && 'opacity-65'
               )}
             >
@@ -74,12 +66,12 @@ export default function TestSelectPage() {
               <Icon
                 className={cn(
                   'h-12 w-12',
-                  mode.enabled ? 'text-teal-600 dark:text-teal-400' : 'text-[var(--app-muted)]'
+                  mode.enabled ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-muted)]'
                 )}
                 strokeWidth={1.75}
               />
-              <span className="block text-base font-semibold text-[var(--app-text)]">{mode.label}</span>
-              <span className="block text-xs leading-snug text-[var(--app-muted)]">{mode.description}</span>
+              <span className="block text-base font-semibold text-[var(--home-heading)]">{mode.label}</span>
+              <span className="block text-xs leading-snug text-[var(--home-muted)]">{mode.description}</span>
             </div>
           )
 
@@ -88,7 +80,7 @@ export default function TestSelectPage() {
               <Link
                 key={mode.id}
                 href={mode.href}
-                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60"
+                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--home-sage-deep)]/60"
               >
                 {inner}
               </Link>

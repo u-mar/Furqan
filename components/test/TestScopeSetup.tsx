@@ -27,12 +27,15 @@ interface TestScopeSetupProps {
   buildHref: (config: ScopeConfig) => string
   extra?: ReactNode
   canStart?: (config: ScopeConfig) => boolean
+  /** Which scope tabs to show. Defaults to surah, juz, range. */
+  availableScopes?: ScopeType[]
+  defaultScope?: ScopeType
 }
 
-const SCOPE_TABS: { id: ScopeType; label: string; hint: string }[] = [
+const ALL_SCOPE_TABS: { id: ScopeType; label: string; hint: string }[] = [
   { id: 'surah', label: 'Surah', hint: 'One surah' },
   { id: 'juz', label: 'Juz', hint: 'Full juz' },
-  { id: 'range', label: 'Range', hint: 'Surah to surah' },
+  { id: 'range', label: 'Range', hint: 'Surah selection' },
 ]
 
 function SurahRow({
@@ -50,28 +53,63 @@ function SurahRow({
       onClick={onSelect}
       className={cn(
         'flex w-full items-center gap-3 border-b border-[var(--home-card-border)] px-4 py-3 text-left transition-colors last:border-0',
-        selected ? 'bg-teal-500/15' : 'hover:bg-[var(--app-surface)]'
+        selected ? 'bg-[var(--home-sage-soft)]' : 'hover:bg-[var(--app-surface)]'
       )}
     >
       <span
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold',
           selected
-            ? 'bg-teal-600 text-white'
-            : 'bg-[var(--app-surface)] text-[var(--app-muted)]'
+            ? 'bg-[var(--home-sage-deep)] text-white'
+            : 'bg-[var(--app-surface)] text-[var(--home-muted)]'
         )}
       >
         {chapter.id}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-[var(--app-text)]">
+        <span className="block truncate font-medium text-[var(--home-heading)]">
           {chapter.englishName}
         </span>
       </span>
-      <span className="shrink-0 arabic-text text-base text-teal-700 dark:text-teal-400">
+      <span className="shrink-0 arabic-text text-base text-[var(--home-sage-deep)]">
         {chapter.name}
       </span>
     </button>
+  )
+}
+
+function ScopeToggle({
+  active,
+  onChange,
+  options,
+}: {
+  active: string
+  onChange: (id: string) => void
+  options: { id: string; label: string }[]
+}) {
+  return (
+    <div
+      className={cn(
+        'grid gap-1 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]',
+        options.length === 2 ? 'grid-cols-2' : 'grid-cols-1'
+      )}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={cn(
+            'min-h-[44px] rounded-xl text-sm font-semibold transition-all',
+            active === opt.id
+              ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
+              : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -83,12 +121,19 @@ export default function TestScopeSetup({
   buildHref,
   extra,
   canStart,
+  availableScopes = ['surah', 'juz', 'range'],
+  defaultScope,
 }: TestScopeSetupProps) {
+  const scopeTabs = ALL_SCOPE_TABS.filter((t) => availableScopes.includes(t.id))
+  const initialScope = defaultScope ?? scopeTabs[0]?.id ?? 'juz'
+
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [scope, setScope] = useState<ScopeType>('surah')
+  const [scope, setScope] = useState<ScopeType>(initialScope)
   const [query, setQuery] = useState('')
   const [selectedSurah, setSelectedSurah] = useState<Chapter | null>(null)
   const [selectedJuz, setSelectedJuz] = useState<number | null>(null)
+  const [rangeSingleSurah, setRangeSingleSurah] = useState(true)
+  const [rangeOneChapter, setRangeOneChapter] = useState<Chapter | null>(null)
   const [rangeFromSurah, setRangeFromSurah] = useState<Chapter | null>(null)
   const [rangeToSurah, setRangeToSurah] = useState<Chapter | null>(null)
   const [loading, setLoading] = useState(true)
@@ -99,6 +144,7 @@ export default function TestScopeSetup({
         setChapters(list)
         if (list.length > 0) {
           setSelectedSurah(list[0])
+          setRangeOneChapter(list[0])
           setRangeFromSurah(list[0])
           setRangeToSurah(list[0])
         }
@@ -118,10 +164,16 @@ export default function TestScopeSetup({
         endSurah: 1,
       }
     }
-    if (scope === 'range' && rangeFromSurah && rangeToSurah) {
-      const from = Math.min(rangeFromSurah.id, rangeToSurah.id)
-      const to = Math.max(rangeFromSurah.id, rangeToSurah.id)
-      return { scope, surah: from, juz: 1, startSurah: from, endSurah: to }
+    if (scope === 'range') {
+      if (rangeSingleSurah && rangeOneChapter) {
+        const id = rangeOneChapter.id
+        return { scope, surah: id, juz: 1, startSurah: id, endSurah: id }
+      }
+      if (rangeFromSurah && rangeToSurah) {
+        const from = Math.min(rangeFromSurah.id, rangeToSurah.id)
+        const to = Math.max(rangeFromSurah.id, rangeToSurah.id)
+        return { scope, surah: from, juz: 1, startSurah: from, endSurah: to }
+      }
     }
     return {
       scope: 'surah',
@@ -130,22 +182,57 @@ export default function TestScopeSetup({
       startSurah: selectedSurah?.id ?? 1,
       endSurah: selectedSurah?.id ?? 1,
     }
-  }, [scope, selectedSurah, selectedJuz, rangeFromSurah, rangeToSurah])
+  }, [
+    scope,
+    selectedSurah,
+    selectedJuz,
+    rangeSingleSurah,
+    rangeOneChapter,
+    rangeFromSurah,
+    rangeToSurah,
+  ])
 
   const ready = useMemo(() => {
     if (canStart) return canStart(config)
     if (scope === 'juz') return selectedJuz !== null
-    if (scope === 'range') return rangeFromSurah !== null && rangeToSurah !== null
+    if (scope === 'range') {
+      if (rangeSingleSurah) return rangeOneChapter !== null
+      return rangeFromSurah !== null && rangeToSurah !== null
+    }
     return selectedSurah !== null
-  }, [canStart, config, scope, selectedSurah, selectedJuz, rangeFromSurah, rangeToSurah])
+  }, [
+    canStart,
+    config,
+    scope,
+    selectedSurah,
+    selectedJuz,
+    rangeSingleSurah,
+    rangeOneChapter,
+    rangeFromSurah,
+    rangeToSurah,
+  ])
+
+  const scopeSummary = useMemo(() => {
+    if (scope === 'juz') return `Juz ${config.juz}`
+    if (scope === 'range') {
+      if (rangeSingleSurah && rangeOneChapter) {
+        return `${rangeOneChapter.englishName} (Surah ${rangeOneChapter.id})`
+      }
+      const from = Math.min(config.startSurah, config.endSurah)
+      const to = Math.max(config.startSurah, config.endSurah)
+      return `Surah ${from} to ${to}`
+    }
+    return selectedSurah?.englishName ?? `Surah ${config.surah}`
+  }, [scope, config, rangeSingleSurah, rangeOneChapter, selectedSurah])
 
   const href = ready ? buildHref(config) : '#'
+  const tabCols = scopeTabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
 
   if (loading) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--app-bg)]">
         <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--app-border)] border-t-teal-600"
+          className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--app-border)] border-t-[var(--home-sage-deep)]"
           role="status"
           aria-label="Loading"
         />
@@ -154,84 +241,58 @@ export default function TestScopeSetup({
   }
 
   return (
-    <HomeScreen>
-      <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4">
+    <HomeScreen className="mx-auto max-w-lg">
+      <header className="mb-6 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4">
         <Link
           href={backHref}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--home-sage-soft)]"
           aria-label="Go back"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Dices className="h-5 w-5 shrink-0 text-teal-600 dark:text-teal-400" />
-            <h1 className="truncate text-xl font-bold text-[var(--app-text)]">{title}</h1>
+            <Dices className="h-5 w-5 shrink-0 text-[var(--home-sage-deep)]" />
+            <h1 className="home-serif truncate text-2xl font-semibold text-[var(--home-heading)]">
+              {title}
+            </h1>
           </div>
-          <p className="text-sm text-[var(--app-muted)]">{subtitle}</p>
+          <p className="mt-0.5 text-sm text-[var(--home-muted)]">{subtitle}</p>
         </div>
       </header>
 
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-        Test within
-      </p>
-      <div className="mb-4 grid grid-cols-3 gap-3">
-        {SCOPE_TABS.map((tab) => (
+      <h2 className="home-serif mb-3 text-lg font-semibold text-[var(--home-heading)]">Test within</h2>
+      <div className={cn('mb-5 grid gap-3', tabCols)}>
+        {scopeTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setScope(tab.id)}
             className={cn(
-              'flex aspect-square flex-col items-center justify-center rounded-2xl border px-2 text-center shadow-[var(--home-card-shadow)] transition-all',
+              'flex min-h-[88px] flex-col items-center justify-center rounded-2xl border px-3 py-4 text-center shadow-[var(--home-card-shadow)] transition-all',
               scope === tab.id
-                ? 'border-teal-500/50 bg-teal-500/15'
-                : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-teal-500/25'
+                ? 'border-[var(--home-sage-deep)]/55 bg-[var(--home-sage-soft)]'
+                : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-sage-deep)]/30'
             )}
           >
             <span
               className={cn(
-                'text-sm font-semibold',
-                scope === tab.id ? 'text-teal-700 dark:text-teal-400' : 'text-[var(--app-text)]'
+                'text-base font-semibold',
+                scope === tab.id ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-heading)]'
               )}
             >
               {tab.label}
             </span>
-            <span className="mt-0.5 text-[10px] text-[var(--app-muted)]">{tab.hint}</span>
+            <span className="mt-1 text-xs text-[var(--home-muted)]">{tab.hint}</span>
           </button>
         ))}
       </div>
 
-      {(scope === 'surah' || scope === 'range') && (
-        <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-muted)]" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search surah…"
-            className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] py-2.5 pl-10 pr-3 text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus:border-teal-500/50 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-          />
-        </div>
-      )}
-
-      {scope === 'surah' && (
-        <div className="mb-4 max-h-[40vh] overflow-y-auto rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
-          {filtered.map((chapter) => (
-            <SurahRow
-              key={chapter.id}
-              chapter={chapter}
-              selected={selectedSurah?.id === chapter.id}
-              onSelect={() => setSelectedSurah(chapter)}
-            />
-          ))}
-        </div>
-      )}
-
       {scope === 'juz' && (
-        <div className="mb-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-          <div className="mb-2 flex items-center gap-2 text-xs text-[var(--app-muted)]">
-            <Layers className="h-3.5 w-3.5" />
-            Select a juz (1–30)
+        <div className="mb-5 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+          <div className="mb-3 flex items-center gap-2 text-sm text-[var(--home-muted)]">
+            <Layers className="h-4 w-4 text-[var(--home-sage-deep)]" />
+            <span>Select a juz (1–30)</span>
           </div>
           <div className="grid grid-cols-6 gap-2">
             {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
@@ -240,10 +301,10 @@ export default function TestScopeSetup({
                 type="button"
                 onClick={() => setSelectedJuz(juz)}
                 className={cn(
-                  'aspect-square rounded-lg text-sm font-semibold transition-colors',
+                  'aspect-square rounded-xl text-sm font-semibold transition-colors',
                   selectedJuz === juz
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'border border-[var(--home-card-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:border-teal-500/40'
+                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
+                    : 'border border-[var(--home-card-border)] bg-[var(--app-surface)] text-[var(--home-heading)] hover:border-[var(--home-sage-deep)]/40'
                 )}
               >
                 {juz}
@@ -254,69 +315,124 @@ export default function TestScopeSetup({
       )}
 
       {scope === 'range' && (
-        <div className="mb-4 space-y-4">
-          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-              From surah
-            </p>
-            <div className="max-h-[28vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
-              {filtered.map((chapter) => (
-                <SurahRow
-                  key={`from-${chapter.id}`}
-                  chapter={chapter}
-                  selected={rangeFromSurah?.id === chapter.id}
-                  onSelect={() => setRangeFromSurah(chapter)}
-                />
-              ))}
-            </div>
+        <div className="mb-5 space-y-4">
+          <div>
+            <p className="mb-2 text-sm font-medium text-[var(--home-muted)]">How many surahs?</p>
+            <ScopeToggle
+              active={rangeSingleSurah ? 'one' : 'many'}
+              onChange={(id) => setRangeSingleSurah(id === 'one')}
+              options={[
+                { id: 'one', label: 'One surah' },
+                { id: 'many', label: 'Many surahs' },
+              ]}
+            />
           </div>
-          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-              To surah
-            </p>
-            <div className="max-h-[28vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
-              {filtered.map((chapter) => (
-                <SurahRow
-                  key={`to-${chapter.id}`}
-                  chapter={chapter}
-                  selected={rangeToSurah?.id === chapter.id}
-                  onSelect={() => setRangeToSurah(chapter)}
-                />
-              ))}
-            </div>
+
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--home-muted)]" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search surah…"
+              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 pl-10 pr-3 text-sm text-[var(--home-heading)] placeholder:text-[var(--home-muted)] shadow-[var(--home-card-shadow)] focus:border-[var(--home-sage-deep)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+            />
           </div>
-          {rangeFromSurah && rangeToSurah && (
-            <p className="text-center text-xs text-[var(--app-muted)]">
-              Testing surahs{' '}
-              <span className="font-medium text-[var(--app-text)]">
-                {Math.min(rangeFromSurah.id, rangeToSurah.id)}–
-                {Math.max(rangeFromSurah.id, rangeToSurah.id)}
-              </span>
-            </p>
+
+          {rangeSingleSurah ? (
+            <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
+                Choose surah
+              </p>
+              <div className="max-h-[36vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+                {filtered.map((chapter) => (
+                  <SurahRow
+                    key={chapter.id}
+                    chapter={chapter}
+                    selected={rangeOneChapter?.id === chapter.id}
+                    onSelect={() => setRangeOneChapter(chapter)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
+                  From surah
+                </p>
+                <div className="max-h-[24vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+                  {filtered.map((chapter) => (
+                    <SurahRow
+                      key={`from-${chapter.id}`}
+                      chapter={chapter}
+                      selected={rangeFromSurah?.id === chapter.id}
+                      onSelect={() => setRangeFromSurah(chapter)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
+                  To surah
+                </p>
+                <div className="max-h-[24vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+                  {filtered.map((chapter) => (
+                    <SurahRow
+                      key={`to-${chapter.id}`}
+                      chapter={chapter}
+                      selected={rangeToSurah?.id === chapter.id}
+                      onSelect={() => setRangeToSurah(chapter)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
 
+      {scope === 'surah' && availableScopes.includes('surah') && (
+        <>
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--home-muted)]" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search surah…"
+              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 pl-10 pr-3 text-sm shadow-[var(--home-card-shadow)] focus:border-[var(--home-sage-deep)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+            />
+          </div>
+          <div className="mb-5 max-h-[40vh] overflow-y-auto rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
+            {filtered.map((chapter) => (
+              <SurahRow
+                key={chapter.id}
+                chapter={chapter}
+                selected={selectedSurah?.id === chapter.id}
+                onSelect={() => setSelectedSurah(chapter)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
       {extra}
 
-      <div className="mb-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 text-sm shadow-[var(--home-card-shadow)]">
-        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">Selected scope</p>
-        <p className="mt-1 font-semibold text-[var(--app-text)]">
-          {scope === 'juz'
-            ? `Juz ${config.juz}`
-            : scope === 'range'
-              ? `Surah ${config.startSurah} to ${config.endSurah}`
-              : selectedSurah?.englishName ?? `Surah ${config.surah}`}
+      <div className="mb-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+          Selected scope
         </p>
+        <p className="home-serif mt-1 text-lg font-semibold text-[var(--home-heading)]">{scopeSummary}</p>
       </div>
 
       <Link
         href={href}
         onClick={(e) => !ready && e.preventDefault()}
         className={cn(
-          'mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold shadow-sm transition-colors',
+          'flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold shadow-md transition-all',
           ready
-            ? 'bg-teal-600 text-white hover:bg-teal-500 active:scale-[0.99]'
+            ? 'bg-[var(--home-sage-deep)] text-white shadow-[rgba(93,122,72,0.25)] hover:brightness-105 active:scale-[0.99]'
             : 'cursor-not-allowed bg-[var(--app-surface)] text-[var(--app-muted)]'
         )}
       >

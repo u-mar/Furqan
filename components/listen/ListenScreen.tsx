@@ -72,14 +72,14 @@ export default function ListenScreen() {
         <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4">
           <Link
             href="/"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-teal-600 hover:bg-[var(--app-surface)] dark:text-teal-400"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] hover:bg-[var(--app-surface)]"
             aria-label="Back to home"
           >
             <ChevronLeft className="h-7 w-7" />
           </Link>
           <div className="flex items-center gap-2">
-            <Headphones className="h-6 w-6 text-teal-600 dark:text-teal-400" />
-            <h1 className="text-xl font-bold">Listen</h1>
+            <Headphones className="h-6 w-6 text-[var(--home-sage-deep)]" />
+            <h1 className="home-serif text-xl font-semibold text-[var(--home-heading)]">Listen</h1>
           </div>
         </header>
 
@@ -109,9 +109,9 @@ export default function ListenScreen() {
                       type="button"
                       onClick={() => selectReciter(r.id)}
                       className={cn(
-                        'flex w-full px-4 py-3 text-left text-sm text-[var(--app-text)] transition-colors hover:bg-teal-500/10',
+                        'flex w-full px-4 py-3 text-left text-sm text-[var(--app-text)] transition-colors hover:bg-[var(--home-sage-soft)]',
                         r.id === settings.reciterId &&
-                          'bg-teal-500/15 font-semibold text-teal-800 dark:text-teal-400'
+                          'bg-[var(--home-sage-soft)] font-semibold text-[var(--home-sage-deep)]'
                       )}
                     >
                       {r.name}
@@ -128,12 +128,12 @@ export default function ListenScreen() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search surah…"
-          className="mb-4 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-sm placeholder:text-[var(--app-muted)] focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+          className="mb-4 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-sm placeholder:text-[var(--app-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/35"
         />
 
         {loadingChapters ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-teal-600 dark:text-teal-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--home-sage-deep)]" />
           </div>
         ) : (
           <ul className="space-y-2">
@@ -149,15 +149,15 @@ export default function ListenScreen() {
                     className={cn(
                       'flex min-h-[56px] w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors active:scale-[0.99]',
                       active
-                        ? 'border-teal-500/50 bg-teal-500/10'
-                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-teal-500/20'
+                        ? 'border-[var(--home-sage-deep)]/55 bg-[var(--home-sage-soft)]'
+                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-sage-deep)]/25'
                     )}
                   >
                     <span
                       className={cn(
                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
                         active
-                          ? 'bg-teal-600 text-white'
+                          ? 'bg-[var(--home-sage-deep)] text-white'
                           : 'bg-[var(--app-surface)] text-[var(--app-muted)]'
                       )}
                     >
@@ -169,7 +169,7 @@ export default function ListenScreen() {
                         {chapter.name} · {chapter.versesCount} ayahs
                       </span>
                     </span>
-                    <span className="shrink-0 text-teal-600 dark:text-teal-400">
+                    <span className="shrink-0 text-[var(--home-sage-deep)]">
                       {active && state.loading ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                       ) : isPlaying ? (
@@ -210,7 +210,7 @@ export default function ListenScreen() {
                 <button
                   type="button"
                   onClick={togglePlayPause}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-teal-600 text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white"
                   aria-label={state.playing ? 'Pause' : 'Play'}
                 >
                   {state.loading ? (
@@ -251,7 +251,7 @@ export default function ListenScreen() {
                 disabled={!state.duration}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-teal-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-700 dark:accent-teal-500"
                 style={{
-                  background: `linear-gradient(to right, rgb(13 148 136) ${progress}%, rgb(229 231 235) ${progress}%)`,
+                  background: `linear-gradient(to right, var(--home-sage-deep) ${progress}%, rgb(229 231 235) ${progress}%)`,
                 }}
                 aria-label="Seek within current ayah"
               />

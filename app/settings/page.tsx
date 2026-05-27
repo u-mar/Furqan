@@ -308,6 +308,10 @@ export default function SettingsPage() {
         >
           Open reader
         </Link>
+
+        <p className="home-serif mt-8 pb-2 text-center text-sm leading-relaxed text-[var(--home-muted)]">
+          No Ads this app is for ṣadaqah jāriyah for my parents.
+        </p>
       </div>
     </main>
   )

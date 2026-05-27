@@ -3,5 +3,5 @@
 import { redirect } from 'next/navigation'
 
 export default function TestSurahSelectPage() {
-  redirect('/test/select/subac')
+  redirect('/test/select/random')
 }
