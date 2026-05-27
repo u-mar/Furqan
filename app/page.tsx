@@ -15,10 +15,10 @@ import { useAppSettings } from '@/hooks/useAppSettings'
 import { cn } from '@/lib/cn'
 
 const exploreTiles = [
-  { id: 'read', label: 'Read', href: '/read', Icon: IconRead },
-  { id: 'test', label: 'Test', href: '/test/select', Icon: IconTest },
-  { id: 'community', label: 'Community', href: null, Icon: Users },
-  { id: 'listen', label: 'Listen', href: '/listen', Icon: IconListen },
+  { id: 'read', label: 'Read', href: '/read', Icon: IconRead, themed: true },
+  { id: 'test', label: 'Test', href: '/test/select', Icon: IconTest, themed: true },
+  { id: 'community', label: 'Community', href: null, Icon: Users, themed: false },
+  { id: 'listen', label: 'Listen', href: '/listen', Icon: IconListen, themed: true },
 ] as const
 
 export default function Home() {
@@ -54,7 +54,14 @@ export default function Home() {
             const inner = (
               <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-7 shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.98]">
                 <span className="flex h-12 w-12 items-center justify-center text-[var(--home-sage-deep)]">
-                  <Icon className="h-10 w-10" strokeWidth={tile.id === 'community' ? 1.5 : undefined} />
+                  <span
+                    className={cn(
+                      'flex h-11 w-11 items-center justify-center rounded-full',
+                      tile.themed ? 'bg-[var(--home-sage-soft)]' : 'bg-stone-200/50 dark:bg-white/10'
+                    )}
+                  >
+                    <Icon className="h-7 w-7" strokeWidth={tile.id === 'community' ? 1.75 : undefined} />
+                  </span>
                 </span>
                 <span className="text-sm font-medium text-[var(--home-heading)]">{tile.label}</span>
               </div>
@@ -119,8 +126,7 @@ export default function Home() {
               </button>
             </div>
             <p className="text-sm leading-relaxed text-[var(--app-muted)]">
-              A public place where learners can record their own qiraat, share recitations, and listen
-              to others practicing.
+              A public place where users can record their own qiraat and share recitations.
             </p>
           </div>
         </div>

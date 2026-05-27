@@ -75,12 +75,6 @@ export default function ContinueReadingCard() {
         <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">
           Continue Reading
         </h2>
-        <Link
-          href="/read"
-          className="text-sm font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
-        >
-          View History
-        </Link>
       </div>
 
       <Link

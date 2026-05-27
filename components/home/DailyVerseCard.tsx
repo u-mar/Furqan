@@ -1,8 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { Bookmark, Play, Share2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bookmark, Play, Share2, Square } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -22,6 +21,8 @@ export default function DailyVerseCard() {
   const [page, setPage] = useState(22)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     setSaved(isBookmarked(DAILY_VERSE_KEY))
@@ -61,6 +62,13 @@ export default function DailyVerseCard() {
     }
   }, [translationLanguage])
 
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+      audioRef.current = null
+    }
+  }, [])
+
   const toggleSave = () => {
     if (saved) {
       removeBookmark(DAILY_VERSE_KEY)
@@ -96,6 +104,24 @@ export default function DailyVerseCard() {
   }
 
   const [surahNum, ayahNum] = DAILY_VERSE_KEY.split(':')
+
+  const handlePlayToggle = () => {
+    if (playing) {
+      audioRef.current?.pause()
+      setPlaying(false)
+      return
+    }
+
+    if (!audioRef.current) {
+      const audio = new Audio(everyAyahUrl(Number(surahNum), Number(ayahNum)))
+      audio.addEventListener('ended', () => setPlaying(false))
+      audio.addEventListener('pause', () => setPlaying(false))
+      audioRef.current = audio
+    }
+
+    void audioRef.current.play()
+    setPlaying(true)
+  }
 
   return (
     <section className="mb-8" aria-label="Daily verse">
@@ -146,20 +172,19 @@ export default function DailyVerseCard() {
           {loading ? 'Loading translation…' : translation}
         </p>
 
-        <div className="relative flex items-center gap-3">
-          <Link
-            href={`/read?page=${page}`}
-            className="flex min-h-[48px] flex-1 items-center justify-center rounded-2xl bg-white text-sm font-bold text-[var(--home-sage-dark)] shadow-sm transition-transform active:scale-[0.98]"
-          >
-            Read Tafsir
-          </Link>
-          <a
-            href={everyAyahUrl(Number(surahNum), Number(ayahNum))}
+        <div className="relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={handlePlayToggle}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#b8cf9e] text-[var(--home-sage-dark)] shadow-sm transition-colors hover:bg-[#c5d9ab]"
-            aria-label="Play recitation"
+            aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
-            <Play className="h-5 w-5 fill-current" />
-          </a>
+            {playing ? (
+              <Square className="h-5 w-5 fill-current" />
+            ) : (
+              <Play className="h-5 w-5 fill-current" />
+            )}
+          </button>
         </div>
       </div>
     </section>
