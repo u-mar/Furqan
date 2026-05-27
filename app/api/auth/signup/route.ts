@@ -72,6 +72,15 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected server error.'
+    if (message.includes('DATABASE_URL')) {
+      return NextResponse.json(
+        {
+          error:
+            'Database is not configured. Add DATABASE_URL to .env.local and restart the dev server (npm run dev).',
+        },
+        { status: 500 }
+      )
+    }
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

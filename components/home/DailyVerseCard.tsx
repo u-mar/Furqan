@@ -5,7 +5,7 @@ import { Bookmark, Play, Share2, Square } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
-import { getVerseArabicText } from '@/lib/quran-display'
+import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
 
@@ -48,7 +48,7 @@ export default function DailyVerseCard() {
       try {
         const verse = await getVerseByKey(dailyVerseKey)
         if (cancelled) return
-        setArabic(getVerseArabicText(verse))
+        setArabic(getVerseArabicText(verse, { omitEndMark: true }))
         setPage(verse.page_number || 22)
 
         const res = await fetch(
@@ -99,7 +99,7 @@ export default function DailyVerseCard() {
   }
 
   const handleShare = async () => {
-    const text = `${dailySurahLabel}\n\n${arabic}\n\n${translation}`
+    const text = `${surahBadge}\n\n${arabic}\n\n${translation}`
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Daily Verse', text })
@@ -116,6 +116,7 @@ export default function DailyVerseCard() {
   }
 
   const [surahNum, ayahNum] = dailyVerseKey.split(':')
+  const surahBadge = stripAyahRefFromLabel(dailySurahLabel)
 
   const handlePlayToggle = () => {
     if (playing) {
@@ -159,7 +160,7 @@ export default function DailyVerseCard() {
         />
         <div className="relative mb-4 flex items-start justify-between gap-3">
           <span className="rounded-full bg-white/25 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm">
-            {dailySurahLabel}
+            {surahBadge}
           </span>
           <button
             type="button"
