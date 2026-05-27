@@ -34,7 +34,8 @@ export default function AyahEndMark({
   const fontReady = glyphFontReady ?? localFontReady
   const longPress = useLongPress(() => onLongPress?.(verseKey))
 
-  const display = useGlyph && fontReady ? codeV2!.trim() : fallbackText.trim()
+  const fallback = fallbackText.trim()
+  const display = useGlyph && fontReady ? codeV2!.trim() : fallback ? `۝${fallback}` : '۝'
   const glyphMode = useGlyph && fontReady
 
   const inner = (

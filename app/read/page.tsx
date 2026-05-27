@@ -327,6 +327,10 @@ function ReadPageContent() {
   const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
+  const chapterNamesById = useMemo(
+    () => Object.fromEntries(chapters.map((c) => [c.id, c.name || c.englishName])),
+    [chapters]
+  )
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
   const juzPart = juzForChapter(currentSurahNum)
@@ -436,6 +440,7 @@ function ReadPageContent() {
         <QuranPageView
           key={pageNum}
           verses={verses}
+          chapterNamesById={chapterNamesById}
           startVerseKey={start}
           revealableVerseKeys={keys}
           revealedAyahs={keys}
@@ -450,7 +455,7 @@ function ReadPageContent() {
         />
       )
     },
-    [handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, mushafStyle]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, mushafStyle]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -639,6 +644,7 @@ function ReadPageContent() {
         ) : (
           <QuranPageView
             verses={pageVerses}
+            chapterNamesById={chapterNamesById}
             startVerseKey={startVerseKey}
             revealableVerseKeys={pageVerseKeys}
             revealedAyahs={pageVerseKeys}

@@ -14,6 +14,7 @@ import type { Verse, VerseWord } from '@/types'
 
 interface QuranPageViewProps {
   verses: Verse[]
+  chapterNamesById?: Record<number, string>
   startVerseKey: string
   revealableVerseKeys: Set<string>
   revealedAyahs: Set<string>
@@ -276,6 +277,7 @@ function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
 
 export default function QuranPageView({
   verses,
+  chapterNamesById = {},
   startVerseKey,
   revealableVerseKeys,
   revealedAyahs,
@@ -574,7 +576,11 @@ export default function QuranPageView({
                     <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
                   </>
                 )}
-                <span>{`surah${String(line.chapterNumber).padStart(3, '0')}`}</span>
+                <span>
+                  {line.chapterNumber
+                    ? chapterNamesById[line.chapterNumber] || `Surah ${line.chapterNumber}`
+                    : ''}
+                </span>
                 {!readMode && (
                   <span className="h-px flex-1 bg-[var(--mushaf-sheet-border)]" aria-hidden />
                 )}
