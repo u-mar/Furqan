@@ -57,6 +57,11 @@ html.dark {
   color-scheme: dark;
 }
 
+html:not(.dark) .home-screen {
+  --home-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --home-card-border: rgba(0, 0, 0, 0.06);
+}
+
 html:not(.dark) {
   color-scheme: light;
   --app-bg: #faf6ef;

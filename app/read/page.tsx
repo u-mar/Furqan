@@ -86,7 +86,11 @@ function ReadPageContent() {
 
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
-    const instant = isOfflineReady() ? getLocalMushafPage(next) : null
+    if (!isOfflineReady()) {
+      const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
+      await ensureOfflineHydrated().catch(() => {})
+    }
+    const instant = getLocalMushafPage(next)
     if (instant && instant.length > 0) return instant
     return getMushafPage(next)
   }, [])
@@ -107,7 +111,11 @@ function ReadPageContent() {
       const next = clampPage(page)
       setLoadError(null)
 
-      const instant = isOfflineReady() ? getLocalMushafPage(next) : null
+      if (!isOfflineReady()) {
+        const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
+        await ensureOfflineHydrated().catch(() => {})
+      }
+      const instant = getLocalMushafPage(next)
       if (instant && instant.length > 0) {
         applyPage(next, instant)
         setLoading(false)
@@ -274,23 +282,35 @@ function ReadPageContent() {
   useEffect(() => {
     if (initialLoadDone.current) return
     initialLoadDone.current = true
-    const saved =
-      initialPage > 0
-        ? initialPage
-        : typeof window !== 'undefined'
-          ? Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1')
-          : 1
-    void loadPage(clampPage(saved || 1))
+    void (async () => {
+      const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
+      await ensureOfflineHydrated().catch(() => {})
+      const saved =
+        initialPage > 0
+          ? initialPage
+          : typeof window !== 'undefined'
+            ? Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1')
+            : 1
+      await loadPage(clampPage(saved || 1))
+    })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPage])
 
   const goToSurah = async (surahId: number) => {
     stopRecitation()
-    const verses = await getVersesByChapter(surahId)
-    const first = verses[0]
-    if (!first) return
-    const page = await getVisualPageForVerse(first.verse_key, first.page_number || 1)
-    await loadPage(page)
+    setDrawerOpen(false)
+    setSearchOpen(false)
+    setLoadError(null)
+    try {
+      const verses = await getVersesByChapter(surahId)
+      const first = verses[0]
+      if (!first) return
+      const page = await getVisualPageForVerse(first.verse_key, first.page_number || 1)
+      await loadPage(page)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not open surah'
+      setLoadError(message)
+    }
   }
 
   const handleSelectSurah = async (surahId: number) => {

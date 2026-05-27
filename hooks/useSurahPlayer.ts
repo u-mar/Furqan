@@ -220,8 +220,22 @@ export function useSurahPlayer(reciterId: string) {
     })
   }, [reciterId, playAyah])
 
+  const surahProgress =
+    state.versesCount > 0 && state.currentAyah > 0
+      ? Math.min(
+          100,
+          Math.round(
+            ((state.currentAyah - 1 +
+              (state.duration > 0 ? state.currentTime / state.duration : 0)) /
+              state.versesCount) *
+              100
+          )
+        )
+      : 0
+
   return {
     state,
+    surahProgress,
     playSurah,
     togglePlayPause,
     seekRelative,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getChapters } from '@/lib/quran'
+import { getChapters, getMushafPage } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { Chapter, Verse } from '@/types'
 
@@ -16,12 +16,6 @@ export interface VerseBound {
 export interface DayBounds {
   from: VerseBound
   to: VerseBound
-}
-
-async function fetchPageVerses(page: number): Promise<Verse[]> {
-  const res = await fetch(`/api/ayah?type=page&page=${page}`)
-  if (!res.ok) return []
-  return (await res.json()) as Verse[]
 }
 
 function boundFromVerse(verse: Verse, chapters: Chapter[]): VerseBound {
@@ -50,7 +44,7 @@ export function useDayBounds(startPage: number, endPage: number, enabled: boolea
     let cancelled = false
     setLoading(true)
 
-    Promise.all([getChapters(), fetchPageVerses(startPage), fetchPageVerses(endPage)])
+    Promise.all([getChapters(), getMushafPage(startPage), getMushafPage(endPage)])
       .then(([chapters, startVerses, endVerses]) => {
         if (cancelled) return
         const first = startVerses[0]

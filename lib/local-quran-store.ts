@@ -1,4 +1,4 @@
-import type { Verse, VerseWord } from '@/types'
+import type { Chapter, Verse, VerseWord } from '@/types'
 import { cacheAllMushafFonts, clearOfflineFontsCachedFlag, verifyMushafFontsCached } from '@/lib/offline-font-cache'
 
 interface QuranDataFile {
@@ -8,6 +8,7 @@ interface QuranDataFile {
 }
 
 let verses: Verse[] | null = null
+let bundleChapters: Chapter[] | null = null
 let pageIndex: Map<number, Verse[]> | null = null
 const hotCache = new Map<number, Verse[]>()
 const OFFLINE_CACHE_NAME = 'muyassar-offline-v1'
@@ -100,8 +101,33 @@ export function prefetchMushafPages(center: number, radius = 2): void {
   }
 }
 
+function normalizeBundleChapters(raw: unknown[]): Chapter[] {
+  return raw
+    .map((item) => {
+      const c = item as {
+        id?: number
+        name?: string
+        name_arabic?: string
+        englishName?: string
+        name_simple?: string
+        versesCount?: number
+        verses_count?: number
+      }
+      const id = c.id
+      if (!id) return null
+      return {
+        id,
+        name: c.name_arabic || c.name || '',
+        englishName: c.englishName || c.name_simple || `Surah ${id}`,
+        versesCount: c.versesCount ?? c.verses_count ?? 0,
+      }
+    })
+    .filter((c): c is Chapter => c !== null)
+}
+
 function ingestQuranData(data: QuranDataFile): void {
   verses = data.verses
+  bundleChapters = Array.isArray(data.chapters) ? normalizeBundleChapters(data.chapters) : null
   pageIndex = buildPageIndex(verses)
   hotCache.clear()
   prefetchMushafPages(1, 3)
@@ -228,8 +254,28 @@ export async function hydrateOfflineFromDisk(): Promise<void> {
   ingestQuranData(data)
 }
 
+/** Load offline mushaf into memory if a bundle exists in cache or on disk. */
+export async function ensureOfflineHydrated(): Promise<boolean> {
+  if (isOfflineReady()) return true
+  try {
+    await hydrateOfflineFromDisk()
+    return isOfflineReady()
+  } catch {
+    return false
+  }
+}
+
+export function getOfflineQuranSnapshot(): { chapters: Chapter[]; verses: Verse[] } | null {
+  if (!verses) return null
+  return {
+    chapters: bundleChapters ?? [],
+    verses,
+  }
+}
+
 export function clearOfflineStore(): void {
   verses = null
+  bundleChapters = null
   pageIndex = null
   hotCache.clear()
   clearOfflineFontsCachedFlag()

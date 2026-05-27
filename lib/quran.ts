@@ -1,6 +1,8 @@
 import type { Chapter, Verse } from '@/types'
 import {
+  ensureOfflineHydrated,
   getLocalMushafPage,
+  getOfflineQuranSnapshot,
   hydrateOfflineFromDisk,
   isOfflineReady,
   prefetchMushafPages,
@@ -13,13 +15,28 @@ interface QuranData {
 
 let cachedQuranData: QuranData | null = null
 
-async function loadQuranData(): Promise<QuranData> {
+function pageFromVerse(verse: Verse): number {
+  const first = verse.words?.[0]
+  return first?.v2_page || first?.page_number || verse.page_number || 1
+}
+
+export async function loadQuranData(): Promise<QuranData> {
   if (cachedQuranData) {
     return cachedQuranData
   }
 
+  await ensureOfflineHydrated()
+  const offline = getOfflineQuranSnapshot()
+  if (offline?.verses.length) {
+    cachedQuranData = {
+      chapters: offline.chapters.length ? offline.chapters : buildChaptersFromVerses(offline.verses),
+      verses: offline.verses,
+    }
+    return cachedQuranData
+  }
+
   try {
-    const response = await fetch('/quran-data.json')
+    const response = await fetch('/quran-data.json', { cache: 'force-cache' })
     if (!response.ok) {
       throw new Error(`Failed to load Quran data: ${response.statusText}`)
     }
@@ -28,9 +45,26 @@ async function loadQuranData(): Promise<QuranData> {
     return data
   } catch {
     throw new Error(
-      'Quran data not found. Please run `npm run download-quran` to generate the offline data file.'
+      'Quran data not found. Download the Quran in Settings or run `npm run download-quran`.'
     )
   }
+}
+
+function buildChaptersFromVerses(verses: Verse[]): Chapter[] {
+  const counts = new Map<number, number>()
+  for (const verse of verses) {
+    const id = Number(verse.verse_key.split(':')[0])
+    if (!id) continue
+    counts.set(id, (counts.get(id) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([id, versesCount]) => ({
+      id,
+      name: '',
+      englishName: `Surah ${id}`,
+      versesCount,
+    }))
 }
 
 let cachedChapters: Chapter[] | null = null
@@ -39,7 +73,7 @@ export async function getChapters(): Promise<Chapter[]> {
   if (cachedChapters) return cachedChapters
 
   try {
-    const response = await fetch('/quran-chapters.json')
+    const response = await fetch('/quran-chapters.json', { cache: 'force-cache' })
     if (!response.ok) throw new Error()
     const data = (await response.json()) as {
       chapters: Array<{ id: number; name_arabic: string; name_simple: string; verses_count: number }>
@@ -53,7 +87,8 @@ export async function getChapters(): Promise<Chapter[]> {
     return cachedChapters
   } catch {
     const data = await loadQuranData()
-    return data.chapters
+    cachedChapters = data.chapters
+    return cachedChapters
   }
 }
 
@@ -72,21 +107,27 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
   return data.verses.filter((v) => v.page_number === pageNumber)
 }
 
-export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
-  const online = typeof navigator !== 'undefined' ? navigator.onLine : true
-  const hasLocal = isOfflineReady()
-  const preferLocalOnly = hasLocal && !online
+async function tryLocalMushafPage(pageNumber: number): Promise<Verse[] | null> {
+  await ensureOfflineHydrated()
+  const local = getLocalMushafPage(pageNumber)
+  if (local?.length) {
+    prefetchMushafPages(pageNumber, 3)
+    return local
+  }
+  return null
+}
 
-  if (preferLocalOnly) {
-    const local = getLocalMushafPage(pageNumber)
-    if (local && local.length > 0) {
-      prefetchMushafPages(pageNumber, 3)
-      return local
-    }
+export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
+  const local = await tryLocalMushafPage(pageNumber)
+  if (local) return local
+
+  const online = typeof navigator !== 'undefined' ? navigator.onLine : true
+  if (!online) {
+    throw new Error('This page is not available offline. Download the Quran in Settings.')
   }
 
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), online ? 45_000 : 8_000)
+  const timeout = window.setTimeout(() => controller.abort(), 45_000)
 
   try {
     const response = await fetch(`/api/ayah?type=page&page=${pageNumber}`, {
@@ -103,14 +144,12 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     prefetchMushafPages(pageNumber, 1)
     return verses
   } catch (err) {
-    if (hasLocal) {
-      const fallback = getLocalMushafPage(pageNumber)
-      if (fallback?.length) return fallback
-    }
+    const fallback = await tryLocalMushafPage(pageNumber)
+    if (fallback) return fallback
     try {
       await hydrateOfflineFromDisk()
-      const fallback = getLocalMushafPage(pageNumber)
-      if (fallback?.length) return fallback
+      const retry = getLocalMushafPage(pageNumber)
+      if (retry?.length) return retry
     } catch {
       /* bundled offline file is optional */
     }
@@ -121,6 +160,16 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
 }
 
 export async function getVisualPageForVerse(verseKey: string, fallbackPage: number): Promise<number> {
+  try {
+    const verse = await getVerseByKey(verseKey)
+    return pageFromVerse(verse)
+  } catch {
+    /* fall through to API */
+  }
+
+  const online = typeof navigator !== 'undefined' ? navigator.onLine : true
+  if (!online) return fallbackPage
+
   try {
     const response = await fetch(`/api/ayah?type=visual-page&verseKey=${encodeURIComponent(verseKey)}`)
     if (!response.ok) {
@@ -151,7 +200,17 @@ export async function getVisualPagesForScope(scope: {
     const data = (await response.json()) as { pages?: Record<string, number> }
     return data.pages || {}
   } catch {
-    return {}
+    const data = await loadQuranData()
+    const verses = scope.chapter
+      ? data.verses.filter((v) => v.verse_key.startsWith(`${scope.chapter}:`))
+      : scope.juz
+        ? data.verses.filter((v) => v.juz_number === scope.juz)
+        : []
+    const pages: Record<string, number> = {}
+    for (const verse of verses) {
+      pages[verse.verse_key] = pageFromVerse(verse)
+    }
+    return pages
   }
 }
 
