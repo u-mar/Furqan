@@ -429,11 +429,8 @@ export default function SettingsPage() {
         </Link>
 
         <div className="mt-8 pb-2 text-center">
-          <p className="arabic-text text-[1.05rem] text-[var(--home-sage-deep)]" dir="rtl">
-            صدقة جارية
-          </p>
           <p className="home-serif mt-2 text-sm leading-relaxed text-[var(--home-muted)]">
-            Sadaqah Jariyah
+            For Sadaqah Jariyah
           </p>
         </div>
       </div>

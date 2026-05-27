@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
+import AyahEndMark from '@/components/read/AyahEndMark'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
-import { getAyahStopMarker, getVerseArabicText } from '@/lib/quran-display'
+import { useQcfFont } from '@/hooks/useQcfFont'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
 
@@ -44,12 +46,21 @@ export default function MushafTranslationView({
   )
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
-  const displayRows = verses.map((verse) => ({
-    verse_key: verse.verse_key,
-    text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
-    stopMarker: getAyahStopMarker(verse),
-    translation: byKey[verse.verse_key]?.translation || '',
-  }))
+  const needsEndGlyphs = useMemo(
+    () => verses.some((verse) => verse.words?.some((word) => word.char_type_name === 'end' && word.code_v2)),
+    [verses]
+  )
+  const glyphFontReady = useQcfFont(page, needsEndGlyphs)
+
+  const displayRows = verses.map((verse) => {
+    const endWord = verse.words?.find((word) => word.char_type_name === 'end')
+    return {
+      verse_key: verse.verse_key,
+      text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
+      endWord,
+      translation: byKey[verse.verse_key]?.translation || '',
+    }
+  })
 
   useEffect(() => {
     if (!highlightedVerseKey) return
@@ -105,10 +116,14 @@ export default function MushafTranslationView({
                 dir="rtl"
                 lang="ar"
               >
-                {row.text_uthmani}
-                <span className="mushaf-ayah-stop" aria-hidden="true">
-                  {row.stopMarker}
-                </span>
+                {row.text_uthmani}{' '}
+                <AyahEndMark
+                  verseKey={row.verse_key}
+                  pageNumber={row.endWord?.v2_page || row.endWord?.page_number || page}
+                  codeV2={row.endWord?.code_v2}
+                  fallbackText={row.endWord?.text_uthmani || row.endWord?.text_qpc_hafs || ''}
+                  glyphFontReady={glyphFontReady}
+                />
               </p>
             )}
 

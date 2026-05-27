@@ -605,8 +605,8 @@ function ReadPageContent() {
       <div
         ref={contentScrollRef}
         className={cn(
-          'relative min-h-0 flex-1 px-4',
-          showTranslation ? 'overflow-y-auto overscroll-contain pb-36' : 'overflow-hidden pb-14'
+          'relative min-h-0 flex-1',
+          showTranslation ? 'overflow-y-auto overscroll-contain px-4 pb-36' : 'overflow-hidden px-1 pb-14 sm:px-2'
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}

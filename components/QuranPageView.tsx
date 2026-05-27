@@ -7,7 +7,8 @@ import { useQcfFont } from '@/hooks/useQcfFont'
 import { qcfFontFamily } from '@/lib/mushaf-fonts'
 import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
 import { normalizeUthmaniPage, type NormalizedUthmaniVerse } from '@/lib/quran-normalizer'
-import { getAyahStopMarker, getVerseArabicText } from '@/lib/quran-display'
+import AyahEndMark from '@/components/read/AyahEndMark'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
@@ -36,6 +37,7 @@ interface PageWord {
   verseKey: string
   text: string
   fallbackText: string
+  codeV2?: string
   lineNumber: number
   pageNumber: number
   isEndMark: boolean
@@ -140,8 +142,9 @@ function UnicodeMushafVerse({
           .filter(Boolean)
           .join(' ')
       : getVerseArabicText(verse)
-  const hasEndMark = !verse.words?.length || verse.words.some((word) => word.char_type_name === 'end')
-  const ayahStopMarker = getAyahStopMarker(verse)
+  const endWord = verse.words?.find((word) => word.char_type_name === 'end')
+  const hasEndMark = !verse.words?.length || Boolean(endWord)
+  const pageNumber = endWord?.v2_page || endWord?.page_number || verse.page_number || 1
   const active = highlightedVerseKey === verse.verse_key
   const selected = selectedVerseKey === verse.verse_key
 
@@ -159,9 +162,13 @@ function UnicodeMushafVerse({
     >
       {text}
       {hasEndMark && (
-        <span className="mushaf-ayah-stop" aria-hidden="true">
-          {ayahStopMarker}
-        </span>
+        <AyahEndMark
+          verseKey={verse.verse_key}
+          pageNumber={pageNumber}
+          codeV2={endWord?.code_v2}
+          fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
+          onLongPress={onAyahLongPress}
+        />
       )}
     </span>
   )
@@ -248,6 +255,7 @@ function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
           verseKey: verse.verse_key,
           text: useGlyphs ? glyphText : plainText,
           fallbackText: plainText,
+          codeV2: word.code_v2,
           lineNumber: word.line_number || 1,
           pageNumber,
           isEndMark,
@@ -377,9 +385,11 @@ export default function QuranPageView({
       : hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
 
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
+  const needsEndGlyphs = lines.some((line) => line.words.some((word) => word.isEndMark && word.codeV2))
   const qcfFontReady = useQcfFont(
     pageNumber,
-    useStrictUthmani && tryQcfFonts && normalizedUthmaniVerses.length > 0
+    (useStrictUthmani && tryQcfFonts && normalizedUthmaniVerses.length > 0) ||
+      (readMode && needsEndGlyphs)
   )
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
@@ -478,15 +488,15 @@ export default function QuranPageView({
     )
   }
 
-  if (readOnly) {
+  if (readOnly && !readMode) {
     return (
       <div
-        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+        className="mx-auto w-full max-w-[980px] px-0 py-2 sm:px-2"
         dir="rtl"
         lang="ar"
         aria-label="Quran page"
       >
-        <div ref={gridRef} className="mushaf-unicode-page-wrap h-full">
+        <div ref={gridRef} className="mushaf-unicode-page-wrap">
           <UnicodeMushafPage
             verses={verses}
             highlightedVerseKey={highlightedVerseKey}
@@ -601,32 +611,20 @@ export default function QuranPageView({
                       />
                     )
                   }
-                  if (ayahLongPress) {
-                    return (
-                      <MushafWord
-                        key={word.id}
-                        word={word}
-                        className={cn(
-                          'mushaf-ayah-stop mx-0.5 inline-block',
-                          isReciting && 'mushaf-word--reciting',
-                          isSelected && !isReciting && 'mushaf-word--selected'
-                        )}
-                        html={wordHtml}
-                        onAyahLongPress={ayahLongPress}
-                      />
-                    )
-                  }
                   return (
-                    <span
+                    <AyahEndMark
                       key={word.id}
+                      verseKey={word.verseKey}
+                      pageNumber={word.pageNumber}
+                      codeV2={word.codeV2}
+                      fallbackText={word.fallbackText}
+                      glyphFontReady={qcfFontReady}
                       className={cn(
-                        'mushaf-ayah-stop mx-0.5 inline-block',
                         isReciting && 'mushaf-word--reciting',
                         isSelected && !isReciting && 'mushaf-word--selected'
                       )}
-                    >
-                      {wordHtml}
-                    </span>
+                      onLongPress={ayahLongPress}
+                    />
                   )
                 }
 

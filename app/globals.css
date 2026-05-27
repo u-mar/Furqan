@@ -164,6 +164,8 @@ html.dark .mushaf-reader-immersive {
   grid-template-rows: repeat(15, minmax(0, 1fr));
   height: 100%;
   width: 100%;
+  padding-inline: clamp(0.85rem, 5.5vw, 2.1rem);
+  box-sizing: border-box;
 }
 
 .mushaf-fit-line {
@@ -222,32 +224,12 @@ html.dark .mushaf-reader-immersive {
   position: relative;
   min-height: 0;
   overflow-y: auto;
-  padding: min(2.2dvh, 1rem) min(6vw, 2rem);
+  padding: min(1.5dvh, 0.85rem) clamp(1.1rem, 6.5vw, 2.4rem);
   scrollbar-width: none;
 }
 
 .mushaf-unicode-page-wrap::-webkit-scrollbar {
   display: none;
-}
-
-.mushaf-unicode-page-wrap::before,
-.mushaf-unicode-page-wrap::after {
-  content: '';
-  position: absolute;
-  top: min(3dvh, 1.2rem);
-  bottom: min(3dvh, 1.2rem);
-  width: 3px;
-  border-radius: 999px;
-  background: linear-gradient(to bottom, transparent, rgba(20, 184, 166, 0.55), transparent);
-  opacity: 0.9;
-}
-
-.mushaf-unicode-page-wrap::before {
-  right: min(2.5vw, 0.85rem);
-}
-
-.mushaf-unicode-page-wrap::after {
-  left: min(2.5vw, 0.85rem);
 }
 
 .mushaf-unicode-page {
@@ -274,36 +256,46 @@ html.dark .mushaf-reader-immersive {
   border-radius: 0.22em;
 }
 
-.mushaf-ayah-stop {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.2em;
-  height: 1.2em;
-  margin-inline: 0.2em;
-  border-radius: 999px;
-  color: #14b8a6;
-  font-family: var(--font-amiri), 'Amiri', serif;
-  font-size: 0.72em;
+.mushaf-ayah-end {
+  display: inline-block;
+  margin-inline: 0.12em;
+  padding: 0;
+  color: inherit;
+  font-size: 0.92em;
   line-height: 1;
-  vertical-align: 0.02em;
-  text-shadow: 0 0 10px rgba(20, 184, 166, 0.35);
+  vertical-align: -0.06em;
+  letter-spacing: 0;
+  word-spacing: 0;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+}
+
+.mushaf-ayah-end--glyph {
+  font-size: 1em;
+  vertical-align: -0.1em;
+}
+
+.mushaf-ayah-stop {
+  display: inline;
+  margin-inline: 0.12em;
+  color: inherit;
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
+  font-size: 0.92em;
+  line-height: 1;
+  vertical-align: -0.06em;
 }
 
 .mushaf-translation-arabic {
   position: relative;
   margin-inline: auto;
-  border-radius: 1rem;
-  padding: 0.7rem 1rem;
-  background: rgba(20, 184, 166, 0.06);
+  max-width: 42rem;
+  border-radius: 0.75rem;
+  padding: 0.65rem clamp(0.75rem, 4vw, 1.25rem);
   font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
-  text-shadow: 0 0 18px rgba(20, 184, 166, 0.1);
-  box-shadow: inset 3px 0 0 rgba(20, 184, 166, 0.45), inset -3px 0 0 rgba(20, 184, 166, 0.45);
 }
 
 html.dark .mushaf-translation-arabic {
-  background: rgba(45, 212, 191, 0.08);
-  box-shadow: inset 3px 0 0 rgba(45, 212, 191, 0.5), inset -3px 0 0 rgba(45, 212, 191, 0.5);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .mushaf-fit-line--header {
