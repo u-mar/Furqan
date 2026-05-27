@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft, Download, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
+import { clearSignedInUser, getSignedInUser, setSignedInUser } from '@/lib/auth'
 import {
   applyThemeToDocument,
   getAppSettings,
@@ -109,6 +110,14 @@ export default function SettingsPage() {
   const [contact, setContact] = useState('')
   const [feedbackNotice, setFeedbackNotice] = useState('')
   const [profileTag, setProfileTag] = useState('')
+  const [authMode, setAuthMode] = useState<'signup' | 'login'>('signup')
+  const [authUsername, setAuthUsername] = useState('')
+  const [authName, setAuthName] = useState('')
+  const [authPin, setAuthPin] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authNotice, setAuthNotice] = useState('')
+  const [signedInName, setSignedInName] = useState('')
+  const [signedInUsername, setSignedInUsername] = useState('')
 
   useEffect(() => {
     const s = getAppSettings()
@@ -121,7 +130,58 @@ export default function SettingsPage() {
     }
     const profile = getOrCreateUserProfile()
     setProfileTag(`${profile.name} · ${profile.id.slice(-6)}`)
+    const signedIn = getSignedInUser()
+    setSignedInName(signedIn?.name ?? '')
+    setSignedInUsername(signedIn?.username ?? '')
   }, [])
+
+  async function handleProfileSubmit() {
+    if (!authUsername.trim() || !authPin.trim()) return
+    if (authMode === 'signup' && !authName.trim()) return
+    setAuthBusy(true)
+    setAuthNotice('')
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: authMode,
+          username: authUsername.trim(),
+          name: authName.trim(),
+          pin: authPin.trim(),
+        }),
+      })
+      const raw = await res.text()
+      const data = (raw ? JSON.parse(raw) : {}) as {
+        error?: string
+        user?: { id: string; username: string; name: string }
+      }
+      if (!res.ok || !data.user) {
+        setAuthNotice(data.error || `Could not continue (HTTP ${res.status}).`)
+        return
+      }
+      setSignedInUser(data.user)
+      setSignedInName(data.user.name)
+      setSignedInUsername(data.user.username)
+      const profile = getOrCreateUserProfile()
+      setProfileTag(`${profile.name} · ${profile.id.slice(-6)}`)
+      setAuthPin('')
+      setAuthNotice(authMode === 'signup' ? 'Profile created.' : 'Signed in.')
+      setTimeout(() => setAuthNotice(''), 2200)
+    } catch {
+      setAuthNotice('Could not connect to server.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  function handleLogout() {
+    clearSignedInUser()
+    setSignedInName('')
+    setSignedInUsername('')
+    setAuthNotice('Signed out.')
+    setTimeout(() => setAuthNotice(''), 2200)
+  }
 
   function saveTheme(next: ThemeMode) {
     setTheme(next)
@@ -203,6 +263,100 @@ export default function SettingsPage() {
             Settings
           </h1>
         </header>
+
+        <section className="mb-8">
+          <SectionTitle>Profile</SectionTitle>
+          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+            {signedInName ? (
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--home-heading)]">
+                  Signed in as <span className="font-semibold">{signedInName}</span> (@{signedInUsername})
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm font-semibold text-[var(--home-heading)]"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="mb-3 text-xs text-[var(--home-muted)]">
+                  Optional: create profile with username, name, and 4-digit PIN.
+                </p>
+                <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('signup')}
+                    className={cn(
+                      'rounded-lg py-2 text-sm font-semibold',
+                      authMode === 'signup'
+                        ? 'bg-[var(--home-sage-deep)] text-white'
+                        : 'text-[var(--home-muted)]'
+                    )}
+                  >
+                    Sign up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                    className={cn(
+                      'rounded-lg py-2 text-sm font-semibold',
+                      authMode === 'login'
+                        ? 'bg-[var(--home-sage-deep)] text-white'
+                        : 'text-[var(--home-muted)]'
+                    )}
+                  >
+                    Log in
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <input
+                    value={authUsername}
+                    onChange={(e) => setAuthUsername(e.target.value)}
+                    placeholder="Username"
+                    className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm"
+                  />
+                  {authMode === 'signup' ? (
+                    <input
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      placeholder="Name"
+                      className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm"
+                    />
+                  ) : null}
+                  <input
+                    value={authPin}
+                    onChange={(e) => setAuthPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="4-digit PIN"
+                    inputMode="numeric"
+                    className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleProfileSubmit()}
+                  disabled={
+                    authBusy ||
+                    !authUsername.trim() ||
+                    !authPin.trim() ||
+                    (authMode === 'signup' && !authName.trim())
+                  }
+                  className="mt-3 w-full rounded-xl bg-[var(--home-sage-deep)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  {authBusy ? 'Please wait...' : authMode === 'signup' ? 'Create profile' : 'Sign in'}
+                </button>
+              </>
+            )}
+            <p className="mt-2 text-xs text-[var(--home-muted)]">
+              Current identity: {profileTag || 'Guest'}
+            </p>
+            {authNotice ? (
+              <p className="mt-2 text-xs font-medium text-[var(--home-sage-deep)]">{authNotice}</p>
+            ) : null}
+          </div>
+        </section>
 
         <section className="mb-8">
           <SectionTitle>Appearance</SectionTitle>

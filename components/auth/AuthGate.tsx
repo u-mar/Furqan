@@ -43,15 +43,21 @@ export default function AuthGate() {
           pin,
         }),
       })
-      const data = (await res.json()) as { error?: string; user?: { id: string; username: string; name: string } }
+      const raw = await res.text()
+      let data: { error?: string; user?: { id: string; username: string; name: string } } = {}
+      try {
+        data = raw ? (JSON.parse(raw) as typeof data) : {}
+      } catch {
+        data = {}
+      }
       if (!res.ok || !data.user) {
-        setError(data.error || 'Could not continue. Please try again.')
+        setError(data.error || `Could not continue (HTTP ${res.status}).`)
         return
       }
       setSignedInUser(data.user)
       setPin('')
-    } catch {
-      setError('Network error. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error. Please try again.')
     } finally {
       setSubmitting(false)
     }

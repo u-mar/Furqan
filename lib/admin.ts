@@ -99,9 +99,6 @@ export async function trackUsage(pathname: string): Promise<void> {
 
 export async function addFeedbackMessage(message: string, contact: string): Promise<FeedbackMessage> {
   const profile = getOrCreateUserProfile()
-  if (profile.id === 'anon') {
-    throw new Error('Please log in first.')
-  }
   const res = await fetch('/api/admin/feedback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
