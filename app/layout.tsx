@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Amiri } from 'next/font/google'
+import { Amiri, Cormorant_Garamond } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AppSplash from '@/components/AppSplash'
 import InstallPrompt from '@/components/InstallPrompt'
@@ -11,6 +11,13 @@ const amiri = Amiri({
   subsets: ['arabic'],
   weight: ['400', '700'],
   variable: '--font-amiri',
+  display: 'swap',
+})
+
+const homeSerif = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  variable: '--font-home-serif',
   display: 'swap',
 })
 
@@ -45,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={amiri.variable} suppressHydrationWarning>
+    <html lang="en" className={`${amiri.variable} ${homeSerif.variable}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
