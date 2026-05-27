@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { setSignedInUser } from '@/lib/auth'
+import { loginLocalUser, setSignedInUser, signupLocalUser } from '@/lib/auth'
 
 interface AccountSheetProps {
   open: boolean
@@ -51,7 +51,18 @@ export default function AccountSheet({ open, onClose, onSuccess }: AccountSheetP
         data = {}
       }
       if (!res.ok || !data.user) {
-        setError(data.error || `Could not continue (HTTP ${res.status}).`)
+        const msg = data.error || `Could not continue (HTTP ${res.status}).`
+        if (msg.toLowerCase().includes('database is not configured')) {
+          const localUser =
+            mode === 'signup'
+              ? signupLocalUser(username.trim(), name.trim(), pin.trim())
+              : loginLocalUser(username.trim(), pin.trim())
+          setSignedInUser(localUser)
+          onSuccess()
+          onClose()
+          return
+        }
+        setError(msg)
         return
       }
       setSignedInUser(data.user)
