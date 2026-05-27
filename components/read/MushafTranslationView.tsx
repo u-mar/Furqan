@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
-import { getVerseArabicText } from '@/lib/quran-display'
+import { getAyahStopMarker, getVerseArabicText } from '@/lib/quran-display'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
 
@@ -20,6 +20,10 @@ function verseNumber(verseKey: string): number {
   return Number(verseKey.split(':')[1] || 0)
 }
 
+function surahNumber(verseKey: string): number {
+  return Number(verseKey.split(':')[0] || 0)
+}
+
 export default function MushafTranslationView({
   verses,
   page,
@@ -28,7 +32,9 @@ export default function MushafTranslationView({
   showArabic = true,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
-  const arabicByKey = Object.fromEntries(verses.map((v) => [v.verse_key, getVerseArabicText(v)]))
+  const arabicByKey = Object.fromEntries(
+    verses.map((v) => [v.verse_key, getVerseArabicText(v, { omitEndMark: true })])
+  )
   const { rows, byKey, loading } = usePageTranslations(
     page,
     true,
@@ -41,6 +47,7 @@ export default function MushafTranslationView({
   const displayRows = verses.map((verse) => ({
     verse_key: verse.verse_key,
     text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
+    stopMarker: getAyahStopMarker(verse),
     translation: byKey[verse.verse_key]?.translation || '',
   }))
 
@@ -63,7 +70,9 @@ export default function MushafTranslationView({
     <div className="space-y-8 pb-8">
       {displayRows.map((row) => {
         const num = verseNumber(row.verse_key)
+        const surah = surahNumber(row.verse_key)
         const isReciting = highlightedVerseKey === row.verse_key
+        const showBasmalah = num === 1 && surah !== 1 && surah !== 9
 
         return (
           <article
@@ -78,6 +87,15 @@ export default function MushafTranslationView({
               isReciting && 'mushaf-translation-ayah--reciting'
             )}
           >
+            {showBasmalah && (
+              <p
+                className="mushaf-translation-arabic text-center text-[clamp(1.2rem,4.8vw,1.65rem)] leading-[2.15] text-[var(--mushaf-read-text)]"
+                dir="rtl"
+                lang="ar"
+              >
+                ﷽
+              </p>
+            )}
             {showArabic && (
               <p
                 className={cn(
@@ -89,7 +107,7 @@ export default function MushafTranslationView({
               >
                 {row.text_uthmani}
                 <span className="mushaf-ayah-stop" aria-hidden="true">
-                  ۝
+                  {row.stopMarker}
                 </span>
               </p>
             )}

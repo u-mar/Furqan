@@ -7,7 +7,7 @@ import { useQcfFont } from '@/hooks/useQcfFont'
 import { qcfFontFamily } from '@/lib/mushaf-fonts'
 import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
 import { normalizeUthmaniPage, type NormalizedUthmaniVerse } from '@/lib/quran-normalizer'
-import { getVerseArabicText } from '@/lib/quran-display'
+import { getAyahStopMarker, getVerseArabicText } from '@/lib/quran-display'
 import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
@@ -51,6 +51,18 @@ interface PageLine {
 
 const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
 const BASMALAH_ORNAMENT = '﷽'
+
+function surahAyahFromKey(verseKey: string): { surah: number; ayah: number } {
+  const [surah, ayah] = verseKey.split(':').map(Number)
+  return { surah: surah || 0, ayah: ayah || 0 }
+}
+
+function shouldShowBasmalah(verse: Verse): boolean {
+  const { surah, ayah } = surahAyahFromKey(verse.verse_key)
+  if (ayah !== 1) return false
+  if (surah === 1 || surah === 9) return false
+  return true
+}
 
 function verseKeysForLine(line: PageLine): string[] {
   return [...new Set(line.words.map((w) => w.verseKey))]
@@ -129,6 +141,7 @@ function UnicodeMushafVerse({
           .join(' ')
       : getVerseArabicText(verse)
   const hasEndMark = !verse.words?.length || verse.words.some((word) => word.char_type_name === 'end')
+  const ayahStopMarker = getAyahStopMarker(verse)
   const active = highlightedVerseKey === verse.verse_key
   const selected = selectedVerseKey === verse.verse_key
 
@@ -147,7 +160,7 @@ function UnicodeMushafVerse({
       {text}
       {hasEndMark && (
         <span className="mushaf-ayah-stop" aria-hidden="true">
-          ۝
+          {ayahStopMarker}
         </span>
       )}
     </span>
@@ -168,13 +181,21 @@ function UnicodeMushafPage({
   return (
     <div className="mushaf-unicode-page" style={{ fontFamily: PLAIN_MUSHAF_FONT }}>
       {verses.map((verse) => (
-        <UnicodeMushafVerse
-          key={verse.verse_key}
-          verse={verse}
-          highlightedVerseKey={highlightedVerseKey}
-          selectedVerseKey={selectedVerseKey}
-          onAyahLongPress={onAyahLongPress}
-        />
+        <div key={verse.verse_key} className="mushaf-unicode-verse-wrap">
+          {shouldShowBasmalah(verse) && (
+            <div className="mushaf-page-line mushaf-page-line--basmalah text-center">
+              <span className="basmalah-ornament-inline" aria-label={BASMALAH}>
+                {BASMALAH_ORNAMENT}
+              </span>
+            </div>
+          )}
+          <UnicodeMushafVerse
+            verse={verse}
+            highlightedVerseKey={highlightedVerseKey}
+            selectedVerseKey={selectedVerseKey}
+            onAyahLongPress={onAyahLongPress}
+          />
+        </div>
       ))}
     </div>
   )

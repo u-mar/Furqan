@@ -5,6 +5,13 @@ export interface VerseArabicTextOptions {
   omitEndMark?: boolean
 }
 
+function toArabicIndicDigits(num: number): string {
+  return String(Math.max(0, num))
+    .split('')
+    .map((digit) => String.fromCharCode(0x0660 + Number(digit)))
+    .join('')
+}
+
 /** Plain Uthmani text for UI (action sheet, translation headers). Never uses QCF glyph codes. */
 export function getVerseArabicText(verse: Verse, options?: VerseArabicTextOptions): string {
   const omitEndMark = options?.omitEndMark ?? false
@@ -33,6 +40,17 @@ export function getVerseArabicText(verse: Verse, options?: VerseArabicTextOption
   }
 
   return parts.join(' ').trim()
+}
+
+/** Ayah stop marker with Arabic-Indic number (e.g. ۝٢٥٥). */
+export function getAyahStopMarker(verse: Verse): string {
+  const endWord = verse.words?.find((word) => word.char_type_name === 'end')
+  const endText = (endWord?.text_uthmani || endWord?.text_qpc_hafs || '').trim()
+  if (endText) return endText
+
+  const ayah = Number(verse.verse_key.split(':')[1] || 0)
+  if (!ayah) return '۝'
+  return `۝${toArabicIndicDigits(ayah)}`
 }
 
 /** Remove trailing ayah reference from labels like "Al-Baqarah, 2:152". */

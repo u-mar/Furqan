@@ -428,9 +428,14 @@ export default function SettingsPage() {
           Open reader
         </Link>
 
-        <p className="home-serif mt-8 pb-2 text-center text-sm leading-relaxed text-[var(--home-muted)]">
-          No Ads this app is for ṣadaqah jāriyah for my parents.
-        </p>
+        <div className="mt-8 pb-2 text-center">
+          <p className="arabic-text text-[1.05rem] text-[var(--home-sage-deep)]" dir="rtl">
+            صدقة جارية
+          </p>
+          <p className="home-serif mt-2 text-sm leading-relaxed text-[var(--home-muted)]">
+            Sadaqah Jariyah
+          </p>
+        </div>
       </div>
     </main>
   )
