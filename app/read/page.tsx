@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation'
 import {
   Menu,
   Search,
-  Calendar,
   Settings,
   Play,
   Square,
@@ -671,11 +670,8 @@ function ReadPageContent() {
           >
             <Search className="h-5 w-5" />
           </button>
-          <button type="button" className="rounded-lg p-2 text-teal-400 hover:bg-white/5" aria-label="Calendar">
-            <Calendar className="h-5 w-5" />
-          </button>
           <Link
-            href="/settings"
+            href={`/settings?returnTo=${encodeURIComponent(`/read?page=${currentPage}`)}`}
             className="rounded-lg p-2 text-teal-600 hover:bg-black/5 dark:text-teal-400 dark:hover:bg-white/5"
             aria-label="Settings"
             onClick={(e) => e.stopPropagation()}

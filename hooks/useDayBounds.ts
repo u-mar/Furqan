@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getChapters } from '@/lib/quran'
+import { getVerseArabicText } from '@/lib/quran-display'
 import type { Chapter, Verse } from '@/types'
 
 export interface VerseBound {
@@ -32,7 +33,7 @@ function boundFromVerse(verse: Verse, chapters: Chapter[]): VerseBound {
     surahName,
     ayah,
     page: verse.page_number || 1,
-    arabic: verse.text_uthmani,
+    arabic: getVerseArabicText(verse, { omitEndMark: true }) || verse.text_uthmani,
   }
 }
 

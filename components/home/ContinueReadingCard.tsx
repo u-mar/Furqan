@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { getLocalMushafPage, hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
 import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
 import { getChapters, getMushafPage } from '@/lib/quran'
 import { IconRead } from '@/components/home/TileIcons'
@@ -24,16 +25,28 @@ export default function ContinueReadingCard() {
     void (async () => {
       const savedPage = Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1
       try {
-        const [chapters, verses] = await Promise.all([
-          getChapters(),
-          getMushafPage(savedPage),
-        ])
+        let verses = isOfflineReady() ? getLocalMushafPage(savedPage) || [] : []
+        if (verses.length === 0) {
+          try {
+            await hydrateOfflineFromDisk()
+            verses = getLocalMushafPage(savedPage) || []
+          } catch {
+            // fall back to network fetch below
+          }
+        }
+
+        if (verses.length === 0) {
+          verses = await getMushafPage(savedPage)
+        }
+
+        const chapters = await getChapters().catch(() => [])
         if (cancelled || verses.length === 0) return
 
         const first = verses[0]
         const surahId = Number(first.verse_key.split(':')[0]) || 1
         const ayah = Number(first.verse_key.split(':')[1]) || 1
-        const surahName = chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
+        const surahName =
+          chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
         const progress = Math.min(100, Math.round((savedPage / 604) * 100))
 
         setState({
@@ -43,7 +56,15 @@ export default function ContinueReadingCard() {
           progress: Math.max(progress, 1),
         })
       } catch {
-        if (!cancelled) setState(null)
+        if (!cancelled) {
+          // Keep continue reading available even when offline data is not ready yet.
+          setState({
+            surahName: 'Continue reading',
+            ayah: 1,
+            page: savedPage,
+            progress: Math.max(1, Math.min(100, Math.round((savedPage / 604) * 100))),
+          })
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

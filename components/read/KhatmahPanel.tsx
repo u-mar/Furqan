@@ -321,10 +321,10 @@ function KhatmahDayContent() {
             </span>
           </div>
           <p
-            className="arabic-text mt-2 line-clamp-1 text-right text-base leading-relaxed text-white/80"
+            className="arabic-text mt-2 line-clamp-2 text-right text-base leading-relaxed text-white/80"
             dir="rtl"
           >
-            {boundsLoading ? '…' : ayahPreview(bounds?.from.arabic)}
+            {boundsLoading ? '…' : ayahPreview(bounds?.from.arabic) || '…'}
           </p>
         </section>
 
@@ -338,10 +338,10 @@ function KhatmahDayContent() {
             </span>
           </div>
           <p
-            className="arabic-text mt-2 line-clamp-1 text-right text-base leading-relaxed text-white/80"
+            className="arabic-text mt-2 line-clamp-2 text-right text-base leading-relaxed text-white/80"
             dir="rtl"
           >
-            {boundsLoading ? '…' : ayahPreview(bounds?.to.arabic)}
+            {boundsLoading ? '…' : ayahPreview(bounds?.to.arabic) || '…'}
           </p>
         </section>
     </div>

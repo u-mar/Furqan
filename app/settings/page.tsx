@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, Download, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
@@ -99,6 +100,9 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function SettingsPage() {
+  const searchParams = useSearchParams()
+  const returnToParam = searchParams.get('returnTo')
+  const returnHref = returnToParam && returnToParam.startsWith('/') ? returnToParam : '/'
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
@@ -210,7 +214,7 @@ export default function SettingsPage() {
       <div className="relative mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <header className="mb-8 flex items-center gap-3">
           <Link
-            href="/"
+            href={returnHref}
             className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[var(--home-heading)] transition-colors hover:bg-black/5 active:scale-95 dark:hover:bg-white/10"
             aria-label="Back to home"
           >

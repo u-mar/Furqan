@@ -11,9 +11,9 @@ import { cn } from '@/lib/cn'
 import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
-import { getVerseByKey } from '@/lib/quran'
+import { getVerseByKey, getVersesByJuz } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
-import { juzForChapter, revelationLabel } from '@/lib/mushaf'
+import { JUZ_STARTS, revelationLabel } from '@/lib/mushaf'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import type { Chapter } from '@/types'
 
@@ -21,6 +21,13 @@ type TopTab = 'chapters' | 'quarters'
 type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
 
 const QUARTERS_PER_JUZ = 8
+
+function juzForStartPage(startPage: number, juzStartPages: number[]): number {
+  for (let i = juzStartPages.length - 1; i >= 0; i--) {
+    if (startPage >= juzStartPages[i]) return i + 1
+  }
+  return 1
+}
 
 interface ContentsDrawerProps {
   open: boolean
@@ -81,16 +88,25 @@ export default function ContentsDrawer({
       .catch(() => {})
   }, [open])
 
+  const juzStartPages = useMemo(
+    () => JUZ_STARTS.map((s) => chapterStartPage(s.surah, meta)),
+    [meta]
+  )
+
   const chaptersByPart = useMemo(() => {
     const groups = new Map<number, Chapter[]>()
     for (const chapter of chapters) {
-      const part = juzForChapter(chapter.id)
+      const startPage = chapterStartPage(chapter.id, meta)
+      const part = juzForStartPage(startPage, juzStartPages)
       const list = groups.get(part) || []
       list.push(chapter)
       groups.set(part, list)
     }
+    for (let juz = 1; juz <= 30; juz++) {
+      if (!groups.has(juz)) groups.set(juz, [])
+    }
     return Array.from(groups.entries()).sort(([a], [b]) => a - b)
-  }, [chapters])
+  }, [chapters, meta, juzStartPages])
 
   const quartersByPart = useMemo(() => {
     const groups = new Map<number, QuarterMarker[]>()
@@ -239,9 +255,26 @@ export default function ContentsDrawer({
           {bottomNav === 'chapters' && topTab === 'chapters' &&
             chaptersByPart.map(([part, partChapters]) => (
               <div key={part} className="mb-4">
-                <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const verses = await getVersesByJuz(part)
+                      const page = verses[0]?.page_number || juzStartPages[part - 1] || 1
+                      onGoToPage(page)
+                      onClose()
+                    } catch {
+                      onGoToPage(juzStartPages[part - 1] || 1)
+                      onClose()
+                    }
+                  }}
+                  className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500 hover:text-teal-400"
+                >
                   Juz {part}
-                </p>
+                </button>
+                {partChapters.length === 0 && (
+                  <p className="px-2 pb-1 text-xs text-stone-500">Continues from previous surah</p>
+                )}
                 <ul>
                   {partChapters.map((chapter) => {
                     const active = chapter.id === currentSurahId
