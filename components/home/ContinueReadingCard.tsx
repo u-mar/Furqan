@@ -87,7 +87,7 @@ export default function ContinueReadingCard() {
         href={`/read?page=${state.page}`}
         className="flex items-center gap-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.99]"
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage)]/15 text-[var(--home-sage-dark)]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
           <IconRead className="h-7 w-7" />
         </span>
         <span className="min-w-0 flex-1">
@@ -95,9 +95,9 @@ export default function ContinueReadingCard() {
           <span className="mt-0.5 block text-sm text-[var(--home-muted)]">
             Ayah {state.ayah} · Page {state.page}
           </span>
-          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
             <span
-              className="block h-full rounded-full bg-[var(--home-sage)]"
+              className="block h-full rounded-full bg-[var(--home-sage-deep)]"
               style={{ width: `${state.progress}%` }}
             />
           </span>

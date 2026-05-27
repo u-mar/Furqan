@@ -40,10 +40,7 @@ export function getAppSettings(): AppSettings {
     const parsed = JSON.parse(raw) as Partial<AppSettings>
     return {
       theme: parsed.theme === 'light' ? 'light' : 'dark',
-      mushafStyle:
-        parsed.mushafStyle === 'indopak'
-          ? 'indopak'
-          : 'uthmani',
+      mushafStyle: parsed.mushafStyle === 'indopak' ? 'uthmani' : 'uthmani',
       offlineDownloaded: Boolean(parsed.offlineDownloaded),
       reciterId:
         typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
@@ -80,7 +77,7 @@ export function applyThemeToDocument(theme: ThemeMode): void {
     root.style.colorScheme = 'dark'
   }
 
-  const themeColor = theme === 'light' ? '#f5f5f4' : '#0a0a0a'
+  const themeColor = theme === 'light' ? '#faf6ef' : '#0a0a0a'
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')

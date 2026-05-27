@@ -111,9 +111,16 @@ export default function DailyVerseCard() {
         </button>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl bg-[var(--home-sage)] px-5 py-6 text-white shadow-[0_12px_40px_rgba(107,122,94,0.28)]">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-medium tracking-wide backdrop-blur-sm">
+      <div
+        className="relative overflow-hidden rounded-3xl px-5 py-6 text-white shadow-[0_16px_44px_rgba(93,122,72,0.38)]"
+        style={{ background: 'var(--home-sage-gradient)' }}
+      >
+        <div
+          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/15 blur-2xl"
+          aria-hidden
+        />
+        <div className="relative mb-4 flex items-start justify-between gap-3">
+          <span className="rounded-full bg-white/25 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm">
             {DAILY_REF}
           </span>
           <button
@@ -135,20 +142,20 @@ export default function DailyVerseCard() {
           {loading ? '…' : arabic || '…'}
         </p>
 
-        <p className="mb-6 text-center text-sm leading-relaxed text-white/90">
+        <p className="relative mb-6 text-center text-sm leading-relaxed text-white">
           {loading ? 'Loading translation…' : translation}
         </p>
 
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-3">
           <Link
             href={`/read?page=${page}`}
-            className="flex min-h-[48px] flex-1 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-[var(--home-sage-dark)] transition-transform active:scale-[0.98]"
+            className="flex min-h-[48px] flex-1 items-center justify-center rounded-2xl bg-white text-sm font-bold text-[var(--home-sage-dark)] shadow-sm transition-transform active:scale-[0.98]"
           >
             Read Tafsir
           </Link>
           <a
             href={everyAyahUrl(Number(surahNum), Number(ayahNum))}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-sm transition-colors hover:bg-white/35"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#b8cf9e] text-[var(--home-sage-dark)] shadow-sm transition-colors hover:bg-[#c5d9ab]"
             aria-label="Play recitation"
           >
             <Play className="h-5 w-5 fill-current" />

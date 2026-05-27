@@ -53,7 +53,7 @@ export default function Home() {
             const { Icon } = tile
             const inner = (
               <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-7 shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.98]">
-                <span className="flex h-12 w-12 items-center justify-center text-[var(--home-sage-dark)]">
+                <span className="flex h-12 w-12 items-center justify-center text-[var(--home-sage-deep)]">
                   <Icon className="h-10 w-10" strokeWidth={tile.id === 'community' ? 1.5 : undefined} />
                 </span>
                 <span className="text-sm font-medium text-[var(--home-heading)]">{tile.label}</span>

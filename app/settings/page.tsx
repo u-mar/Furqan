@@ -1,23 +1,13 @@
 'use client'
 
-import {
-  ChevronLeft,
-  Download,
-  CheckCircle2,
-  Sun,
-  Moon,
-  BookOpen,
-  Wifi,
-  ArrowUpDown,
-  Languages,
-} from 'lucide-react'
+import Link from 'next/link'
+import { ChevronLeft, Download, CheckCircle2, Sun, Moon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import {
   applyThemeToDocument,
   getAppSettings,
   setAppSettings,
-  type MushafStyle,
   type ThemeMode,
 } from '@/lib/app-settings'
 import {
@@ -46,14 +36,14 @@ function SettingsRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[56px] w-full flex-col justify-center rounded-2xl border px-4 py-3.5 text-left transition-colors active:scale-[0.99]',
+        'flex min-h-[56px] w-full flex-col justify-center rounded-2xl border px-4 py-3.5 text-left transition-all active:scale-[0.99]',
         selected
-          ? 'border-teal-500 bg-teal-500/10'
-          : 'border-[var(--app-border)] bg-[var(--app-surface)]'
+          ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] shadow-sm'
+          : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]'
       )}
     >
-      <p className="font-medium text-[var(--app-text)]">{title}</p>
-      <p className="mt-0.5 text-xs leading-relaxed text-[var(--app-muted)]">{description}</p>
+      <p className="font-semibold text-[var(--home-heading)]">{title}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
     </button>
   )
 }
@@ -75,16 +65,16 @@ function SettingsToggle({
       role="switch"
       aria-checked={enabled}
       onClick={onToggle}
-      className="flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
+      className="flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3.5 text-left shadow-[var(--home-card-shadow)] transition-all active:scale-[0.99]"
     >
       <div className="min-w-0">
-        <p className="font-medium text-[var(--app-text)]">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-[var(--app-muted)]">{description}</p>
+        <p className="font-semibold text-[var(--home-heading)]">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
       </div>
       <span
         className={cn(
           'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-          enabled ? 'bg-teal-600' : 'bg-stone-300 dark:bg-stone-600'
+          enabled ? 'bg-[var(--home-sage-deep)]' : 'bg-[#ddd5c8] dark:bg-stone-600'
         )}
         aria-hidden
       >
@@ -99,9 +89,14 @@ function SettingsToggle({
   )
 }
 
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="home-serif mb-3 text-lg font-semibold text-[var(--home-heading)]">{children}</h2>
+  )
+}
+
 export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>('dark')
-  const [mushafStyle, setMushafStyle] = useState<MushafStyle>('uthmani-glyphs')
   const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
@@ -113,21 +108,18 @@ export default function SettingsPage() {
   useEffect(() => {
     const s = getAppSettings()
     setTheme(s.theme)
-    setMushafStyle(s.mushafStyle)
     setVerticalPages(s.verticalPages)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
+    if (s.mushafStyle === 'indopak') {
+      setAppSettings({ mushafStyle: 'uthmani' })
+    }
   }, [])
 
   function saveTheme(next: ThemeMode) {
     setTheme(next)
     setAppSettings({ theme: next })
     applyThemeToDocument(next)
-  }
-
-  function saveMushaf(next: MushafStyle) {
-    setMushafStyle(next)
-    setAppSettings({ mushafStyle: next })
   }
 
   function saveVerticalPages(next: boolean) {
@@ -176,24 +168,24 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <header className="sticky top-0 z-10 -mx-4 mb-6 flex items-center gap-2 border-b border-[var(--app-border)] bg-[var(--app-bg)]/95 px-4 pb-4 pt-2 backdrop-blur-md">
-          <a
+      <div className="pointer-events-none absolute inset-0 bg-[var(--home-glow)]" aria-hidden />
+      <div className="relative mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header className="mb-8 flex items-center gap-3">
+          <Link
             href="/"
-            className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-teal-600 transition-colors hover:bg-[var(--app-surface)] active:scale-95 dark:text-teal-400"
+            className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[var(--home-heading)] transition-colors hover:bg-black/5 active:scale-95 dark:hover:bg-white/10"
             aria-label="Back to home"
           >
-            <ChevronLeft className="h-7 w-7" />
-          </a>
-          <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+            <ChevronLeft className="h-7 w-7" strokeWidth={1.75} />
+          </Link>
+          <h1 className="home-serif text-[2rem] font-semibold leading-tight text-[var(--home-heading)]">
+            Settings
+          </h1>
         </header>
 
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-            <Sun className="h-3.5 w-3.5" />
-            Appearance
-          </h2>
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--app-surface)] p-1.5">
+          <SectionTitle>Appearance</SectionTitle>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
             {(
               [
                 { mode: 'light' as ThemeMode, Icon: Sun, label: 'Light' },
@@ -207,8 +199,8 @@ export default function SettingsPage() {
                 className={cn(
                   'flex min-h-[52px] items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
                   theme === mode
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'text-[var(--app-muted)] hover:text-[var(--app-text)]'
+                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
+                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -216,37 +208,13 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs text-[var(--app-muted)]">
-            Light mode applies to the home screen and reader.
+          <p className="mt-2 text-xs text-[var(--home-muted)]">
+            Light mode uses the warm cream and sage palette from the home screen.
           </p>
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-            <BookOpen className="h-3.5 w-3.5" />
-            Quran script
-          </h2>
-          <div className="space-y-2">
-            <SettingsRow
-              title="Uthmani Hafs"
-              description="Recommended — clean connected Quran text, stable online and offline"
-              selected={mushafStyle === 'uthmani' || mushafStyle === 'uthmani-glyphs'}
-              onClick={() => saveMushaf('uthmani')}
-            />
-            <SettingsRow
-              title="IndoPak / Naskh"
-              description="Simple Naskh-style reading layout"
-              selected={mushafStyle === 'indopak'}
-              onClick={() => saveMushaf('indopak')}
-            />
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-            <Languages className="h-3.5 w-3.5" />
-            Translation language
-          </h2>
+          <SectionTitle>Translation</SectionTitle>
           <div className="space-y-2">
             {TRANSLATION_LANGUAGES.map((lang) => (
               <SettingsRow
@@ -262,57 +230,51 @@ export default function SettingsPage() {
               />
             ))}
           </div>
-          <p className="mt-2 text-xs text-[var(--app-muted)]">
+          <p className="mt-2 text-xs text-[var(--home-muted)]">
             Used in Read translation mode and when you long-press an ayah.
           </p>
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-            <ArrowUpDown className="h-3.5 w-3.5" />
-            Reader
-          </h2>
+          <SectionTitle>Reader</SectionTitle>
           <SettingsToggle
             title="Vertical pages"
-            description="Next page slides up from below (like horizontal page turns). Off uses left/right swipes."
+            description="Swipe up and down to turn pages. Off uses left and right swipes."
             enabled={verticalPages}
             onToggle={() => saveVerticalPages(!verticalPages)}
           />
         </section>
 
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-            <Wifi className="h-3.5 w-3.5" />
-            Offline reading
-          </h2>
-          <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
+          <SectionTitle>Offline</SectionTitle>
+          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
             {offline ? (
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-teal-600 dark:text-teal-400">
+              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
                 <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Quran text saved — reader works offline
+                Quran saved — reader works offline
               </div>
             ) : (
-              <p className="mb-4 text-sm leading-relaxed text-[var(--app-muted)]">
-                One-time download: Quran text and page data for offline reading.
+              <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
+                Download Quran text and page data once for offline reading.
               </p>
             )}
 
             {downloading && (
               <div className="mb-4">
-                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
                   <div
-                    className="h-full bg-teal-500 transition-all duration-300"
+                    className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="text-center text-xs font-medium text-[var(--app-muted)]">
+                <p className="text-center text-xs font-medium text-[var(--home-muted)]">
                   {progress}%{progressLabel ? ` · ${progressLabel}` : ''}
                 </p>
               </div>
             )}
 
             {error && (
-              <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+              <p className="mb-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
                 {error}
               </p>
             )}
@@ -321,7 +283,7 @@ export default function SettingsPage() {
               type="button"
               disabled={downloading}
               onClick={handleDownload}
-              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] text-sm font-bold text-white shadow-md shadow-[rgba(93,122,72,0.25)] transition-opacity disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
               {offline ? 'Re-download Quran' : 'Download for offline'}
@@ -332,7 +294,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={downloading}
                 onClick={handleUseBundled}
-                className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs text-[var(--app-muted)] underline-offset-2 hover:underline disabled:opacity-50"
+                className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs font-medium text-[var(--home-muted)] underline-offset-2 hover:underline disabled:opacity-50"
               >
                 Already on server? Load bundled file
               </button>
@@ -340,12 +302,12 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <a
+        <Link
           href="/read"
-          className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] text-sm font-semibold text-teal-600 transition-colors active:scale-[0.99] dark:text-teal-400"
+          className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-sm font-bold text-[var(--home-sage-deep)] shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.99]"
         >
           Open reader
-        </a>
+        </Link>
       </div>
     </main>
   )
