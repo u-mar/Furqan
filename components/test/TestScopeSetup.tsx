@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowRight, ChevronLeft, Dices, Layers, Search } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, Dices, Layers, Search } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
 import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
@@ -52,27 +52,31 @@ function SurahRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-3 border-b border-[var(--home-card-border)] px-4 py-3 text-left transition-colors last:border-0',
-        selected ? 'bg-[var(--home-sage-soft)]' : 'hover:bg-[var(--app-surface)]'
+        'flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-all',
+        selected
+          ? 'border-2 border-[var(--home-sage-deep)]/50 bg-[var(--home-sage-soft)] shadow-sm'
+          : 'border border-transparent bg-[var(--home-card-bg)] hover:bg-[var(--home-sage-soft)]/40'
       )}
     >
-      <span
-        className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold',
-          selected
-            ? 'bg-[var(--home-sage-deep)] text-white'
-            : 'bg-[var(--app-surface)] text-[var(--home-muted)]'
-        )}
-      >
-        {chapter.id}
-      </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium text-[var(--home-heading)]">
+        <span className="block truncate font-semibold text-[var(--home-heading)]">
           {chapter.englishName}
         </span>
+        <span className="mt-0.5 block text-xs text-[var(--home-muted)]">Surah {chapter.id}</span>
       </span>
-      <span className="shrink-0 arabic-text text-base text-[var(--home-sage-deep)]">
+      <span className="shrink-0 arabic-text text-lg leading-snug text-[var(--home-sage-deep)]">
         {chapter.name}
+      </span>
+      <span
+        className={cn(
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+          selected
+            ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-deep)] text-white'
+            : 'border-[var(--home-card-border)] bg-transparent'
+        )}
+        aria-hidden
+      >
+        {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
       </span>
     </button>
   )
@@ -289,22 +293,22 @@ export default function TestScopeSetup({
       </div>
 
       {scope === 'juz' && (
-        <div className="mb-5 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+        <div className="mb-5">
           <div className="mb-3 flex items-center gap-2 text-sm text-[var(--home-muted)]">
             <Layers className="h-4 w-4 text-[var(--home-sage-deep)]" />
             <span>Select a juz (1–30)</span>
           </div>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-6 gap-2.5">
             {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
               <button
                 key={juz}
                 type="button"
                 onClick={() => setSelectedJuz(juz)}
                 className={cn(
-                  'aspect-square rounded-xl text-sm font-semibold transition-colors',
+                  'aspect-square rounded-2xl text-sm font-semibold transition-all',
                   selectedJuz === juz
-                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-                    : 'border border-[var(--home-card-border)] bg-[var(--app-surface)] text-[var(--home-heading)] hover:border-[var(--home-sage-deep)]/40'
+                    ? 'bg-[var(--home-sage-deep)] text-white shadow-md'
+                    : 'bg-[var(--home-card-bg)] text-[var(--home-heading)] shadow-[var(--home-card-shadow)] hover:bg-[var(--home-sage-soft)]'
                 )}
               >
                 {juz}
@@ -340,11 +344,9 @@ export default function TestScopeSetup({
           </div>
 
           {rangeSingleSurah ? (
-            <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
-                Choose surah
-              </p>
-              <div className="max-h-[36vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+            <div>
+              <p className="mb-2 text-sm font-medium text-[var(--home-muted)]">Choose surah</p>
+              <div className="max-h-[40vh] space-y-2 overflow-y-auto pr-0.5">
                 {filtered.map((chapter) => (
                   <SurahRow
                     key={chapter.id}
@@ -356,12 +358,10 @@ export default function TestScopeSetup({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
-                  From surah
-                </p>
-                <div className="max-h-[24vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+            <div className="space-y-5">
+              <div>
+                <p className="mb-2 text-sm font-medium text-[var(--home-muted)]">From surah</p>
+                <div className="max-h-[28vh] space-y-2 overflow-y-auto pr-0.5">
                   {filtered.map((chapter) => (
                     <SurahRow
                       key={`from-${chapter.id}`}
@@ -372,11 +372,9 @@ export default function TestScopeSetup({
                   ))}
                 </div>
               </div>
-              <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-card-shadow)]">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
-                  To surah
-                </p>
-                <div className="max-h-[24vh] overflow-y-auto rounded-xl border border-[var(--home-card-border)]">
+              <div>
+                <p className="mb-2 text-sm font-medium text-[var(--home-muted)]">To surah</p>
+                <div className="max-h-[28vh] space-y-2 overflow-y-auto pr-0.5">
                   {filtered.map((chapter) => (
                     <SurahRow
                       key={`to-${chapter.id}`}
@@ -404,7 +402,7 @@ export default function TestScopeSetup({
               className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 pl-10 pr-3 text-sm shadow-[var(--home-card-shadow)] focus:border-[var(--home-sage-deep)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
             />
           </div>
-          <div className="mb-5 max-h-[40vh] overflow-y-auto rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
+          <div className="mb-5 max-h-[40vh] space-y-2 overflow-y-auto pr-0.5">
             {filtered.map((chapter) => (
               <SurahRow
                 key={chapter.id}

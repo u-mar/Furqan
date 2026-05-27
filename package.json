@@ -13,9 +13,11 @@
     "download-quran:fonts": "node scripts/download-quran-data.js --fonts-only"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
     "next": "^16.2.4",
+    "prisma": "^6.19.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^3.5.0"

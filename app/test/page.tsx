@@ -13,6 +13,7 @@ import {
 import HomeScreen from '@/components/home/HomeScreen'
 import QuranPageView from '@/components/QuranPageView'
 import Button from '@/components/ui/Button'
+import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   getChapters,
   getMushafPage,
@@ -76,6 +77,7 @@ async function loadScopeVerses(
 }
 
 function TestPageContent() {
+  const { mushafStyle } = useAppSettings()
   const searchParams = useSearchParams()
   const mode = (searchParams.get('mode') || 'random') as ScopeMode
   const scope = resolveScopeType(mode, searchParams.get('scope'))
@@ -128,10 +130,8 @@ function TestPageContent() {
         ? `Surah ${Math.min(startSurah, endSurah)}–${Math.max(startSurah, endSurah)}`
         : `Surah ${surah}`
 
-  const modeSubtitle = mode === 'random' ? 'Random' : mode === 'subac' ? 'Subac' : scope
 
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
-  const currentAyahNum = Number(startVerseKey.split(':')[1] || 0)
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
 
@@ -318,8 +318,6 @@ function TestPageContent() {
   const hasNextPage =
     pageComplete && currentPageIndex >= 0 && currentPageIndex < scopePages.length - 1
 
-  const isAyahRevealed = startVerseKey ? revealedAyahs.has(startVerseKey) : false
-
   if (loading) {
     return (
       <HomeScreen className="flex flex-col items-center justify-center">
@@ -334,31 +332,33 @@ function TestPageContent() {
   }
 
   return (
-    <HomeScreen className="pb-28">
-      <header className="mb-4 flex items-start justify-between gap-3 border-b border-[var(--home-card-border)] pb-4">
+    <HomeScreen className={cn('pb-28', phase === 'testing' && 'flex min-h-[100dvh] flex-col')}>
+      <header className="mb-3 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--home-card-border)] pb-3">
         <div className="flex min-w-0 items-start gap-2">
           <Link
             href="/test/select/random"
-            className="mt-0.5 flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-xl text-[var(--app-muted)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--app-text)]"
+            className="mt-0.5 flex min-h-[40px] min-w-[40px] shrink-0 items-center justify-center rounded-xl text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--home-sage-soft)]"
             aria-label="Back to setup"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <Dices className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400" />
-              <p className="truncate text-lg font-bold text-[var(--app-text)]">{surahTitle}</p>
+              <Dices className="h-4 w-4 shrink-0 text-[var(--home-sage-deep)]" />
+              <p className="home-serif truncate text-lg font-semibold text-[var(--home-heading)]">
+                {surahTitle}
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-[var(--app-muted)]">
+            <p className="mt-0.5 text-xs text-[var(--home-muted)]">
               {mode === 'subac' && subacAssignments.length > 0
                 ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · ${scopeLabel}`
-                : `${scopeLabel} · ${modeSubtitle} · Page ${currentPage}`}
+                : `${scopeLabel} · Page ${currentPage}`}
             </p>
           </div>
         </div>
         <Link
           href="/test/select"
-          className="shrink-0 rounded-full border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-1.5 text-xs font-medium text-[var(--app-muted)] transition-colors hover:text-[var(--app-text)]"
+          className="shrink-0 rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 py-1.5 text-xs font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
         >
           Change
         </Link>
@@ -366,28 +366,10 @@ function TestPageContent() {
 
       {phase === 'testing' && (
         <>
-          <section className="mb-4 rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/15 via-[var(--home-card-bg)] to-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
-              Current challenge
-            </p>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold text-[var(--app-text)]">
-                  Ayah {currentAyahNum}
-                </h2>
-                <p className="text-sm text-[var(--app-muted)]">{scopeLabel}</p>
-              </div>
-              <div className="rounded-2xl bg-[var(--app-surface)] px-3 py-2 text-right">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--app-muted)]">Progress</p>
-                <p className="text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">{progress}%</p>
-              </div>
-            </div>
-          </section>
-
-          <div className="mb-4 flex items-center gap-3">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--app-surface)]">
+          <div className="mb-3 flex shrink-0 items-center gap-3">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--home-card-border)]">
               <div
-                className="h-full rounded-full bg-teal-600 transition-all duration-300 dark:bg-teal-500"
+                className="h-full rounded-full bg-[var(--home-sage-deep)] transition-all duration-300"
                 style={{ width: `${progress}%` }}
                 role="progressbar"
                 aria-valuenow={progress}
@@ -395,36 +377,26 @@ function TestPageContent() {
                 aria-valuemax={100}
               />
             </div>
-            <span className="text-xs font-medium tabular-nums text-[var(--app-muted)]">
+            <span className="text-[11px] font-medium tabular-nums text-[var(--home-muted)]">
               {progress}%
             </span>
           </div>
 
-          {startVerseKey && (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-teal-500/15 px-3 py-1 text-xs font-semibold text-teal-800 dark:text-teal-300">
-                Ayah {currentAyahNum}
-              </span>
-              <span
-                className={cn(
-                  'rounded-full px-3 py-1 text-xs font-medium',
-                  isAyahRevealed
-                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-[var(--app-surface)] text-[var(--app-muted)]'
-                )}
-              >
-                {isAyahRevealed ? 'Revealed' : 'Tap ayah to reveal'}
-              </span>
-            </div>
-          )}
+          <p className="mb-3 shrink-0 text-center text-xs text-[var(--home-muted)]">
+            Tap where the next ayah continues to reveal it
+          </p>
 
-          <div className="mb-5 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
+          <div className="mushaf-reader-immersive relative mb-4 min-h-0 flex-1 overflow-hidden rounded-2xl bg-[var(--mushaf-read-bg)] shadow-[var(--home-card-shadow)]">
             <QuranPageView
               verses={pageVerses}
               startVerseKey={startVerseKey}
               revealableVerseKeys={activeRevealKeys}
               revealedAyahs={revealedAyahs}
               onReveal={handleReveal}
+              readMode
+              hideRevealBoxes
+              mushafStyle={mushafStyle}
+              pageNumber={currentPage}
             />
           </div>
 
@@ -440,7 +412,7 @@ function TestPageContent() {
               <Button
                 variant="secondary"
                 size="md"
-                className="shrink-0 px-3"
+                className="shrink-0 border-[var(--home-card-border)] px-3"
                 onClick={handlePreviousPage}
                 disabled={!hasPreviousPage}
                 aria-label="Previous page"
@@ -449,27 +421,30 @@ function TestPageContent() {
               </Button>
 
               {mode === 'subac' ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="flex-1"
+                <button
+                  type="button"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--home-sage-deep)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:brightness-105 disabled:opacity-40"
                   onClick={handleNextParticipant}
                   disabled={currentParticipant >= subacAssignments.length - 1}
                 >
                   Next person
                   <ChevronRight className="h-4 w-4" />
-                </Button>
+                </button>
               ) : (
-                <Button variant="primary" size="lg" className="flex-1" onClick={handleNewRandom}>
+                <button
+                  type="button"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--home-sage-deep)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:brightness-105"
+                  onClick={handleNewRandom}
+                >
                   <RefreshCw className="h-4 w-4" />
                   New random ayah
-                </Button>
+                </button>
               )}
 
               <Button
                 variant="secondary"
                 size="md"
-                className="shrink-0 px-3"
+                className="shrink-0 border-[var(--home-card-border)] px-3"
                 onClick={handleNextPage}
                 disabled={!hasNextPage}
                 aria-label="Next page"

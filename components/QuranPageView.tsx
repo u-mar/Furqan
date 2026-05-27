@@ -24,6 +24,8 @@ interface QuranPageViewProps {
   /** Full-screen: 15 lines fit viewport, no scroll. */
   readMode?: boolean
   readOnly?: boolean
+  /** Hide grey reveal boxes; unrevealed text stays invisible (for hifdh test). */
+  hideRevealBoxes?: boolean
   mushafStyle?: MushafStyle
   pageNumber?: number
   onAyahLongPress?: (verseKey: string) => void
@@ -251,6 +253,7 @@ export default function QuranPageView({
   onReveal,
   readMode = false,
   readOnly = false,
+  hideRevealBoxes = false,
   mushafStyle = 'indopak',
   pageNumber: pageNumberProp,
   highlightedVerseKey = null,
@@ -553,7 +556,7 @@ export default function QuranPageView({
               line.words.map((word) => {
                 const isRevealed = revealedAyahs.has(word.verseKey)
                 const isNext = word.verseKey === nextVerseKey
-                const shouldShowText = isRevealed || word.isEndMark
+                const showText = isRevealed
                 const isReciting = highlightedVerseKey === word.verseKey
                 const isSelected = selectedVerseKey === word.verseKey
 
@@ -562,19 +565,28 @@ export default function QuranPageView({
                   textClass,
                   isReciting && 'mushaf-word--reciting',
                   isSelected && !isReciting && 'mushaf-word--selected',
-                  !shouldShowText && 'mushaf-word-hidden select-none !text-transparent'
+                  !showText && 'mushaf-word-hidden select-none !text-transparent'
                 )
 
                 const wordHtml = word.fallbackText
 
                 if (word.isEndMark) {
+                  if (!showText) {
+                    return (
+                      <span
+                        key={word.id}
+                        className="mx-0.5 inline-block h-[1.1em] w-[0.45em] align-middle opacity-0"
+                        aria-hidden
+                      />
+                    )
+                  }
                   if (ayahLongPress) {
                     return (
                       <MushafWord
                         key={word.id}
                         word={word}
                         className={cn(
-                          'mx-0.5 inline-block opacity-90',
+                          'mushaf-ayah-stop mx-0.5 inline-block',
                           isReciting && 'mushaf-word--reciting',
                           isSelected && !isReciting && 'mushaf-word--selected'
                         )}
@@ -587,7 +599,7 @@ export default function QuranPageView({
                     <span
                       key={word.id}
                       className={cn(
-                        'mx-0.5 inline-block opacity-90',
+                        'mushaf-ayah-stop mx-0.5 inline-block',
                         isReciting && 'mushaf-word--reciting',
                         isSelected && !isReciting && 'mushaf-word--selected'
                       )}
@@ -616,10 +628,11 @@ export default function QuranPageView({
                     onClick={() => onReveal(word.verseKey)}
                     className={cn(
                       wordClass,
-                      'arabic-text',
-                      'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-600',
-                      !shouldShowText &&
-                        'min-h-[1.4em] min-w-[2.5rem] rounded bg-stone-200/90 ring-1 ring-teal-600/35 dark:bg-stone-700/60 dark:ring-teal-400/40'
+                      'arabic-text appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--home-sage-deep)]/50',
+                      !showText &&
+                        (hideRevealBoxes
+                          ? 'inline-block min-w-[0.2em] align-baseline'
+                          : 'min-h-[1.4em] min-w-[2.5rem] rounded bg-stone-200/90 ring-1 ring-teal-600/35 dark:bg-stone-700/60 dark:ring-teal-400/40')
                     )}
                     aria-label={`Reveal verse ${word.verseKey}`}
                     dangerouslySetInnerHTML={{ __html: wordHtml }}

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Amiri, Cormorant_Garamond } from 'next/font/google'
 import AppShell from '@/components/AppShell'
+import AdminRuntime from '@/components/admin/AdminRuntime'
+import AuthGate from '@/components/auth/AuthGate'
 import AppSplash from '@/components/AppSplash'
 import InstallPrompt from '@/components/InstallPrompt'
 import PwaRegister from '@/components/PwaRegister'
@@ -64,6 +66,8 @@ export default function RootLayout({
         <SettingsProvider>
           <AppSplash />
           <AppShell>{children}</AppShell>
+          <AuthGate />
+          <AdminRuntime />
           <PwaRegister />
           <InstallPrompt />
         </SettingsProvider>

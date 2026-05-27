@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String   @unique
+  name      String
+  pinHash   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminConfig {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  key              String   @unique
+  dailyVerseKey    String
+  dailyVerseSurah  String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FeedbackMessage {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  userName  String
+  message   String
+  contact   String
+  createdAt DateTime @default(now())
+}
+
+model UserUsage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @unique
+  userName   String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  totalVisits Int     @default(0)
+  lastPath   String   @default("/")
+  pageViews  Json
+  updatedAt  DateTime @updatedAt
+}
+
+model PopupMessage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  body         String
+  targetUserId String
+  createdAt    DateTime @default(now())
+  dismissedBy  String[]
+}

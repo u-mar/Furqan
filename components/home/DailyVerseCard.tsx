@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bookmark, Play, Share2, Square } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { getDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
 
-const DAILY_VERSE_KEY = '2:152'
-const DAILY_REF = 'Surah Al-Baqarah, 2:152'
+const DEFAULT_DAILY_VERSE_KEY = '2:152'
+const DEFAULT_SURAH = 'Al-Baqarah'
 
 const FALLBACK_TRANSLATION =
   'So remember Me; I will remember you. And be grateful to Me and do not deny Me.'
@@ -22,10 +23,21 @@ export default function DailyVerseCard() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
+  const [dailyVerseKey, setDailyVerseKey] = useState(DEFAULT_DAILY_VERSE_KEY)
+  const [dailySurahLabel, setDailySurahLabel] = useState(DEFAULT_SURAH)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    setSaved(isBookmarked(DAILY_VERSE_KEY))
+    const applyConfig = async () => {
+      const config = await getDailyVerseConfig()
+      setDailyVerseKey(config.verseKey || DEFAULT_DAILY_VERSE_KEY)
+      setDailySurahLabel(config.surahName || DEFAULT_SURAH)
+      setSaved(isBookmarked(config.verseKey || DEFAULT_DAILY_VERSE_KEY))
+    }
+    void applyConfig()
+    const onChanged = () => void applyConfig()
+    window.addEventListener('admin-store-changed', onChanged)
+    return () => window.removeEventListener('admin-store-changed', onChanged)
   }, [])
 
   useEffect(() => {
@@ -34,7 +46,7 @@ export default function DailyVerseCard() {
 
     void (async () => {
       try {
-        const verse = await getVerseByKey(DAILY_VERSE_KEY)
+        const verse = await getVerseByKey(dailyVerseKey)
         if (cancelled) return
         setArabic(getVerseArabicText(verse))
         setPage(verse.page_number || 22)
@@ -47,7 +59,7 @@ export default function DailyVerseCard() {
             verse_key: string
             translation: string
           }>
-          const row = rows.find((r) => r.verse_key === DAILY_VERSE_KEY)
+          const row = rows.find((r) => r.verse_key === dailyVerseKey)
           if (row?.translation && !cancelled) setTranslation(row.translation)
         }
       } catch {
@@ -60,7 +72,7 @@ export default function DailyVerseCard() {
     return () => {
       cancelled = true
     }
-  }, [translationLanguage])
+  }, [dailyVerseKey, translationLanguage])
 
   useEffect(() => {
     return () => {
@@ -71,14 +83,14 @@ export default function DailyVerseCard() {
 
   const toggleSave = () => {
     if (saved) {
-      removeBookmark(DAILY_VERSE_KEY)
+      removeBookmark(dailyVerseKey)
       setSaved(false)
       return
     }
     addBookmark({
-      verseKey: DAILY_VERSE_KEY,
-      surahName: 'Al-Baqarah',
-      ayah: 152,
+      verseKey: dailyVerseKey,
+      surahName: dailySurahLabel,
+      ayah: Number(dailyVerseKey.split(':')[1] || 1),
       page,
       arabic: arabic || FALLBACK_TRANSLATION,
       createdAt: Date.now(),
@@ -87,7 +99,7 @@ export default function DailyVerseCard() {
   }
 
   const handleShare = async () => {
-    const text = `${DAILY_REF}\n\n${arabic}\n\n${translation}`
+    const text = `${dailySurahLabel}\n\n${arabic}\n\n${translation}`
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Daily Verse', text })
@@ -103,7 +115,7 @@ export default function DailyVerseCard() {
     }
   }
 
-  const [surahNum, ayahNum] = DAILY_VERSE_KEY.split(':')
+  const [surahNum, ayahNum] = dailyVerseKey.split(':')
 
   const handlePlayToggle = () => {
     if (playing) {
@@ -147,7 +159,7 @@ export default function DailyVerseCard() {
         />
         <div className="relative mb-4 flex items-start justify-between gap-3">
           <span className="rounded-full bg-white/25 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm">
-            {DAILY_REF}
+            {dailySurahLabel}
           </span>
           <button
             type="button"

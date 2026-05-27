@@ -19,6 +19,7 @@ import {
   hydrateOfflineFromDisk,
   isOfflineReady,
 } from '@/lib/local-quran-store'
+import { addFeedbackMessage, getOrCreateUserProfile } from '@/lib/admin'
 
 function SettingsRow({
   title,
@@ -104,6 +105,10 @@ export default function SettingsPage() {
   const [progress, setProgress] = useState(0)
   const [progressLabel, setProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [contact, setContact] = useState('')
+  const [feedbackNotice, setFeedbackNotice] = useState('')
+  const [profileTag, setProfileTag] = useState('')
 
   useEffect(() => {
     const s = getAppSettings()
@@ -114,6 +119,8 @@ export default function SettingsPage() {
     if (s.mushafStyle === 'indopak') {
       setAppSettings({ mushafStyle: 'uthmani' })
     }
+    const profile = getOrCreateUserProfile()
+    setProfileTag(`${profile.name} · ${profile.id.slice(-6)}`)
   }, [])
 
   function saveTheme(next: ThemeMode) {
@@ -163,6 +170,20 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : 'Could not load offline data')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  async function handleSendFeedback() {
+    if (!feedbackMessage.trim()) return
+    try {
+      await addFeedbackMessage(feedbackMessage, contact)
+      setFeedbackMessage('')
+      setContact('')
+      setFeedbackNotice('Feedback sent. JazakAllahu khayran.')
+      window.setTimeout(() => setFeedbackNotice(''), 2200)
+    } catch {
+      setFeedbackNotice('Could not send feedback right now.')
+      window.setTimeout(() => setFeedbackNotice(''), 2200)
     }
   }
 
@@ -299,6 +320,38 @@ export default function SettingsPage() {
                 Already on server? Load bundled file
               </button>
             )}
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <SectionTitle>Feedback</SectionTitle>
+          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+            <p className="text-xs text-[var(--home-muted)]">User: {profileTag || 'Loading...'}</p>
+            <textarea
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+              rows={4}
+              placeholder="Share a bug, idea, or request..."
+              className="mt-3 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+            />
+            <input
+              type="text"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Optional contact (email/phone)"
+              className="mt-2 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+            />
+            {feedbackNotice ? (
+              <p className="mt-2 text-xs font-medium text-[var(--home-sage-deep)]">{feedbackNotice}</p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void handleSendFeedback()}
+              disabled={!feedbackMessage.trim()}
+              className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[var(--home-sage-deep)] text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Send feedback
+            </button>
           </div>
         </section>
 
