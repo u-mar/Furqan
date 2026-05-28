@@ -44,6 +44,7 @@ export default function AyahEndMark({
       style={{
         fontFamily: glyphMode ? qcfFamily : PLAIN_MUSHAF_FONT,
       }}
+      dir="rtl"
       aria-hidden
     >
       {display}
