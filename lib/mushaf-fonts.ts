@@ -1,5 +1,5 @@
-import { resolveQcfFontUrl, resolveSurahNameFontUrl } from '@/lib/offline-font-cache'
-import { qcfPageFontFamily } from '@/lib/qcf-font-cdn'
+import { resolveQcfFontUrlsForLoad, resolveSurahNameFontUrl } from '@/lib/offline-font-cache'
+import { qcfCdnFontUrl, qcfPageFontFamily } from '@/lib/qcf-font-cdn'
 
 export {
   qcfCdnFontUrl,
@@ -34,7 +34,7 @@ function escapeCssUrl(url: string): string {
 
 function qcfFontFaceCss(page: number, srcUrl: string): string {
   const family = qcfPageFontFamily(page)
-  return `@font-face{font-family:'${family}';src:url('${escapeCssUrl(srcUrl)}') format('woff2');font-weight:normal;font-style:normal;font-display:swap;}`
+  return `@font-face{font-family:'${family}';src:url('${escapeCssUrl(srcUrl)}') format('woff2');font-weight:normal;font-style:normal;font-display:block;}`
 }
 
 export function ensureQcfFontFace(page: number, srcUrl: string): void {
@@ -50,7 +50,6 @@ function normalizeFontFamily(name: string): string {
   return name.replace(/['"]/g, '').trim()
 }
 
-/** QCF page fonts only map mushaf PUA glyphs — `fonts.check()` defaults to Latin "B" and falsely fails. */
 function isFamilyRegisteredAndLoaded(family: string): boolean {
   const target = normalizeFontFamily(family)
   for (const face of document.fonts) {
@@ -61,24 +60,33 @@ function isFamilyRegisteredAndLoaded(family: string): boolean {
   return false
 }
 
-function isFamilyLoaded(family: string): boolean {
-  if (isFamilyRegisteredAndLoaded(family)) return true
-  return document.fonts.check(`${FONT_CHECK_SIZE_PX}px "${family}"`)
-}
-
-async function waitForFamily(family: string, attempts = 8): Promise<boolean> {
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "${family}"`)
-    } catch {
-      /* load() may reject even when @font-face is valid */
-    }
-    await document.fonts.ready
-    if (isFamilyRegisteredAndLoaded(family)) return true
-    if (document.fonts.check(`${FONT_CHECK_SIZE_PX}px "${family}"`)) return true
-    await new Promise((r) => setTimeout(r, 120))
+/**
+ * QCF fonts only contain mushaf PUA glyphs. Compare render width vs generic serif.
+ */
+export function canRenderQcfGlyphs(family: string, sampleGlyphs: string): boolean {
+  if (!sampleGlyphs.trim() || typeof document === 'undefined') {
+    return isFamilyRegisteredAndLoaded(family)
   }
-  return isFamilyRegisteredAndLoaded(family)
+
+  if (!isFamilyRegisteredAndLoaded(family)) return false
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return true
+
+  const size = 32
+  ctx.direction = 'rtl'
+  ctx.font = `${size}px serif`
+  const fallbackWidth = ctx.measureText(sampleGlyphs).width
+
+  ctx.font = `${size}px "${family}", serif`
+  const qcfWidth = ctx.measureText(sampleGlyphs).width
+
+  if (qcfWidth <= 0) return false
+  if (fallbackWidth <= 0) return true
+  return Math.abs(qcfWidth - fallbackWidth) > 0.5
 }
 
 async function fetchFontBuffer(url: string): Promise<ArrayBuffer> {
@@ -100,18 +108,16 @@ function isSameOriginFontUrl(url: string): boolean {
   return url.startsWith(window.location.origin)
 }
 
-/** FontFace API — primary loader; works for CDN and SW-backed /qcf/ URLs. */
 async function loadViaFontFace(page: number, url: string): Promise<boolean> {
   const family = qcfPageFontFamily(page)
   const buffer = await fetchFontBuffer(url)
   const face = new FontFace(family, buffer, { display: 'block' })
   const loaded = await face.load()
   document.fonts.add(loaded)
-  if (isSameOriginFontUrl(url)) {
-    ensureQcfFontFace(page, url)
-  }
-  if (loaded.status === 'loaded') return true
-  return waitForFamily(family)
+  const cssUrl = isSameOriginFontUrl(url) ? url : qcfCdnFontUrl(page)
+  ensureQcfFontFace(page, cssUrl)
+  await document.fonts.ready
+  return loaded.status === 'loaded' && isFamilyRegisteredAndLoaded(family)
 }
 
 export function preloadPageFontLink(page: number): void {
@@ -120,12 +126,11 @@ export function preloadPageFontLink(page: number): void {
   void loadPageFont(page)
 }
 
-export function prefetchPageFonts(center: number, radius = 2): void {
+export function prefetchPageFonts(center: number, radius = 1): void {
   if (typeof window === 'undefined') return
   void loadSurahNameFont()
   for (let p = center - radius; p <= center + radius; p += 1) {
-    if (p >= 1 && p <= 604) {
-      preloadPageFontLink(p)
+    if (p >= 1 && p <= 604 && p !== center) {
       void loadPageFont(p)
     }
   }
@@ -160,52 +165,69 @@ export async function loadSurahNameFont(): Promise<boolean> {
   return surahNameLoading
 }
 
-export async function loadPageFont(page: number): Promise<boolean> {
+export async function loadPageFont(
+  page: number,
+  sampleGlyphs?: string
+): Promise<boolean> {
   if (page < 1) return false
-  if (loadedPages.has(page)) return true
+
+  const family = qcfPageFontFamily(page)
+  const sample = sampleGlyphs?.trim() ?? ''
+
+  if (
+    loadedPages.has(page) &&
+    isFamilyRegisteredAndLoaded(family) &&
+    (!sample || canRenderQcfGlyphs(family, sample))
+  ) {
+    return true
+  }
+
   const pending = loadingPages.get(page)
   if (pending) return pending
 
   const task = (async () => {
     try {
       if (typeof document === 'undefined') return false
-      const family = qcfPageFontFamily(page)
       await document.fonts.ready
 
-      if (isFamilyLoaded(family)) {
-        loadedPages.add(page)
-        return true
-      }
-
-      const url = await resolveQcfFontUrl(page)
+      const urls = await resolveQcfFontUrlsForLoad(page)
       if (shouldLogFontDebug()) {
-        console.info('[Muyassar] Loading QCF font', { page, family, url })
+        console.info('[Muyassar] Loading QCF font', { page, family, urls })
       }
 
-      let ok = false
-      try {
-        ok = await loadViaFontFace(page, url)
-      } catch (fontFaceErr) {
-        if (shouldLogFontDebug()) {
-          console.warn('[Muyassar] QCF FontFace load failed', { page, fontFaceErr })
+      for (const url of urls) {
+        try {
+          const ok = await loadViaFontFace(page, url)
+          if (!ok) continue
+          if (sample && !canRenderQcfGlyphs(family, sample)) {
+            if (shouldLogFontDebug()) {
+              console.warn('[Muyassar] QCF font loaded but glyphs did not render', {
+                page,
+                family,
+                url,
+              })
+            }
+            continue
+          }
+          loadedPages.add(page)
+          if (shouldLogFontDebug()) {
+            console.info('[Muyassar] QCF font ready', { page, family, url })
+          }
+          return true
+        } catch (err) {
+          if (shouldLogFontDebug()) {
+            console.warn('[Muyassar] QCF font attempt failed', { page, url, err })
+          }
         }
       }
 
-      if (!ok) {
-        ensureQcfFontFace(page, url)
-        ok = await waitForFamily(family)
-      }
-
-      if (shouldLogFontDebug()) {
-        console.info('[Muyassar] QCF font result', { page, family, ok })
-      }
-
-      if (ok) loadedPages.add(page)
-      return ok
+      loadedPages.delete(page)
+      return false
     } catch (error) {
       if (shouldLogFontDebug()) {
         console.warn('[Muyassar] QCF font failed', { page, error })
       }
+      loadedPages.delete(page)
       return false
     } finally {
       loadingPages.delete(page)
@@ -218,4 +240,8 @@ export async function loadPageFont(page: number): Promise<boolean> {
 
 export function isPageFontLoaded(page: number): boolean {
   return loadedPages.has(page)
+}
+
+export function clearPageFontLoaded(page: number): void {
+  loadedPages.delete(page)
 }

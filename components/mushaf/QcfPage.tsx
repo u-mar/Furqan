@@ -51,6 +51,7 @@ function QcfPageComponent({
           <QcfLine
             key={line.lineNumber}
             line={line}
+            qcfFontFamily={qcfFamily}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onLineLongPress={onAyahLongPress}

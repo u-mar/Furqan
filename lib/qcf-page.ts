@@ -67,4 +67,10 @@ export function pageHasQcfData(verses: Verse[]): boolean {
   return verses.some((verse) => verse.words?.some((word) => Boolean(word.code_v2?.trim())))
 }
 
+/** First few QCF glyphs on a page — used to verify the page font actually renders. */
+export function qcfPageSampleGlyphs(verses: Verse[], pageNumber: number): string {
+  const { pageText } = buildQcfPageLayout(verses, pageNumber)
+  return pageText.slice(0, 12)
+}
+
 export { LINES_PER_PAGE }

@@ -67,6 +67,19 @@ export async function resolveQcfFontUrl(page: number): Promise<string> {
   return qcfCdnFontUrl(page)
 }
 
+/** URLs to try in order: offline SW path (if cached), then CDN. */
+export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]> {
+  const cdn = qcfCdnFontUrl(page)
+  const urls: string[] = []
+
+  if (await qcfFontInCache(page)) {
+    urls.push(qcfLocalFontUrl(page))
+  }
+
+  if (!urls.includes(cdn)) urls.push(cdn)
+  return urls
+}
+
 export async function resolveSurahNameFontUrl(): Promise<string> {
   if (typeof caches !== 'undefined') {
     try {

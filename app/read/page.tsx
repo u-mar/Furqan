@@ -45,7 +45,6 @@ import {
   getVisualPageForVerse,
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
-import { prefetchPageFonts } from '@/lib/mushaf-fonts'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { hasSomaliVoiceForVerse, loadSomaliVoiceManifest } from '@/lib/somali-voice'
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
@@ -104,7 +103,6 @@ function ReadPageContent() {
     setLoadError(null)
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
     prefetchMushafPages(page, 3)
-    prefetchPageFonts(page, 2)
   }, [])
 
   const loadPage = useCallback(
@@ -587,7 +585,7 @@ function ReadPageContent() {
 
   return (
     <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
-      <MushafFontPreload page={currentPage} />
+      <MushafFontPreload />
       {pageLoading && (
         <div
           className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"

@@ -6,7 +6,7 @@ import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import MushafPageView from '@/components/mushaf/MushafPageView'
-import { pageHasQcfData } from '@/lib/qcf-page'
+import { pageHasQcfData, qcfPageSampleGlyphs } from '@/lib/qcf-page'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -318,7 +318,15 @@ export default function QuranPageView({
   }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, verses])
 
   const hasQcfData = useMemo(() => pageHasQcfData(verses), [verses])
-  const qcfFont = useQcfFont(pageNumber, useQcfRead && hasQcfData && pageNumber > 0)
+  const qcfSample = useMemo(
+    () => (hasQcfData && pageNumber > 0 ? qcfPageSampleGlyphs(verses, pageNumber) : ''),
+    [hasQcfData, pageNumber, verses]
+  )
+  const qcfFont = useQcfFont(
+    pageNumber,
+    useQcfRead && hasQcfData && pageNumber > 0,
+    qcfSample
+  )
 
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
 
@@ -411,7 +419,7 @@ export default function QuranPageView({
               type="button"
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm text-white"
               onClick={() => {
-                void loadPageFont(pageNumber).then((ok) => {
+                void loadPageFont(pageNumber, qcfSample).then((ok) => {
                   if (ok) window.location.reload()
                 })
               }}
@@ -431,7 +439,6 @@ export default function QuranPageView({
           lang="ar"
           aria-label="Quran page"
         >
-          {/* MushafPageView provides .mushaf-root + QCF_P{n} isolation */}
           <MushafPageView
             verses={verses}
             pageNumber={pageNumber}
@@ -444,6 +451,19 @@ export default function QuranPageView({
         </div>
       )
     }
+
+    return (
+      <div
+        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+        dir="rtl"
+        lang="ar"
+        aria-label="Loading mushaf font"
+      >
+        <div className="flex h-full items-center justify-center">
+          <p className="text-sm text-[var(--mushaf-read-meta)]">Loading mushaf font…</p>
+        </div>
+      </div>
+    )
   }
 
   return (

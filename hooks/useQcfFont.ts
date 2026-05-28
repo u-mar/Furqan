@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 import {
   isPageFontLoaded,
   loadPageFont,
-  preloadPageFontLink,
   prefetchPageFonts,
 } from '@/lib/mushaf-fonts'
 
@@ -14,27 +13,17 @@ export interface QcfFontStatus {
   loading: boolean
 }
 
-export function useQcfFont(page: number, enabled = true): QcfFontStatus {
-  const [ready, setReady] = useState(() => enabled && isPageFontLoaded(page))
+export function useQcfFont(
+  page: number,
+  enabled = true,
+  sampleGlyphs = ''
+): QcfFontStatus {
+  const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [loading, setLoading] = useState(() => enabled && !isPageFontLoaded(page))
+  const [loading, setLoading] = useState(false)
 
-  // Avoid one frame of page N content with page N-1 font (shows glyphs then error).
   useLayoutEffect(() => {
-    if (!enabled) return
-    if (isPageFontLoaded(page)) {
-      setReady(true)
-      setFailed(false)
-      setLoading(false)
-      return
-    }
-    setReady(false)
-    setFailed(false)
-    setLoading(true)
-  }, [enabled, page])
-
-  useEffect(() => {
-    if (!enabled) {
+    if (!enabled || page < 1) {
       setReady(false)
       setFailed(false)
       setLoading(false)
@@ -45,33 +34,36 @@ export function useQcfFont(page: number, enabled = true): QcfFontStatus {
       setReady(true)
       setFailed(false)
       setLoading(false)
-      preloadPageFontLink(page)
-      if (page < 604) preloadPageFontLink(page + 1)
-      if (page > 1) preloadPageFontLink(page - 1)
+      return
+    }
+
+    setReady(false)
+    setFailed(false)
+    setLoading(true)
+  }, [enabled, page])
+
+  useEffect(() => {
+    if (!enabled || page < 1) {
+      setReady(false)
+      setFailed(false)
+      setLoading(false)
       return
     }
 
     let cancelled = false
-    setReady(false)
-    setFailed(false)
-    setLoading(true)
 
-    preloadPageFontLink(page)
-    if (page < 604) preloadPageFontLink(page + 1)
-    if (page > 1) preloadPageFontLink(page - 1)
-
-    void loadPageFont(page).then((ok) => {
+    void loadPageFont(page, sampleGlyphs).then((ok) => {
       if (cancelled) return
       setReady(ok)
       setFailed(!ok)
       setLoading(false)
-      if (ok) prefetchPageFonts(page, 2)
+      if (ok) prefetchPageFonts(page, 1)
     })
 
     return () => {
       cancelled = true
     }
-  }, [enabled, page])
+  }, [enabled, page, sampleGlyphs])
 
   return { ready, failed, loading }
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import QcfPage from '@/components/mushaf/QcfPage'
 import { qcfPageFontFamily } from '@/lib/qcf-font-cdn'
-import { loadSurahNameFont, prefetchPageFonts } from '@/lib/mushaf-fonts'
+import { loadSurahNameFont } from '@/lib/mushaf-fonts'
 import type { Verse } from '@/types'
 
 export interface MushafPageViewProps {
@@ -37,8 +37,7 @@ export default function MushafPageView({
 
   useEffect(() => {
     void loadSurahNameFont()
-    if (pageNumber > 0) prefetchPageFonts(pageNumber, 2)
-  }, [pageNumber])
+  }, [])
 
   useEffect(() => {
     const key = highlightedVerseKey || selectedVerseKey

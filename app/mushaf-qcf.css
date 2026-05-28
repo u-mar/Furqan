@@ -65,10 +65,14 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: clip;
+  font-family: var(--mushaf-qcf-font-family, inherit) !important;
   font-size: clamp(22px, calc((100dvh - 88px) / 15 * 0.52), 40px);
   line-height: 1.75;
   letter-spacing: 0;
   word-spacing: 0;
+  font-synthesis: none;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: normal !important;
 }
 
 .mushaf-qcf-line--empty {
