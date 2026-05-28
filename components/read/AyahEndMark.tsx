@@ -29,13 +29,13 @@ export default function AyahEndMark({
   glyphFontReady,
 }: AyahEndMarkProps) {
   const qcfFamily = qcfFontFamily(pageNumber)
-  const useGlyph = Boolean(codeV2?.trim())
-  const localFontReady = useQcfFont(pageNumber, useGlyph && glyphFontReady === undefined)
+  const useGlyph = false
+  const localFontReady = useQcfFont(pageNumber, false)
   const fontReady = glyphFontReady ?? localFontReady
   const longPress = useLongPress(() => onLongPress?.(verseKey))
 
   const fallback = fallbackText.trim()
-  const display = useGlyph && fontReady ? codeV2!.trim() : fallback ? `۝${fallback}` : '۝'
+  const display = fallback ? `۝${fallback}` : '۝'
   const glyphMode = useGlyph && fontReady
 
   const inner = (

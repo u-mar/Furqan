@@ -546,7 +546,7 @@ export default function QuranPageView({
           const lineClassName = cn(
             readMode
               ? cn(
-                  'mushaf-fit-line flex-row flex-wrap gap-x-[0.05em]',
+                  'mushaf-fit-line flex-row flex-nowrap gap-x-0',
                   line.isSurahHeader && 'mushaf-fit-line--header surah-header',
                   line.isBasmalah && 'mushaf-fit-line--basmalah basmalah-ornament-inline'
                 )
@@ -639,7 +639,7 @@ export default function QuranPageView({
                     <MushafWord
                       key={word.id}
                       word={word}
-                      className={cn(wordClass, 'arabic-text')}
+                      className={wordClass}
                       html={wordHtml}
                       onAyahLongPress={ayahLongPress}
                     />
@@ -653,7 +653,7 @@ export default function QuranPageView({
                     onClick={() => onReveal(word.verseKey)}
                     className={cn(
                       wordClass,
-                      'arabic-text appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--home-sage-deep)]/50',
+                      'appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--home-sage-deep)]/50',
                       !showText &&
                         (hideRevealBoxes
                           ? 'inline-block min-w-[0.2em] align-baseline'
