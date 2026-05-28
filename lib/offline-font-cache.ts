@@ -6,7 +6,9 @@ import {
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
 
-const CACHE_NAME = 'muyassar-qcf-fonts-v2'
+/** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
+export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
+const CACHE_NAME = QCF_FONT_CACHE_NAME
 const SURAH_CACHE_KEY = '/fonts/surah-name-v2.ttf'
 
 export function areOfflineFontsCached(): boolean {
@@ -38,60 +40,50 @@ async function openCache(): Promise<Cache> {
   return caches.open(CACHE_NAME)
 }
 
-/** Prefer Cache API, then same-origin bundle, then CDN. */
+async function qcfFontInCache(page: number): Promise<boolean> {
+  if (typeof caches === 'undefined') return false
+  try {
+    const cache = await caches.open(CACHE_NAME)
+    const local = qcfLocalFontUrl(page)
+    if (await cache.match(local)) return true
+    return Boolean(await cache.match(qcfLegacyLocalFontUrl(page)))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Font URL for @font-face / FontFace.
+ * Offline: same-origin `/qcf/p{n}.woff2` (service worker serves Cache API bytes).
+ * Online: Quran Foundation CDN. Never probes missing `public/qcf` files (avoids 404 spam).
+ */
 export async function resolveQcfFontUrl(page: number): Promise<string> {
   if (page < 1 || page > TOTAL_MUSHAF_FONT_PAGES) return qcfCdnFontUrl(page)
 
-  const local = qcfLocalFontUrl(page)
-
-  if (typeof caches !== 'undefined') {
-    try {
-      const cache = await caches.open(CACHE_NAME)
-      const hit = await cache.match(local)
-      if (hit) {
-        const blob = await hit.blob()
-        return URL.createObjectURL(blob)
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  try {
-    const head = await fetch(local, { method: 'HEAD' })
-    if (head.ok) return local
-  } catch {
-    /* not bundled */
-  }
-
-  const legacy = qcfLegacyLocalFontUrl(page)
-  try {
-    const head = await fetch(legacy, { method: 'HEAD' })
-    if (head.ok) return legacy
-  } catch {
-    /* not bundled */
+  if (await qcfFontInCache(page)) {
+    return qcfLocalFontUrl(page)
   }
 
   return qcfCdnFontUrl(page)
 }
 
 export async function resolveSurahNameFontUrl(): Promise<string> {
+  if (typeof caches !== 'undefined') {
+    try {
+      const cache = await caches.open(CACHE_NAME)
+      const hit = await cache.match(SURAH_CACHE_KEY)
+      if (hit) return SURAH_CACHE_KEY
+    } catch {
+      /* ignore */
+    }
+  }
+
   const local = '/fonts/surah-name-v2.ttf'
   try {
     const head = await fetch(local, { method: 'HEAD' })
     if (head.ok) return local
   } catch {
     /* ignore */
-  }
-
-  if (typeof caches !== 'undefined') {
-    try {
-      const cache = await caches.open(CACHE_NAME)
-      const hit = await cache.match(SURAH_CACHE_KEY)
-      if (hit) return hit.url
-    } catch {
-      /* ignore */
-    }
   }
 
   return SURAH_NAME_FONT_URL
@@ -122,14 +114,7 @@ async function cacheFont(
 }
 
 export async function verifyMushafFontsCached(): Promise<boolean> {
-  if (typeof caches === 'undefined') return false
-  try {
-    const cache = await caches.open(CACHE_NAME)
-    const sample = await cache.match(qcfLocalFontUrl(1))
-    return Boolean(sample)
-  } catch {
-    return false
-  }
+  return qcfFontInCache(1)
 }
 
 /** Download all page fonts + surah header font for true offline mushaf rendering. */
@@ -168,11 +153,7 @@ export async function cacheAllMushafFonts(
       nextPage += 1
 
       const localKey = qcfLocalFontUrl(page)
-      const bundledOk = await cacheFont(cache, localKey, localKey)
-      let ok = bundledOk
-      if (!bundledOk) {
-        ok = await cacheFont(cache, qcfCdnFontUrl(page), localKey)
-      }
+      const ok = await cacheFont(cache, qcfCdnFontUrl(page), localKey)
       if (ok) saved += 1
 
       done += 1

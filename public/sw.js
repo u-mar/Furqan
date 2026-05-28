@@ -1,5 +1,7 @@
-const CACHE_VERSION = 'al-quran-v8'
-const STATIC_CACHE = 'al-quran-static-v8'
+const CACHE_VERSION = 'al-quran-v9'
+const STATIC_CACHE = 'al-quran-static-v9'
+/** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
+const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
 const PRECACHE = ['/quran-chapters.json', '/quran-data.json']
@@ -23,7 +25,9 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== STATIC_CACHE && k !== CACHE_VERSION)
+          .filter(
+            (k) => k !== STATIC_CACHE && k !== CACHE_VERSION && k !== QCF_FONT_CACHE
+          )
           .map((k) => caches.delete(k))
       )
     )
@@ -48,9 +52,15 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Mushaf page fonts + bundled assets — cache-first for offline reading.
+  // Mushaf QCF page fonts (offline download stores under /qcf/p{n}.woff2 keys).
+  if (/^\/qcf\/p\d+\.woff2$/.test(url.pathname)) {
+    event.respondWith(qcfFontCacheFirst(event.request))
+    return
+  }
+
+  // Surah header + other bundled fonts
   if (url.pathname.startsWith('/fonts/')) {
-    event.respondWith(cacheFirst(event.request))
+    event.respondWith(cacheFirst(event.request, QCF_FONT_CACHE))
     return
   }
 
@@ -91,13 +101,28 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirst(request) {
-  const cached = await caches.match(request)
+async function qcfFontCacheFirst(request) {
+  const qcfCache = await caches.open(QCF_FONT_CACHE)
+  const hit = await qcfCache.match(request)
+  if (hit) return hit
+
+  try {
+    const response = await fetch(request)
+    if (response.ok) return response
+  } catch {
+    /* offline and not in download cache */
+  }
+
+  return new Response('QCF font not cached', { status: 404, statusText: 'Not Found' })
+}
+
+async function cacheFirst(request, cacheName = STATIC_CACHE) {
+  const cache = await caches.open(cacheName)
+  const cached = await cache.match(request)
   if (cached) return cached
 
   const response = await fetch(request)
   if (response.ok) {
-    const cache = await caches.open(STATIC_CACHE)
     cache.put(request, response.clone())
   }
   return response

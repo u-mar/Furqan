@@ -94,38 +94,30 @@ async function fetchFontBuffer(url: string): Promise<ArrayBuffer> {
   return response.arrayBuffer()
 }
 
-/** FontFace API — reliable on CDN/CORS; also registers the family for @font-face. */
+function isSameOriginFontUrl(url: string): boolean {
+  if (url.startsWith('/')) return true
+  if (typeof window === 'undefined') return false
+  return url.startsWith(window.location.origin)
+}
+
+/** FontFace API — primary loader; works for CDN and SW-backed /qcf/ URLs. */
 async function loadViaFontFace(page: number, url: string): Promise<boolean> {
   const family = qcfPageFontFamily(page)
   const buffer = await fetchFontBuffer(url)
-  const face = new FontFace(family, buffer, { display: 'swap' })
+  const face = new FontFace(family, buffer, { display: 'block' })
   const loaded = await face.load()
   document.fonts.add(loaded)
-  ensureQcfFontFace(page, url)
+  if (isSameOriginFontUrl(url)) {
+    ensureQcfFontFace(page, url)
+  }
   if (loaded.status === 'loaded') return true
   return waitForFamily(family)
 }
 
-const preloadedLinks = new Set<number>()
-
 export function preloadPageFontLink(page: number): void {
   if (typeof document === 'undefined') return
-  if (page < 1 || page > 604 || preloadedLinks.has(page)) return
-  preloadedLinks.add(page)
-
-  void resolveQcfFontUrl(page).then((url) => {
-    if (url.startsWith('blob:')) return
-    const id = `qcf-preload-${page}`
-    if (document.getElementById(id)) return
-    const link = document.createElement('link')
-    link.id = id
-    link.rel = 'preload'
-    link.as = 'font'
-    link.type = 'font/woff2'
-    link.crossOrigin = 'anonymous'
-    link.href = url
-    document.head.appendChild(link)
-  })
+  if (page < 1 || page > 604) return
+  void loadPageFont(page)
 }
 
 export function prefetchPageFonts(center: number, radius = 2): void {
@@ -190,17 +182,18 @@ export async function loadPageFont(page: number): Promise<boolean> {
         console.info('[Muyassar] Loading QCF font', { page, family, url })
       }
 
-      ensureQcfFontFace(page, url)
-      let ok = await waitForFamily(family)
+      let ok = false
+      try {
+        ok = await loadViaFontFace(page, url)
+      } catch (fontFaceErr) {
+        if (shouldLogFontDebug()) {
+          console.warn('[Muyassar] QCF FontFace load failed', { page, fontFaceErr })
+        }
+      }
 
       if (!ok) {
-        try {
-          ok = await loadViaFontFace(page, url)
-        } catch (fallbackErr) {
-          if (shouldLogFontDebug()) {
-            console.warn('[Muyassar] QCF FontFace fallback failed', { page, fallbackErr })
-          }
-        }
+        ensureQcfFontFace(page, url)
+        ok = await waitForFamily(family)
       }
 
       if (shouldLogFontDebug()) {
