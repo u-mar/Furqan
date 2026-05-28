@@ -35,13 +35,12 @@
 
 .qcf-line {
   direction: rtl;
-  unicode-bidi: plaintext;
+  unicode-bidi: isolate;
   line-height: 1.9;
   white-space: nowrap;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  text-align: center;
   width: 100%;
   min-height: 0;
   flex: 1 1 0;
@@ -60,13 +59,14 @@
 }
 
 .qcf-line__glyphs {
-  display: inline-block;
+  display: block;
+  width: 100%;
   max-width: 100%;
   overflow: hidden;
   text-overflow: clip;
   font-size: clamp(22px, calc((100dvh - 88px) / 15 * 0.52), 40px);
-  letter-spacing: 0;
-  word-spacing: 0;
+  line-height: inherit;
+  font-variant-ligatures: normal;
 }
 
 .qcf-page:not(.qcf-page--immersive) .qcf-line__glyphs {
