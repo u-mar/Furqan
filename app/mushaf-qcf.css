@@ -141,6 +141,27 @@ html:not(.dark) .mushaf-qcf-line--selected {
   background: rgba(20, 184, 166, 0.08);
 }
 
+.mushaf-qcf-line--reveal-target {
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  background: transparent;
+  text-align: center;
+  appearance: none;
+}
+
+.mushaf-qcf-line--reveal-target:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--home-sage-deep) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.mushaf-qcf-line__glyphs--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Block global Quranic utility classes inside mushaf */
 .mushaf-root .arabic-text,
 .mushaf-root .amiri,

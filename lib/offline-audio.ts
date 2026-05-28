@@ -1,6 +1,6 @@
 'use client'
 
-import { everyAyahAudioUrl } from '@/lib/reciters'
+import { everyAyahAudioUrl, resolveReciterFolder } from '@/lib/reciters'
 
 const AUDIO_CACHE = 'muyassar-audio-v1'
 
@@ -27,8 +27,9 @@ export async function downloadSurahAudio(
   if (typeof caches === 'undefined') throw new Error('Audio cache is not supported in this browser.')
   const cache = await caches.open(AUDIO_CACHE)
 
+  const folder = resolveReciterFolder(reciterFolder)
   for (let ayah = 1; ayah <= versesCount; ayah++) {
-    const url = everyAyahAudioUrl(reciterFolder, surah, ayah)
+    const url = everyAyahAudioUrl(folder, surah, ayah)
     const existing = await cache.match(url)
     if (!existing) {
       const res = await fetch(url)
@@ -46,7 +47,8 @@ export async function getPlayableAyahAudioUrl(
   surah: number,
   ayah: number
 ): Promise<string> {
-  const onlineUrl = everyAyahAudioUrl(reciterFolder, surah, ayah)
+  const folder = resolveReciterFolder(reciterFolder)
+  const onlineUrl = everyAyahAudioUrl(folder, surah, ayah)
   if (typeof caches === 'undefined') return onlineUrl
 
   const cache = await caches.open(AUDIO_CACHE)

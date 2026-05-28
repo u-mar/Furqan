@@ -15,6 +15,13 @@ export interface MushafPageViewProps {
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  hifdhReveal?: {
+    startVerseKey: string
+    revealedAyahs: Set<string>
+    revealableVerseKeys: Set<string>
+    nextVerseKey: string | null
+    onReveal: (verseKey: string) => void
+  }
   className?: string
 }
 
@@ -26,6 +33,7 @@ export default function MushafPageView({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  hifdhReveal,
   className,
 }: MushafPageViewProps) {
   const qcfFamily = qcfPageFontFamily(pageNumber)
@@ -61,6 +69,7 @@ export default function MushafPageView({
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}
         onAyahLongPress={onAyahLongPress}
+        hifdhReveal={hifdhReveal}
       />
     </div>
   )

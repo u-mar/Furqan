@@ -10,7 +10,8 @@ export const RECITERS: Reciter[] = [
   { id: 'husary', name: 'Mahmoud Al-Husary', folder: 'Husary_128kbps' },
   { id: 'minshawi', name: 'Mohamed Siddiq Al-Minshawi', folder: 'Minshawy_Murattal_128kbps' },
   { id: 'abdulbasit', name: 'Abdul Basit Murattal', folder: 'Abdul_Basit_Murattal_192kbps' },
-  { id: 'sudais', name: 'Abdur-Rahman As-Sudais', folder: 'Sudais_128kbps' },
+  { id: 'sudais', name: 'Abdur-Rahman As-Sudais', folder: 'Abdurrahmaan_As-Sudais_192kbps' },
+  { id: 'maher', name: 'Maher Al-Muaiqly', folder: 'MaherAlMuaiqly128kbps' },
   { id: 'ghamadi', name: 'Saad Al-Ghamdi', folder: 'Ghamadi_40kbps' },
 ]
 
@@ -24,4 +25,13 @@ export function everyAyahAudioUrl(reciterFolder: string, surah: number, ayah: nu
   const surahPadded = String(surah).padStart(3, '0')
   const ayahPadded = String(ayah).padStart(3, '0')
   return `https://everyayah.com/data/${reciterFolder}/${surahPadded}${ayahPadded}.mp3`
+}
+
+/** Legacy folder names saved in settings or offline cache — map to current EveryAyah paths. */
+const LEGACY_RECITER_FOLDERS: Record<string, string> = {
+  Sudais_128kbps: 'Abdurrahmaan_As-Sudais_192kbps',
+}
+
+export function resolveReciterFolder(folder: string): string {
+  return LEGACY_RECITER_FOLDERS[folder] ?? folder
 }

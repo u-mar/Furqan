@@ -11,6 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
+import MushafFontPreload from '@/components/mushaf/MushafFontPreload'
 import QuranPageView from '@/components/QuranPageView'
 import Button from '@/components/ui/Button'
 import {
@@ -291,16 +292,17 @@ function TestPageContent() {
     }
   }
 
-  const pageScopeKeys = new Set(
-    pageVerses
-      .filter((v) => scopeVerseKeys.has(v.verse_key))
-      .map((v) => v.verse_key)
-  )
+  const startIndexForReveal = pageVerses.findIndex((v) => v.verse_key === startVerseKey)
+  const nextAyahToReveal = pageVerses
+    .slice(startIndexForReveal >= 0 ? startIndexForReveal : 0)
+    .find((v) => scopeVerseKeys.has(v.verse_key) && !revealedAyahs.has(v.verse_key))
 
   const activeRevealKeys =
     mode === 'subac' && subacAssignments[currentParticipant]
-      ? new Set([subacAssignments[currentParticipant]])
-      : pageScopeKeys
+      ? new Set<string>()
+      : nextAyahToReveal
+        ? new Set([nextAyahToReveal.verse_key])
+        : new Set<string>()
 
   const revealedCount = revealedAyahs.size
   const startIndex = pageVerses.findIndex((v) => v.verse_key === startVerseKey)
@@ -337,6 +339,7 @@ function TestPageContent() {
 
   return (
     <HomeScreen className={cn('pb-28', phase === 'testing' && 'flex min-h-[100dvh] flex-col')}>
+      <MushafFontPreload />
       <header className="mb-3 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--home-card-border)] pb-3">
         <div className="flex min-w-0 items-start gap-2">
           <Link

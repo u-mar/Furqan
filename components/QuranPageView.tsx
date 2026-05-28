@@ -249,8 +249,9 @@ export default function QuranPageView({
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  /** QCF layout for read mode; test/hifdh reveal uses the unicode mushaf path below. */
-  const useQcfRead = readMode && readOnly
+  const hifdhRevealMode = readMode && hideRevealBoxes && !readOnly
+  /** QCF mushaf for read and hifdh test; unicode path is legacy fallback only. */
+  const useQcfRead = readMode && (readOnly || hifdhRevealMode)
 
   const verseIndexByKey = useMemo(() => {
     const map = new Map<string, number>()
@@ -460,6 +461,17 @@ export default function QuranPageView({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
+            hifdhReveal={
+              hifdhRevealMode
+                ? {
+                    startVerseKey,
+                    revealedAyahs,
+                    revealableVerseKeys,
+                    nextVerseKey,
+                    onReveal,
+                  }
+                : undefined
+            }
           />
         </div>
       )
