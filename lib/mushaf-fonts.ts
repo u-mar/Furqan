@@ -6,6 +6,8 @@ const loadedPages = new Set<number>()
 const loadingPages = new Map<number, Promise<boolean>>()
 let surahNameLoaded = false
 let surahNameLoading: Promise<boolean> | null = null
+const FONT_CHECK_SIZE_PX = 40
+const SENTINEL_TEXT = 'ﭑﭒﭓﭔ'
 
 function shouldLogFontDebug(): boolean {
   return (
@@ -16,6 +18,29 @@ function shouldLogFontDebug(): boolean {
 
 export function qcfFontFamily(page: number): string {
   return `p${page}-v2`
+}
+
+function measureTextWidth(text: string, fontFamily: string): number {
+  if (typeof document === 'undefined') return 0
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return 0
+  ctx.font = `${FONT_CHECK_SIZE_PX}px ${fontFamily}`
+  return ctx.measureText(text).width
+}
+
+function verifyFontShape(family: string): boolean {
+  const loaded = document.fonts.check(`${FONT_CHECK_SIZE_PX}px "${family}"`)
+  if (!loaded) return false
+  const widthTarget = measureTextWidth(SENTINEL_TEXT, `"${family}"`)
+  const widthFallback = measureTextWidth(SENTINEL_TEXT, 'serif')
+  return Math.abs(widthTarget - widthFallback) > 0.5
+}
+
+async function fetchFontBuffer(url: string): Promise<ArrayBuffer> {
+  const response = await fetch(url, { cache: 'force-cache' })
+  if (!response.ok) throw new Error(`Font fetch failed: ${response.status}`)
+  return response.arrayBuffer()
 }
 
 export function prefetchPageFonts(center: number, radius = 2): void {
@@ -38,9 +63,11 @@ export async function loadSurahNameFont(): Promise<boolean> {
         return true
       }
       const url = await resolveSurahNameFontUrl()
-      const face = new FontFace('SurahNameV2', `url(${url})`, { display: 'block' })
+      const buffer = await fetchFontBuffer(url)
+      const face = new FontFace('SurahNameV2', buffer, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
+      await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "SurahNameV2"`)
       surahNameLoaded = true
       return true
     } catch {
@@ -72,12 +99,13 @@ export async function loadPageFont(page: number): Promise<boolean> {
       if (shouldLogFontDebug()) {
         console.info('[Muyassar] Loading QCF font', { page, family, url })
       }
-      const face = new FontFace(family, `url(${url})`, { display: 'block' })
+      const buffer = await fetchFontBuffer(url)
+      const face = new FontFace(family, buffer, { display: 'block' })
       const loaded = await face.load()
       document.fonts.add(loaded)
-      await document.fonts.load(`16px "${family}"`)
+      await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "${family}"`)
       await document.fonts.ready
-      const ok = document.fonts.check(`16px "${family}"`)
+      const ok = verifyFontShape(family)
       if (shouldLogFontDebug()) {
         console.info('[Muyassar] QCF font loaded', {
           page,

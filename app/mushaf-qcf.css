@@ -12,7 +12,6 @@
   justify-content: space-between;
   box-sizing: border-box;
   contain: layout style paint;
-  transform: translateZ(0);
 }
 
 .qcf-page--immersive {
@@ -45,11 +44,7 @@
   min-height: 0;
   flex: 1 1 0;
   font-synthesis: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transform: translateZ(0);
   font-feature-settings: 'liga' 1, 'calt' 1;
-  text-rendering: optimizeLegibility;
   color: var(--mushaf-read-text, #1a1a1a);
   touch-action: manipulation;
 }
@@ -59,8 +54,8 @@
 }
 
 .qcf-line__glyphs {
-  display: block;
-  width: 100%;
+  display: inline-block;
+  width: auto;
   max-width: 100%;
   overflow: hidden;
   text-overflow: clip;
