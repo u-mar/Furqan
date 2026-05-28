@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'al-quran-v7'
-const STATIC_CACHE = 'al-quran-static-v7'
+const CACHE_VERSION = 'al-quran-v8'
+const STATIC_CACHE = 'al-quran-static-v8'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
 const PRECACHE = ['/quran-chapters.json', '/quran-data.json']
