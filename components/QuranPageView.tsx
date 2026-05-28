@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
+import { loadPageFont } from '@/lib/mushaf-fonts'
 import MushafPageView from '@/components/mushaf/MushafPageView'
 import { pageHasQcfData } from '@/lib/qcf-page'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
@@ -401,11 +402,22 @@ export default function QuranPageView({
           dir="rtl"
           lang="ar"
         >
-          <div className="flex h-full items-center justify-center px-6 text-center">
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
             <p className="text-sm text-[var(--mushaf-read-meta)]">
-              Could not load the mushaf page font. Check your connection or download offline fonts in
-              Settings.
+              Could not load the mushaf page font (QCF_P{pageNumber}). Stay on Wi‑Fi or download the
+              full offline package in Settings (includes all page fonts).
             </p>
+            <button
+              type="button"
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm text-white"
+              onClick={() => {
+                void loadPageFont(pageNumber).then((ok) => {
+                  if (ok) window.location.reload()
+                })
+              }}
+            >
+              Retry font load
+            </button>
           </div>
         </div>
       )
@@ -424,6 +436,7 @@ export default function QuranPageView({
             verses={verses}
             pageNumber={pageNumber}
             immersive={readMode}
+            fontReady={qcfFont.ready}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
