@@ -26,7 +26,7 @@ export default function MushafPageView({
   onAyahLongPress,
   className,
 }: MushafPageViewProps) {
-  const fontReady = useQcfFont(pageNumber, pageNumber > 0)
+  const { ready: fontReady } = useQcfFont(pageNumber, pageNumber > 0)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

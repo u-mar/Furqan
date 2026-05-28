@@ -3,8 +3,7 @@
 import { memo, useMemo } from 'react'
 import { cn } from '@/lib/cn'
 import QcfLine from '@/components/mushaf/QcfLine'
-import { buildMushafPageModel } from '@/lib/mushaf-engine'
-import { qcfFontFamily } from '@/lib/mushaf-fonts'
+import { buildQcfPageLayout, qcfPageFontClass, qcfPageFontFamily } from '@/lib/qcf-page'
 import type { Verse } from '@/types'
 
 export interface QcfPageProps {
@@ -26,27 +25,30 @@ function QcfPageComponent({
   selectedVerseKey,
   onAyahLongPress,
 }: QcfPageProps) {
-  const model = useMemo(() => buildMushafPageModel(verses, pageNumber), [verses, pageNumber])
-  const qcfFamily = qcfFontFamily(pageNumber)
+  const layout = useMemo(() => buildQcfPageLayout(verses, pageNumber), [verses, pageNumber])
+  const qcfFamily = qcfPageFontFamily(pageNumber)
+  const pageClass = qcfPageFontClass(pageNumber)
 
   if (!fontReady) {
-    return (
-      <div className={cn('qcf-page qcf-page--loading', immersive && 'qcf-page--immersive')}>
-        <p className="qcf-page__status">Loading mushaf font…</p>
-      </div>
-    )
+    return null
   }
 
   return (
     <div
-      className={cn('qcf-page', immersive && 'qcf-page--immersive')}
+      className={cn(
+        'mushaf-qcf-page',
+        immersive && 'mushaf-qcf-page--immersive',
+        pageClass
+      )}
       data-page={pageNumber}
+      data-qcf-font={qcfFamily}
       dir="rtl"
       lang="ar"
       aria-label={`Quran page ${pageNumber}`}
+      style={{ fontFamily: qcfFamily }}
     >
-      <div className="qcf-page__lines">
-        {model.lines.map((line) => (
+      <div className="mushaf-fit-grid mushaf-qcf-page-content">
+        {layout.lines.map((line) => (
           <QcfLine
             key={line.lineNumber}
             line={line}

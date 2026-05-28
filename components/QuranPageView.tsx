@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
+import { useQcfFont } from '@/hooks/useQcfFont'
+import MushafPageView from '@/components/mushaf/MushafPageView'
+import { pageHasQcfData } from '@/lib/qcf-page'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -76,16 +79,6 @@ function shouldShowBasmalah(verse: Verse): boolean {
 
 function verseKeysForLine(line: PageLine): string[] {
   return [...new Set(line.words.map((w) => w.verseKey))]
-}
-
-/** One connected Uthmani string per mushaf line (printed layout, no per-word gaps). */
-function buildLineGlyphString(line: PageLine): string {
-  const parts: string[] = []
-  for (const word of line.words) {
-    const piece = word.fallbackText?.trim()
-    if (piece) parts.push(piece)
-  }
-  return parts.join('')
 }
 
 function UnicodeMushafVerse({
@@ -200,51 +193,7 @@ function MushafWord({
   )
 }
 
-function MushafLineGlyphs({
-  line,
-  highlightedVerseKey,
-  selectedVerseKey,
-  onAyahLongPress,
-}: {
-  line: PageLine
-  highlightedVerseKey?: string | null
-  selectedVerseKey?: string | null
-  onAyahLongPress?: (verseKey: string) => void
-}) {
-  const verseKeys = verseKeysForLine(line)
-  const glyphs = buildLineGlyphString(line)
-  const isReciting = verseKeys.some((k) => k === highlightedVerseKey)
-  const isSelected = !isReciting && verseKeys.some((k) => k === selectedVerseKey)
-  const longPressVerseKey = verseKeys[verseKeys.length - 1] || verseKeys[0]
-  const longPress = useLongPress(() => {
-    if (longPressVerseKey) onAyahLongPress?.(longPressVerseKey)
-  })
-
-  if (!glyphs) return null
-
-  const glyphEl = (
-    <span
-      className={cn(
-        'mushaf-line-glyphs',
-        isReciting && 'mushaf-line--reciting',
-        isSelected && 'mushaf-line--selected'
-      )}
-      style={{ fontFamily: PLAIN_MUSHAF_FONT }}
-    >
-      {glyphs}
-    </span>
-  )
-
-  if (!onAyahLongPress) return glyphEl
-
-  return (
-    <div className="mushaf-line-glyphs-wrap" {...longPress.handlers}>
-      {glyphEl}
-    </div>
-  )
-}
-
-function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
+function getVerseWords(verse: Verse): PageWord[] {
   if (verse.words && verse.words.length > 0) {
     return verse.words
       .filter((word) => {
@@ -258,12 +207,11 @@ function getVerseWords(verse: Verse, useGlyphs: boolean): PageWord[] {
       .map((word: VerseWord) => {
         const isEndMark = word.char_type_name === 'end'
         const pageNumber = word.v2_page || word.page_number || verse.page_number || 1
-        const glyphText = word.code_v2 || word.text_qpc_hafs || word.text_uthmani
         const plainText = word.text_qpc_hafs || word.text_uthmani
         return {
           id: String(word.id),
           verseKey: verse.verse_key,
-          text: useGlyphs ? glyphText : plainText,
+          text: plainText,
           fallbackText: plainText,
           codeV2: word.code_v2,
           lineNumber: word.line_number || 1,
@@ -300,14 +248,14 @@ export default function QuranPageView({
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  const useLineGlyphs = readMode && readOnly && !hideRevealBoxes
+  const useQcfRead = readMode && readOnly && !hideRevealBoxes
 
   const { lines, nextVerseKey, pageNumber } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()
     const markerMap = new Map<number, Pick<PageLine, 'chapterNumber' | 'isSurahHeader' | 'isBasmalah'>>()
     let detectedPageNumber = 1
     for (const verse of verses) {
-      const verseWords = getVerseWords(verse, false)
+      const verseWords = getVerseWords(verse)
       const chapterNumber = Number(verse.verse_key.split(':')[0])
       const verseNumber = Number(verse.verse_key.split(':')[1])
       const firstLine = verseWords[0]?.lineNumber
@@ -368,6 +316,9 @@ export default function QuranPageView({
     }
   }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, verses])
 
+  const hasQcfData = useMemo(() => pageHasQcfData(verses), [verses])
+  const qcfFont = useQcfFont(pageNumber, useQcfRead && hasQcfData && pageNumber > 0)
+
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
@@ -410,6 +361,77 @@ export default function QuranPageView({
     )
   }
 
+  if (useQcfRead) {
+    if (!hasQcfData) {
+      return (
+        <div
+          className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+          dir="rtl"
+          lang="ar"
+        >
+          <div className="flex h-full items-center justify-center px-6 text-center">
+            <p className="text-sm text-[var(--mushaf-read-meta)]">
+              Mushaf glyph data is missing for this page. Connect to the internet or download the Quran
+              bundle in Settings.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (qcfFont.loading) {
+      return (
+        <div
+          className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+          dir="rtl"
+          lang="ar"
+          aria-label="Loading mushaf font"
+        >
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-[var(--mushaf-read-meta)]">Loading mushaf font…</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (qcfFont.failed) {
+      return (
+        <div
+          className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+          dir="rtl"
+          lang="ar"
+        >
+          <div className="flex h-full items-center justify-center px-6 text-center">
+            <p className="text-sm text-[var(--mushaf-read-meta)]">
+              Could not load the mushaf page font. Check your connection or download offline fonts in
+              Settings.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    if (qcfFont.ready) {
+      return (
+        <div
+          className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
+          dir="rtl"
+          lang="ar"
+          aria-label="Quran page"
+        >
+          <MushafPageView
+            verses={verses}
+            pageNumber={pageNumber}
+            immersive={readMode}
+            highlightedVerseKey={highlightedVerseKey}
+            selectedVerseKey={selectedVerseKey}
+            onAyahLongPress={ayahLongPress}
+          />
+        </div>
+      )
+    }
+  }
+
   return (
     <div
       className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
@@ -421,7 +443,7 @@ export default function QuranPageView({
         ref={gridRef}
         className={cn(
           readMode
-            ? 'mushaf-fit-grid h-full'
+            ? 'mushaf-fit-grid'
             : cn(
                 'mushaf-page-sheet flex flex-col rounded-lg p-4',
                 'min-h-[calc(100vh-12rem)] justify-between sm:min-h-[760px]'
@@ -468,13 +490,6 @@ export default function QuranPageView({
                   {BASMALAH_ORNAMENT}
                 </span>
               </div>
-            ) : useLineGlyphs ? (
-              <MushafLineGlyphs
-                line={line}
-                highlightedVerseKey={highlightedVerseKey}
-                selectedVerseKey={selectedVerseKey}
-                onAyahLongPress={ayahLongPress}
-              />
             ) : (
               line.words.map((word) => {
                 const isRevealed = revealedAyahs.has(word.verseKey)
@@ -508,7 +523,6 @@ export default function QuranPageView({
                       key={word.id}
                       verseKey={word.verseKey}
                       pageNumber={word.pageNumber}
-                      codeV2={word.codeV2}
                       fallbackText={word.fallbackText}
                       glyphFontReady={false}
                       className={cn(

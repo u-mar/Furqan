@@ -169,96 +169,40 @@ html.dark .mushaf-reader-immersive {
 
 .mushaf-fit-grid {
   display: grid;
-  grid-template-rows: repeat(15, minmax(0, 1fr));
-  height: 100%;
+  grid-template-rows: repeat(15, 1fr);
+  height: 100vh;
   width: 100%;
-  padding-inline: 0;
+  padding: 24px 12px;
   box-sizing: border-box;
 }
 
+/* Inside read shell (top bar + badge): fill remaining column, not full viewport */
+.mushaf-reader-immersive .mushaf-fit-grid {
+  height: 100%;
+  min-height: 0;
+}
+
 .mushaf-fit-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+
+  text-align: center;
+  direction: rtl;
+
   min-height: 0;
   overflow: hidden;
-  text-align: center;
+
   color: var(--mushaf-read-text);
   font-size: clamp(0.92rem, 3.15dvh, 1.76rem);
   line-height: 1.12;
+
   letter-spacing: 0;
   word-spacing: 0;
-}
-
-.mushaf-line-glyphs {
-  display: inline-block;
-  direction: rtl;
-  unicode-bidi: isolate;
-  letter-spacing: 0;
-  word-spacing: 0;
-  white-space: nowrap;
-  max-width: 100%;
-  font-feature-settings: "liga" 1, "calt" 1;
-  font-variant-ligatures: normal;
-  text-rendering: optimizeLegibility;
-}
-
-.mushaf-line-glyphs-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-width: 0;
-}
-
-.mushaf-surah-header-glyph {
-  display: inline-block;
-  font-size: clamp(1.05rem, 3.6dvh, 2rem);
-  line-height: 1;
 }
 
 /* Dark immersive mode: closer visual density to popular mushaf apps. */
 html.dark .mushaf-fit-line {
   font-size: clamp(0.98rem, 3.35dvh, 1.9rem);
   line-height: 1.1;
-}
-
-.mushaf-qcf-line {
-  display: block;
-  direction: rtl;
-  letter-spacing: 0;
-  word-spacing: 0;
-  unicode-bidi: isolate;
-  font-feature-settings: "liga" 1, "calt" 1;
-  font-variant-ligatures: normal;
-  text-rendering: optimizeLegibility;
-}
-
-.mushaf-qcf-page {
-  display: block;
-  min-height: 0;
-  overflow: hidden;
-  text-align: center;
-}
-
-.mushaf-qcf-page-content {
-  display: block;
-  direction: rtl;
-  unicode-bidi: isolate;
-  color: var(--mushaf-read-text);
-  font-size: clamp(1.25rem, 3.2dvh, 2rem);
-  line-height: 2.1;
-  letter-spacing: 0;
-  word-spacing: 0;
-  font-feature-settings: "liga" 1, "calt" 1;
-  font-variant-ligatures: normal;
-  text-rendering: optimizeLegibility;
-}
-
-.mushaf-qcf-page-content .qcf-line {
-  font-family: inherit;
-  direction: rtl;
-  unicode-bidi: isolate;
 }
 
 .mushaf-unicode-page-wrap {

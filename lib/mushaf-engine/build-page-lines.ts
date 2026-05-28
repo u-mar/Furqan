@@ -1,37 +1,33 @@
 import type { Verse, VerseWord } from '@/types'
 import type { MushafLineModel, MushafLineSegment, MushafPageModel } from '@/lib/mushaf-engine/types'
+import {
+  compareMushafWords,
+  sortVersesByKey,
+  wordOnVisualPage,
+} from '@/lib/mushaf-engine/word-order'
 
 const LINES_PER_PAGE = 15
-const BASMALAH_GLYPH = '﷽'
-
-function verseOrder(verseKey: string): number {
-  const [s, a] = verseKey.split(':').map(Number)
-  return (s || 0) * 1000 + (a || 0)
-}
-
-function wordOnPage(word: VerseWord, pageNumber: number, verse: Verse): boolean {
-  const page = word.v2_page || word.page_number || verse.page_number || 0
-  return page === pageNumber
-}
 
 function collectPageWords(verses: Verse[], pageNumber: number): Array<VerseWord & { verseKey: string }> {
   const items: Array<VerseWord & { verseKey: string }> = []
 
-  for (const verse of verses) {
+  for (const verse of sortVersesByKey(verses)) {
     for (const word of verse.words || []) {
-      if (!wordOnPage(word, pageNumber, verse)) continue
+      if (!wordOnVisualPage(word, pageNumber, verse)) continue
+
       const code = word.code_v2?.trim()
-      if (!code && word.char_type_name !== 'end') continue
+      const isEnd = word.char_type_name === 'end'
+
+      if (!code) {
+        if (isEnd) continue
+        continue
+      }
+
       items.push({ ...word, verseKey: verse.verse_key })
     }
   }
 
-  items.sort((a, b) => {
-    const lineDiff = (a.line_number || 1) - (b.line_number || 1)
-    if (lineDiff !== 0) return lineDiff
-    return verseOrder(a.verseKey) - verseOrder(b.verseKey) || a.position - b.position
-  })
-
+  items.sort(compareMushafWords)
   return items
 }
 
@@ -40,12 +36,16 @@ function markSurahDecorations(
   pageNumber: number,
   lineKinds: Map<number, Pick<MushafLineModel, 'kind' | 'chapterNumber'>>
 ): void {
-  for (const verse of verses) {
+  for (const verse of sortVersesByKey(verses)) {
     const chapter = Number(verse.verse_key.split(':')[0])
     const ayah = Number(verse.verse_key.split(':')[1])
     if (ayah !== 1) continue
 
-    const firstOnPage = verse.words?.find((w) => wordOnPage(w, pageNumber, verse))
+    const pageWords = (verse.words || [])
+      .filter((w) => wordOnVisualPage(w, pageNumber, verse))
+      .sort((a, b) => a.position - b.position)
+
+    const firstOnPage = pageWords[0]
     const firstLine = firstOnPage?.line_number
     if (!firstLine) continue
 
@@ -59,6 +59,17 @@ function markSurahDecorations(
     if (hasBasmalah && basmalahLine >= 1) {
       lineKinds.set(basmalahLine, { kind: 'basmalah', chapterNumber: chapter })
     }
+  }
+}
+
+function segmentFromWord(word: VerseWord & { verseKey: string }): MushafLineSegment | null {
+  const codeV2 = word.code_v2?.trim()
+  if (!codeV2) return null
+
+  return {
+    verseKey: word.verseKey,
+    codeV2,
+    isEnd: word.char_type_name === 'end',
   }
 }
 
@@ -81,11 +92,11 @@ function buildLineModel(
     }
   }
 
-  if (decoration?.kind === 'basmalah') {
+  if (decoration?.kind === 'basmalah' && !glyphs) {
     return {
       lineNumber,
       kind: 'basmalah',
-      glyphs: BASMALAH_GLYPH,
+      glyphs: '',
       verseKeys,
       segments,
       chapterNumber: decoration.chapterNumber,
@@ -120,12 +131,10 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
   markSurahDecorations(verses, pageNumber, lineKinds)
 
   for (const word of pageWords) {
+    const segment = segmentFromWord(word)
+    if (!segment) continue
+
     const lineNumber = word.line_number || 1
-    const segment: MushafLineSegment = {
-      verseKey: word.verseKey,
-      codeV2: word.code_v2?.trim() || word.text_uthmani?.trim() || '',
-      isEnd: word.char_type_name === 'end',
-    }
     const bucket = lineSegments.get(lineNumber) || []
     bucket.push(segment)
     lineSegments.set(lineNumber, bucket)

@@ -3,18 +3,17 @@
 import { memo } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
-import { surahHeaderToken } from '@/lib/mushaf-engine'
-import type { MushafLineModel } from '@/lib/mushaf-engine'
+import type { QcfPageLine } from '@/lib/qcf-page'
 
 export interface QcfLineProps {
-  line: MushafLineModel
+  line: QcfPageLine
   fontFamily: string
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onLineLongPress?: (verseKey: string) => void
 }
 
-function lineVerseKey(line: MushafLineModel): string | null {
+function lineVerseKey(line: QcfPageLine): string | null {
   if (line.verseKeys.length === 1) return line.verseKeys[0]
   if (line.verseKeys.length > 1) return line.verseKeys[line.verseKeys.length - 1]
   return null
@@ -37,30 +36,31 @@ function QcfLineComponent({
   const isSelected = Boolean(selectedVerse) && !isReciting
   const pressKey = lineVerseKey(line)
 
-  const className = cn(
-    'qcf-line',
-    line.kind === 'empty' && 'qcf-line--empty',
-    line.kind === 'surah-header' && 'qcf-line--surah-header',
-    line.kind === 'basmalah' && 'qcf-line--basmalah',
-    isReciting && 'qcf-line--reciting',
-    isSelected && 'qcf-line--selected'
+  const rowClass = cn(
+    'mushaf-fit-line',
+    'mushaf-qcf-line',
+    line.kind === 'empty' && 'mushaf-qcf-line--empty',
+    line.kind === 'surah-header' && 'mushaf-qcf-line--surah-header',
+    line.kind === 'basmalah' && 'mushaf-qcf-line--basmalah',
+    isReciting && 'mushaf-qcf-line--reciting',
+    isSelected && 'mushaf-qcf-line--selected'
   )
 
   const content =
-    line.kind === 'surah-header' && line.chapterNumber ? (
-      <span className="qcf-line__surah-name" aria-label={`Surah ${line.chapterNumber}`}>
-        {surahHeaderToken(line.chapterNumber)}
+    line.kind === 'surah-header' ? (
+      <span className="mushaf-qcf-line__surah-name" style={{ fontFamily: 'SurahNameV2' }}>
+        {line.text}
       </span>
-    ) : (
-      <span className="qcf-line__glyphs" style={{ fontFamily }}>
-        {line.glyphs}
+    ) : line.kind === 'empty' ? null : (
+      <span className="mushaf-qcf-line__glyphs" style={{ fontFamily }}>
+        {line.text}
       </span>
     )
 
   if (!onLineLongPress || !pressKey || line.kind === 'empty' || line.kind === 'surah-header') {
     return (
       <div
-        className={className}
+        className={rowClass}
         data-line={line.lineNumber}
         data-verse-keys={line.verseKeys.join(' ')}
         dir="rtl"
@@ -73,7 +73,7 @@ function QcfLineComponent({
 
   return (
     <div
-      className={className}
+      className={rowClass}
       data-line={line.lineNumber}
       data-verse-keys={line.verseKeys.join(' ')}
       dir="rtl"

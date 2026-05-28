@@ -16,8 +16,9 @@ function shouldLogFontDebug(): boolean {
   )
 }
 
+/** @deprecated Use qcfPageFontFamily from lib/qcf-page */
 export function qcfFontFamily(page: number): string {
-  return `p${page}-v2`
+  return `QCF_P${page}`
 }
 
 function measureTextWidth(text: string, fontFamily: string): number {
@@ -43,11 +44,37 @@ async function fetchFontBuffer(url: string): Promise<ArrayBuffer> {
   return response.arrayBuffer()
 }
 
+const preloadedLinks = new Set<number>()
+
+/** Hint browser to fetch WOFF2 before FontFace (helps Safari / slow CDN). */
+export function preloadPageFontLink(page: number): void {
+  if (typeof document === 'undefined') return
+  if (page < 1 || page > 604 || preloadedLinks.has(page)) return
+  preloadedLinks.add(page)
+
+  void resolveQcfFontUrl(page).then((url) => {
+    if (url.startsWith('blob:')) return
+    const id = `qcf-preload-${page}`
+    if (document.getElementById(id)) return
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'preload'
+    link.as = 'font'
+    link.type = 'font/woff2'
+    link.crossOrigin = 'anonymous'
+    link.href = url
+    document.head.appendChild(link)
+  })
+}
+
 export function prefetchPageFonts(center: number, radius = 2): void {
   if (typeof window === 'undefined') return
   void loadSurahNameFont()
   for (let p = center - radius; p <= center + radius; p += 1) {
-    if (p >= 1 && p <= 604) void loadPageFont(p)
+    if (p >= 1 && p <= 604) {
+      preloadPageFontLink(p)
+      void loadPageFont(p)
+    }
   }
 }
 
@@ -100,7 +127,7 @@ export async function loadPageFont(page: number): Promise<boolean> {
         console.info('[Muyassar] Loading QCF font', { page, family, url })
       }
       const buffer = await fetchFontBuffer(url)
-      const face = new FontFace(family, buffer, { display: 'block' })
+      const face = new FontFace(family, buffer, { display: 'swap' })
       const loaded = await face.load()
       document.fonts.add(loaded)
       await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "${family}"`)

@@ -3,7 +3,7 @@
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
-import { qcfFontFamily } from '@/lib/mushaf-fonts'
+import { qcfPageFontFamily } from '@/lib/qcf-page'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 
 interface AyahEndMarkProps {
@@ -28,15 +28,16 @@ export default function AyahEndMark({
   onLongPress,
   glyphFontReady,
 }: AyahEndMarkProps) {
-  const qcfFamily = qcfFontFamily(pageNumber)
-  const useGlyph = false
-  const localFontReady = useQcfFont(pageNumber, false)
+  const qcfFamily = qcfPageFontFamily(pageNumber)
+  const useGlyph = Boolean(codeV2?.trim())
+  const { ready: localFontReady } = useQcfFont(pageNumber, useGlyph && glyphFontReady === undefined)
   const fontReady = glyphFontReady ?? localFontReady
   const longPress = useLongPress(() => onLongPress?.(verseKey))
 
   const fallback = fallbackText.trim()
   const display = fallback ? `۝${fallback}` : '۝'
   const glyphMode = useGlyph && fontReady
+  const glyphText = codeV2?.trim() || ''
 
   const inner = (
     <span
@@ -47,7 +48,7 @@ export default function AyahEndMark({
       dir="rtl"
       aria-hidden
     >
-      {display}
+      {glyphMode ? glyphText : display}
     </span>
   )
 
