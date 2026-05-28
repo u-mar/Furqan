@@ -5,13 +5,12 @@ export const APP_NAME = 'Al Furqaan'
 /** Arabic fa (ف) — from Al-Furqaan (الفُرقان). */
 export const APP_ICON_LETTER = 'ف'
 
-export const APP_ICON_THEME_COLOR = '#3d5234'
+export const APP_ICON_THEME_COLOR = '#000000'
 
 /** Shared palette for OG ImageResponse icons. */
 export const appIconStyles = {
-  background: 'linear-gradient(155deg, #7a9b62 0%, #5d7a48 32%, #3d5234 68%, #243020 100%)',
-  letterColor: '#faf3e4',
-  innerGlow: 'rgba(255, 248, 235, 0.12)',
+  background: '#000000',
+  letterColor: '#f5ecd8',
 } as const
 
 export function appIconLetterStyle(fontSize: number): {
