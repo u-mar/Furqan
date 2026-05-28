@@ -189,6 +189,12 @@ html.dark .mushaf-reader-immersive {
   letter-spacing: 0;
 }
 
+/* Dark immersive mode: closer visual density to popular mushaf apps. */
+html.dark .mushaf-fit-line {
+  font-size: clamp(1.1rem, 3.9dvh, 2.2rem);
+  line-height: 1.08;
+}
+
 .mushaf-qcf-line {
   display: block;
   direction: rtl;
