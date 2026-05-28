@@ -10,7 +10,7 @@ import {
   Play,
   Square,
   MessageSquareText,
-  Languages,
+  Volume2,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -46,7 +46,11 @@ import {
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { getVerseArabicText } from '@/lib/quran-display'
-import { hasSomaliVoiceForVerse, loadSomaliVoiceManifest } from '@/lib/somali-voice'
+import {
+  hasSomaliVoiceForVerse,
+  loadSomaliVoiceManifest,
+  TAFSIR_UNAVAILABLE_MESSAGE,
+} from '@/lib/somali-voice'
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 
@@ -78,6 +82,7 @@ function ReadPageContent() {
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
+  const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
   const [pageSlide, setPageSlide] = useState<{
     direction: PageSlideDirection
     incomingVerses: Verse[]
@@ -357,8 +362,12 @@ function ReadPageContent() {
 
     stopRecitation()
     const firstVerseKey = await findNextSomaliVerse(null)
-    if (!firstVerseKey) return
+    if (!firstVerseKey) {
+      setSomaliNotice(TAFSIR_UNAVAILABLE_MESSAGE)
+      return
+    }
 
+    setSomaliNotice(null)
     somaliAutoRef.current = true
     setSomaliAutoPlaying(true)
     await playSomaliVoice(firstVerseKey)
@@ -368,6 +377,7 @@ function ReadPageContent() {
     if (!somaliAutoPlaying || !somaliVoiceState.error) return
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
+    setSomaliNotice(somaliVoiceState.error)
   }, [somaliAutoPlaying, somaliVoiceState.error])
 
   useEffect(() => {
@@ -715,10 +725,18 @@ function ReadPageContent() {
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        {somaliNotice ? (
+          <p className="mx-auto max-w-lg rounded-lg bg-amber-500/15 px-3 py-2 text-center text-xs text-amber-200/90">
+            {somaliNotice}
+          </p>
+        ) : null}
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
           <button
             type="button"
-            onClick={handleSomaliPageToggle}
+            onClick={() => {
+              setSomaliNotice(null)
+              void handleSomaliPageToggle()
+            }}
             disabled={pageVerses.length === 0}
             className={cn(
               'flex h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors disabled:opacity-40',
@@ -733,7 +751,7 @@ function ReadPageContent() {
             ) : somaliAutoPlaying || isSomaliVoiceActive ? (
               <Square className="h-4 w-4 fill-current" />
             ) : (
-              <Languages className="h-4 w-4" />
+              <Volume2 className="h-4 w-4" />
             )}
             <span>Somali</span>
           </button>
@@ -878,6 +896,7 @@ function ReadPageContent() {
         onPlaySomaliVoice={() => {
           if (!ayahMenu) return
           stopRecitation()
+          setSomaliNotice(null)
           void playSomaliVoice(ayahMenu.verseKey)
         }}
         onStopSomaliVoice={stopSomaliVoice}

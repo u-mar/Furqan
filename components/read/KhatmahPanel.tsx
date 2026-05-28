@@ -44,7 +44,8 @@ interface KhatmahContextValue {
   setShowNew: (v: boolean) => void
   setSelectedDay: (d: number) => void
   setActivePlanId: (id: string) => void
-  handleCreate: (duration: KhatmahDuration) => void
+  handleCreate: (duration: KhatmahDuration) => Promise<void>
+  creating: boolean
   handleComplete: () => void
   handleDelete: () => void
   onGoToPage: (page: number) => void
@@ -69,6 +70,7 @@ function KhatmahProvider({
   const [selectedDay, setSelectedDay] = useState(1)
   const [screen, setScreen] = useState<Screen>('day')
   const [showNew, setShowNew] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     const stored = getKhatmahPlans()
@@ -96,14 +98,19 @@ function KhatmahProvider({
     }
   }, [activePlanId])
 
-  const handleCreate = useCallback((duration: KhatmahDuration) => {
-    const plan = createKhatmahPlan(duration)
-    addKhatmahPlan(plan)
-    setPlans(getKhatmahPlans())
-    setActivePlanId(plan.id)
-    setSelectedDay(1)
-    setScreen('day')
-    setShowNew(false)
+  const handleCreate = useCallback(async (duration: KhatmahDuration) => {
+    setCreating(true)
+    try {
+      const plan = await createKhatmahPlan(duration)
+      addKhatmahPlan(plan)
+      setPlans(getKhatmahPlans())
+      setActivePlanId(plan.id)
+      setSelectedDay(1)
+      setScreen('day')
+      setShowNew(false)
+    } finally {
+      setCreating(false)
+    }
   }, [])
 
   const handleComplete = useCallback(() => {
@@ -146,6 +153,7 @@ function KhatmahProvider({
       setSelectedDay,
       setActivePlanId,
       handleCreate,
+      creating,
       handleComplete,
       handleDelete,
       onGoToPage,
@@ -159,6 +167,7 @@ function KhatmahProvider({
       selectedDay,
       screen,
       showNew,
+      creating,
       handleCreate,
       handleComplete,
       handleDelete,
@@ -171,7 +180,7 @@ function KhatmahProvider({
 }
 
 function KhatmahNewScreen() {
-  const { plans, handleCreate, setShowNew, showNew } = useKhatmah()
+  const { plans, handleCreate, creating, setShowNew, showNew } = useKhatmah()
 
   if (!showNew && plans.length > 0) return null
 
@@ -189,10 +198,11 @@ function KhatmahNewScreen() {
             <button
               key={d}
               type="button"
-              onClick={() => handleCreate(d)}
-              className="rounded-xl bg-teal-500/15 py-3.5 text-sm font-medium text-teal-400"
+              disabled={creating}
+              onClick={() => void handleCreate(d)}
+              className="rounded-xl bg-teal-500/15 py-3.5 text-sm font-medium text-teal-400 disabled:opacity-50"
             >
-              {durationLabel(d)}
+              {creating ? 'Creating plan…' : durationLabel(d)}
             </button>
           ))}
         </div>
@@ -244,7 +254,7 @@ function KhatmahAllDaysScreen() {
               <div>
                 <span className="font-medium text-white">Day {day.day}</span>
                 <span className="mt-1 block text-xs text-stone-500">
-                  Pages {day.startPage} – {day.endPage}
+                  {day.juzLabel ? `${day.juzLabel} · ` : ''}p.{day.startPage}–{day.endPage}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -268,8 +278,16 @@ function ayahPreview(text: string | undefined): string {
 }
 
 function KhatmahDayContent() {
-  const { activePlan, currentDay, focusDay, plans, screen, setActivePlanId, setSelectedDay } =
-    useKhatmah()
+  const {
+    activePlan,
+    currentDay,
+    focusDay,
+    plans,
+    screen,
+    setActivePlanId,
+    setSelectedDay,
+    selectedDay,
+  } = useKhatmah()
 
   const { bounds, loading: boundsLoading } = useDayBounds(
     currentDay?.startPage ?? 0,
@@ -304,46 +322,66 @@ function KhatmahDayContent() {
           )}
         </div>
 
-        <div className="mt-6 flex items-center justify-between">
-          <span className="text-base font-medium text-white">Day {currentDay.day}</span>
-          <span className="text-sm text-stone-500">
-            {dayScheduleLabel(currentDay.day, focusDay)}
-          </span>
+        <div className="mt-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={selectedDay <= 1}
+              onClick={() => setSelectedDay(selectedDay - 1)}
+              className="rounded-lg p-2 text-teal-400 disabled:opacity-30"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="min-w-[5rem] text-center text-base font-medium text-white">
+              Day {currentDay.day}
+            </span>
+            <button
+              type="button"
+              disabled={selectedDay >= activePlan.totalDays}
+              onClick={() => setSelectedDay(selectedDay + 1)}
+              className="rounded-lg p-2 text-teal-400 disabled:opacity-30"
+              aria-label="Next day"
+            >
+              <ChevronLeft className="h-5 w-5 rotate-180" />
+            </button>
+          </div>
+          <span className="text-xs text-stone-500">{dayScheduleLabel(currentDay.day, focusDay)}</span>
         </div>
 
-        <section className="mt-8">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm text-stone-400">
-              From {bounds ? `${bounds.from.surahName}: ${bounds.from.ayah}` : '…'}
-            </p>
-            <span className="shrink-0 text-sm tabular-nums text-stone-500">
-              {currentDay.startPage}
-            </span>
-          </div>
-          <p
-            className="arabic-text mt-2 line-clamp-2 text-right text-base leading-relaxed text-white/80"
-            dir="rtl"
-          >
-            {boundsLoading ? '…' : ayahPreview(bounds?.from.arabic) || '…'}
-          </p>
-        </section>
+        {currentDay.juzLabel ? (
+          <p className="mt-2 text-center text-xs font-medium text-teal-400/90">{currentDay.juzLabel}</p>
+        ) : null}
 
-        <section className="mt-6">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm text-stone-400">
-              To {bounds ? `${bounds.to.surahName}: ${bounds.to.ayah}` : '…'}
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <section className="rounded-xl bg-[#1c1c1e] px-3 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">From</p>
+            <p className="mt-0.5 text-xs text-stone-300">
+              {bounds ? `${bounds.from.surahName} ${bounds.from.ayah}` : '…'}
+              <span className="text-stone-500"> · p.{currentDay.startPage}</span>
             </p>
-            <span className="shrink-0 text-sm tabular-nums text-stone-500">
-              {currentDay.endPage}
-            </span>
-          </div>
-          <p
-            className="arabic-text mt-2 line-clamp-2 text-right text-base leading-relaxed text-white/80"
-            dir="rtl"
-          >
-            {boundsLoading ? '…' : ayahPreview(bounds?.to.arabic) || '…'}
-          </p>
-        </section>
+            <p
+              className="arabic-text mt-1 line-clamp-1 text-right text-[13px] leading-snug text-white/75"
+              dir="rtl"
+            >
+              {boundsLoading ? '…' : ayahPreview(bounds?.from.arabic) || '…'}
+            </p>
+          </section>
+
+          <section className="rounded-xl bg-[#1c1c1e] px-3 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">To</p>
+            <p className="mt-0.5 text-xs text-stone-300">
+              {bounds ? `${bounds.to.surahName} ${bounds.to.ayah}` : '…'}
+              <span className="text-stone-500"> · p.{currentDay.endPage}</span>
+            </p>
+            <p
+              className="arabic-text mt-1 line-clamp-1 text-right text-[13px] leading-snug text-white/75"
+              dir="rtl"
+            >
+              {boundsLoading ? '…' : ayahPreview(bounds?.to.arabic) || '…'}
+            </p>
+          </section>
+        </div>
     </div>
   )
 }

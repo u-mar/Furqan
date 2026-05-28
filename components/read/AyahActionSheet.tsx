@@ -157,7 +157,7 @@ export default function AyahActionSheet({
               <Play className="h-5 w-5 fill-current" />
               <span className="text-sm font-medium">Play</span>
             </button>
-            {somaliVoiceAvailable && onPlaySomaliVoice && (
+            {somaliVoiceAvailable && onPlaySomaliVoice ? (
               <button
                 type="button"
                 onClick={() => {
@@ -182,7 +182,7 @@ export default function AyahActionSheet({
                 )}
                 <span>Somali</span>
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={onToggleBookmark}

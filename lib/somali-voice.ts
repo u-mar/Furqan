@@ -43,6 +43,10 @@ let segmentIndex: Map<string, SomaliVoiceSegment> | null = null
 /** Public URL for timing manifest (served from /public). */
 export const SOMALI_VOICE_MANIFEST_PATH = '/data/somali-voice/manifest.json'
 
+/** Shown when Somali tafseer audio is not recorded for an ayah or page yet. */
+export const TAFSIR_UNAVAILABLE_MESSAGE =
+  'Tafseer for this ayah is not available yet — I am working on it.'
+
 /**
  * Base URL for MP3 files (no trailing slash).
  * Production: set NEXT_PUBLIC_SOMALI_VOICE_CDN_URL=https://your-cdn.com/somali-v1

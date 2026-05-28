@@ -8,6 +8,7 @@ export interface TranslationRow {
   translation: string
 }
 
+import { getOfflineTranslations } from '@/lib/offline-translations'
 import type { TranslationLanguageId } from '@/lib/translations'
 
 export function usePageTranslations(
@@ -67,6 +68,14 @@ export function usePageTranslations(
     setLoading(true)
     void (async () => {
       try {
+        const offlineRows = await getOfflineTranslations(page, translationLanguage)
+        if (offlineRows && offlineRows.length > 0) {
+          const normalized = normalizeRows(offlineRows)
+          if (!cancelled) setRows(normalized)
+          if (normalized.length > 0) writeCache(normalized)
+          return
+        }
+
         const response = await fetch(`/api/ayah?type=translations&page=${page}&lang=${translationLanguage}`)
         const data = (await response.json()) as unknown
         if (!Array.isArray(data)) {

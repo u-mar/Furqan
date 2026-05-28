@@ -82,7 +82,7 @@ export default function AdminPage() {
               <p className="mt-1 text-2xl font-semibold text-[var(--home-heading)]">{users.length}</p>
             </div>
             <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4">
-              <p className="text-xs text-[var(--home-muted)]">Total app visits</p>
+              <p className="text-xs text-[var(--home-muted)]">Total sessions</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--home-heading)]">{totalVisits}</p>
             </div>
             <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4">
@@ -164,7 +164,7 @@ export default function AdminPage() {
                   <div key={user.userId} className="rounded-xl border border-[var(--home-card-border)] p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-[var(--home-heading)]">{user.userName}</p>
-                      <p className="text-xs text-[var(--home-muted)]">{user.totalVisits} visits</p>
+                      <p className="text-xs text-[var(--home-muted)]">{user.totalVisits} sessions</p>
                     </div>
                     <p className="mt-1 text-xs text-[var(--home-muted)]">
                       Last seen: {formatTime(user.lastSeenAt)} · Last path: {user.lastPath}

@@ -21,6 +21,10 @@ import {
   hydrateOfflineFromDisk,
   isOfflineReady,
 } from '@/lib/local-quran-store'
+import {
+  areTranslationsCached,
+  downloadOfflineTranslations,
+} from '@/lib/offline-translations'
 import { addFeedbackMessage } from '@/lib/admin'
 
 function SettingsRow({
@@ -104,12 +108,15 @@ export default function SettingsPage() {
   const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
+  const [translationsOffline, setTranslationsOffline] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [downloadingTranslations, setDownloadingTranslations] = useState(false)
+  const [translationProgress, setTranslationProgress] = useState(0)
+  const [translationProgressLabel, setTranslationProgressLabel] = useState('')
   const [progress, setProgress] = useState(0)
   const [progressLabel, setProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
-  const [contact, setContact] = useState('')
   const [feedbackNotice, setFeedbackNotice] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
   const [signedInName, setSignedInName] = useState('')
@@ -127,6 +134,7 @@ export default function SettingsPage() {
     setVerticalPages(s.verticalPages)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
+    setTranslationsOffline(s.translationsDownloaded || areTranslationsCached())
     refreshProfile()
     const onAuthChanged = () => refreshProfile()
     window.addEventListener('auth-user-changed', onAuthChanged)
@@ -180,6 +188,25 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleDownloadTranslations() {
+    setDownloadingTranslations(true)
+    setError(null)
+    setTranslationProgress(0)
+    setTranslationProgressLabel('')
+    try {
+      await downloadOfflineTranslations((p) => {
+        setTranslationProgress(p.percent)
+        setTranslationProgressLabel(p.label)
+      })
+      setAppSettings({ translationsDownloaded: true })
+      setTranslationsOffline(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Translation download failed')
+    } finally {
+      setDownloadingTranslations(false)
+    }
+  }
+
   async function handleUseBundled() {
     setDownloading(true)
     setError(null)
@@ -198,9 +225,8 @@ export default function SettingsPage() {
   async function handleSendFeedback() {
     if (!feedbackMessage.trim()) return
     try {
-      await addFeedbackMessage(feedbackMessage, contact)
+      await addFeedbackMessage(feedbackMessage, '')
       setFeedbackMessage('')
-      setContact('')
       setFeedbackNotice('Feedback sent. JazakAllahu khayran.')
       window.setTimeout(() => setFeedbackNotice(''), 2200)
     } catch {
@@ -315,6 +341,45 @@ export default function SettingsPage() {
           <p className="mt-2 text-xs text-[var(--home-muted)]">
             Used in Read translation mode and when you long-press an ayah.
           </p>
+
+          <div className="mt-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+            {translationsOffline ? (
+              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+                Translations saved — English & Somali work offline
+              </div>
+            ) : (
+              <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
+                Download translation text for all 604 pages (English and Somali). Use Wi‑Fi; this
+                may take a few minutes.
+              </p>
+            )}
+
+            {downloadingTranslations && (
+              <div className="mb-4">
+                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
+                  <div
+                    className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
+                    style={{ width: `${translationProgress}%` }}
+                  />
+                </div>
+                <p className="text-center text-xs font-medium text-[var(--home-muted)]">
+                  {translationProgress}%
+                  {translationProgressLabel ? ` · ${translationProgressLabel}` : ''}
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              disabled={downloadingTranslations || downloading}
+              onClick={() => void handleDownloadTranslations()}
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {translationsOffline ? 'Re-download translations' : 'Download translations offline'}
+            </button>
+          </div>
         </section>
 
         <section className="mb-8">
@@ -363,7 +428,7 @@ export default function SettingsPage() {
 
             <button
               type="button"
-              disabled={downloading}
+              disabled={downloading || downloadingTranslations}
               onClick={handleDownload}
               className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] text-sm font-bold text-white shadow-md shadow-[rgba(93,122,72,0.25)] transition-opacity disabled:opacity-50"
             >
@@ -374,7 +439,7 @@ export default function SettingsPage() {
             {!offline && (
               <button
                 type="button"
-                disabled={downloading}
+                disabled={downloading || downloadingTranslations}
                 onClick={handleUseBundled}
                 className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs font-medium text-[var(--home-muted)] underline-offset-2 hover:underline disabled:opacity-50"
               >
@@ -387,22 +452,12 @@ export default function SettingsPage() {
         <section className="mb-8">
           <SectionTitle>Feedback</SectionTitle>
           <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
-            <p className="text-xs text-[var(--home-muted)]">
-              User: {signedInName || 'Anonymous'}
-            </p>
             <textarea
               value={feedbackMessage}
               onChange={(e) => setFeedbackMessage(e.target.value)}
               rows={4}
               placeholder="Share a bug, idea, or request..."
-              className="mt-3 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
-            />
-            <input
-              type="text"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder="Optional contact (email/phone)"
-              className="mt-2 w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
             />
             {feedbackNotice ? (
               <p className="mt-2 text-xs font-medium text-[var(--home-sage-deep)]">{feedbackNotice}</p>

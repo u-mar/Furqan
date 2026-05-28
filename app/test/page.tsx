@@ -392,7 +392,7 @@ function TestPageContent() {
               revealedAyahs={revealedAyahs}
               onReveal={handleReveal}
               readMode
-              hideRevealBoxes
+              readOnly
               pageNumber={currentPage}
             />
           </div>

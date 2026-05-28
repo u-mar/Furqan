@@ -1,7 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getSomaliVoiceSegment, type SomaliVoiceSegment } from '@/lib/somali-voice'
+import {
+  getSomaliVoiceSegment,
+  TAFSIR_UNAVAILABLE_MESSAGE,
+  type SomaliVoiceSegment,
+} from '@/lib/somali-voice'
 
 export interface SomaliVoicePlaybackState {
   playing: boolean
@@ -56,7 +60,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
           playing: false,
           loading: false,
           verseKey: null,
-          error: 'Somali voice not available for this ayah.',
+          error: TAFSIR_UNAVAILABLE_MESSAGE,
         })
         return false
       }

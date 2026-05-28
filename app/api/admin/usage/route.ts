@@ -6,11 +6,14 @@ export async function POST(req: Request) {
     userId?: string
     userName?: string
     pathname?: string
+    /** When true, increment totalVisits once per browser session (not every route change). */
+    countSession?: boolean
   }
 
   const userId = body.userId?.trim() ?? ''
   const userName = body.userName?.trim() ?? ''
   const pathname = body.pathname?.trim() ?? '/'
+  const countSession = body.countSession === true
 
   if (!userId || !userName) {
     return NextResponse.json({ error: 'Missing usage identity.' }, { status: 400 })
@@ -22,6 +25,7 @@ export async function POST(req: Request) {
       ? (existing.pageViews as Record<string, number>)
       : {}
   const currentCount = typeof pageViews[pathname] === 'number' ? pageViews[pathname] : 0
+  const nextVisits = (existing?.totalVisits ?? 0) + (countSession ? 1 : 0)
 
   const upserted = await prisma.userUsage.upsert({
     where: { userId },
@@ -29,14 +33,14 @@ export async function POST(req: Request) {
       userName,
       lastSeenAt: new Date(),
       lastPath: pathname,
-      totalVisits: (existing?.totalVisits ?? 0) + 1,
+      totalVisits: nextVisits,
       pageViews: { ...pageViews, [pathname]: currentCount + 1 },
     },
     create: {
       userId,
       userName,
       lastPath: pathname,
-      totalVisits: 1,
+      totalVisits: countSession ? 1 : 0,
       pageViews: { [pathname]: 1 },
     },
   })

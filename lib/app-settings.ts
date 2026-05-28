@@ -3,6 +3,7 @@ export type ThemeMode = 'light' | 'dark'
 export interface AppSettings {
   theme: ThemeMode
   offlineDownloaded: boolean
+  translationsDownloaded: boolean
   reciterId: string
   /** Swipe up/down to turn pages instead of left/right. */
   verticalPages: boolean
@@ -22,6 +23,7 @@ import {
 const defaults: AppSettings = {
   theme: 'dark',
   offlineDownloaded: false,
+  translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
@@ -31,6 +33,7 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
   return {
     theme: parsed.theme === 'light' ? 'light' : 'dark',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
+    translationsDownloaded: Boolean(parsed.translationsDownloaded),
     reciterId:
       typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
         ? parsed.reciterId

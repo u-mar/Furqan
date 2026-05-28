@@ -1,4 +1,5 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
+import { resolveJuzPageRange, splitPageRange } from '@/lib/juz-pages'
 
 export type KhatmahDuration = '1week' | '1month' | '2months'
 
@@ -7,6 +8,8 @@ export interface KhatmahDay {
   startPage: number
   endPage: number
   completed: boolean
+  /** Juz label for this day (when plan is juz-aligned). */
+  juzLabel?: string
 }
 
 export interface KhatmahPlan {
@@ -38,7 +41,7 @@ export function durationLabel(d: KhatmahDuration): string {
   return DURATION_LABELS[d]
 }
 
-export function createKhatmahPlan(duration: KhatmahDuration): KhatmahPlan {
+function createEvenPagePlan(duration: KhatmahDuration): KhatmahPlan {
   const totalDays = DURATION_DAYS[duration]
   const pagesPerDay = Math.ceil(TOTAL_MUSHAF_PAGES / totalDays)
   const days: KhatmahDay[] = []
@@ -46,7 +49,10 @@ export function createKhatmahPlan(duration: KhatmahDuration): KhatmahPlan {
 
   for (let day = 1; day <= totalDays; day++) {
     const startPage = page
-    const endPage = Math.min(TOTAL_MUSHAF_PAGES, day === totalDays ? TOTAL_MUSHAF_PAGES : page + pagesPerDay - 1)
+    const endPage = Math.min(
+      TOTAL_MUSHAF_PAGES,
+      day === totalDays ? TOTAL_MUSHAF_PAGES : page + pagesPerDay - 1
+    )
     days.push({ day, startPage, endPage, completed: false })
     page = endPage + 1
     if (page > TOTAL_MUSHAF_PAGES) break
@@ -60,6 +66,97 @@ export function createKhatmahPlan(duration: KhatmahDuration): KhatmahPlan {
     createdAt: Date.now(),
     days,
   }
+}
+
+/** 1 month = one juz per day (day 3 → juz 3 pages). */
+async function createMonthlyJuzPlan(): Promise<KhatmahPlan> {
+  const days: KhatmahDay[] = []
+
+  for (let juz = 1; juz <= 30; juz += 1) {
+    const range = await resolveJuzPageRange(juz)
+    days.push({
+      day: juz,
+      startPage: range.startPage,
+      endPage: range.endPage,
+      completed: false,
+      juzLabel: `Juz ${juz}`,
+    })
+  }
+
+  return {
+    id: `khatmah-${Date.now()}`,
+    title: `Khatmah · ${DURATION_LABELS['1month']}`,
+    duration: '1month',
+    totalDays: days.length,
+    createdAt: Date.now(),
+    days,
+  }
+}
+
+/** 2 months = each juz split across 2 days. */
+async function createTwoMonthJuzPlan(): Promise<KhatmahPlan> {
+  const days: KhatmahDay[] = []
+  let day = 1
+
+  for (let juz = 1; juz <= 30; juz += 1) {
+    const range = await resolveJuzPageRange(juz)
+    for (let half = 0; half < 2; half += 1) {
+      const part = splitPageRange(range.startPage, range.endPage, half, 2)
+      days.push({
+        day,
+        startPage: part.startPage,
+        endPage: part.endPage,
+        completed: false,
+        juzLabel: `Juz ${juz} · ${half === 0 ? '1/2' : '2/2'}`,
+      })
+      day += 1
+    }
+  }
+
+  return {
+    id: `khatmah-${Date.now()}`,
+    title: `Khatmah · ${DURATION_LABELS['2months']}`,
+    duration: '2months',
+    totalDays: days.length,
+    createdAt: Date.now(),
+    days,
+  }
+}
+
+/** 1 week ≈ 4–5 juz per day. */
+async function createWeeklyJuzPlan(): Promise<KhatmahPlan> {
+  const days: KhatmahDay[] = []
+  const juzPerDay = Math.ceil(30 / 7)
+
+  for (let day = 1; day <= 7; day += 1) {
+    const firstJuz = (day - 1) * juzPerDay + 1
+    const lastJuz = Math.min(30, day * juzPerDay)
+    const startRange = await resolveJuzPageRange(firstJuz)
+    const endRange = await resolveJuzPageRange(lastJuz)
+    days.push({
+      day,
+      startPage: startRange.startPage,
+      endPage: endRange.endPage,
+      completed: false,
+      juzLabel: firstJuz === lastJuz ? `Juz ${firstJuz}` : `Juz ${firstJuz}–${lastJuz}`,
+    })
+  }
+
+  return {
+    id: `khatmah-${Date.now()}`,
+    title: `Khatmah · ${DURATION_LABELS['1week']}`,
+    duration: '1week',
+    totalDays: days.length,
+    createdAt: Date.now(),
+    days,
+  }
+}
+
+export async function createKhatmahPlan(duration: KhatmahDuration): Promise<KhatmahPlan> {
+  if (duration === '1month') return createMonthlyJuzPlan()
+  if (duration === '2months') return createTwoMonthJuzPlan()
+  if (duration === '1week') return createWeeklyJuzPlan()
+  return createEvenPagePlan(duration)
 }
 
 export function getKhatmahPlans(): KhatmahPlan[] {

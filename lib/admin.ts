@@ -1,6 +1,8 @@
 'use client'
 
-import { getSignedInUser } from '@/lib/auth'
+import { getUsageIdentity } from '@/lib/usage-identity'
+
+const USAGE_SESSION_KEY = 'muyassar_usage_session_logged'
 
 export interface DailyVerseConfig {
   verseKey: string
@@ -82,10 +84,19 @@ function isDbConfigError(message: string): boolean {
 }
 
 export function getOrCreateUserProfile(): { id: string; name: string; createdAt: number } {
-  const authUser = getSignedInUser()
-  const ts = Date.now()
-  if (authUser) return { id: authUser.id, name: authUser.name, createdAt: ts }
-  return { id: 'anon', name: 'Reader', createdAt: ts }
+  const identity = getUsageIdentity()
+  return { id: identity.userId, name: identity.userName, createdAt: Date.now() }
+}
+
+function isNewUsageSession(): boolean {
+  if (typeof sessionStorage === 'undefined') return true
+  try {
+    if (sessionStorage.getItem(USAGE_SESSION_KEY)) return false
+    sessionStorage.setItem(USAGE_SESSION_KEY, String(Date.now()))
+    return true
+  } catch {
+    return true
+  }
 }
 
 export async function getDailyVerseConfig(): Promise<DailyVerseConfig> {
@@ -127,51 +138,54 @@ export async function setDailyVerseConfig(
   return updated
 }
 
+function applyLocalUsageUpdate(
+  profile: { id: string; name: string },
+  pathname: string,
+  countSession: boolean
+): void {
+  const store = readLocalAdminStore()
+  const current = store.users.find((u) => u.userId === profile.id)
+  const updated: UserUsage = {
+    userId: profile.id,
+    userName: profile.name,
+    createdAt: current?.createdAt ?? Date.now(),
+    lastSeenAt: Date.now(),
+    totalVisits: (current?.totalVisits ?? 0) + (countSession ? 1 : 0),
+    lastPath: pathname,
+    pageViews: {
+      ...(current?.pageViews ?? {}),
+      [pathname]: ((current?.pageViews ?? {})[pathname] ?? 0) + 1,
+    },
+  }
+  writeLocalAdminStore({
+    ...store,
+    users: [...store.users.filter((u) => u.userId !== profile.id), updated],
+  })
+}
+
 export async function trackUsage(pathname: string): Promise<void> {
   const profile = getOrCreateUserProfile()
-  if (profile.id === 'anon') return
+  const countSession = isNewUsageSession()
+
   try {
     const res = await fetch('/api/admin/usage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: profile.id, userName: profile.name, pathname }),
+      body: JSON.stringify({
+        userId: profile.id,
+        userName: profile.name,
+        pathname,
+        countSession,
+      }),
     })
     if (!res.ok) {
       const raw = await res.text()
       if (isDbConfigError(raw)) {
-        const store = readLocalAdminStore()
-        const current = store.users.find((u) => u.userId === profile.id)
-        const updated: UserUsage = {
-          userId: profile.id,
-          userName: profile.name,
-          createdAt: current?.createdAt ?? Date.now(),
-          lastSeenAt: Date.now(),
-          totalVisits: (current?.totalVisits ?? 0) + 1,
-          lastPath: pathname,
-          pageViews: { ...(current?.pageViews ?? {}), [pathname]: ((current?.pageViews ?? {})[pathname] ?? 0) + 1 },
-        }
-        writeLocalAdminStore({
-          ...store,
-          users: [...store.users.filter((u) => u.userId !== profile.id), updated],
-        })
+        applyLocalUsageUpdate(profile, pathname, countSession)
       }
     }
   } catch {
-    const store = readLocalAdminStore()
-    const current = store.users.find((u) => u.userId === profile.id)
-    const updated: UserUsage = {
-      userId: profile.id,
-      userName: profile.name,
-      createdAt: current?.createdAt ?? Date.now(),
-      lastSeenAt: Date.now(),
-      totalVisits: (current?.totalVisits ?? 0) + 1,
-      lastPath: pathname,
-      pageViews: { ...(current?.pageViews ?? {}), [pathname]: ((current?.pageViews ?? {})[pathname] ?? 0) + 1 },
-    }
-    writeLocalAdminStore({
-      ...store,
-      users: [...store.users.filter((u) => u.userId !== profile.id), updated],
-    })
+    applyLocalUsageUpdate(profile, pathname, countSession)
   }
 }
 

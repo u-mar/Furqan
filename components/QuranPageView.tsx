@@ -249,7 +249,7 @@ export default function QuranPageView({
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  const useQcfRead = readMode && readOnly && !hideRevealBoxes
+  const useQcfRead = readMode && (readOnly || hideRevealBoxes)
 
   const { lines, nextVerseKey, pageNumber } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()

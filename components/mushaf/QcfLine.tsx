@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import type { QcfPageLine } from '@/lib/qcf-page'
 
-/** Shrink the glyph run to fit the line box so line-end marks are not clipped. */
+/** Fit long lines by font size (not scale) so QCF glyphs do not overlap at line starts. */
 function QcfLineGlyphs({ text, style }: { text: string; style: CSSProperties }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
@@ -17,11 +17,18 @@ function QcfLineGlyphs({ text, style }: { text: string; style: CSSProperties }) 
 
     const fit = () => {
       inner.style.transform = 'none'
-      const available = outer.clientWidth
-      const needed = inner.scrollWidth
-      if (needed > available && available > 0) {
-        inner.style.transform = `scale(${available / needed})`
-      }
+      inner.style.fontSize = ''
+
+      const available = outer.clientWidth * 0.92
+      let needed = inner.scrollWidth
+      if (needed <= available || available <= 0) return
+
+      const basePx = parseFloat(getComputedStyle(inner).fontSize)
+      if (!Number.isFinite(basePx) || basePx <= 0) return
+
+      // Shrink via font-size — preserves QCF glyph shapes better than transform: scale().
+      const ratio = (available / needed) * 0.97
+      inner.style.fontSize = `${Math.max(14, basePx * ratio)}px`
     }
 
     fit()
