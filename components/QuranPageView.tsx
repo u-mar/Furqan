@@ -55,6 +55,18 @@ interface PageLine {
 const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
 const BASMALAH_ORNAMENT = '﷽'
 
+function formatSurahHeaderLabel(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'Surah'
+  const hasArabic = /[\u0600-\u06FF]/.test(trimmed)
+  if (hasArabic) {
+    if (/^سورة\s+/u.test(trimmed)) return trimmed
+    return `سورة ${trimmed}`
+  }
+  if (/^surah\s+/iu.test(trimmed)) return trimmed
+  return `Surah ${trimmed}`
+}
+
 function surahAyahFromKey(verseKey: string): { surah: number; ayah: number } {
   const [surah, ayah] = verseKey.split(':').map(Number)
   return { surah: surah || 0, ayah: ayah || 0 }
@@ -578,7 +590,9 @@ export default function QuranPageView({
                 )}
                 <span>
                   {line.chapterNumber
-                    ? chapterNamesById[line.chapterNumber] || `Surah ${line.chapterNumber}`
+                    ? formatSurahHeaderLabel(
+                        chapterNamesById[line.chapterNumber] || String(line.chapterNumber)
+                      )
                     : ''}
                 </span>
                 {!readMode && (

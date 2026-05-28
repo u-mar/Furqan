@@ -150,7 +150,7 @@ body {
 
 /* Immersive read screen (reference: full black, text fits viewport) */
 .mushaf-reader-immersive {
-  --mushaf-read-bg: #ffffff;
+  --mushaf-read-bg: #f5f1e6;
   --mushaf-read-text: #1a1a1a;
   --mushaf-read-meta: #9ca3af;
   --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
@@ -160,10 +160,10 @@ body {
 }
 
 html.dark .mushaf-reader-immersive {
-  --mushaf-read-bg: #000000;
-  --mushaf-read-text: #ffffff;
+  --mushaf-read-bg: #111827;
+  --mushaf-read-text: #f8fafc;
   --mushaf-read-meta: #9ca3af;
-  --mushaf-read-badge-bg: #2a2a2a;
+  --mushaf-read-badge-bg: #1f2937;
   --mushaf-read-badge-text: #d1d5db;
 }
 
@@ -184,15 +184,15 @@ html.dark .mushaf-reader-immersive {
   overflow: hidden;
   text-align: center;
   color: var(--mushaf-read-text);
-  font-size: clamp(1.02rem, 3.55dvh, 1.98rem);
+  font-size: clamp(0.92rem, 3.15dvh, 1.76rem);
   line-height: 1.12;
   letter-spacing: 0;
 }
 
 /* Dark immersive mode: closer visual density to popular mushaf apps. */
 html.dark .mushaf-fit-line {
-  font-size: clamp(1.1rem, 3.9dvh, 2.2rem);
-  line-height: 1.08;
+  font-size: clamp(0.98rem, 3.35dvh, 1.9rem);
+  line-height: 1.1;
 }
 
 .mushaf-qcf-line {
