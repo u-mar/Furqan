@@ -7,7 +7,6 @@ import type { QcfPageLine } from '@/lib/qcf-page'
 
 export interface QcfLineProps {
   line: QcfPageLine
-  fontFamily: string
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onLineLongPress?: (verseKey: string) => void
@@ -21,7 +20,6 @@ function lineVerseKey(line: QcfPageLine): string | null {
 
 function QcfLineComponent({
   line,
-  fontFamily,
   highlightedVerseKey,
   selectedVerseKey,
   onLineLongPress,
@@ -48,13 +46,9 @@ function QcfLineComponent({
 
   const content =
     line.kind === 'surah-header' ? (
-      <span className="mushaf-qcf-line__surah-name" style={{ fontFamily: 'SurahNameV2' }}>
-        {line.text}
-      </span>
+      <span className="mushaf-qcf-line__surah-name">{line.text}</span>
     ) : line.kind === 'empty' ? null : (
-      <span className="mushaf-qcf-line__glyphs" style={{ fontFamily }}>
-        {line.text}
-      </span>
+      <span className="mushaf-qcf-line__glyphs">{line.text}</span>
     )
 
   if (!onLineLongPress || !pressKey || line.kind === 'empty' || line.kind === 'surah-header') {

@@ -20,9 +20,11 @@ export interface QcfPageLayout {
   pageText: string
 }
 
-/** QCF font family name per Madinah page (matches dynamic @font-face registration). */
+import { qcfPageFontFamily as qcfFamilyForPage } from '@/lib/qcf-font-cdn'
+
+/** QCF font family per page (e.g. QCF_P542) — matches @font-face in mushaf-fonts. */
 export function qcfPageFontFamily(pageNumber: number): string {
-  return `QCF_P${pageNumber}`
+  return qcfFamilyForPage(pageNumber)
 }
 
 export function qcfPageFontClass(pageNumber: number): string {

@@ -3,7 +3,7 @@
 /**
  * Build a high-quality offline Quran bundle:
  * - public/quran-data.json  (QCF code_v2 + line layout for all 604 Madani pages)
- * - public/fonts/qcf/p{n}.woff2  (page fonts for offline glyph rendering)
+ * - public/qcf/p{n}.woff2  (page fonts for offline glyph rendering)
  * - public/fonts/surah-name-v2.ttf
  * - public/offline-manifest.json
  *
@@ -224,7 +224,7 @@ async function downloadFile(url, dest, label) {
 async function downloadFonts(publicDir) {
   console.log('\n🔤  Downloading mushaf fonts (604 page files + surah names)…\n')
 
-  const qcfDir = path.join(publicDir, 'fonts', 'qcf')
+  const qcfDir = path.join(publicDir, 'qcf')
   const surahDest = path.join(publicDir, 'fonts', 'surah-name-v2.ttf')
   fs.mkdirSync(qcfDir, { recursive: true })
 
@@ -266,7 +266,7 @@ async function downloadFonts(publicDir) {
 
   await Promise.all(Array.from({ length: concurrency }, () => worker()))
   process.stdout.write('\n')
-  console.log(`  ✓ Fonts in public/fonts/qcf/ (${formatMb(totalBytes)} total)`)
+  console.log(`  ✓ Fonts in public/qcf/ (${formatMb(totalBytes)} total)`)
   if (failed > 0) console.warn(`  ⚠ ${failed} fonts failed — re-run script to retry.\n`)
 
   return { totalBytes, skipped, failed }

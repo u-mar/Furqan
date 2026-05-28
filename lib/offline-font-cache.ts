@@ -1,5 +1,6 @@
 import {
   qcfCdnFontUrl,
+  qcfLegacyLocalFontUrl,
   qcfLocalFontUrl,
   SURAH_NAME_FONT_URL,
   TOTAL_MUSHAF_FONT_PAGES,
@@ -59,6 +60,14 @@ export async function resolveQcfFontUrl(page: number): Promise<string> {
   try {
     const head = await fetch(local, { method: 'HEAD' })
     if (head.ok) return local
+  } catch {
+    /* not bundled */
+  }
+
+  const legacy = qcfLegacyLocalFontUrl(page)
+  try {
+    const head = await fetch(legacy, { method: 'HEAD' })
+    if (head.ok) return legacy
   } catch {
     /* not bundled */
   }

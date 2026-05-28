@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
 
-const marker = path.join(__dirname, '..', 'public', 'fonts', 'qcf', 'p604.woff2')
+const marker = path.join(__dirname, '..', 'public', 'qcf', 'p604.woff2')
 if (fs.existsSync(marker)) {
   console.log('Mushaf fonts already present — skipping download.')
   process.exit(0)

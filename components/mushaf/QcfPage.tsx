@@ -45,14 +45,12 @@ function QcfPageComponent({
       dir="rtl"
       lang="ar"
       aria-label={`Quran page ${pageNumber}`}
-      style={{ fontFamily: qcfFamily }}
     >
       <div className="mushaf-fit-grid mushaf-qcf-page-content">
         {layout.lines.map((line) => (
           <QcfLine
             key={line.lineNumber}
             line={line}
-            fontFamily={qcfFamily}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onLineLongPress={onAyahLongPress}

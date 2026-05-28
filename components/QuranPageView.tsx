@@ -419,6 +419,7 @@ export default function QuranPageView({
           lang="ar"
           aria-label="Quran page"
         >
+          {/* MushafPageView provides .mushaf-root + QCF_P{n} isolation */}
           <MushafPageView
             verses={verses}
             pageNumber={pageNumber}

@@ -1,4 +1,25 @@
-/* QCF v2 page font mushaf — spacing comes from the page WOFF2, not CSS justification */
+/* QCF v2 page font mushaf — isolated from global Arabic / body fonts */
+/* --mushaf-qcf-font-family set on .mushaf-root (e.g. QCF_P542) */
+
+.mushaf-root {
+  font-family: var(--mushaf-qcf-font-family, serif);
+  font-synthesis: none;
+  direction: rtl;
+  unicode-bidi: isolate;
+  isolation: isolate;
+}
+
+.mushaf-root *,
+.mushaf-root *::before,
+.mushaf-root *::after {
+  font-family: inherit !important;
+}
+
+/* Decorative surah title / bismillah (not page QCF font) */
+.mushaf-root .mushaf-qcf-line__surah-name,
+.mushaf-root .mushaf-qcf-line--basmalah .mushaf-qcf-line__glyphs {
+  font-family: 'SurahNameV2', serif !important;
+}
 
 .mushaf-qcf-page {
   width: 100%;
@@ -6,7 +27,12 @@
   min-height: 0;
   box-sizing: border-box;
   contain: layout style paint;
+  direction: rtl;
+  unicode-bidi: isolate;
+  text-align: center;
+  font-synthesis: none;
   color: var(--mushaf-read-text, #1a1a1a);
+  font-family: var(--mushaf-qcf-font-family, inherit) !important;
 }
 
 .mushaf-qcf-page--immersive {
@@ -14,9 +40,12 @@
 }
 
 .mushaf-qcf-page-content {
-  font-family: inherit;
+  font-family: inherit !important;
   direction: rtl;
   unicode-bidi: isolate;
+  font-variant-ligatures: none !important;
+  font-feature-settings: normal !important;
+  text-rendering: auto !important;
 }
 
 .mushaf-qcf-line {
@@ -26,7 +55,8 @@
   white-space: nowrap;
   overflow: hidden;
   font-synthesis: none;
-  font-feature-settings: 'liga' 1, 'calt' 1;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: normal !important;
   touch-action: manipulation;
 }
 
@@ -37,7 +67,6 @@
   text-overflow: clip;
   font-size: clamp(22px, calc((100dvh - 88px) / 15 * 0.52), 40px);
   line-height: 1.75;
-  font-variant-ligatures: normal;
   letter-spacing: 0;
   word-spacing: 0;
 }
@@ -48,7 +77,6 @@
 }
 
 .mushaf-qcf-line__surah-name {
-  font-family: 'SurahNameV2', serif;
   font-size: clamp(28px, 5.5vw, 52px);
   line-height: 1;
   letter-spacing: 0;
@@ -56,7 +84,6 @@
 }
 
 .mushaf-qcf-line--basmalah .mushaf-qcf-line__glyphs {
-  font-family: 'SurahNameV2', serif;
   font-size: clamp(24px, 4.8vw, 44px);
 }
 
@@ -76,4 +103,12 @@ html:not(.dark) .mushaf-qcf-line--reciting {
 
 html:not(.dark) .mushaf-qcf-line--selected {
   background: rgba(20, 184, 166, 0.08);
+}
+
+/* Block global Quranic utility classes inside mushaf */
+.mushaf-root .arabic-text,
+.mushaf-root .amiri,
+.mushaf-reader-immersive .mushaf-root .arabic-text,
+.mushaf-reader-immersive .mushaf-root .amiri {
+  font-family: inherit !important;
 }
