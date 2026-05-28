@@ -26,13 +26,14 @@
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
-  contain: layout style paint;
+  contain: layout style;
   direction: rtl;
   unicode-bidi: isolate;
   text-align: center;
   font-synthesis: none;
   color: var(--mushaf-read-text, #1a1a1a);
   font-family: var(--mushaf-qcf-font-family, inherit) !important;
+  overflow: visible;
 }
 
 .mushaf-qcf-page--immersive {
@@ -48,25 +49,51 @@
   text-rendering: auto !important;
 }
 
+.mushaf-root .mushaf-fit-grid {
+  padding-block: clamp(12px, 2dvh, 24px);
+  padding-left: max(clamp(18px, 5.5vw, 36px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(18px, 5.5vw, 36px), env(safe-area-inset-right, 0px));
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.mushaf-root .mushaf-fit-line.mushaf-qcf-line {
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  font-size: inherit;
+}
+
 .mushaf-qcf-line {
   text-align: center;
   letter-spacing: 0;
   word-spacing: 0;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   font-synthesis: none;
   font-feature-settings: normal !important;
   font-variant-ligatures: normal !important;
   touch-action: manipulation;
 }
 
+.mushaf-qcf-line__scale {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mushaf-qcf-line__glyphs {
   display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: clip;
+  white-space: nowrap;
+  overflow: visible;
+  transform-origin: center center;
   font-family: var(--mushaf-qcf-font-family, inherit) !important;
-  font-size: clamp(22px, calc((100dvh - 88px) / 15 * 0.52), 40px);
+  font-size: clamp(20px, calc((100dvh - 88px) / 15 * 0.5), 38px);
   line-height: 1.75;
   letter-spacing: 0;
   word-spacing: 0;

@@ -1,9 +1,43 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import type { QcfPageLine } from '@/lib/qcf-page'
+
+/** Shrink the glyph run to fit the line box so line-end marks are not clipped. */
+function QcfLineGlyphs({ text, style }: { text: string; style: CSSProperties }) {
+  const outerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLSpanElement>(null)
+
+  useLayoutEffect(() => {
+    const outer = outerRef.current
+    const inner = innerRef.current
+    if (!outer || !inner) return
+
+    const fit = () => {
+      inner.style.transform = 'none'
+      const available = outer.clientWidth
+      const needed = inner.scrollWidth
+      if (needed > available && available > 0) {
+        inner.style.transform = `scale(${available / needed})`
+      }
+    }
+
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(outer)
+    return () => observer.disconnect()
+  }, [text])
+
+  return (
+    <div ref={outerRef} className="mushaf-qcf-line__scale">
+      <span ref={innerRef} className="mushaf-qcf-line__glyphs" style={style}>
+        {text}
+      </span>
+    </div>
+  )
+}
 
 export interface QcfLineProps {
   line: QcfPageLine
@@ -51,9 +85,7 @@ function QcfLineComponent({
     line.kind === 'surah-header' ? (
       <span className="mushaf-qcf-line__surah-name">{line.text}</span>
     ) : line.kind === 'empty' ? null : (
-      <span className="mushaf-qcf-line__glyphs" style={glyphStyle}>
-        {line.text}
-      </span>
+      <QcfLineGlyphs text={line.text} style={glyphStyle} />
     )
 
   if (!onLineLongPress || !pressKey || line.kind === 'empty' || line.kind === 'surah-header') {
