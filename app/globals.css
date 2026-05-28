@@ -184,7 +184,7 @@ html.dark .mushaf-reader-immersive {
   overflow: hidden;
   text-align: center;
   color: var(--mushaf-read-text);
-  font-size: clamp(0.95rem, 3.35dvh, 1.85rem);
+  font-size: clamp(1.02rem, 3.55dvh, 1.98rem);
   line-height: 1.12;
   letter-spacing: 0;
 }
