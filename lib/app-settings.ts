@@ -25,7 +25,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafStyle: 'uthmani',
+  mushafStyle: 'uthmani-glyphs',
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
@@ -40,7 +40,12 @@ export function getAppSettings(): AppSettings {
     const parsed = JSON.parse(raw) as Partial<AppSettings>
     return {
       theme: parsed.theme === 'light' ? 'light' : 'dark',
-      mushafStyle: parsed.mushafStyle === 'indopak' ? 'uthmani' : 'uthmani',
+      mushafStyle:
+        parsed.mushafStyle === 'uthmani-glyphs'
+          ? 'uthmani-glyphs'
+          : parsed.mushafStyle === 'indopak'
+            ? 'uthmani'
+            : 'uthmani',
       offlineDownloaded: Boolean(parsed.offlineDownloaded),
       reciterId:
         typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0

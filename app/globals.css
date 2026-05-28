@@ -160,11 +160,11 @@ body {
 }
 
 html.dark .mushaf-reader-immersive {
-  --mushaf-read-bg: #111827;
-  --mushaf-read-text: #f8fafc;
-  --mushaf-read-meta: #9ca3af;
-  --mushaf-read-badge-bg: #1f2937;
-  --mushaf-read-badge-text: #d1d5db;
+  --mushaf-read-bg: #090b10;
+  --mushaf-read-text: #e5e7eb;
+  --mushaf-read-meta: #6b7280;
+  --mushaf-read-badge-bg: #151922;
+  --mushaf-read-badge-text: #9ca3af;
 }
 
 .mushaf-fit-grid {
@@ -322,18 +322,18 @@ html.dark .mushaf-translation-arabic {
 }
 
 .mushaf-word--reciting {
-  background: rgba(45, 212, 191, 0.28);
+  background: rgba(45, 212, 191, 0.18);
   border-radius: 0.2em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 .mushaf-word--selected {
-  background: rgba(45, 212, 191, 0.35);
+  background: rgba(45, 212, 191, 0.22);
   border-radius: 0.2em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  outline: 1px solid rgba(45, 212, 191, 0.55);
+  outline: 1px solid rgba(45, 212, 191, 0.35);
   outline-offset: 1px;
 }
 
@@ -347,14 +347,14 @@ html:not(.dark) .mushaf-word--selected {
 }
 
 .mushaf-line--reciting {
-  background: rgba(45, 212, 191, 0.16);
+  background: rgba(45, 212, 191, 0.08);
   border-radius: 0.35rem;
 }
 
 .mushaf-line--selected {
-  background: rgba(45, 212, 191, 0.22);
+  background: rgba(45, 212, 191, 0.12);
   border-radius: 0.35rem;
-  outline: 1px solid rgba(45, 212, 191, 0.45);
+  outline: 1px solid rgba(45, 212, 191, 0.3);
   outline-offset: 1px;
 }
 
@@ -378,7 +378,7 @@ html:not(.dark) .mushaf-line--selected {
 .mushaf-fit-grid:has(.mushaf-word--selected) .mushaf-fit-line:not(:has(.mushaf-word--selected)),
 .mushaf-fit-grid:has(.mushaf-line--reciting) .mushaf-fit-line:not(.mushaf-line--reciting),
 .mushaf-fit-grid:has(.mushaf-line--selected) .mushaf-fit-line:not(.mushaf-line--selected) {
-  opacity: 0.45;
+  opacity: 1;
   transition: opacity 0.25s ease;
 }
 
