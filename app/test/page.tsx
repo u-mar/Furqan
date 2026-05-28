@@ -13,7 +13,6 @@ import {
 import HomeScreen from '@/components/home/HomeScreen'
 import QuranPageView from '@/components/QuranPageView'
 import Button from '@/components/ui/Button'
-import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   getChapters,
   getMushafPage,
@@ -77,7 +76,6 @@ async function loadScopeVerses(
 }
 
 function TestPageContent() {
-  const { mushafStyle } = useAppSettings()
   const searchParams = useSearchParams()
   const mode = (searchParams.get('mode') || 'random') as ScopeMode
   const scope = resolveScopeType(mode, searchParams.get('scope'))
@@ -395,7 +393,6 @@ function TestPageContent() {
               onReveal={handleReveal}
               readMode
               hideRevealBoxes
-              mushafStyle={mushafStyle}
               pageNumber={currentPage}
             />
           </div>

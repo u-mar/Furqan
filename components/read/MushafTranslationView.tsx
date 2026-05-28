@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
-import { useQcfFont } from '@/hooks/useQcfFont'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
@@ -45,12 +44,6 @@ export default function MushafTranslationView({
     translationLanguage
   )
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
-
-  const needsEndGlyphs = useMemo(
-    () => verses.some((verse) => verse.words?.some((word) => word.char_type_name === 'end' && word.code_v2)),
-    [verses]
-  )
-  const glyphFontReady = useQcfFont(page, needsEndGlyphs)
 
   const displayRows = verses.map((verse) => {
     const endWord = verse.words?.find((word) => word.char_type_name === 'end')
@@ -122,7 +115,7 @@ export default function MushafTranslationView({
                   pageNumber={row.endWord?.v2_page || row.endWord?.page_number || page}
                   codeV2={row.endWord?.code_v2}
                   fallbackText={row.endWord?.text_uthmani || row.endWord?.text_qpc_hafs || ''}
-                  glyphFontReady={glyphFontReady}
+                  glyphFontReady={false}
                 />
               </p>
             )}

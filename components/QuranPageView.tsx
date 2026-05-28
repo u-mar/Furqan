@@ -1,15 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
-import { useQcfFont } from '@/hooks/useQcfFont'
-import { qcfFontFamily } from '@/lib/mushaf-fonts'
-import { PLAIN_MUSHAF_FONT, shouldAttemptQcfFonts, wantsUthmaniGlyphs } from '@/lib/mushaf-render'
-import { normalizeUthmaniPage, type NormalizedUthmaniVerse } from '@/lib/quran-normalizer'
+import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
-import type { MushafStyle } from '@/lib/app-settings'
 import type { Verse, VerseWord } from '@/types'
 
 interface QuranPageViewProps {
@@ -28,7 +24,6 @@ interface QuranPageViewProps {
   readOnly?: boolean
   /** Hide grey reveal boxes; unrevealed text stays invisible (for hifdh test). */
   hideRevealBoxes?: boolean
-  mushafStyle?: MushafStyle
   pageNumber?: number
   onAyahLongPress?: (verseKey: string) => void
 }
@@ -83,74 +78,14 @@ function verseKeysForLine(line: PageLine): string[] {
   return [...new Set(line.words.map((w) => w.verseKey))]
 }
 
-/** One QCF/uthmani glyph run per mushaf line (matches printed mushaf spacing). */
-function buildLineGlyphString(line: PageLine, preferQcf: boolean): string {
+/** One connected Uthmani string per mushaf line (printed layout, no per-word gaps). */
+function buildLineGlyphString(line: PageLine): string {
   const parts: string[] = []
   for (const word of line.words) {
-    if (preferQcf && word.codeV2?.trim()) {
-      parts.push(word.codeV2.trim())
-      continue
-    }
     const piece = word.fallbackText?.trim()
     if (piece) parts.push(piece)
   }
-  return parts.join(preferQcf ? '' : ' ')
-}
-
-function surahHeaderToken(chapterNumber: number): string {
-  return `surah${String(chapterNumber).padStart(3, '0')}`
-}
-
-function QcfMushafPage({
-  verses,
-  className,
-  style,
-  highlightedVerseKey,
-  selectedVerseKey,
-  onAyahLongPress,
-}: {
-  verses: NormalizedUthmaniVerse[]
-  className?: string
-  style: CSSProperties
-  highlightedVerseKey?: string | null
-  selectedVerseKey?: string | null
-  onAyahLongPress?: (verseKey: string) => void
-}) {
-  const verseKeys = verses.map((verse) => verse.verseKey)
-  const preferredVerseKey =
-    verseKeys.find((key) => key === selectedVerseKey || key === highlightedVerseKey) || verseKeys[0]
-  const longPress = useLongPress(() => {
-    if (preferredVerseKey) onAyahLongPress?.(preferredVerseKey)
-  })
-
-  return (
-    <div
-      data-verse-keys={verseKeys.join(' ')}
-      data-qcf-font-family={String(style.fontFamily ?? '')}
-      className={cn(
-        'mushaf-qcf-page-content',
-        highlightedVerseKey && verseKeys.includes(highlightedVerseKey) && 'mushaf-line--reciting',
-        selectedVerseKey && verseKeys.includes(selectedVerseKey) && 'mushaf-line--selected',
-        className
-      )}
-      style={style}
-      {...(onAyahLongPress ? longPress.handlers : {})}
-    >
-      {verses.map((verse) => (
-        <span
-          key={verse.id}
-          data-verse-keys={verse.verseKey}
-          className={cn(
-            'qcf-line',
-            highlightedVerseKey === verse.verseKey && 'mushaf-line--reciting',
-            selectedVerseKey === verse.verseKey && 'mushaf-line--selected'
-          )}
-        >
-          {verse.text}
-        </span>
-      ))}
-    </div>
-  )
+  return parts.join('')
 }
 
 function UnicodeMushafVerse({
@@ -267,22 +202,17 @@ function MushafWord({
 
 function MushafLineGlyphs({
   line,
-  qcfFontReady,
-  qcfFamily,
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
 }: {
   line: PageLine
-  qcfFontReady: boolean
-  qcfFamily: string
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
 }) {
   const verseKeys = verseKeysForLine(line)
-  const preferQcf = qcfFontReady && line.words.some((w) => Boolean(w.codeV2?.trim()))
-  const glyphs = buildLineGlyphString(line, preferQcf)
+  const glyphs = buildLineGlyphString(line)
   const isReciting = verseKeys.some((k) => k === highlightedVerseKey)
   const isSelected = !isReciting && verseKeys.some((k) => k === selectedVerseKey)
   const longPressVerseKey = verseKeys[verseKeys.length - 1] || verseKeys[0]
@@ -299,7 +229,7 @@ function MushafLineGlyphs({
         isReciting && 'mushaf-line--reciting',
         isSelected && 'mushaf-line--selected'
       )}
-      style={{ fontFamily: preferQcf ? qcfFamily : PLAIN_MUSHAF_FONT }}
+      style={{ fontFamily: PLAIN_MUSHAF_FONT }}
     >
       {glyphs}
     </span>
@@ -364,40 +294,20 @@ export default function QuranPageView({
   readMode = false,
   readOnly = false,
   hideRevealBoxes = false,
-  mushafStyle = 'indopak',
   pageNumber: pageNumberProp,
   highlightedVerseKey = null,
   selectedVerseKey = null,
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  const useGlyphs = wantsUthmaniGlyphs(mushafStyle)
-  const tryQcfFonts = shouldAttemptQcfFonts(mushafStyle)
-  const useStrictUthmani = readOnly && useGlyphs
-  const normalizedUthmaniVerses = useMemo(
-    () => (useStrictUthmani ? normalizeUthmaniPage(verses) : []),
-    [useStrictUthmani, verses]
-  )
-
   const useLineGlyphs = readMode && readOnly && !hideRevealBoxes
 
-  const { lines, nextVerseKey, pageNumber, hasQcfGlyphs } = useMemo(() => {
-    if (useStrictUthmani) {
-      return {
-        lines: [],
-        nextVerseKey: null,
-        pageNumber: pageNumberProp ?? verses.find((verse) => verse.page_number)?.page_number ?? 1,
-        hasQcfGlyphs: verses.some((verse) => Boolean(verse.code_v2?.trim())),
-      }
-    }
-
+  const { lines, nextVerseKey, pageNumber } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()
     const markerMap = new Map<number, Pick<PageLine, 'chapterNumber' | 'isSurahHeader' | 'isBasmalah'>>()
     let detectedPageNumber = 1
-    let detectedQcfGlyphs = false
-
     for (const verse of verses) {
-      const verseWords = getVerseWords(verse, useLineGlyphs)
+      const verseWords = getVerseWords(verse, false)
       const chapterNumber = Number(verse.verse_key.split(':')[0])
       const verseNumber = Number(verse.verse_key.split(':')[1])
       const firstLine = verseWords[0]?.lineNumber
@@ -416,7 +326,6 @@ export default function QuranPageView({
 
       for (const word of verseWords) {
         detectedPageNumber = word.pageNumber
-        detectedQcfGlyphs = detectedQcfGlyphs || Boolean(verse.words?.some((item) => item.code_v2))
         const lineWords = lineMap.get(word.lineNumber) || []
         lineWords.push(word)
         lineMap.set(word.lineNumber, lineWords)
@@ -456,25 +365,10 @@ export default function QuranPageView({
       lines: sortedLines,
       nextVerseKey: firstUnrevealed,
       pageNumber: pageNumberProp ?? detectedPageNumber,
-      hasQcfGlyphs: detectedQcfGlyphs,
     }
-  }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, useLineGlyphs, useStrictUthmani, verses])
-
-  const qcfFamily = qcfFontFamily(pageNumber)
-  const needsQuranFonts =
-    tryQcfFonts &&
-    (useStrictUthmani
-      ? normalizedUthmaniVerses.length > 0
-      : hasQcfGlyphs || lines.some((l) => l.isSurahHeader || l.isBasmalah))
+  }, [pageNumberProp, revealedAyahs, revealableVerseKeys, startIndex, verses])
 
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
-  const needsEndGlyphs =
-    hasQcfGlyphs || lines.some((line) => line.words.some((word) => Boolean(word.codeV2?.trim())))
-  const qcfFontReady = useQcfFont(
-    pageNumber,
-    (useStrictUthmani && tryQcfFonts && normalizedUthmaniVerses.length > 0) ||
-      (useLineGlyphs && needsEndGlyphs)
-  )
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
   const gridRef = useRef<HTMLDivElement>(null)
@@ -492,82 +386,6 @@ export default function QuranPageView({
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-500">
         <p>Starting verse not found on this page.</p>
-      </div>
-    )
-  }
-
-  if (useStrictUthmani && normalizedUthmaniVerses.length === 0) {
-    return (
-      <div
-        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
-        dir="rtl"
-        lang="ar"
-        aria-label="Uthmani glyph data unavailable"
-      >
-        <div className="mushaf-qcf-page h-full">
-          <div className="rounded-full bg-black/50 px-3 py-1 text-[11px] text-stone-300">
-            Uthmani glyph data unavailable.
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (useStrictUthmani && !tryQcfFonts) {
-    return (
-      <div
-        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
-        dir="rtl"
-        lang="ar"
-        aria-label="Uthmani font unavailable"
-      >
-        <div className="mushaf-qcf-page h-full">
-          <div className="rounded-full bg-black/50 px-3 py-1 text-[11px] text-stone-300">
-            Uthmani font unavailable. Connect to internet or download fonts.
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (useStrictUthmani && !qcfFontReady) {
-    return (
-      <div
-        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
-        dir="rtl"
-        lang="ar"
-        aria-label="Loading Uthmani page font"
-      >
-        <div className="mushaf-qcf-page h-full">
-          <div className="rounded-full bg-black/50 px-3 py-1 text-[11px] text-stone-300">
-            Loading Uthmani mushaf font…
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (useStrictUthmani) {
-    return (
-      <div
-        className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
-        dir="rtl"
-        lang="ar"
-        aria-label="Quran page"
-      >
-        <div ref={gridRef} className="mushaf-qcf-page h-full">
-          <QcfMushafPage
-            verses={normalizedUthmaniVerses}
-            style={{
-              fontFamily: qcfFamily,
-              letterSpacing: 0,
-              wordSpacing: 0,
-            }}
-            highlightedVerseKey={highlightedVerseKey}
-            selectedVerseKey={selectedVerseKey}
-            onAyahLongPress={ayahLongPress}
-          />
-        </div>
       </div>
     )
   }
@@ -599,19 +417,6 @@ export default function QuranPageView({
       lang="ar"
       aria-label="Quran page"
     >
-      {needsQuranFonts && (
-        <style>{`
-          .surah-header {
-            font-family: 'SurahNameV2';
-            line-height: 1;
-          }
-          .basmalah-ornament-inline {
-            font-family: 'SurahNameV2';
-            line-height: 1;
-          }
-        `}</style>
-      )}
-
       <div
         ref={gridRef}
         className={cn(
@@ -652,25 +457,11 @@ export default function QuranPageView({
             style={lineStyle}
           >
             {line.isSurahHeader && line.chapterNumber ? (
-              useLineGlyphs ? (
-                <span
-                  className="mushaf-surah-header-glyph surah-header"
-                  style={{ fontFamily: 'SurahNameV2' }}
-                  aria-label={formatSurahHeaderLabel(
-                    chapterNamesById[line.chapterNumber] || String(line.chapterNumber)
-                  )}
-                >
-                  {surahHeaderToken(line.chapterNumber)}
-                </span>
-              ) : (
-                <div className={cn('flex w-full items-center justify-center gap-3', textClass)}>
-                  <span>
-                    {formatSurahHeaderLabel(
-                      chapterNamesById[line.chapterNumber] || String(line.chapterNumber)
-                    )}
-                  </span>
-                </div>
-              )
+              <span className={cn('surah-header', textClass)}>
+                {formatSurahHeaderLabel(
+                  chapterNamesById[line.chapterNumber] || String(line.chapterNumber)
+                )}
+              </span>
             ) : line.isBasmalah ? (
               <div aria-label={BASMALAH}>
                 <span className="basmalah-ornament-inline" aria-hidden="true">
@@ -680,8 +471,6 @@ export default function QuranPageView({
             ) : useLineGlyphs ? (
               <MushafLineGlyphs
                 line={line}
-                qcfFontReady={qcfFontReady}
-                qcfFamily={qcfFamily}
                 highlightedVerseKey={highlightedVerseKey}
                 selectedVerseKey={selectedVerseKey}
                 onAyahLongPress={ayahLongPress}
@@ -721,7 +510,7 @@ export default function QuranPageView({
                       pageNumber={word.pageNumber}
                       codeV2={word.codeV2}
                       fallbackText={word.fallbackText}
-                      glyphFontReady={qcfFontReady}
+                      glyphFontReady={false}
                       className={cn(
                         isReciting && 'mushaf-word--reciting',
                         isSelected && !isReciting && 'mushaf-word--selected'

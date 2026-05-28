@@ -127,9 +127,6 @@ export default function SettingsPage() {
     setVerticalPages(s.verticalPages)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
-    if (s.mushafStyle === 'indopak') {
-      setAppSettings({ mushafStyle: 'uthmani' })
-    }
     refreshProfile()
     const onAuthChanged = () => refreshProfile()
     window.addEventListener('auth-user-changed', onAuthChanged)

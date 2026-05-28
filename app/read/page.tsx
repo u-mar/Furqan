@@ -75,7 +75,7 @@ function ReadPageContent() {
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { mushafStyle, reciterId, verticalPages, translationLanguage } = useAppSettings()
+  const { reciterId, verticalPages, translationLanguage } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
@@ -448,7 +448,6 @@ function ReadPageContent() {
           onReveal={() => {}}
           readOnly
           readMode
-          mushafStyle={mushafStyle}
           pageNumber={pageNum}
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
@@ -456,7 +455,7 @@ function ReadPageContent() {
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, mushafStyle]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -653,7 +652,6 @@ function ReadPageContent() {
             onReveal={() => {}}
             readOnly
             readMode
-            mushafStyle={mushafStyle}
             pageNumber={currentPage}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}

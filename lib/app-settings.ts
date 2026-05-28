@@ -1,11 +1,7 @@
 export type ThemeMode = 'light' | 'dark'
 
-/** Uthmani Hafs = connected Unicode Quran text; IndoPak = Naskh-style text layout. */
-export type MushafStyle = 'uthmani' | 'uthmani-glyphs' | 'indopak'
-
 export interface AppSettings {
   theme: ThemeMode
-  mushafStyle: MushafStyle
   offlineDownloaded: boolean
   reciterId: string
   /** Swipe up/down to turn pages instead of left/right. */
@@ -25,11 +21,26 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafStyle: 'uthmani-glyphs',
   offlineDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
+}
+
+function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }): AppSettings {
+  return {
+    theme: parsed.theme === 'light' ? 'light' : 'dark',
+    offlineDownloaded: Boolean(parsed.offlineDownloaded),
+    reciterId:
+      typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
+        ? parsed.reciterId
+        : DEFAULT_RECITER_ID,
+    verticalPages: Boolean(parsed.verticalPages),
+    translationLanguage:
+      parsed.translationLanguage && isTranslationLanguageId(parsed.translationLanguage)
+        ? parsed.translationLanguage
+        : DEFAULT_TRANSLATION_LANGUAGE,
+  }
 }
 
 export function getAppSettings(): AppSettings {
@@ -37,26 +48,12 @@ export function getAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaults
-    const parsed = JSON.parse(raw) as Partial<AppSettings>
-    return {
-      theme: parsed.theme === 'light' ? 'light' : 'dark',
-      mushafStyle:
-        parsed.mushafStyle === 'uthmani-glyphs'
-          ? 'uthmani-glyphs'
-          : parsed.mushafStyle === 'indopak'
-            ? 'uthmani'
-            : 'uthmani',
-      offlineDownloaded: Boolean(parsed.offlineDownloaded),
-      reciterId:
-        typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
-          ? parsed.reciterId
-          : DEFAULT_RECITER_ID,
-      verticalPages: Boolean(parsed.verticalPages),
-      translationLanguage:
-        parsed.translationLanguage && isTranslationLanguageId(parsed.translationLanguage)
-          ? parsed.translationLanguage
-          : DEFAULT_TRANSLATION_LANGUAGE,
+    const parsed = JSON.parse(raw) as Partial<AppSettings> & { mushafStyle?: string }
+    const next = parseSettings(parsed)
+    if ('mushafStyle' in parsed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     }
+    return next
   } catch {
     return defaults
   }
