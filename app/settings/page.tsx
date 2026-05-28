@@ -27,6 +27,7 @@ import {
 } from '@/lib/offline-translations'
 import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
+import { resolveSettingsReturnHref } from '@/lib/settings-return'
 
 function SettingsRow({
   title,
@@ -159,8 +160,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    const returnToParam = params.get('returnTo')
-    setReturnHref(returnToParam && returnToParam.startsWith('/') ? returnToParam : '/')
+    setReturnHref(resolveSettingsReturnHref(params.get('returnTo')))
   }, [])
 
   function handleLogout() {

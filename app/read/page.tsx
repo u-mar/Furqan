@@ -30,6 +30,7 @@ import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { getAppSettings } from '@/lib/app-settings'
+import { setSettingsReturnTo } from '@/lib/settings-return'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
 import {
@@ -586,7 +587,11 @@ function ReadPageContent() {
         >
           Retry
         </button>
-        <Link href="/settings" className="text-sm text-[var(--app-muted)] underline">
+        <Link
+          href="/settings"
+          onClick={() => setSettingsReturnTo(`/read?page=${currentPage}`)}
+          className="text-sm text-[var(--app-muted)] underline"
+        >
           Download offline in Settings
         </Link>
       </main>
@@ -707,10 +712,13 @@ function ReadPageContent() {
             <Search className="h-5 w-5" />
           </button>
           <Link
-            href={`/settings?returnTo=${encodeURIComponent(`/read?page=${currentPage}`)}`}
+            href="/settings"
             className="rounded-lg p-2 text-teal-600 hover:bg-black/5 dark:text-teal-400 dark:hover:bg-white/5"
             aria-label="Settings"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              setSettingsReturnTo(`/read?page=${currentPage}`)
+            }}
           >
             <Settings className="h-5 w-5" />
           </Link>

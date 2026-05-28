@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'al-quran-v9'
+const CACHE_VERSION = 'al-quran-v10'
 const STATIC_CACHE = 'al-quran-static-v9'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
 const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
@@ -91,17 +91,33 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(event.request))
 })
 
+function pathnameCacheKey(request) {
+  const url = new URL(request.url)
+  return url.origin + url.pathname
+}
+
 async function networkFirst(request) {
+  const pathKey = pathnameCacheKey(request)
+  const isNav = isNavigationRequest(request)
+
   try {
     const response = await fetch(request)
     if (response.ok && response.type === 'basic') {
       const cache = await caches.open(CACHE_VERSION)
       cache.put(request, response.clone())
+      // Same HTML shell for /settings?returnTo=… as /settings — reuse when offline.
+      if (isNav) {
+        cache.put(pathKey, response.clone())
+      }
     }
     return response
   } catch {
     const cached = await caches.match(request)
     if (cached) return cached
+    if (isNav) {
+      const byPath = await caches.match(pathKey)
+      if (byPath) return byPath
+    }
     return new Response('Offline', { status: 503, statusText: 'Offline' })
   }
 }

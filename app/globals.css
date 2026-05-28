@@ -15,8 +15,9 @@
   }
 }
 
-html.dark,
-:root {
+/* Default (no class) and .dark both use dark tokens — dark is the app default. */
+html,
+html.dark {
   color-scheme: dark;
   --home-heading: #f5f5f4;
   --home-muted: #a8a29e;

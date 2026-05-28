@@ -10,8 +10,7 @@ export default function HomeScreen({ children, className }: HomeScreenProps) {
   return (
     <main
       className={cn(
-        'home-screen relative min-h-[100dvh] w-full bg-white text-[var(--app-text)]',
-        'dark:bg-[var(--app-bg)]',
+        'home-screen relative min-h-[100dvh] w-full bg-[var(--app-bg)] text-[var(--app-text)]',
         'pb-[max(1.5rem,env(safe-area-inset-bottom))]',
         className
       )}
