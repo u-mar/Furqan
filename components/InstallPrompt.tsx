@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
 import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
+import { APP_NAME } from '@/lib/app-brand'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -106,7 +107,7 @@ export default function InstallPrompt() {
     ? 'Install on iPhone'
     : isAndroid && !canNativeInstall
       ? 'Install on Android'
-      : 'Install Al Quran'
+      : `Install ${APP_NAME}`
 
   const body = canNativeInstall ? (
     <p className="mt-1 text-xs leading-relaxed text-stone-400">
@@ -127,7 +128,7 @@ export default function InstallPrompt() {
   ) : (
     <p className="mt-1 text-xs leading-relaxed text-stone-400">
       In Chrome or Edge, open the browser menu and choose{' '}
-      <strong className="text-white">Install Al Quran</strong>, or use the install icon in the
+      <strong className="text-white">Install {APP_NAME}</strong>, or use the install icon in the
       address bar.
     </p>
   )

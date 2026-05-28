@@ -7,6 +7,7 @@ import InstallPrompt from '@/components/InstallPrompt'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
+import { APP_ICON_THEME_COLOR, APP_NAME } from '@/lib/app-brand'
 import './globals.css'
 import './mushaf-qcf.css'
 
@@ -27,17 +28,17 @@ const homeSerif = Cormorant_Garamond({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#000000',
+  themeColor: APP_ICON_THEME_COLOR,
 }
 
 export const metadata: Metadata = {
-  title: 'Al Quran',
-  description: 'Read the Quran and practice your hifdh',
-  applicationName: 'Al Quran',
+  title: APP_NAME,
+  description: 'Read the Quran and practice your hifdh with Al Furqaan',
+  applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Al Quran',
+    title: APP_NAME,
   },
   formatDetection: {
     telephone: false,

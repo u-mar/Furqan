@@ -1,21 +1,17 @@
 import { ImageResponse } from 'next/og'
+import {
+  APP_ICON_LETTER,
+  appIconLetterStyle,
+  appIconShellStyle,
+} from '@/lib/app-brand'
 
 export const runtime = 'edge'
 
 export async function GET() {
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(145deg, #065f46 0%, #000 55%)',
-        }}
-      >
-        <div style={{ color: '#fbbf24', fontSize: 256, fontWeight: 700, fontFamily: 'serif' }}>ق</div>
+      <div style={appIconShellStyle(0)}>
+        <div style={appIconLetterStyle(268)}>{APP_ICON_LETTER}</div>
       </div>
     ),
     { width: 512, height: 512 }

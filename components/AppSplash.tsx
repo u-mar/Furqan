@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { APP_NAME } from '@/lib/app-brand'
 
 const BISMILLAH = 'بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'
 const SPLASH_KEY = 'splash_shown_session'
@@ -32,7 +33,9 @@ export default function AppSplash() {
       >
         {BISMILLAH}
       </p>
-      <p className="mt-6 text-sm tracking-wide text-[var(--app-muted)]">Al Quran</p>
+      <p className="home-serif mt-6 text-lg font-semibold tracking-wide text-[var(--home-sage-deep)] dark:text-[#c5d9ab]">
+        {APP_NAME}
+      </p>
     </div>
   )
 }
