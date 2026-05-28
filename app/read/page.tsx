@@ -726,7 +726,7 @@ function ReadPageContent() {
         onClick={(e) => e.stopPropagation()}
       >
         {somaliNotice ? (
-          <p className="mx-auto max-w-lg rounded-lg bg-amber-500/15 px-3 py-2 text-center text-xs text-amber-200/90">
+          <p className="mx-auto max-w-lg rounded-lg border border-amber-500/35 bg-amber-500/15 px-3 py-2 text-center text-xs font-medium text-amber-950 dark:text-amber-100">
             {somaliNotice}
           </p>
         ) : null}

@@ -5,9 +5,11 @@ import { Bookmark, Play, Share2, Square } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
+import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
+import type { Verse } from '@/types'
 
 const DEFAULT_DAILY_VERSE_KEY = '2:152'
 const DEFAULT_SURAH = 'Al-Baqarah'
@@ -24,6 +26,7 @@ export default function DailyVerseCard() {
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState(false)
   const [dailyVerseKey, setDailyVerseKey] = useState(DEFAULT_DAILY_VERSE_KEY)
+  const [dailyVerse, setDailyVerse] = useState<Verse | null>(null)
   const [dailySurahLabel, setDailySurahLabel] = useState(DEFAULT_SURAH)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -48,6 +51,7 @@ export default function DailyVerseCard() {
       try {
         const verse = await getVerseByKey(dailyVerseKey)
         if (cancelled) return
+        setDailyVerse(verse)
         setArabic(getVerseArabicText(verse, { omitEndMark: true }))
         setPage(verse.page_number || 22)
 
@@ -117,6 +121,8 @@ export default function DailyVerseCard() {
 
   const [surahNum, ayahNum] = dailyVerseKey.split(':')
   const surahBadge = stripAyahRefFromLabel(dailySurahLabel)
+  const endWord = dailyVerse?.words?.find((word) => word.char_type_name === 'end')
+  const endMarkPage = endWord?.v2_page || endWord?.page_number || page
 
   const handlePlayToggle = () => {
     if (playing) {
@@ -178,7 +184,25 @@ export default function DailyVerseCard() {
           dir="rtl"
           lang="ar"
         >
-          {loading ? '…' : arabic || '…'}
+          {loading ? (
+            '…'
+          ) : (
+            <>
+              {arabic || '…'}
+              {dailyVerse ? (
+                <>
+                  {' '}
+                  <AyahEndMark
+                    verseKey={dailyVerseKey}
+                    pageNumber={endMarkPage}
+                    codeV2={endWord?.code_v2}
+                    fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
+                    className="text-white"
+                  />
+                </>
+              ) : null}
+            </>
+          )}
         </p>
 
         <p className="relative mb-6 text-center text-sm leading-relaxed text-white">

@@ -291,10 +291,16 @@ function TestPageContent() {
     }
   }
 
+  const pageScopeKeys = new Set(
+    pageVerses
+      .filter((v) => scopeVerseKeys.has(v.verse_key))
+      .map((v) => v.verse_key)
+  )
+
   const activeRevealKeys =
     mode === 'subac' && subacAssignments[currentParticipant]
       ? new Set([subacAssignments[currentParticipant]])
-      : scopeVerseKeys
+      : pageScopeKeys
 
   const revealedCount = revealedAyahs.size
   const startIndex = pageVerses.findIndex((v) => v.verse_key === startVerseKey)
@@ -349,8 +355,8 @@ function TestPageContent() {
             </div>
             <p className="mt-0.5 text-xs text-[var(--home-muted)]">
               {mode === 'subac' && subacAssignments.length > 0
-                ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · ${scopeLabel}`
-                : `${scopeLabel} · Page ${currentPage}`}
+                ? `Person ${currentParticipant + 1} of ${subacAssignments.length} · Ayah ${startVerseKey.split(':')[1] || ''}`
+                : `${scopeLabel} · Ayah ${startVerseKey.split(':')[1] || ''} · Page ${currentPage}`}
             </p>
           </div>
         </div>
@@ -392,7 +398,7 @@ function TestPageContent() {
               revealedAyahs={revealedAyahs}
               onReveal={handleReveal}
               readMode
-              readOnly
+              hideRevealBoxes
               pageNumber={currentPage}
             />
           </div>

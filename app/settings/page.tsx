@@ -25,6 +25,7 @@ import {
   areTranslationsCached,
   downloadOfflineTranslations,
 } from '@/lib/offline-translations'
+import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
 
 function SettingsRow({
@@ -108,9 +109,13 @@ export default function SettingsPage() {
   const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
-  const [translationsOffline, setTranslationsOffline] = useState(false)
+  const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
+    en: false,
+    so: false,
+  })
   const [downloading, setDownloading] = useState(false)
-  const [downloadingTranslations, setDownloadingTranslations] = useState(false)
+  const [downloadingTranslationLang, setDownloadingTranslationLang] =
+    useState<TranslationLanguageId | null>(null)
   const [translationProgress, setTranslationProgress] = useState(0)
   const [translationProgressLabel, setTranslationProgressLabel] = useState('')
   const [progress, setProgress] = useState(0)
@@ -134,11 +139,21 @@ export default function SettingsPage() {
     setVerticalPages(s.verticalPages)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
-    setTranslationsOffline(s.translationsDownloaded || areTranslationsCached())
+    setTranslationCached({
+      en: areTranslationsCached('en'),
+      so: areTranslationsCached('so'),
+    })
     refreshProfile()
     const onAuthChanged = () => refreshProfile()
     window.addEventListener('auth-user-changed', onAuthChanged)
-    return () => window.removeEventListener('auth-user-changed', onAuthChanged)
+    const onOfflineReady = () => {
+      setOffline(isOfflineReady() || getAppSettings().offlineDownloaded)
+    }
+    window.addEventListener('offline-bootstrap-complete', onOfflineReady)
+    return () => {
+      window.removeEventListener('auth-user-changed', onAuthChanged)
+      window.removeEventListener('offline-bootstrap-complete', onOfflineReady)
+    }
   }, [])
 
   useEffect(() => {
@@ -188,22 +203,40 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleDownloadTranslations() {
-    setDownloadingTranslations(true)
+  async function handleDownloadTranslation(lang: TranslationLanguageId) {
+    setDownloadingTranslationLang(lang)
     setError(null)
     setTranslationProgress(0)
     setTranslationProgressLabel('')
     try {
-      await downloadOfflineTranslations((p) => {
+      await downloadOfflineTranslations(lang, (p) => {
         setTranslationProgress(p.percent)
         setTranslationProgressLabel(p.label)
       })
+      setTranslationCached((prev) => ({ ...prev, [lang]: true }))
       setAppSettings({ translationsDownloaded: true })
-      setTranslationsOffline(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Translation download failed')
     } finally {
-      setDownloadingTranslations(false)
+      setDownloadingTranslationLang(null)
+    }
+  }
+
+  async function handleRetryOfflineBootstrap() {
+    setDownloading(true)
+    setError(null)
+    setProgress(0)
+    setProgressLabel('Preparing offline reader…')
+    try {
+      const ok = await bootstrapOfflineReader()
+      if (!ok) throw new Error('Offline setup did not complete')
+      setOffline(true)
+      setProgress(100)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Offline setup failed')
+    } finally {
+      setDownloading(false)
+      setProgressLabel('')
     }
   }
 
@@ -342,43 +375,56 @@ export default function SettingsPage() {
             Used in Read translation mode and when you long-press an ayah.
           </p>
 
-          <div className="mt-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
-            {translationsOffline ? (
-              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
-                <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Translations saved — English & Somali work offline
+          <p className="mt-3 text-xs text-[var(--home-muted)]">
+            Download each language separately for offline use (604 pages each). Use Wi‑Fi.
+          </p>
+
+          {downloadingTranslationLang && (
+            <div className="mt-4">
+              <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
+                <div
+                  className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
+                  style={{ width: `${translationProgress}%` }}
+                />
               </div>
-            ) : (
-              <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
-                Download translation text for all 604 pages (English and Somali). Use Wi‑Fi; this
-                may take a few minutes.
+              <p className="text-center text-xs font-medium text-[var(--home-muted)]">
+                {translationProgress}%
+                {translationProgressLabel ? ` · ${translationProgressLabel}` : ''}
               </p>
-            )}
+            </div>
+          )}
 
-            {downloadingTranslations && (
-              <div className="mb-4">
-                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
-                  <div
-                    className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
-                    style={{ width: `${translationProgress}%` }}
-                  />
-                </div>
-                <p className="text-center text-xs font-medium text-[var(--home-muted)]">
-                  {translationProgress}%
-                  {translationProgressLabel ? ` · ${translationProgressLabel}` : ''}
-                </p>
+          <div className="mt-4 space-y-2">
+            {TRANSLATION_LANGUAGES.map((lang) => (
+              <div
+                key={lang.id}
+                className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]"
+              >
+                {translationCached[lang.id] ? (
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    {lang.label} saved offline
+                  </div>
+                ) : (
+                  <p className="mb-3 text-sm text-[var(--home-muted)]">
+                    {lang.id === 'en'
+                      ? 'Sahih International — not downloaded yet'
+                      : 'Somali (Abduh) — not downloaded yet'}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={downloadingTranslationLang !== null || downloading}
+                  onClick={() => void handleDownloadTranslation(lang.id)}
+                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
+                >
+                  <Download className="h-4 w-4" />
+                  {translationCached[lang.id]
+                    ? `Re-download ${lang.label}`
+                    : `Download ${lang.label}`}
+                </button>
               </div>
-            )}
-
-            <button
-              type="button"
-              disabled={downloadingTranslations || downloading}
-              onClick={() => void handleDownloadTranslations()}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
-            >
-              <Download className="h-4 w-4" />
-              {translationsOffline ? 'Re-download translations' : 'Download translations offline'}
-            </button>
+            ))}
           </div>
         </section>
 
@@ -393,7 +439,7 @@ export default function SettingsPage() {
         </section>
 
         <section className="mb-8">
-          <SectionTitle>Offline</SectionTitle>
+          <SectionTitle>Offline reader</SectionTitle>
           <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
             {offline ? (
               <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
@@ -402,7 +448,9 @@ export default function SettingsPage() {
               </div>
             ) : (
               <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
-                Download Quran text and page data once for offline reading.
+                Install the app to your home screen and the Quran text plus mushaf fonts download
+                automatically. Open the installed app on Wi‑Fi and wait a minute if you are offline
+                here in the browser.
               </p>
             )}
 
@@ -426,24 +474,40 @@ export default function SettingsPage() {
               </p>
             )}
 
+            {!offline && (
+              <button
+                type="button"
+                disabled={downloading || downloadingTranslationLang !== null}
+                onClick={() => void handleRetryOfflineBootstrap()}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] text-sm font-bold text-white transition-opacity disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                Set up offline reader now
+              </button>
+            )}
+
             <button
               type="button"
-              disabled={downloading || downloadingTranslations}
+              disabled={downloading || downloadingTranslationLang !== null}
               onClick={handleDownload}
-              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] text-sm font-bold text-white shadow-md shadow-[rgba(93,122,72,0.25)] transition-opacity disabled:opacity-50"
+              className={cn(
+                'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50',
+                offline
+                  ? 'mt-3 border border-[var(--home-card-border)] text-[var(--home-muted)]'
+                  : 'mt-3 border border-[var(--home-sage-deep)] text-[var(--home-sage-deep)]'
+              )}
             >
-              <Download className="h-4 w-4" />
-              {offline ? 'Re-download Quran' : 'Download for offline'}
+              {offline ? 'Re-download Quran data' : 'Download manually (browser)'}
             </button>
 
             {!offline && (
               <button
                 type="button"
-                disabled={downloading || downloadingTranslations}
+                disabled={downloading || downloadingTranslationLang !== null}
                 onClick={handleUseBundled}
                 className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs font-medium text-[var(--home-muted)] underline-offset-2 hover:underline disabled:opacity-50"
               >
-                Already on server? Load bundled file
+                Load bundled file from server
               </button>
             )}
           </div>

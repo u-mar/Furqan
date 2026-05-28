@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import AppSplash from '@/components/AppSplash'
 import InstallPrompt from '@/components/InstallPrompt'
+import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
 import './globals.css'
@@ -68,6 +69,7 @@ export default function RootLayout({
           <AppShell>{children}</AppShell>
           <AdminRuntime />
           <PwaRegister />
+          <OfflineBootstrap />
           <InstallPrompt />
         </SettingsProvider>
       </body>

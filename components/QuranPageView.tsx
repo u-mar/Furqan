@@ -249,7 +249,20 @@ export default function QuranPageView({
   onAyahLongPress,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
-  const useQcfRead = readMode && (readOnly || hideRevealBoxes)
+  /** QCF layout for read mode; test/hifdh reveal uses the unicode mushaf path below. */
+  const useQcfRead = readMode && readOnly
+
+  const verseIndexByKey = useMemo(() => {
+    const map = new Map<string, number>()
+    verses.forEach((verse, index) => map.set(verse.verse_key, index))
+    return map
+  }, [verses])
+
+  const isBeforeStartVerse = (verseKey: string): boolean => {
+    if (startIndex < 0) return false
+    const idx = verseIndexByKey.get(verseKey)
+    return idx !== undefined && idx < startIndex
+  }
 
   const { lines, nextVerseKey, pageNumber } = useMemo(() => {
     const lineMap = new Map<number, PageWord[]>()
@@ -485,7 +498,32 @@ export default function QuranPageView({
         )}
       >
         {lines.map((line) => {
-          const lineVerseKeys = verseKeysForLine(line).join(' ')
+          const lineKeys = verseKeysForLine(line)
+          const startSurah =
+            startIndex >= 0 ? Number(verses[startIndex]?.verse_key.split(':')[0] || 0) : 0
+
+          if (
+            startIndex >= 0 &&
+            lineKeys.length > 0 &&
+            lineKeys.every((key) => isBeforeStartVerse(key))
+          ) {
+            return null
+          }
+
+          if (startIndex >= 0 && line.isSurahHeader && line.chapterNumber && line.chapterNumber < startSurah) {
+            return null
+          }
+
+          if (
+            startIndex >= 0 &&
+            line.isBasmalah &&
+            line.chapterNumber &&
+            line.chapterNumber < startSurah
+          ) {
+            return null
+          }
+
+          const lineVerseKeys = lineKeys.join(' ')
           const lineClassName = cn(
             readMode
               ? cn(
@@ -526,6 +564,8 @@ export default function QuranPageView({
               </div>
             ) : (
               line.words.map((word) => {
+                if (isBeforeStartVerse(word.verseKey)) return null
+
                 const isRevealed = revealedAyahs.has(word.verseKey)
                 const isNext = word.verseKey === nextVerseKey
                 const showText = isRevealed
