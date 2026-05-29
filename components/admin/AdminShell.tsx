@@ -2,8 +2,18 @@
 
 import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
-import { ChevronLeft, LayoutDashboard, Megaphone, MessageSquare, Shield, Users } from 'lucide-react'
+import {
+  ChevronLeft,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  MessageSquare,
+  Shield,
+  Users,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { logoutAdmin } from '@/lib/admin-api'
+import { APP_NAME } from '@/lib/app-brand'
 
 export type AdminSection = 'overview' | 'daily-verse' | 'feedback' | 'users' | 'popups'
 
@@ -41,15 +51,28 @@ export default function AdminShell({
         <div className="flex items-center justify-between gap-2 border-b border-[var(--home-card-border)] px-4 py-4">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-[var(--home-sage-deep)]" />
-            <span className="text-sm font-semibold text-[var(--home-heading)]">Admin</span>
+            <div>
+              <span className="text-sm font-semibold text-[var(--home-heading)]">Admin</span>
+              <p className="text-[10px] text-[var(--home-muted)]">{APP_NAME}</p>
+            </div>
           </div>
-          <Link
-            href="/"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--home-sage-deep)] hover:bg-[var(--home-sage-soft)]"
-            aria-label="Back to home"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void logoutAdmin().then(() => window.location.reload())}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--home-muted)] hover:bg-[var(--app-surface)]"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+            <Link
+              href="/"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--home-sage-deep)] hover:bg-[var(--home-sage-soft)]"
+              aria-label="Back to home"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+          </div>
         </div>
         <nav className="flex flex-col gap-0.5 p-2" aria-label="Admin sections">
           {NAV.map(({ id, label, Icon }) => (
@@ -81,7 +104,7 @@ export default function AdminShell({
               Admin Dashboard
             </h1>
             <p className="text-xs text-[var(--home-muted)]">
-              Hidden route — open <code className="text-[var(--home-sage-deep)]">/admin</code> directly.
+              Signed in · Users refresh every 20s · Online = active in last 90 seconds
             </p>
           </div>
           <button

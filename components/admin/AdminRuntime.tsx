@@ -21,7 +21,28 @@ export default function AdminRuntime() {
 
   useEffect(() => {
     if (!pathname) return
-    void trackUsage(pathname)
+
+    void trackUsage(pathname, { isActive: true })
+
+    const heartbeat = () => {
+      if (document.visibilityState === 'visible') {
+        void trackUsage(pathname, { isActive: true })
+      }
+    }
+    const interval = window.setInterval(heartbeat, 30_000)
+
+    const onVisibility = () => {
+      void trackUsage(pathname, {
+        isActive: document.visibilityState === 'visible',
+      })
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+      void trackUsage(pathname, { isActive: false })
+    }
   }, [pathname])
 
   useEffect(() => {

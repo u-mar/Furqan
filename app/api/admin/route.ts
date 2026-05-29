@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import {
+  isAdminRequestAuthenticated,
+  unauthorizedAdminResponse,
+} from '@/lib/admin-auth-server'
+import { mapAdminUser } from '@/lib/admin-user-map'
 
 const ADMIN_CONFIG_KEY = 'global'
 
-export async function GET() {
-  const [config, feedback, users] = await Promise.all([
+export async function GET(req: Request) {
+  if (!(await isAdminRequestAuthenticated(req))) {
+    return unauthorizedAdminResponse()
+  }
+
+  const [config, feedback, users, popups] = await Promise.all([
     prisma.adminConfig.findUnique({ where: { key: ADMIN_CONFIG_KEY } }),
     prisma.feedbackMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
-    prisma.userUsage.findMany({ orderBy: { lastSeenAt: 'desc' }, take: 200 }),
+    prisma.userUsage.findMany({ orderBy: { lastSeenAt: 'desc' }, take: 300 }),
+    prisma.popupMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
   ])
+
+  const now = Date.now()
+  const mappedUsers = users.map((u) => mapAdminUser(u, now))
 
   return NextResponse.json({
     dailyVerse: {
@@ -24,14 +37,21 @@ export async function GET() {
       contact: item.contact,
       createdAt: item.createdAt.getTime(),
     })),
-    users: users.map((user) => ({
-      userId: user.userId,
-      userName: user.userName,
-      createdAt: user.createdAt.getTime(),
-      lastSeenAt: user.lastSeenAt.getTime(),
-      totalVisits: user.totalVisits,
-      lastPath: user.lastPath,
-      pageViews: typeof user.pageViews === 'object' && user.pageViews ? user.pageViews : {},
+    users: mappedUsers,
+    stats: {
+      totalUsers: mappedUsers.length,
+      registered: mappedUsers.filter((u) => u.userKind === 'registered').length,
+      guests: mappedUsers.filter((u) => u.userKind === 'guest').length,
+      onlineNow: mappedUsers.filter((u) => u.isOnline).length,
+    },
+    popups: popups.map((p) => ({
+      id: p.id,
+      title: p.title,
+      body: p.body,
+      targetUserId: p.targetUserId,
+      createdAt: p.createdAt.getTime(),
+      dismissedBy: p.dismissedBy,
+      shownTo: [],
     })),
   })
 }

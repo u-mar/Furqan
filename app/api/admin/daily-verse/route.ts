@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server'
+import {
+  isAdminRequestAuthenticated,
+  unauthorizedAdminResponse,
+} from '@/lib/admin-auth-server'
 import { prisma } from '@/lib/prisma'
 
 const ADMIN_CONFIG_KEY = 'global'
@@ -13,6 +17,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!(await isAdminRequestAuthenticated(req))) {
+    return unauthorizedAdminResponse()
+  }
+
   const body = (await req.json()) as { verseKey?: string; surahName?: string }
   const verseKey = body.verseKey?.trim() ?? ''
   const surahName = body.surahName?.trim() ?? ''

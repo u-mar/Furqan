@@ -35,15 +35,17 @@ model FeedbackMessage {
 }
 
 model UserUsage {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String   @unique
-  userName   String
-  createdAt  DateTime @default(now())
-  lastSeenAt DateTime @default(now())
-  totalVisits Int     @default(0)
-  lastPath   String   @default("/")
-  pageViews  Json
-  updatedAt  DateTime @updatedAt
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @unique
+  userName      String
+  userKind      String    @default("guest")
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  lastOfflineAt DateTime?
+  totalVisits   Int       @default(0)
+  lastPath      String    @default("/")
+  pageViews     Json
+  updatedAt     DateTime  @updatedAt
 }
 
 model PopupMessage {

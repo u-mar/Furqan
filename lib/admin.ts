@@ -1,6 +1,12 @@
 'use client'
 
 import { getUsageIdentity } from '@/lib/usage-identity'
+import {
+  formatPresenceLabel,
+  isUserOnline,
+  resolveUserKind,
+  type UserKind,
+} from '@/lib/presence'
 
 const USAGE_SESSION_KEY = 'muyassar_usage_session_logged'
 
@@ -22,11 +28,23 @@ export interface FeedbackMessage {
 export interface UserUsage {
   userId: string
   userName: string
+  userKind: UserKind
   createdAt: number
   lastSeenAt: number
+  lastOfflineAt: number | null
+  isOnline: boolean
+  presenceLabel: string
+  presenceDetail: string
   totalVisits: number
   lastPath: string
   pageViews: Record<string, number>
+}
+
+export interface AdminStats {
+  totalUsers: number
+  registered: number
+  guests: number
+  onlineNow: number
 }
 
 export interface AdminPopupMessage {
@@ -44,6 +62,7 @@ interface AdminStore {
   feedback: FeedbackMessage[]
   users: UserUsage[]
   popups: AdminPopupMessage[]
+  stats?: AdminStats
 }
 
 const DEFAULT_DAILY_VERSE: DailyVerseConfig = {
@@ -116,6 +135,7 @@ export async function setDailyVerseConfig(
   const res = await fetch('/api/admin/daily-verse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ verseKey: nextVerseKey, surahName }),
   })
   if (!res.ok) {
@@ -138,34 +158,82 @@ export async function setDailyVerseConfig(
   return updated
 }
 
+function mapLocalUser(
+  partial: Omit<UserUsage, 'isOnline' | 'presenceLabel' | 'presenceDetail' | 'userKind'> & {
+    userKind?: UserKind
+    lastOfflineAt?: number | null
+  },
+  now = Date.now()
+): UserUsage {
+  const userKind = partial.userKind ?? resolveUserKind(partial.userId)
+  const presence = formatPresenceLabel(partial.lastSeenAt, partial.lastOfflineAt ?? null, now)
+  return {
+    ...partial,
+    userKind,
+    lastOfflineAt: partial.lastOfflineAt ?? null,
+    isOnline: isUserOnline(partial.lastSeenAt, now),
+    presenceLabel: presence.status === 'online' ? 'Online' : 'Offline',
+    presenceDetail: presence.detail,
+  }
+}
+
 function applyLocalUsageUpdate(
   profile: { id: string; name: string },
   pathname: string,
-  countSession: boolean
+  countSession: boolean,
+  isActive: boolean
 ): void {
   const store = readLocalAdminStore()
   const current = store.users.find((u) => u.userId === profile.id)
-  const updated: UserUsage = {
+  const now = Date.now()
+  const userKind = resolveUserKind(profile.id)
+
+  if (!isActive) {
+    const updated = mapLocalUser({
+      userId: profile.id,
+      userName: profile.name,
+      userKind,
+      createdAt: current?.createdAt ?? now,
+      lastSeenAt: current?.lastSeenAt ?? now,
+      lastOfflineAt: now,
+      totalVisits: current?.totalVisits ?? 0,
+      lastPath: current?.lastPath ?? pathname,
+      pageViews: current?.pageViews ?? {},
+    })
+    writeLocalAdminStore({
+      ...store,
+      users: [...store.users.filter((u) => u.userId !== profile.id), updated],
+    })
+    return
+  }
+
+  const updated = mapLocalUser({
     userId: profile.id,
     userName: profile.name,
-    createdAt: current?.createdAt ?? Date.now(),
-    lastSeenAt: Date.now(),
+    userKind,
+    createdAt: current?.createdAt ?? now,
+    lastSeenAt: now,
+    lastOfflineAt: current?.lastOfflineAt ?? null,
     totalVisits: (current?.totalVisits ?? 0) + (countSession ? 1 : 0),
     lastPath: pathname,
     pageViews: {
       ...(current?.pageViews ?? {}),
       [pathname]: ((current?.pageViews ?? {})[pathname] ?? 0) + 1,
     },
-  }
+  })
   writeLocalAdminStore({
     ...store,
     users: [...store.users.filter((u) => u.userId !== profile.id), updated],
   })
 }
 
-export async function trackUsage(pathname: string): Promise<void> {
+export async function trackUsage(
+  pathname: string,
+  options?: { isActive?: boolean }
+): Promise<void> {
   const profile = getOrCreateUserProfile()
-  const countSession = isNewUsageSession()
+  const countSession = options?.isActive === false ? false : isNewUsageSession()
+  const isActive = options?.isActive !== false
 
   try {
     const res = await fetch('/api/admin/usage', {
@@ -176,16 +244,17 @@ export async function trackUsage(pathname: string): Promise<void> {
         userName: profile.name,
         pathname,
         countSession,
+        isActive,
       }),
     })
     if (!res.ok) {
       const raw = await res.text()
       if (isDbConfigError(raw)) {
-        applyLocalUsageUpdate(profile, pathname, countSession)
+        applyLocalUsageUpdate(profile, pathname, countSession, isActive)
       }
     }
   } catch {
-    applyLocalUsageUpdate(profile, pathname, countSession)
+    applyLocalUsageUpdate(profile, pathname, countSession, isActive)
   }
 }
 
@@ -222,9 +291,19 @@ export async function addFeedbackMessage(message: string, contact: string): Prom
   return (await res.json()) as FeedbackMessage
 }
 
+function buildLocalStats(users: UserUsage[]): AdminStats {
+  return {
+    totalUsers: users.length,
+    registered: users.filter((u) => u.userKind === 'registered').length,
+    guests: users.filter((u) => u.userKind === 'guest').length,
+    onlineNow: users.filter((u) => u.isOnline).length,
+  }
+}
+
 export async function listAdminData(): Promise<AdminStore> {
   try {
-    const res = await fetch('/api/admin', { cache: 'no-store' })
+    const res = await fetch('/api/admin', { cache: 'no-store', credentials: 'include' })
+    if (res.status === 401) throw new Error('Admin session expired.')
     if (!res.ok) return readLocalAdminStore()
     const data = (await res.json()) as Partial<AdminStore>
     return {
@@ -232,9 +311,24 @@ export async function listAdminData(): Promise<AdminStore> {
       feedback: data.feedback ?? [],
       users: data.users ?? [],
       popups: data.popups ?? readLocalAdminStore().popups,
+      stats: data.stats,
     }
   } catch {
-    return readLocalAdminStore()
+    const local = readLocalAdminStore()
+    const users = local.users.map((u) =>
+      mapLocalUser({
+        userId: u.userId,
+        userName: u.userName,
+        userKind: u.userKind,
+        createdAt: u.createdAt,
+        lastSeenAt: u.lastSeenAt,
+        lastOfflineAt: u.lastOfflineAt,
+        totalVisits: u.totalVisits,
+        lastPath: u.lastPath,
+        pageViews: u.pageViews,
+      })
+    )
+    return { ...local, users, stats: buildLocalStats(users) }
   }
 }
 
@@ -246,6 +340,7 @@ export async function sendPopupToUser(input: {
   const res = await fetch('/api/admin/popup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(input),
   })
   if (!res.ok) {
