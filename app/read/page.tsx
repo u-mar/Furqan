@@ -627,7 +627,7 @@ function ReadPageContent() {
           'relative min-h-0 flex-1',
           showTranslation
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
-            : 'overflow-x-clip overflow-y-hidden px-1 pb-14 sm:px-2'
+            : 'overflow-x-hidden overflow-y-hidden px-3 pb-14 sm:px-4'
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}

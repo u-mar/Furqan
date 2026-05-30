@@ -28,16 +28,16 @@ function QcfLineGlyphs({
       inner.style.transform = 'none'
       inner.style.fontSize = ''
 
-      const available = outer.clientWidth * 0.92
+      const immersive = Boolean(outer.closest('.mushaf-reader-immersive'))
+      const available = outer.clientWidth * (immersive ? 0.96 : 0.92)
       let needed = inner.scrollWidth
       if (needed <= available || available <= 0) return
 
       const basePx = parseFloat(getComputedStyle(inner).fontSize)
       if (!Number.isFinite(basePx) || basePx <= 0) return
 
-      const immersive = Boolean(outer.closest('.mushaf-reader-immersive'))
-      const minPx = immersive ? 18 : 14
-      const ratio = (available / needed) * (immersive ? 0.99 : 0.97)
+      const minPx = immersive ? 15 : 14
+      const ratio = (available / needed) * (immersive ? 0.96 : 0.97)
       inner.style.fontSize = `${Math.max(minPx, basePx * ratio)}px`
     }
 

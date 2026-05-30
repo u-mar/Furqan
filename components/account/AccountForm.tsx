@@ -1,21 +1,50 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Loader2, UserPlus } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import PinField from '@/components/account/PinField'
 import { cn } from '@/lib/cn'
 import { loginLocalUser, setSignedInUser, signupLocalUser } from '@/lib/auth'
 
 export interface AccountFormProps {
   initialMode?: 'signup' | 'login'
   onSuccess: () => void
-  onModeChange?: (mode: 'signup' | 'login') => void
   compact?: boolean
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  disabled,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  autoComplete?: string
+  disabled?: boolean
+}) {
+  return (
+    <label className="block px-4 py-3.5">
+      <span className="mb-1.5 block text-xs font-medium text-[var(--home-muted)]">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        disabled={disabled}
+        placeholder={placeholder}
+        className="w-full bg-transparent text-[15px] text-[var(--home-heading)] placeholder:text-[var(--home-muted)]/70 focus:outline-none disabled:opacity-50"
+      />
+    </label>
+  )
 }
 
 export default function AccountForm({
   initialMode = 'signup',
   onSuccess,
-  onModeChange,
   compact = false,
 }: AccountFormProps) {
   const [mode, setMode] = useState<'signup' | 'login'>(initialMode)
@@ -25,12 +54,8 @@ export default function AccountForm({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    onModeChange?.(mode)
-  }, [mode, onModeChange])
-
   async function submit() {
-    if (!username.trim() || !pin.trim()) return
+    if (!username.trim() || pin.length < 4) return
     if (mode === 'signup' && !name.trim()) return
     setBusy(true)
     setError('')
@@ -83,95 +108,91 @@ export default function AccountForm({
           return
         }
       }
-      setError('Could not connect to server. Try again on Wi‑Fi.')
+      setError('Could not reach the server. Check your connection.')
     } finally {
       setBusy(false)
     }
   }
 
+  const canSubmit =
+    username.trim().length > 0 && pin.length === 4 && (mode === 'login' || name.trim().length > 0)
+
   return (
-    <div className={cn('space-y-4', compact && 'space-y-3')}>
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-[var(--home-card-border)] bg-[var(--app-surface)] p-1">
-        <button
-          type="button"
-          onClick={() => setMode('signup')}
-          className={cn(
-            'rounded-xl py-2.5 text-sm font-semibold transition-colors',
-            mode === 'signup'
-              ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-              : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-          )}
-        >
-          Create account
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('login')}
-          className={cn(
-            'rounded-xl py-2.5 text-sm font-semibold transition-colors',
-            mode === 'login'
-              ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-              : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-          )}
-        >
-          Sign in
-        </button>
+    <div className={cn('space-y-5', compact && 'space-y-4')}>
+      <div className="overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]">
+        <Field
+          label="Username"
+          value={username}
+          onChange={setUsername}
+          placeholder="ahmad"
+          autoComplete="username"
+          disabled={busy}
+        />
+        {mode === 'signup' ? (
+          <>
+            <div className="mx-4 border-t border-[var(--home-card-border)]" />
+            <Field
+              label="Name"
+              value={name}
+              onChange={setName}
+              placeholder="How we greet you"
+              autoComplete="name"
+              disabled={busy}
+            />
+          </>
+        ) : null}
       </div>
 
-      <div className="space-y-2.5">
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Username</span>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            placeholder="e.g. ahmad"
-            className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3.5 py-2.5 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/25"
-          />
-        </label>
-        {mode === 'signup' ? (
-          <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Your name</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-              placeholder="Display name"
-              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3.5 py-2.5 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/25"
-            />
-          </label>
-        ) : null}
-        <label className="block text-sm">
-          <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">4-digit PIN</span>
-          <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            inputMode="numeric"
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            placeholder="••••"
-            maxLength={4}
-            className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3.5 py-2.5 text-center text-lg tracking-[0.35em] text-[var(--app-text)] placeholder:tracking-normal placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/25"
-          />
-        </label>
-      </div>
+      <PinField value={pin} onChange={setPin} disabled={busy} />
 
       {error ? (
-        <p className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="text-sm leading-relaxed text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
       ) : null}
 
       <button
         type="button"
-        disabled={busy || !username.trim() || pin.length < 4 || (mode === 'signup' && !name.trim())}
+        disabled={busy || !canSubmit}
         onClick={() => void submit()}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] py-3.5 text-sm font-bold text-white shadow-md shadow-[rgba(93,122,72,0.3)] transition-opacity disabled:opacity-45"
+        className="flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-[var(--home-sage-deep)] text-[15px] font-semibold text-white transition-opacity active:scale-[0.99] disabled:opacity-40"
       >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <UserPlus className="h-4 w-4" />
-        )}
-        {busy ? 'Please wait…' : mode === 'signup' ? 'Create my account' : 'Sign in'}
+        {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : mode === 'signup' ? 'Continue' : 'Sign in'}
       </button>
+
+      <p className="text-center text-sm text-[var(--home-muted)]">
+        {mode === 'signup' ? (
+          <>
+            Already registered?{' '}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setMode('login')
+                setError('')
+              }}
+              className="font-semibold text-[var(--home-sage-deep)] underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Sign in
+            </button>
+          </>
+        ) : (
+          <>
+            First time here?{' '}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setMode('signup')
+                setError('')
+              }}
+              className="font-semibold text-[var(--home-sage-deep)] underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Create account
+            </button>
+          </>
+        )}
+      </p>
     </div>
   )
 }
