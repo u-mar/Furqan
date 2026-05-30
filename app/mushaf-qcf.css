@@ -169,3 +169,17 @@ html:not(.dark) .mushaf-qcf-line--selected {
 .mushaf-reader-immersive .mushaf-root .amiri {
   font-family: inherit !important;
 }
+
+/* Read screen: larger glyphs so text feels closer (not shrunken). */
+.mushaf-reader-immersive .mushaf-qcf-line__glyphs {
+  font-size: clamp(24px, calc((100dvh - 88px) / 15 * 0.58), 48px);
+  line-height: 1.75;
+}
+
+.mushaf-reader-immersive .mushaf-qcf-line--basmalah .mushaf-qcf-line__glyphs {
+  font-size: clamp(28px, 5.2vw, 52px);
+}
+
+.mushaf-reader-immersive .mushaf-qcf-line__scale {
+  padding-inline: clamp(4px, 1vw, 8px);
+}

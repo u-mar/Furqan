@@ -175,6 +175,15 @@ html.dark .mushaf-reader-immersive {
   min-height: 0;
 }
 
+.mushaf-reader-immersive .mushaf-fit-line {
+  font-size: clamp(1.05rem, 3.75dvh, 2.05rem);
+  line-height: 1.1;
+}
+
+html.dark .mushaf-reader-immersive .mushaf-fit-line {
+  font-size: clamp(1.12rem, 4dvh, 2.2rem);
+}
+
 .mushaf-fit-line {
   display: block;
 

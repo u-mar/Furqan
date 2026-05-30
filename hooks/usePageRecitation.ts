@@ -103,6 +103,16 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       const folder = getReciterById(reciterRef.current).folder
       const url = await getPlayableAyahAudioUrl(folder, surah, ayah)
 
+      if (!url) {
+        setState((s) => ({
+          ...s,
+          playing: false,
+          loading: false,
+          error: 'Audio unavailable offline. Download this surah in Listen first.',
+        }))
+        return
+      }
+
       setState((s) => ({
         ...s,
         playing: true,

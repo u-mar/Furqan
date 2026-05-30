@@ -22,7 +22,11 @@ import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { useSurahPlayer } from '@/hooks/useSurahPlayer'
-import { downloadSurahAudio, isSurahAudioDownloaded } from '@/lib/offline-audio'
+import {
+  downloadSurahAudio,
+  isSurahAudioDownloaded,
+  OFFLINE_AUDIO_HINT,
+} from '@/lib/offline-audio'
 import type { Chapter } from '@/types'
 
 export default function ListenScreen() {
@@ -35,9 +39,21 @@ export default function ListenScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [downloaded, setDownloaded] = useState<Record<number, boolean>>({})
   const [downloadedOnly, setDownloadedOnly] = useState(false)
+  const [isOffline, setIsOffline] = useState(false)
 
   const { state, surahProgress, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
     useSurahPlayer(settings.reciterId)
+
+  useEffect(() => {
+    const syncOnline = () => setIsOffline(!navigator.onLine)
+    syncOnline()
+    window.addEventListener('online', syncOnline)
+    window.addEventListener('offline', syncOnline)
+    return () => {
+      window.removeEventListener('online', syncOnline)
+      window.removeEventListener('offline', syncOnline)
+    }
+  }, [])
 
   useEffect(() => {
     getChapters()
@@ -69,6 +85,9 @@ export default function ListenScreen() {
   function handlePlaySurah(chapter: Chapter) {
     if (isActiveSurah(chapter.id)) {
       togglePlayPause()
+      return
+    }
+    if (isOffline && !downloaded[chapter.id]) {
       return
     }
     playSurah(chapter.id, chapter.englishName, chapter.versesCount)
@@ -117,6 +136,12 @@ export default function ListenScreen() {
             <h1 className="home-serif text-xl font-semibold text-[var(--home-heading)]">Listen</h1>
           </div>
         </header>
+
+        {isOffline ? (
+          <p className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-100">
+            {OFFLINE_AUDIO_HINT}
+          </p>
+        ) : null}
 
         <section className="mb-5">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
@@ -206,7 +231,11 @@ export default function ListenScreen() {
                     <button
                       type="button"
                       onClick={() => handlePlaySurah(chapter)}
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]"
+                      disabled={isOffline && !downloaded[chapter.id]}
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]',
+                        isOffline && !downloaded[chapter.id] && 'cursor-not-allowed opacity-55'
+                      )}
                     >
                     <span
                       className={cn(

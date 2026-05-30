@@ -35,8 +35,10 @@ function QcfLineGlyphs({
       const basePx = parseFloat(getComputedStyle(inner).fontSize)
       if (!Number.isFinite(basePx) || basePx <= 0) return
 
-      const ratio = (available / needed) * 0.97
-      inner.style.fontSize = `${Math.max(14, basePx * ratio)}px`
+      const immersive = Boolean(outer.closest('.mushaf-reader-immersive'))
+      const minPx = immersive ? 18 : 14
+      const ratio = (available / needed) * (immersive ? 0.99 : 0.97)
+      inner.style.fontSize = `${Math.max(minPx, basePx * ratio)}px`
     }
 
     fit()

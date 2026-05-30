@@ -72,6 +72,12 @@ let cachedChapters: Chapter[] | null = null
 export async function getChapters(): Promise<Chapter[]> {
   if (cachedChapters) return cachedChapters
 
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    const data = await loadQuranData()
+    cachedChapters = data.chapters
+    return cachedChapters
+  }
+
   try {
     const response = await fetch('/quran-chapters.json', { cache: 'force-cache' })
     if (!response.ok) throw new Error()

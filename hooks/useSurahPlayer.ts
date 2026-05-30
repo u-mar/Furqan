@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getReciterById } from '@/lib/reciters'
-import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
+import {
+  getPlayableAyahAudioUrl,
+  OFFLINE_AUDIO_HINT,
+  revokePlayableAyahAudioUrl,
+} from '@/lib/offline-audio'
 
 export interface SurahPlayerState {
   surahId: number | null
@@ -75,6 +79,17 @@ export function useSurahPlayer(reciterId: string) {
       }))
 
       const url = await getPlayableAyahAudioUrl(reciterFolder, surahId, ayah)
+
+      if (!url) {
+        if (session !== sessionRef.current) return
+        setState((s) => ({
+          ...s,
+          loading: false,
+          playing: false,
+          error: OFFLINE_AUDIO_HINT,
+        }))
+        return
+      }
 
       try {
         if (objectUrlRef.current) {

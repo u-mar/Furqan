@@ -42,27 +42,48 @@ export async function downloadSurahAudio(
   markSurahDownloaded(reciterFolder, surah)
 }
 
+export async function isAyahAudioCached(
+  reciterFolder: string,
+  surah: number,
+  ayah: number
+): Promise<boolean> {
+  if (typeof caches === 'undefined') return false
+  const folder = resolveReciterFolder(reciterFolder)
+  const url = everyAyahAudioUrl(folder, surah, ayah)
+  const cache = await caches.open(AUDIO_CACHE)
+  const hit = await cache.match(url)
+  return Boolean(hit)
+}
+
 export async function getPlayableAyahAudioUrl(
   reciterFolder: string,
   surah: number,
   ayah: number
-): Promise<string> {
+): Promise<string | null> {
   const folder = resolveReciterFolder(reciterFolder)
   const onlineUrl = everyAyahAudioUrl(folder, surah, ayah)
-  if (typeof caches === 'undefined') return onlineUrl
+  if (typeof caches === 'undefined') {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return null
+    return onlineUrl
+  }
 
   const cache = await caches.open(AUDIO_CACHE)
   const hit = await cache.match(onlineUrl)
-  if (!hit) return onlineUrl
-
-  try {
-    const blob = await hit.blob()
-    if (blob.size > 0) return URL.createObjectURL(blob)
-    return onlineUrl
-  } catch {
-    return onlineUrl
+  if (hit) {
+    try {
+      const blob = await hit.blob()
+      if (blob.size > 0) return URL.createObjectURL(blob)
+    } catch {
+      /* fall through */
+    }
   }
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null
+  return onlineUrl
 }
+
+export const OFFLINE_AUDIO_HINT =
+  'You are offline. Tap the download icon on a surah while on Wi‑Fi to listen without internet.'
 
 export function revokePlayableAyahAudioUrl(url: string): void {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url)

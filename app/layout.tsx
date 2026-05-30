@@ -4,6 +4,7 @@ import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import AppSplash from '@/components/AppSplash'
 import InstallPrompt from '@/components/InstallPrompt'
+import WelcomeAccountDialog from '@/components/onboarding/WelcomeAccountDialog'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
@@ -76,6 +77,7 @@ export default function RootLayout({
           <PwaRegister />
           <OfflineBootstrap />
           <InstallPrompt />
+          <WelcomeAccountDialog />
         </SettingsProvider>
       </body>
     </html>
