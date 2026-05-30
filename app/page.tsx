@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Menu, Users, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
 import HomeScreen from '@/components/home/HomeScreen'
@@ -13,6 +13,7 @@ import {
 } from '@/components/home/TileIcons'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { cn } from '@/lib/cn'
+import { getSignedInUser } from '@/lib/auth'
 
 const exploreTiles = [
   { id: 'read', label: 'Read', href: '/read', Icon: IconRead, themed: true },
@@ -24,6 +25,14 @@ const exploreTiles = [
 export default function Home() {
   useAppSettings()
   const [communityOpen, setCommunityOpen] = useState(false)
+  const [displayName, setDisplayName] = useState('Guest')
+
+  useEffect(() => {
+    const syncName = () => setDisplayName(getSignedInUser()?.name ?? 'Guest')
+    syncName()
+    window.addEventListener('auth-user-changed', syncName)
+    return () => window.removeEventListener('auth-user-changed', syncName)
+  }, [])
 
   return (
     <HomeScreen className="max-w-lg mx-auto">
@@ -31,7 +40,7 @@ export default function Home() {
         <div>
           <p className="text-sm text-[var(--home-muted)]">Assalamu&apos;alaikum,</p>
           <h1 className="home-serif mt-0.5 text-[2rem] font-semibold leading-tight text-[var(--home-heading)]">
-            Reader
+            {displayName}
           </h1>
         </div>
         <Link

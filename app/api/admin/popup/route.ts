@@ -10,9 +10,18 @@ export async function GET(req: Request) {
   const userId = (searchParams.get('userId') || '').trim()
   if (!userId) return NextResponse.json({ popups: [] })
 
+  const sinceParam = Number(searchParams.get('since') || 0)
+  const usage = await prisma.userUsage.findUnique({ where: { userId } })
+  const cutoffMs = usage
+    ? usage.createdAt.getTime()
+    : Number.isFinite(sinceParam) && sinceParam > 0
+      ? sinceParam
+      : Date.now()
+
   const popups = await prisma.popupMessage.findMany({
     where: {
       OR: [{ targetUserId: 'all' }, { targetUserId: userId }],
+      createdAt: { gte: new Date(cutoffMs) },
     },
     orderBy: { createdAt: 'desc' },
     take: 25,

@@ -48,7 +48,10 @@ export default function AdminRuntime() {
   useEffect(() => {
     const loadPending = async () => {
       const list = await getPendingPopupsForCurrentUser()
-      setActivePopup((current) => current ?? list[0] ?? null)
+      setActivePopup((current) => {
+        if (current && list.some((p) => p.id === current.id)) return current
+        return list[0] ?? null
+      })
     }
 
     void loadPending()
@@ -56,10 +59,12 @@ export default function AdminRuntime() {
     const sync = () => void loadPending()
     window.addEventListener('storage', sync)
     window.addEventListener('admin-store-changed', sync)
+    window.addEventListener('auth-user-changed', sync)
     return () => {
       window.clearInterval(timer)
       window.removeEventListener('storage', sync)
       window.removeEventListener('admin-store-changed', sync)
+      window.removeEventListener('auth-user-changed', sync)
     }
   }, [])
 
@@ -105,8 +110,11 @@ export default function AdminRuntime() {
             <button
               type="button"
               onClick={() => {
-                void dismissPopupForCurrentUser(activePopup.id)
-                setActivePopup(null)
+                const dismissedId = activePopup.id
+                void dismissPopupForCurrentUser(dismissedId).then(async () => {
+                  const list = await getPendingPopupsForCurrentUser()
+                  setActivePopup(list.find((p) => p.id !== dismissedId) ?? null)
+                })
               }}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--app-surface)]"
               aria-label="Dismiss message"

@@ -1,6 +1,6 @@
 'use client'
 
-import { getUsageIdentity } from '@/lib/usage-identity'
+import { getFirstSeenAt, getUsageIdentity } from '@/lib/usage-identity'
 import {
   formatPresenceLabel,
   isUserOnline,
@@ -104,7 +104,13 @@ function isDbConfigError(message: string): boolean {
 
 export function getOrCreateUserProfile(): { id: string; name: string; createdAt: number } {
   const identity = getUsageIdentity()
-  return { id: identity.userId, name: identity.userName, createdAt: Date.now() }
+  return { id: identity.userId, name: identity.userName, createdAt: getFirstSeenAt() }
+}
+
+function popupIsNewForUser(popup: AdminPopupMessage, userId: string, firstSeenAt: number): boolean {
+  if (popup.dismissedBy.includes(userId)) return false
+  if (popup.targetUserId !== 'all' && popup.targetUserId !== userId) return false
+  return popup.createdAt >= firstSeenAt
 }
 
 function isNewUsageSession(): boolean {
@@ -368,27 +374,21 @@ export async function sendPopupToUser(input: {
 export async function getPendingPopupsForCurrentUser(): Promise<AdminPopupMessage[]> {
   const profile = getOrCreateUserProfile()
   if (profile.id === 'anon') return []
+  const firstSeenAt = getFirstSeenAt()
   try {
-    const res = await fetch(`/api/admin/popup?userId=${encodeURIComponent(profile.id)}`, {
-      cache: 'no-store',
-    })
+    const res = await fetch(
+      `/api/admin/popup?userId=${encodeURIComponent(profile.id)}&since=${firstSeenAt}`,
+      { cache: 'no-store' }
+    )
     if (!res.ok) {
       const store = readLocalAdminStore()
-      return store.popups.filter(
-        (popup) =>
-          (popup.targetUserId === 'all' || popup.targetUserId === profile.id) &&
-          !popup.dismissedBy.includes(profile.id)
-      )
+      return store.popups.filter((popup) => popupIsNewForUser(popup, profile.id, firstSeenAt))
     }
     const data = (await res.json()) as { popups: AdminPopupMessage[] }
     return data.popups
   } catch {
     const store = readLocalAdminStore()
-    return store.popups.filter(
-      (popup) =>
-        (popup.targetUserId === 'all' || popup.targetUserId === profile.id) &&
-        !popup.dismissedBy.includes(profile.id)
-    )
+    return store.popups.filter((popup) => popupIsNewForUser(popup, profile.id, firstSeenAt))
   }
 }
 
