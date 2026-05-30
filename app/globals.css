@@ -175,16 +175,7 @@ html.dark .mushaf-reader-immersive {
   min-height: 0;
 }
 
-.mushaf-reader-immersive .mushaf-fit-line {
-  font-size: clamp(0.98rem, 3.35dvh, 1.92rem);
-  line-height: 1.1;
-  overflow: visible;
-}
-
-html.dark .mushaf-reader-immersive .mushaf-fit-line {
-  font-size: clamp(1.02rem, 3.5dvh, 2rem);
-}
-
+/* QCF lines: allow glyph overflow so line ends are not cut off on the left (RTL). */
 .mushaf-reader-immersive .mushaf-fit-line.mushaf-qcf-line {
   overflow: visible;
 }
