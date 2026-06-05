@@ -83,7 +83,26 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
 
       const startPlayback = async () => {
         try {
-          audio.currentTime = Math.max(0, segment.start)
+          const target = Math.max(0, segment.start)
+          if (Math.abs(audio.currentTime - target) > 0.25) {
+            await new Promise<void>((resolve, reject) => {
+              const onSeeked = () => {
+                cleanup()
+                resolve()
+              }
+              const onError = () => {
+                cleanup()
+                reject(new Error('seek failed'))
+              }
+              const cleanup = () => {
+                audio.removeEventListener('seeked', onSeeked)
+                audio.removeEventListener('error', onError)
+              }
+              audio.addEventListener('seeked', onSeeked)
+              audio.addEventListener('error', onError)
+              audio.currentTime = target
+            })
+          }
           await audio.play()
           if (session !== sessionRef.current) return
           setState({ playing: true, loading: false, verseKey, error: null })

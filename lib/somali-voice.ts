@@ -19,6 +19,8 @@ export interface SomaliVoiceAyahTiming {
 
 export interface SomaliVoiceChunk {
   file: string
+  /** Overrides manifest-level timeFormat for this chunk. */
+  timeFormat?: SomaliVoiceTimeFormat
   ayahs: SomaliVoiceAyahTiming[]
 }
 
@@ -26,6 +28,12 @@ export interface SomaliVoiceManifest {
   version?: number
   /** Default: m.ss (minutes.seconds). Set "seconds" for raw second values. */
   timeFormat?: SomaliVoiceTimeFormat
+  range?: {
+    startSurah: number
+    startAyah: number
+    endSurah: number
+    endAyah: number
+  }
   chunks: SomaliVoiceChunk[]
 }
 
@@ -88,9 +96,10 @@ export function parseSomaliTimestamp(
 }
 
 function buildSegmentIndex(manifest: SomaliVoiceManifest): Map<string, SomaliVoiceSegment> {
-  const timeFormat = manifest.timeFormat ?? 'm.ss'
+  const defaultTimeFormat = manifest.timeFormat ?? 'm.ss'
   const map = new Map<string, SomaliVoiceSegment>()
   for (const chunk of manifest.chunks) {
+    const timeFormat = chunk.timeFormat ?? defaultTimeFormat
     const audioUrl = somaliVoiceAudioUrl(chunk.file)
     for (const ayah of chunk.ayahs) {
       const start = parseSomaliTimestamp(ayah.start, timeFormat)
