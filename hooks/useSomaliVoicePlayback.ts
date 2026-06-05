@@ -170,15 +170,16 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
           audio.src = segment.audioUrl
           audio.load()
           await waitForAudioCanPlay(audio, LOAD_TIMEOUT_MS)
-          if (session !== sessionRef.current) return
+          if (session !== sessionRef.current) return false
         }
 
         await startPlayback()
+        if (session !== sessionRef.current) return false
+        return true
       } catch {
         fail(session, 'Could not load Somali voice audio.')
+        return false
       }
-
-      return true
     },
     [fail]
   )
