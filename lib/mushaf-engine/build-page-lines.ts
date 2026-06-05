@@ -1,3 +1,4 @@
+import { surahHasOpeningBasmalah } from '@/lib/mushaf-basmalah'
 import type { Verse, VerseWord } from '@/types'
 import type { MushafLineModel, MushafLineSegment, MushafPageModel } from '@/lib/mushaf-engine/types'
 import {
@@ -49,7 +50,7 @@ function markSurahDecorations(
     const firstLine = firstOnPage?.line_number
     if (!firstLine) continue
 
-    const hasBasmalah = chapter !== 1 && chapter !== 9
+    const hasBasmalah = surahHasOpeningBasmalah(chapter)
     const headerLine = firstLine - (hasBasmalah ? 2 : 1)
     const basmalahLine = firstLine - 1
 

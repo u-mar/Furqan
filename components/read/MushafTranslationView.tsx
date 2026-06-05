@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
+import { surahHasOpeningBasmalah } from '@/lib/mushaf-basmalah'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
@@ -76,7 +77,7 @@ export default function MushafTranslationView({
         const num = verseNumber(row.verse_key)
         const surah = surahNumber(row.verse_key)
         const isReciting = highlightedVerseKey === row.verse_key
-        const showBasmalah = num === 1 && surah !== 1 && surah !== 9
+        const showBasmalah = num === 1 && surahHasOpeningBasmalah(surah)
 
         return (
           <article

@@ -107,7 +107,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export default function SettingsPage() {
   const [returnHref, setReturnHref] = useState('/')
   const [theme, setTheme] = useState<ThemeMode>('dark')
-  const [verticalPages, setVerticalPages] = useState(false)
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
@@ -137,7 +136,6 @@ export default function SettingsPage() {
   useEffect(() => {
     const s = getAppSettings()
     setTheme(s.theme)
-    setVerticalPages(s.verticalPages)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
@@ -172,11 +170,6 @@ export default function SettingsPage() {
     setTheme(next)
     setAppSettings({ theme: next })
     applyThemeToDocument(next)
-  }
-
-  function saveVerticalPages(next: boolean) {
-    setVerticalPages(next)
-    setAppSettings({ verticalPages: next })
   }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
@@ -426,16 +419,6 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="mb-8">
-          <SectionTitle>Reader</SectionTitle>
-          <SettingsToggle
-            title="Vertical pages"
-            description="Swipe up and down to turn pages. Off uses left and right swipes."
-            enabled={verticalPages}
-            onToggle={() => saveVerticalPages(!verticalPages)}
-          />
         </section>
 
         <section className="mb-8">

@@ -79,7 +79,9 @@ function ReadPageContent() {
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { reciterId, verticalPages, translationLanguage } = useAppSettings()
+  const { reciterId, translationLanguage } = useAppSettings()
+  /** Vertical page swipes hidden in Settings for now — always horizontal. */
+  const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)

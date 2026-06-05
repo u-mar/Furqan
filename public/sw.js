@@ -5,7 +5,7 @@ const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
-const PRECACHE = ['/quran-chapters.json', '/quran-data.json']
+const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-name-v2.ttf']
 
 function isNavigationRequest(request) {
   return (
@@ -126,6 +126,13 @@ async function qcfFontCacheFirst(request) {
   const qcfCache = await caches.open(QCF_FONT_CACHE)
   const hit = await qcfCache.match(request)
   if (hit) return hit
+
+  const url = new URL(request.url)
+  const legacyPath = url.pathname.replace(/^\/qcf\//, '/fonts/qcf/')
+  if (legacyPath !== url.pathname) {
+    const legacyHit = await qcfCache.match(legacyPath)
+    if (legacyHit) return legacyHit
+  }
 
   try {
     const response = await fetch(request)

@@ -1,4 +1,8 @@
-import { resolveQcfFontUrlsForLoad, resolveSurahNameFontUrl } from '@/lib/offline-font-cache'
+import {
+  areOfflineFontsCached,
+  resolveQcfFontUrlsForLoad,
+  resolveSurahNameFontUrl,
+} from '@/lib/offline-font-cache'
 import { qcfCdnFontUrl, qcfPageFontFamily } from '@/lib/qcf-font-cdn'
 
 export {
@@ -148,13 +152,22 @@ export async function loadSurahNameFont(): Promise<boolean> {
         return true
       }
       const url = await resolveSurahNameFontUrl()
-      const buffer = await fetchFontBuffer(url)
-      const face = new FontFace('SurahNameV2', buffer, { display: 'block' })
-      const loaded = await face.load()
-      document.fonts.add(loaded)
-      await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "SurahNameV2"`)
-      surahNameLoaded = true
-      return true
+      try {
+        const buffer = await fetchFontBuffer(url)
+        const face = new FontFace('SurahNameV2', buffer, { display: 'block' })
+        const loaded = await face.load()
+        document.fonts.add(loaded)
+        await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "SurahNameV2"`)
+        surahNameLoaded = true
+        return true
+      } catch {
+        /* Bundled @font-face in globals.css — enough for offline surah titles */
+        if (document.fonts.check('16px "SurahNameV2"')) {
+          surahNameLoaded = true
+          return true
+        }
+        return false
+      }
     } catch {
       return false
     } finally {
@@ -195,11 +208,14 @@ export async function loadPageFont(
         console.info('[Muyassar] Loading QCF font', { page, family, urls })
       }
 
+      const skipGlyphCheck =
+        (typeof navigator !== 'undefined' && !navigator.onLine) || areOfflineFontsCached()
+
       for (const url of urls) {
         try {
           const ok = await loadViaFontFace(page, url)
           if (!ok) continue
-          if (sample && !canRenderQcfGlyphs(family, sample)) {
+          if (sample && !skipGlyphCheck && !canRenderQcfGlyphs(family, sample)) {
             if (shouldLogFontDebug()) {
               console.warn('[Muyassar] QCF font loaded but glyphs did not render', {
                 page,

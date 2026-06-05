@@ -3,6 +3,7 @@
 import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
+import { BASMALAH_ARABIC, BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
 import type { QcfPageLine } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
 
@@ -121,6 +122,10 @@ function QcfLineComponent({
   const content =
     line.kind === 'surah-header' ? (
       <span className="mushaf-qcf-line__surah-name">{line.text}</span>
+    ) : line.kind === 'basmalah' ? (
+      <span className="mushaf-qcf-line__glyphs" style={glyphStyle} aria-label={BASMALAH_ARABIC}>
+        {BASMALAH_ORNAMENT}
+      </span>
     ) : line.kind === 'empty' ? null : (
       <QcfLineGlyphs
         text={line.text}

@@ -6,7 +6,13 @@ import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import MushafPageView from '@/components/mushaf/MushafPageView'
+import {
+  BASMALAH_ARABIC,
+  BASMALAH_ORNAMENT,
+  surahHasOpeningBasmalah,
+} from '@/lib/mushaf-basmalah'
 import { pageHasQcfData, qcfPageSampleGlyphs } from '@/lib/qcf-page'
+import { isOfflineReady } from '@/lib/local-quran-store'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -51,9 +57,6 @@ interface PageLine {
   isBasmalah?: boolean
 }
 
-const BASMALAH = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
-const BASMALAH_ORNAMENT = '﷽'
-
 function formatSurahHeaderLabel(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) return 'Surah'
@@ -74,8 +77,7 @@ function surahAyahFromKey(verseKey: string): { surah: number; ayah: number } {
 function shouldShowBasmalah(verse: Verse): boolean {
   const { surah, ayah } = surahAyahFromKey(verse.verse_key)
   if (ayah !== 1) return false
-  if (surah === 1 || surah === 9) return false
-  return true
+  return surahHasOpeningBasmalah(surah)
 }
 
 function verseKeysForLine(line: PageLine): string[] {
@@ -151,7 +153,7 @@ function UnicodeMushafPage({
         <div key={verse.verse_key} className="mushaf-unicode-verse-wrap">
           {shouldShowBasmalah(verse) && (
             <div className="mushaf-page-line mushaf-page-line--basmalah text-center">
-              <span className="basmalah-ornament-inline" aria-label={BASMALAH}>
+              <span className="basmalah-ornament-inline" aria-label={BASMALAH_ARABIC}>
                 {BASMALAH_ORNAMENT}
               </span>
             </div>
@@ -276,7 +278,7 @@ export default function QuranPageView({
       const firstLine = verseWords[0]?.lineNumber
 
       if (verseNumber === 1 && firstLine) {
-        const hasBasmalah = chapterNumber !== 1 && chapterNumber !== 9
+        const hasBasmalah = surahHasOpeningBasmalah(chapterNumber)
         const headerLine = firstLine - (hasBasmalah ? 2 : 1)
         const basmalahLine = firstLine - 1
 
@@ -342,6 +344,12 @@ export default function QuranPageView({
     qcfSample
   )
 
+  const preferUnicodeFallback =
+    useQcfRead &&
+    hasQcfData &&
+    qcfFont.failed &&
+    (isOfflineReady() || (typeof navigator !== 'undefined' && !navigator.onLine))
+
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
@@ -384,7 +392,7 @@ export default function QuranPageView({
     )
   }
 
-  if (useQcfRead) {
+  if (useQcfRead && !preferUnicodeFallback) {
     if (!hasQcfData) {
       return (
         <div
@@ -569,7 +577,7 @@ export default function QuranPageView({
                 )}
               </span>
             ) : line.isBasmalah ? (
-              <div aria-label={BASMALAH}>
+              <div aria-label={BASMALAH_ARABIC}>
                 <span className="basmalah-ornament-inline" aria-hidden="true">
                   {BASMALAH_ORNAMENT}
                 </span>

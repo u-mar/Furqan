@@ -57,27 +57,40 @@ async function qcfFontInCache(page: number): Promise<boolean> {
  * Offline: same-origin `/qcf/p{n}.woff2` (service worker serves Cache API bytes).
  * Online: Quran Foundation CDN. Never probes missing `public/qcf` files (avoids 404 spam).
  */
+function isOfflineBrowser(): boolean {
+  return typeof navigator !== 'undefined' && !navigator.onLine
+}
+
 export async function resolveQcfFontUrl(page: number): Promise<string> {
   if (page < 1 || page > TOTAL_MUSHAF_FONT_PAGES) return qcfCdnFontUrl(page)
 
-  if (await qcfFontInCache(page)) {
+  if (areOfflineFontsCached() || isOfflineBrowser() || (await qcfFontInCache(page))) {
     return qcfLocalFontUrl(page)
   }
 
   return qcfCdnFontUrl(page)
 }
 
-/** URLs to try in order: offline SW path (if cached), then CDN. */
+/** URLs to try in order: local/SW paths when offline or fonts were downloaded, then CDN when online. */
 export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]> {
   const cdn = qcfCdnFontUrl(page)
+  const local = qcfLocalFontUrl(page)
+  const legacy = qcfLegacyLocalFontUrl(page)
   const urls: string[] = []
+  const offline = isOfflineBrowser()
+  const fontsCached = areOfflineFontsCached()
+  const inCache = await qcfFontInCache(page)
 
-  if (await qcfFontInCache(page)) {
-    urls.push(qcfLocalFontUrl(page))
+  if (fontsCached || offline || inCache) {
+    urls.push(local)
+    if (legacy !== local) urls.push(legacy)
   }
 
-  if (!urls.includes(cdn)) urls.push(cdn)
-  return urls
+  if (!offline) {
+    if (!urls.includes(cdn)) urls.push(cdn)
+  }
+
+  return urls.length > 0 ? urls : [cdn]
 }
 
 export async function resolveSurahNameFontUrl(): Promise<string> {
