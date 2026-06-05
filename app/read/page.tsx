@@ -393,6 +393,9 @@ function ReadPageContent() {
     (verseKey: string) => {
       longPressBlockTap.current = true
       stopRecitation()
+      stopSomaliVoice()
+      somaliAutoRef.current = false
+      setSomaliAutoPlaying(false)
       const verse = pageVerses.find((v) => v.verse_key === verseKey)
       if (!verse) return
       setAyahMenu({
@@ -401,7 +404,7 @@ function ReadPageContent() {
       })
       setAyahMenuBookmarked(isBookmarked(verseKey))
     },
-    [pageVerses, stopRecitation]
+    [pageVerses, stopRecitation, stopSomaliVoice]
   )
 
   const getNextVerseOnPage = useCallback(
@@ -892,11 +895,15 @@ function ReadPageContent() {
         }
         onClose={() => {
           stopSomaliVoice()
+          somaliAutoRef.current = false
+          setSomaliAutoPlaying(false)
           setAyahMenu(null)
         }}
         onPlay={() => {
           if (!ayahMenu) return
           stopSomaliVoice()
+          somaliAutoRef.current = false
+          setSomaliAutoPlaying(false)
           const key = ayahMenu.verseKey
           setUiVisible(false)
           setAyahMenu(null)
@@ -907,9 +914,18 @@ function ReadPageContent() {
           if (!ayahMenu) return
           stopRecitation()
           setSomaliNotice(null)
-          void playSomaliVoice(ayahMenu.verseKey)
+          const key = ayahMenu.verseKey
+          somaliAutoRef.current = true
+          setSomaliAutoPlaying(true)
+          setUiVisible(false)
+          setAyahMenu(null)
+          void playSomaliVoice(key)
         }}
-        onStopSomaliVoice={stopSomaliVoice}
+        onStopSomaliVoice={() => {
+          somaliAutoRef.current = false
+          setSomaliAutoPlaying(false)
+          stopSomaliVoice()
+        }}
         onStopRecitation={stopRecitation}
         onNextAyah={handleAyahMenuNext}
       />

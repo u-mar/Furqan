@@ -165,7 +165,6 @@ export default function AyahActionSheet({
                     onStopSomaliVoice()
                   } else {
                     onPlaySomaliVoice()
-                    setView('playing')
                   }
                 }}
                 className={cn(
