@@ -137,6 +137,8 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
 
   useEffect(() => {
     const audio = new Audio()
+    // Avoid pulling entire chunk MP3s (50MB+) before play — fetch only what seek needs.
+    audio.preload = 'metadata'
     audioRef.current = audio
 
     const onTimeUpdate = () => {
