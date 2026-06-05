@@ -123,22 +123,30 @@
   font-size: clamp(24px, 4.8vw, 44px);
 }
 
-.mushaf-qcf-line--reciting {
-  background: rgba(45, 212, 191, 0.2);
-  border-radius: 4px;
+.mushaf-qcf-segment {
+  display: inline;
 }
 
-.mushaf-qcf-line--selected {
-  background: rgba(45, 212, 191, 0.1);
-  border-radius: 4px;
+.mushaf-qcf-segment--reciting {
+  background: rgba(45, 212, 191, 0.28);
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
-html:not(.dark) .mushaf-qcf-line--reciting {
-  background: rgba(20, 184, 166, 0.16);
+.mushaf-qcf-segment--selected {
+  background: rgba(45, 212, 191, 0.14);
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
-html:not(.dark) .mushaf-qcf-line--selected {
-  background: rgba(20, 184, 166, 0.08);
+html:not(.dark) .mushaf-qcf-segment--reciting {
+  background: rgba(20, 184, 166, 0.22);
+}
+
+html:not(.dark) .mushaf-qcf-segment--selected {
+  background: rgba(20, 184, 166, 0.12);
 }
 
 .mushaf-qcf-line--reveal-target {

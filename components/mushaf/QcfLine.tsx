@@ -4,18 +4,22 @@ import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { BASMALAH_ARABIC, BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
-import type { QcfPageLine } from '@/lib/qcf-page'
+import type { QcfPageLine, QcfPageSegment } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
 
 /** Fit long lines by font size (not scale) so QCF glyphs do not overlap at line starts. */
 function QcfLineGlyphs({
-  text,
+  segments,
   style,
   invisible,
+  highlightedVerseKey,
+  selectedVerseKey,
 }: {
-  text: string
+  segments: QcfPageSegment[]
   style: CSSProperties
   invisible?: boolean
+  highlightedVerseKey?: string | null
+  selectedVerseKey?: string | null
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
@@ -44,7 +48,7 @@ function QcfLineGlyphs({
     const observer = new ResizeObserver(fit)
     observer.observe(outer)
     return () => observer.disconnect()
-  }, [text])
+  }, [segments])
 
   return (
     <div ref={outerRef} className="mushaf-qcf-line__scale">
@@ -54,7 +58,23 @@ function QcfLineGlyphs({
         style={style}
         aria-hidden={invisible}
       >
-        {text}
+        {segments.map((segment, index) => {
+          const isReciting = highlightedVerseKey === segment.verseKey
+          const isSelected = selectedVerseKey === segment.verseKey && !isReciting
+          return (
+            <span
+              key={`${segment.verseKey}-${index}`}
+              data-verse-key={segment.verseKey}
+              className={cn(
+                'mushaf-qcf-segment',
+                isReciting && 'mushaf-qcf-segment--reciting',
+                isSelected && 'mushaf-qcf-segment--selected'
+              )}
+            >
+              {segment.text}
+            </span>
+          )
+        })}
       </span>
     </div>
   )
@@ -89,13 +109,12 @@ function QcfLineComponent({
 }: QcfLineProps) {
   const glyphStyle = { fontFamily: `"${qcfFontFamily}", serif` } as const
   const longPress = useLongPress(() => {
-    const key = lineVerseKey(line)
+    const key =
+      (highlightedVerseKey && line.verseKeys.includes(highlightedVerseKey)
+        ? highlightedVerseKey
+        : null) ?? lineVerseKey(line)
     if (key) onLineLongPress?.(key)
   })
-  const activeVerse = line.verseKeys.find((k) => k === highlightedVerseKey)
-  const selectedVerse = line.verseKeys.find((k) => k === selectedVerseKey)
-  const isReciting = Boolean(activeVerse)
-  const isSelected = Boolean(selectedVerse) && !isReciting
   const pressKey = lineVerseKey(line)
 
   if (revealState === 'hidden') {
@@ -114,8 +133,6 @@ function QcfLineComponent({
     line.kind === 'empty' && 'mushaf-qcf-line--empty',
     line.kind === 'surah-header' && 'mushaf-qcf-line--surah-header',
     line.kind === 'basmalah' && 'mushaf-qcf-line--basmalah',
-    isReciting && 'mushaf-qcf-line--reciting',
-    isSelected && 'mushaf-qcf-line--selected',
     revealState === 'tap' && 'mushaf-qcf-line--reveal-target'
   )
 
@@ -128,9 +145,11 @@ function QcfLineComponent({
       </span>
     ) : line.kind === 'empty' ? null : (
       <QcfLineGlyphs
-        text={line.text}
+        segments={line.segments}
         style={glyphStyle}
         invisible={revealState === 'tap'}
+        highlightedVerseKey={highlightedVerseKey}
+        selectedVerseKey={selectedVerseKey}
       />
     )
 

@@ -4,13 +4,33 @@ import type { Verse } from '@/types'
 
 const LINES_PER_PAGE = 15
 
+export interface QcfPageSegment {
+  verseKey: string
+  text: string
+}
+
 export interface QcfPageLine {
   lineNumber: number
   kind: MushafLineKind
   /** Precomposed QCF glyph run for this printed line (from API word order, not UI). */
   text: string
+  /** Per-ayah glyph runs on this line (for accurate recitation highlight). */
+  segments: QcfPageSegment[]
   verseKeys: string[]
   chapterNumber?: number
+}
+
+function mergeAdjacentSegments(segments: QcfPageSegment[]): QcfPageSegment[] {
+  const merged: QcfPageSegment[] = []
+  for (const seg of segments) {
+    const last = merged[merged.length - 1]
+    if (last && last.verseKey === seg.verseKey) {
+      last.text += seg.text
+    } else {
+      merged.push({ verseKey: seg.verseKey, text: seg.text })
+    }
+  }
+  return merged
 }
 
 export interface QcfPageLayout {
@@ -51,6 +71,12 @@ export function buildQcfPageLayout(verses: Verse[], pageNumber: number): QcfPage
     lineNumber: line.lineNumber,
     kind: line.kind,
     text: lineDisplayText(line),
+    segments: mergeAdjacentSegments(
+      line.segments.map((segment) => ({
+        verseKey: segment.verseKey,
+        text: segment.codeV2,
+      }))
+    ),
     verseKeys: line.verseKeys,
     chapterNumber: line.chapterNumber,
   }))
