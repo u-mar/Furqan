@@ -127,6 +127,11 @@
   display: inline;
 }
 
+.mushaf-qcf-segment--pressable {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
 .mushaf-qcf-segment--reciting {
   background: rgba(45, 212, 191, 0.28);
   border-radius: 3px;

@@ -7,6 +7,40 @@ import { BASMALAH_ARABIC, BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
 import type { QcfPageLine, QcfPageSegment } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
 
+function QcfSegment({
+  segment,
+  index,
+  highlightedVerseKey,
+  selectedVerseKey,
+  onLongPress,
+}: {
+  segment: QcfPageSegment
+  index: number
+  highlightedVerseKey?: string | null
+  selectedVerseKey?: string | null
+  onLongPress?: (verseKey: string) => void
+}) {
+  const longPress = useLongPress(() => onLongPress?.(segment.verseKey))
+  const isReciting = highlightedVerseKey === segment.verseKey
+  const isSelected = selectedVerseKey === segment.verseKey && !isReciting
+
+  return (
+    <span
+      key={`${segment.verseKey}-${index}`}
+      data-verse-key={segment.verseKey}
+      className={cn(
+        'mushaf-qcf-segment',
+        onLongPress && 'mushaf-qcf-segment--pressable',
+        isReciting && 'mushaf-qcf-segment--reciting',
+        isSelected && 'mushaf-qcf-segment--selected'
+      )}
+      {...(onLongPress ? longPress.handlers : {})}
+    >
+      {segment.text}
+    </span>
+  )
+}
+
 /** Fit long lines by font size (not scale) so QCF glyphs do not overlap at line starts. */
 function QcfLineGlyphs({
   segments,
@@ -14,12 +48,14 @@ function QcfLineGlyphs({
   invisible,
   highlightedVerseKey,
   selectedVerseKey,
+  onSegmentLongPress,
 }: {
   segments: QcfPageSegment[]
   style: CSSProperties
   invisible?: boolean
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
+  onSegmentLongPress?: (verseKey: string) => void
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
@@ -58,23 +94,16 @@ function QcfLineGlyphs({
         style={style}
         aria-hidden={invisible}
       >
-        {segments.map((segment, index) => {
-          const isReciting = highlightedVerseKey === segment.verseKey
-          const isSelected = selectedVerseKey === segment.verseKey && !isReciting
-          return (
-            <span
-              key={`${segment.verseKey}-${index}`}
-              data-verse-key={segment.verseKey}
-              className={cn(
-                'mushaf-qcf-segment',
-                isReciting && 'mushaf-qcf-segment--reciting',
-                isSelected && 'mushaf-qcf-segment--selected'
-              )}
-            >
-              {segment.text}
-            </span>
-          )
-        })}
+        {segments.map((segment, index) => (
+          <QcfSegment
+            key={`${segment.verseKey}-${index}`}
+            segment={segment}
+            index={index}
+            highlightedVerseKey={highlightedVerseKey}
+            selectedVerseKey={selectedVerseKey}
+            onLongPress={onSegmentLongPress}
+          />
+        ))}
       </span>
     </div>
   )
@@ -91,12 +120,6 @@ export interface QcfLineProps {
   onReveal?: (verseKey: string) => void
 }
 
-function lineVerseKey(line: QcfPageLine): string | null {
-  if (line.verseKeys.length === 1) return line.verseKeys[0]
-  if (line.verseKeys.length > 1) return line.verseKeys[line.verseKeys.length - 1]
-  return null
-}
-
 function QcfLineComponent({
   line,
   qcfFontFamily,
@@ -108,14 +131,10 @@ function QcfLineComponent({
   onReveal,
 }: QcfLineProps) {
   const glyphStyle = { fontFamily: `"${qcfFontFamily}", serif` } as const
-  const longPress = useLongPress(() => {
-    const key =
-      (highlightedVerseKey && line.verseKeys.includes(highlightedVerseKey)
-        ? highlightedVerseKey
-        : null) ?? lineVerseKey(line)
-    if (key) onLineLongPress?.(key)
-  })
-  const pressKey = lineVerseKey(line)
+  const segmentLongPress =
+    onLineLongPress && line.kind !== 'empty' && line.kind !== 'surah-header'
+      ? onLineLongPress
+      : undefined
 
   if (revealState === 'hidden') {
     return (
@@ -150,6 +169,7 @@ function QcfLineComponent({
         invisible={revealState === 'tap'}
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}
+        onSegmentLongPress={segmentLongPress}
       />
     )
 
@@ -170,20 +190,6 @@ function QcfLineComponent({
     )
   }
 
-  if (!onLineLongPress || !pressKey || line.kind === 'empty' || line.kind === 'surah-header') {
-    return (
-      <div
-        className={rowClass}
-        data-line={line.lineNumber}
-        data-verse-keys={line.verseKeys.join(' ')}
-        dir="rtl"
-        lang="ar"
-      >
-        {content}
-      </div>
-    )
-  }
-
   return (
     <div
       className={rowClass}
@@ -191,10 +197,6 @@ function QcfLineComponent({
       data-verse-keys={line.verseKeys.join(' ')}
       dir="rtl"
       lang="ar"
-      role="button"
-      tabIndex={0}
-      aria-label={`Ayah ${pressKey}`}
-      {...longPress.handlers}
     >
       {content}
     </div>
