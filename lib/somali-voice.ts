@@ -15,6 +15,8 @@ export interface SomaliVoiceAyahTiming {
   /** Prefer strings for m.ss so "0.40" is not rounded to 0.4 in JSON */
   start: number | string
   end: number | string
+  /** Per-ayah MP3 — play entire file; end is optional (uses natural audio end). */
+  wholeFile?: boolean
 }
 
 export interface SomaliVoiceChunk {
@@ -43,6 +45,13 @@ export interface SomaliVoiceSegment {
   audioUrl: string
   start: number
   end: number
+  /** Dedicated per-ayah file — no seek; stop on audio ended. */
+  wholeFile: boolean
+}
+
+/** e.g. 19-51.mp3 — one ayah per file on CDN */
+function isPerAyahFileName(file: string): boolean {
+  return /^\d+-\d+\.mp3$/i.test(file.replace(/^\//, ''))
 }
 
 let manifestPromise: Promise<SomaliVoiceManifest | null> | null = null
@@ -104,13 +113,19 @@ function buildSegmentIndex(manifest: SomaliVoiceManifest): Map<string, SomaliVoi
     for (const ayah of chunk.ayahs) {
       const start = parseSomaliTimestamp(ayah.start, timeFormat)
       const end = parseSomaliTimestamp(ayah.end, timeFormat)
-      if (!ayah.key || end <= start) continue
+      const wholeFile =
+        ayah.wholeFile === true ||
+        (start === 0 && isPerAyahFileName(chunk.file))
+      if (!ayah.key) continue
+      if (!wholeFile && end <= start) continue
+
       map.set(ayah.key, {
         verseKey: ayah.key,
         file: chunk.file,
         audioUrl,
         start,
         end,
+        wholeFile,
       })
     }
   }
@@ -121,7 +136,7 @@ export async function loadSomaliVoiceManifest(): Promise<SomaliVoiceManifest | n
   if (typeof window === 'undefined') return null
 
   if (!manifestPromise) {
-    manifestPromise = fetch(SOMALI_VOICE_MANIFEST_PATH)
+    manifestPromise = fetch(SOMALI_VOICE_MANIFEST_PATH, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) return null
         const data = (await res.json()) as SomaliVoiceManifest

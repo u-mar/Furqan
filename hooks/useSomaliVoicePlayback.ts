@@ -22,9 +22,65 @@ const idleState: SomaliVoicePlaybackState = {
 }
 
 const END_PADDING_SEC = 0.05
+const LOAD_TIMEOUT_MS = 30_000
 
 interface UseSomaliVoicePlaybackOptions {
   onSegmentEnd?: (segment: SomaliVoiceSegment) => void
+}
+
+function waitForAudioCanPlay(audio: HTMLAudioElement, timeoutMs: number): Promise<void> {
+  if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      cleanup()
+      resolve()
+    }
+    const onFail = () => {
+      cleanup()
+      reject(new Error('Audio failed to load'))
+    }
+    const onTimeout = () => {
+      cleanup()
+      reject(new Error('Audio load timed out'))
+    }
+
+    const cleanup = () => {
+      clearTimeout(timer)
+      audio.removeEventListener('canplay', onReady)
+      audio.removeEventListener('error', onFail)
+    }
+
+    const timer = setTimeout(onTimeout, timeoutMs)
+    audio.addEventListener('canplay', onReady, { once: true })
+    audio.addEventListener('error', onFail, { once: true })
+  })
+}
+
+function waitForSeek(audio: HTMLAudioElement, target: number): Promise<void> {
+  if (Math.abs(audio.currentTime - target) <= 0.25) {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve, reject) => {
+    const onSeeked = () => {
+      cleanup()
+      resolve()
+    }
+    const onError = () => {
+      cleanup()
+      reject(new Error('Seek failed'))
+    }
+    const cleanup = () => {
+      audio.removeEventListener('seeked', onSeeked)
+      audio.removeEventListener('error', onError)
+    }
+    audio.addEventListener('seeked', onSeeked)
+    audio.addEventListener('error', onError)
+    audio.currentTime = target
+  })
 }
 
 export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = {}) {
@@ -50,6 +106,16 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     segmentRef.current = null
     loadedFileRef.current = null
     setState(idleState)
+  }, [])
+
+  const fail = useCallback((session: number, message: string) => {
+    if (session !== sessionRef.current) return
+    setState({
+      playing: false,
+      loading: false,
+      verseKey: null,
+      error: message,
+    })
   }, [])
 
   const playVerse = useCallback(
@@ -83,67 +149,48 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
 
       const startPlayback = async () => {
         try {
-          const target = Math.max(0, segment.start)
-          if (Math.abs(audio.currentTime - target) > 0.25) {
-            await new Promise<void>((resolve, reject) => {
-              const onSeeked = () => {
-                cleanup()
-                resolve()
-              }
-              const onError = () => {
-                cleanup()
-                reject(new Error('seek failed'))
-              }
-              const cleanup = () => {
-                audio.removeEventListener('seeked', onSeeked)
-                audio.removeEventListener('error', onError)
-              }
-              audio.addEventListener('seeked', onSeeked)
-              audio.addEventListener('error', onError)
-              audio.currentTime = target
-            })
+          if (!segment.wholeFile) {
+            await waitForSeek(audio, Math.max(0, segment.start))
+          } else {
+            audio.currentTime = 0
           }
+
           await audio.play()
           if (session !== sessionRef.current) return
           setState({ playing: true, loading: false, verseKey, error: null })
         } catch {
-          if (session !== sessionRef.current) return
-          setState({
-            playing: false,
-            loading: false,
-            verseKey: null,
-            error: 'Could not play Somali voice.',
-          })
+          fail(session, 'Could not play Somali voice.')
         }
       }
 
-      if (!sameFile) {
-        loadedFileRef.current = segment.file
-        audio.src = segment.audioUrl
-        const onLoaded = () => {
-          audio.removeEventListener('loadedmetadata', onLoaded)
+      try {
+        if (!sameFile) {
+          loadedFileRef.current = segment.file
+          audio.preload = segment.wholeFile ? 'auto' : 'metadata'
+          audio.src = segment.audioUrl
+          audio.load()
+          await waitForAudioCanPlay(audio, LOAD_TIMEOUT_MS)
           if (session !== sessionRef.current) return
-          void startPlayback()
         }
-        audio.addEventListener('loadedmetadata', onLoaded)
-        audio.load()
-      } else {
-        void startPlayback()
+
+        await startPlayback()
+      } catch {
+        fail(session, 'Could not load Somali voice audio.')
       }
+
       return true
     },
-    []
+    [fail]
   )
 
   useEffect(() => {
     const audio = new Audio()
-    // Avoid pulling entire chunk MP3s (50MB+) before play — fetch only what seek needs.
     audio.preload = 'metadata'
     audioRef.current = audio
 
     const onTimeUpdate = () => {
       const segment = segmentRef.current
-      if (!segment || sessionRef.current === 0) return
+      if (!segment || sessionRef.current === 0 || segment.wholeFile) return
       if (audio.currentTime >= segment.end - END_PADDING_SEC) {
         audio.pause()
         segmentRef.current = null
