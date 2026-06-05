@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "download-quran": "node scripts/download-quran-data.js",
     "download-quran:text": "node scripts/download-quran-data.js --skip-fonts",
-    "download-quran:fonts": "node scripts/download-quran-data.js --fonts-only"
+    "download-quran:fonts": "node scripts/download-quran-data.js --fonts-only",
+    "split-somali-voice": "node scripts/split-somali-voice.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
