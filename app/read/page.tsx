@@ -73,6 +73,8 @@ function ReadPageContent() {
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
   const longPressBlockTap = useRef(false)
+  const ayahChangeBlockTapUntilRef = useRef(0)
+  const prevHighlightedVerseKeyRef = useRef<string | null>(null)
   const translationTouchStart = useRef({ x: 0, y: 0 })
   const pageVersesRef = useRef<Verse[]>([])
   const initialLoadDone = useRef(false)
@@ -457,6 +459,18 @@ function ReadPageContent() {
 
   useWakeLock(playbackActive)
 
+  useEffect(() => {
+    if (!playbackActive) {
+      prevHighlightedVerseKeyRef.current = highlightedVerseKey
+      return
+    }
+    if (!highlightedVerseKey) return
+    if (prevHighlightedVerseKeyRef.current === highlightedVerseKey) return
+    prevHighlightedVerseKeyRef.current = highlightedVerseKey
+    ayahChangeBlockTapUntilRef.current = Date.now() + 450
+    setUiVisible(false)
+  }, [playbackActive, highlightedVerseKey])
+
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
       longPressBlockTap.current = true
@@ -534,14 +548,15 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
-          suppressHighlightScroll={playbackActive}
+          suppressHighlightScroll
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, playbackActive]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
+  const chromeAnimates = uiVisible || !playbackActive
 
   const goNextPage = useCallback(() => {
     if (currentPage < TOTAL_MUSHAF_PAGES) void navigatePage(currentPage + 1)
@@ -618,11 +633,30 @@ function ReadPageContent() {
     : mushafSwipe
 
   useEffect(() => {
-    if (!showTranslation) return
-    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+    if (showTranslation) {
+      contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+      return
+    }
+    const el = contentScrollRef.current
+    if (el) el.scrollTop = 0
   }, [currentPage, showTranslation])
 
+  useEffect(() => {
+    if (showTranslation) return
+    const html = document.documentElement
+    const body = document.body
+    const prevHtml = html.style.overflow
+    const prevBody = body.style.overflow
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtml
+      body.style.overflow = prevBody
+    }
+  }, [showTranslation])
+
   const handleContentTap = () => {
+    if (Date.now() < ayahChangeBlockTapUntilRef.current) return
     if (didSwipe.current) {
       didSwipe.current = false
       return
@@ -710,7 +744,7 @@ function ReadPageContent() {
           'relative min-h-0 flex-1',
           showTranslation
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
-            : 'overflow-x-clip overflow-y-hidden px-1 pb-4 sm:px-2'
+            : 'mushaf-read-scroll-lock overflow-hidden overscroll-none px-1 pb-4 sm:px-2'
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
@@ -755,7 +789,7 @@ function ReadPageContent() {
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
-            suppressHighlightScroll={playbackActive}
+            suppressHighlightScroll
           />
         )}
       </div>
@@ -774,7 +808,8 @@ function ReadPageContent() {
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur transition-transform duration-300',
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur',
+          chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -817,7 +852,8 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4 transition-transform duration-300',
+          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4',
+          chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}

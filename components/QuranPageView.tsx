@@ -472,6 +472,7 @@ export default function QuranPageView({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
+            suppressHighlightScroll={suppressHighlightScroll}
             hifdhReveal={
               hifdhRevealMode
                 ? {

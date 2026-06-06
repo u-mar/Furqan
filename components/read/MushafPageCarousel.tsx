@@ -45,7 +45,7 @@ export default function MushafPageCarousel({
   }, [slide])
 
   if (!slide) {
-    return <div className="h-full w-full">{children}</div>
+    return <div className="h-full w-full overflow-hidden">{children}</div>
   }
 
   const { direction, incoming } = slide
