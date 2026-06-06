@@ -360,7 +360,7 @@ export default function QuranPageView({
   const focusKey = highlightedVerseKey || selectedVerseKey
 
   useEffect(() => {
-    if (!focusKey || !readMode || suppressHighlightScroll) return
+    if (!focusKey || readMode || suppressHighlightScroll) return
     const root = gridRef.current
     if (!root) return
     const line = root.querySelector(`[data-verse-keys~="${focusKey}"]`)

@@ -50,12 +50,12 @@ export default function MushafPageView({
   }, [])
 
   useEffect(() => {
-    if (suppressHighlightScroll) return
+    if (suppressHighlightScroll || immersive) return
     const key = highlightedVerseKey || selectedVerseKey
     if (!key || !rootRef.current) return
     const line = rootRef.current.querySelector(`[data-verse-keys~="${key}"]`)
     line?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [highlightedVerseKey, selectedVerseKey, suppressHighlightScroll])
+  }, [highlightedVerseKey, selectedVerseKey, suppressHighlightScroll, immersive])
 
   return (
     <div

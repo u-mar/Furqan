@@ -1,6 +1,15 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type TouchEvent,
+} from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -459,7 +468,7 @@ function ReadPageContent() {
 
   useWakeLock(playbackActive)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!playbackActive) {
       prevHighlightedVerseKeyRef.current = highlightedVerseKey
       return
@@ -467,8 +476,10 @@ function ReadPageContent() {
     if (!highlightedVerseKey) return
     if (prevHighlightedVerseKeyRef.current === highlightedVerseKey) return
     prevHighlightedVerseKeyRef.current = highlightedVerseKey
-    ayahChangeBlockTapUntilRef.current = Date.now() + 450
+    ayahChangeBlockTapUntilRef.current = Date.now() + 700
     setUiVisible(false)
+    contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
+    window.scrollTo(0, 0)
   }, [playbackActive, highlightedVerseKey])
 
   const handleAyahLongPress = useCallback(
@@ -502,9 +513,15 @@ function ReadPageContent() {
     if (!ayahMenu) return
     const next = getNextVerseOnPage(ayahMenu.verseKey)
     if (!next) return
+    ayahChangeBlockTapUntilRef.current = Date.now() + 700
     setAyahMenu({ verseKey: next.verse_key, arabic: getVerseArabicText(next) })
     setAyahMenuBookmarked(isBookmarked(next.verse_key))
-    if (isActive) playVerse(next.verse_key)
+    contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
+    window.scrollTo(0, 0)
+    if (isActive) {
+      setUiVisible(false)
+      playVerse(next.verse_key)
+    }
   }, [ayahMenu, getNextVerseOnPage, isActive, playVerse])
 
   const handleToggleBookmark = useCallback(() => {
@@ -556,7 +573,7 @@ function ReadPageContent() {
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
-  const chromeAnimates = uiVisible || !playbackActive
+  const chromeAnimates = !playbackActive
 
   const goNextPage = useCallback(() => {
     if (currentPage < TOTAL_MUSHAF_PAGES) void navigatePage(currentPage + 1)
@@ -632,14 +649,15 @@ function ReadPageContent() {
     ? { onTouchStart: handleTranslationTouchStart, onTouchEnd: handleTranslationTouchEnd }
     : mushafSwipe
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (showTranslation) {
       contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
       return
     }
     const el = contentScrollRef.current
     if (el) el.scrollTop = 0
-  }, [currentPage, showTranslation])
+    window.scrollTo(0, 0)
+  }, [currentPage, showTranslation, highlightedVerseKey])
 
   useEffect(() => {
     if (showTranslation) return
@@ -649,11 +667,23 @@ function ReadPageContent() {
     const prevBody = body.style.overflow
     html.style.overflow = 'hidden'
     body.style.overflow = 'hidden'
+    window.scrollTo(0, 0)
     return () => {
       html.style.overflow = prevHtml
       body.style.overflow = prevBody
     }
   }, [showTranslation])
+
+  useEffect(() => {
+    if (showTranslation) return
+    const el = contentScrollRef.current
+    if (!el) return
+    const lockScroll = () => {
+      if (el.scrollTop !== 0) el.scrollTop = 0
+    }
+    el.addEventListener('scroll', lockScroll, { passive: true })
+    return () => el.removeEventListener('scroll', lockScroll)
+  }, [showTranslation, currentPage])
 
   const handleContentTap = () => {
     if (Date.now() < ayahChangeBlockTapUntilRef.current) return
@@ -758,7 +788,7 @@ function ReadPageContent() {
             chapters={chapters}
             translationLanguage={translationLanguage}
             highlightedVerseKey={highlightedVerseKey}
-            suppressHighlightScroll={playbackActive}
+            suppressHighlightScroll
           />
         ) : verticalPages ? (
           <MushafPageCarousel
