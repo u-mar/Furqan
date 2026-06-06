@@ -378,6 +378,7 @@ function ReadPageContent() {
   const juzPart = juzForChapter(currentSurahNum)
   const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
   const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying
+  const showReaderChrome = uiVisible && !playbackActive
 
   const handleRecitationToggle = () => {
     if (isActive) {
@@ -409,6 +410,7 @@ function ReadPageContent() {
     setSomaliNotice(null)
     somaliAutoRef.current = true
     setSomaliAutoPlaying(true)
+    setUiVisible(false)
     await playSomaliVoice(firstVerseKey)
   }
 
@@ -452,11 +454,6 @@ function ReadPageContent() {
   }, [currentPage, pageVerses, startRecitation, findNextSomaliVerse])
 
   useWakeLock(playbackActive)
-
-  useEffect(() => {
-    if (!playbackActive) return
-    setUiVisible(false)
-  }, [playbackActive, highlightedVerseKey])
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
@@ -624,6 +621,7 @@ function ReadPageContent() {
   }, [currentPage, showTranslation])
 
   const handleContentTap = () => {
+    if (playbackActive) return
     if (didSwipe.current) {
       didSwipe.current = false
       return
@@ -676,7 +674,7 @@ function ReadPageContent() {
   return (
     <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
       <MushafFontPreload />
-      {pageLoading && (
+      {pageLoading && !playbackActive && (
         <div
           className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"
           role="status"
@@ -704,7 +702,7 @@ function ReadPageContent() {
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
             : cn(
                 'overflow-x-clip overflow-y-hidden px-1 sm:px-2',
-                uiVisible ? 'pb-36' : 'pb-4'
+                uiVisible && !playbackActive ? 'pb-36' : 'pb-4'
               )
         )}
         onClick={handleContentTap}
@@ -769,8 +767,9 @@ function ReadPageContent() {
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur transition-transform duration-300',
-          uiVisible ? 'translate-y-0' : '-translate-y-full'
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur',
+          playbackActive ? 'pointer-events-none translate-y-full' : 'transition-transform duration-300',
+          !playbackActive && (showReaderChrome ? 'translate-y-0' : '-translate-y-full')
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -808,8 +807,9 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4 transition-transform duration-300',
-          uiVisible ? 'translate-y-0' : 'translate-y-full'
+          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4',
+          playbackActive ? 'pointer-events-none translate-y-full' : 'transition-transform duration-300',
+          !playbackActive && (showReaderChrome ? 'translate-y-0' : 'translate-y-full')
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1005,7 +1005,7 @@ function ReadPageContent() {
         onNextAyah={handleAyahMenuNext}
       />
 
-      {uiVisible && (
+      {showReaderChrome && (
         <Link
           href="/"
           className="absolute left-4 top-16 z-20 rounded-full bg-black/50 px-3 py-1 text-xs text-stone-400"

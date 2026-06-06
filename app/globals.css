@@ -124,6 +124,11 @@ body {
 }
 
 .ayah-sheet-arabic {
+  color: #1a1a1a;
+  -webkit-text-fill-color: #1a1a1a;
+}
+
+html.dark .ayah-sheet-arabic {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }

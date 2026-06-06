@@ -204,7 +204,6 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     const onEnded = () => {
       const segment = segmentRef.current
       segmentRef.current = null
-      setState(idleState)
       if (segment) onSegmentEndRef.current?.(segment)
     }
 

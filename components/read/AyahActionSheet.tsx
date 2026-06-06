@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Play, Languages, X, ChevronLeft, Square, SkipForward, Volume2, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import AyahTranslationBlock from '@/components/read/AyahTranslationBlock'
 
 interface AyahActionSheetProps {
   verseKey: string
@@ -70,13 +69,19 @@ export default function AyahActionSheet({
 
   if (!open || !mounted) return null
 
+  const ayahNum = verseKey.split(':')[1] || ''
+  const surahNum = verseKey.split(':')[0] || ''
+  const displayArabic = arabicText.trim() || 'Arabic text unavailable for this ayah.'
+
   const nextAyahButton = (
     <button
       type="button"
       onClick={onNextAyah}
       disabled={!hasNextAyah}
       className={cn(
-        'flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#1a1a1a] text-sm font-medium text-teal-400',
+        'flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border text-sm font-medium',
+        'border-stone-200 bg-white text-teal-700',
+        'dark:border-white/10 dark:bg-[#1a1a1a] dark:text-teal-400',
         !hasNextAyah && 'cursor-not-allowed opacity-40'
       )}
     >
@@ -89,12 +94,16 @@ export default function AyahActionSheet({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[100] bg-black/45"
+        className="fixed inset-0 z-[100] bg-black/35 dark:bg-black/45"
         aria-label="Close"
         onClick={onClose}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-[101] mx-auto max-w-lg rounded-t-2xl border border-white/10 bg-[#141414] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl"
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-[101] mx-auto max-w-lg rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl',
+          'border border-stone-200/80 bg-[#faf6ef] text-[#2a2218]',
+          'dark:border-white/10 dark:bg-[#141414] dark:text-stone-100'
+        )}
         role="dialog"
         aria-modal="true"
         aria-label={
@@ -113,32 +122,41 @@ export default function AyahActionSheet({
                 if (view === 'playing' && isReciting) onStopRecitation()
                 setView('menu')
               }}
-              className="flex items-center gap-1 rounded-lg p-2 text-sm text-stone-400 hover:bg-white/5"
+              className="flex items-center gap-1 rounded-lg p-2 text-sm text-stone-600 hover:bg-black/5 dark:text-stone-400 dark:hover:bg-white/5"
             >
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
           ) : (
-            <p className="text-sm font-medium text-stone-400">Ayah options</p>
+            <p className="text-sm font-medium text-stone-600 dark:text-stone-400">Ayah options</p>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-stone-400 hover:bg-white/5"
+            className="rounded-lg p-2 text-stone-600 hover:bg-black/5 dark:text-stone-400 dark:hover:bg-white/5"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="mb-4 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain">
-          <AyahTranslationBlock
-            verseKey={verseKey}
-            arabicText={arabicText}
-            translation={null}
-            compact
-            showTranslation={false}
-          />
+        <div
+          className={cn(
+            'mb-4 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain rounded-xl border-2 px-4 py-4',
+            'border-teal-600/30 bg-white',
+            'dark:border-teal-500/50 dark:bg-[#1a1a1a]'
+          )}
+        >
+          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
+            {surahNum}:{ayahNum}
+          </p>
+          <p
+            className="amiri arabic-text ayah-sheet-arabic text-center text-[clamp(1.25rem,5vw,1.65rem)] leading-[2.2]"
+            dir="rtl"
+            lang="ar"
+          >
+            {displayArabic}
+          </p>
         </div>
 
         {view === 'menu' && (
@@ -164,8 +182,8 @@ export default function AyahActionSheet({
                 className={cn(
                   'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border text-sm font-medium',
                   isSomaliVoicePlaying
-                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                    : 'border-[var(--home-card-border)] bg-[var(--app-surface)] text-[var(--app-text)]'
+                    ? 'border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                    : 'border-stone-200 bg-white text-[#2a2218] dark:border-[var(--home-card-border)] dark:bg-[var(--app-surface)] dark:text-[var(--app-text)]'
                 )}
               >
                 {isSomaliVoicePlaying ? (
@@ -182,8 +200,8 @@ export default function AyahActionSheet({
               className={cn(
                 'flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border text-sm font-medium',
                 isBookmarked
-                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-400'
-                  : 'border-[var(--home-card-border)] bg-[var(--app-surface)] text-teal-700 dark:text-teal-400'
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-700 dark:text-teal-400'
+                  : 'border-stone-200 bg-white text-teal-700 dark:border-[var(--home-card-border)] dark:bg-[var(--app-surface)] dark:text-teal-400'
               )}
               aria-pressed={isBookmarked}
             >
@@ -193,7 +211,7 @@ export default function AyahActionSheet({
             <button
               type="button"
               onClick={() => setView('translation')}
-              className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] text-teal-700 dark:text-teal-400"
+              className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-stone-200 bg-white text-teal-700 dark:border-[var(--home-card-border)] dark:bg-[var(--app-surface)] dark:text-teal-400"
             >
               <Languages className="h-5 w-5" />
               <span className="text-sm font-medium">Text</span>
@@ -203,12 +221,22 @@ export default function AyahActionSheet({
 
         {view === 'translation' && (
           <div className="space-y-3">
-            <AyahTranslationBlock
-              verseKey={verseKey}
-              arabicText={arabicText}
-              translation={translation}
-              loading={translationLoading}
-            />
+            <div
+              className={cn(
+                'rounded-xl px-4 py-3.5',
+                'bg-white ring-1 ring-stone-200',
+                'dark:bg-[#1a1a1a] dark:ring-white/10'
+              )}
+            >
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                Translation
+              </p>
+              <p className="text-left text-[15px] leading-relaxed text-[#2a2218] dark:text-stone-100">
+                {translationLoading
+                  ? 'Loading translation…'
+                  : translation || 'Translation unavailable.'}
+              </p>
+            </div>
             {nextAyahButton}
           </div>
         )}
@@ -219,7 +247,7 @@ export default function AyahActionSheet({
               <button
                 type="button"
                 onClick={onStopRecitation}
-                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400"
+                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
               >
                 <Square className="h-5 w-5 fill-current" />
                 <span className="text-sm font-medium">Stop</span>
@@ -227,7 +255,7 @@ export default function AyahActionSheet({
               <button
                 type="button"
                 onClick={() => setView('translation')}
-                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-[#1a1a1a] text-teal-400"
+                className="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl border border-stone-200 bg-white text-teal-700 dark:border-white/10 dark:bg-[#1a1a1a] dark:text-teal-400"
               >
                 <Languages className="h-5 w-5" />
                 <span className="text-sm font-medium">Translation</span>
