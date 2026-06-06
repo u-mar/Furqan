@@ -24,6 +24,7 @@ const PRELOAD_AHEAD = 2
 interface UsePageRecitationOptions {
   reciterId: string
   verses: Verse[]
+  onPageFinished?: () => void
 }
 
 interface PreloadedClip {
@@ -63,7 +64,7 @@ function waitForAudioReady(audio: HTMLAudioElement): Promise<void> {
   })
 }
 
-export function usePageRecitation({ reciterId, verses }: UsePageRecitationOptions) {
+export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePageRecitationOptions) {
   const [state, setState] = useState<PageRecitationState>(idleState)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
@@ -72,6 +73,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
   const versesRef = useRef(verses)
   const reciterRef = useRef(reciterId)
   const playModeRef = useRef<'page' | 'single'>('page')
+  const onPageFinishedRef = useRef(onPageFinished)
   const abortingRef = useRef(false)
   const objectUrlRef = useRef<string | null>(null)
   const preloadMapRef = useRef<Map<string, PreloadedClip>>(new Map())
@@ -80,6 +82,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
 
   versesRef.current = verses
   reciterRef.current = reciterId
+  onPageFinishedRef.current = onPageFinished
 
   const clearPreload = useCallback(() => {
     for (const pre of preloadMapRef.current.values()) {
@@ -192,6 +195,16 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
     setState(idleState)
   }, [clearMainObjectUrl, clearPreload])
 
+  const handlePageEnd = useCallback(() => {
+    if (playModeRef.current === 'page' && onPageFinishedRef.current) {
+      finishPlayback()
+      onPageFinishedRef.current()
+      return true
+    }
+    finishPlayback()
+    return false
+  }, [finishPlayback])
+
   const playIndex = useCallback(
     async (index: number, session: number, options?: { seamless?: boolean }) => {
       const audio = audioRef.current
@@ -199,7 +212,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       if (!audio || session !== sessionRef.current) return
 
       if (index >= list.length) {
-        finishPlayback()
+        handlePageEnd()
         return
       }
 
@@ -266,7 +279,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
         }))
       }
     },
-    [clearMainObjectUrl, finishPlayback, preloadAheadFromIndex, takePreloaded]
+    [clearMainObjectUrl, handlePageEnd, preloadAheadFromIndex, takePreloaded]
   )
 
   const start = useCallback(() => {
@@ -329,7 +342,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       if (next < versesRef.current.length) {
         void playIndex(next, session, { seamless: true })
       } else {
-        finishPlayback()
+        handlePageEnd()
       }
     }
 
@@ -349,7 +362,7 @@ export function usePageRecitation({ reciterId, verses }: UsePageRecitationOption
       audio.load()
       abortingRef.current = false
     }
-  }, [clearMainObjectUrl, clearPreload, finishPlayback, playIndex, preloadAheadFromIndex])
+  }, [clearMainObjectUrl, clearPreload, finishPlayback, handlePageEnd, playIndex, preloadAheadFromIndex])
 
   useEffect(() => {
     if (!state.playing && !state.loading) return

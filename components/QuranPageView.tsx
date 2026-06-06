@@ -36,6 +36,8 @@ interface QuranPageViewProps {
   hideRevealBoxes?: boolean
   pageNumber?: number
   onAyahLongPress?: (verseKey: string) => void
+  /** Skip scroll-into-view when ayah highlight changes (e.g. during audio playback). */
+  suppressHighlightScroll?: boolean
 }
 
 interface PageWord {
@@ -249,6 +251,7 @@ export default function QuranPageView({
   highlightedVerseKey = null,
   selectedVerseKey = null,
   onAyahLongPress,
+  suppressHighlightScroll = false,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
   const hifdhRevealMode = readMode && hideRevealBoxes && !readOnly
@@ -357,12 +360,12 @@ export default function QuranPageView({
   const focusKey = highlightedVerseKey || selectedVerseKey
 
   useEffect(() => {
-    if (!focusKey || !readMode) return
+    if (!focusKey || !readMode || suppressHighlightScroll) return
     const root = gridRef.current
     if (!root) return
     const line = root.querySelector(`[data-verse-keys~="${focusKey}"]`)
     line?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [focusKey, readMode])
+  }, [focusKey, readMode, suppressHighlightScroll])
 
   if (startIndex === -1) {
     return (

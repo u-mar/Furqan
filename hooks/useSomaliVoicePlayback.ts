@@ -139,10 +139,11 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
       segmentRef.current = segment
 
       const sameFile = loadedFileRef.current === segment.file && Boolean(audio.src)
+      const seamlessSameFile = sameFile && !segment.wholeFile
 
       setState({
-        playing: false,
-        loading: true,
+        playing: seamlessSameFile,
+        loading: !seamlessSameFile,
         verseKey,
         error: null,
       })
@@ -194,9 +195,9 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
       if (!segment || sessionRef.current === 0 || segment.wholeFile) return
       if (audio.currentTime >= segment.end - END_PADDING_SEC) {
         audio.pause()
+        const ended = segmentRef.current
         segmentRef.current = null
-        setState(idleState)
-        onSegmentEndRef.current?.(segment)
+        if (ended) onSegmentEndRef.current?.(ended)
       }
     }
 

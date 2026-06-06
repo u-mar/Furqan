@@ -15,6 +15,7 @@ export interface MushafPageViewProps {
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  suppressHighlightScroll?: boolean
   hifdhReveal?: {
     startVerseKey: string
     revealedAyahs: Set<string>
@@ -33,6 +34,7 @@ export default function MushafPageView({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  suppressHighlightScroll = false,
   hifdhReveal,
   className,
 }: MushafPageViewProps) {
@@ -48,11 +50,12 @@ export default function MushafPageView({
   }, [])
 
   useEffect(() => {
+    if (suppressHighlightScroll) return
     const key = highlightedVerseKey || selectedVerseKey
     if (!key || !rootRef.current) return
     const line = rootRef.current.querySelector(`[data-verse-keys~="${key}"]`)
     line?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [highlightedVerseKey, selectedVerseKey])
+  }, [highlightedVerseKey, selectedVerseKey, suppressHighlightScroll])
 
   return (
     <div

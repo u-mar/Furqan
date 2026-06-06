@@ -29,6 +29,7 @@ import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
+import { useWakeLock } from '@/hooks/useWakeLock'
 import { getAppSettings } from '@/lib/app-settings'
 import { setSettingsReturnTo } from '@/lib/settings-return'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
@@ -78,6 +79,11 @@ function ReadPageContent() {
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
+  const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | null>(null)
+  const currentPageRef = useRef(1)
+  const navigatePageRef = useRef<
+    (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
+  >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
   const { reciterId, translationLanguage } = useAppSettings()
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
@@ -105,6 +111,7 @@ function ReadPageContent() {
 
   const applyPage = useCallback((page: number, verses: Verse[]) => {
     pageVersesRef.current = verses
+    currentPageRef.current = page
     setPageVerses(verses)
     setCurrentPage(page)
     setSliderPage(page)
@@ -114,7 +121,7 @@ function ReadPageContent() {
   }, [])
 
   const loadPage = useCallback(
-    async (page: number) => {
+    async (page: number, options?: { silent?: boolean }) => {
       const next = clampPage(page)
       setLoadError(null)
 
@@ -131,7 +138,7 @@ function ReadPageContent() {
       }
 
       if (pageVersesRef.current.length === 0) setLoading(true)
-      else setPageLoading(true)
+      else if (!options?.silent) setPageLoading(true)
 
       try {
         const verses = await getMushafPage(next)
@@ -157,10 +164,18 @@ function ReadPageContent() {
     })
   }, [applyPage])
 
+  const handleRecitationPageComplete = useCallback(() => {
+    const page = currentPageRef.current
+    if (page >= TOTAL_MUSHAF_PAGES) return
+    autoContinuePlaybackRef.current = 'recitation'
+    void navigatePageRef.current(page + 1, { autoContinue: true })
+  }, [])
+
   const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse, isActive } =
     usePageRecitation({
       reciterId,
       verses: pageVerses,
+      onPageFinished: handleRecitationPageComplete,
     })
 
   const findNextSomaliVerse = useCallback(async (afterVerseKey?: string | null): Promise<string | null> => {
@@ -182,13 +197,20 @@ function ReadPageContent() {
 
       void (async () => {
         const nextVerseKey = await findNextSomaliVerse(segment.verseKey)
-        if (!nextVerseKey) {
+        if (nextVerseKey) {
+          await playSomaliVoiceRef.current(nextVerseKey)
+          return
+        }
+
+        const page = currentPageRef.current
+        if (page >= TOTAL_MUSHAF_PAGES) {
           somaliAutoRef.current = false
           setSomaliAutoPlaying(false)
           return
         }
 
-        await playSomaliVoiceRef.current(nextVerseKey)
+        autoContinuePlaybackRef.current = 'somali'
+        void navigatePageRef.current(page + 1, { autoContinue: true })
       })()
     },
     [findNextSomaliVerse]
@@ -236,16 +258,20 @@ function ReadPageContent() {
   )
 
   const navigatePage = useCallback(
-    async (page: number) => {
+    async (page: number, options?: { autoContinue?: boolean }) => {
       const next = clampPage(page)
       if (next === currentPage || pageSlide) return
-      stopRecitation()
-      stopSomaliVoice()
-      somaliAutoRef.current = false
-      setSomaliAutoPlaying(false)
+
+      if (!options?.autoContinue) {
+        stopRecitation()
+        stopSomaliVoice()
+        somaliAutoRef.current = false
+        setSomaliAutoPlaying(false)
+        autoContinuePlaybackRef.current = null
+      }
 
       if (!verticalPages || showTranslation) {
-        void loadPage(next)
+        void loadPage(next, { silent: options?.autoContinue })
         return
       }
 
@@ -260,6 +286,11 @@ function ReadPageContent() {
         console.error('Failed to load page:', err)
         setLoadError(message)
         setPageLoading(false)
+        if (options?.autoContinue) {
+          autoContinuePlaybackRef.current = null
+          somaliAutoRef.current = false
+          setSomaliAutoPlaying(false)
+        }
       }
     },
     [
@@ -273,6 +304,10 @@ function ReadPageContent() {
       verticalPages,
     ]
   )
+
+  useEffect(() => {
+    navigatePageRef.current = navigatePage
+  }, [navigatePage])
 
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
@@ -342,6 +377,7 @@ function ReadPageContent() {
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
   const juzPart = juzForChapter(currentSurahNum)
   const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
+  const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying
 
   const handleRecitationToggle = () => {
     if (isActive) {
@@ -351,7 +387,7 @@ function ReadPageContent() {
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
     stopSomaliVoice()
-    setUiVisible(true)
+    setUiVisible(false)
     startRecitation()
   }
 
@@ -384,10 +420,43 @@ function ReadPageContent() {
   }, [somaliAutoPlaying, somaliVoiceState.error])
 
   useEffect(() => {
+    if (autoContinuePlaybackRef.current) return
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
     stopSomaliVoice()
   }, [currentPage, stopSomaliVoice])
+
+  useEffect(() => {
+    const mode = autoContinuePlaybackRef.current
+    if (!mode || pageVerses.length === 0) return
+    autoContinuePlaybackRef.current = null
+
+    if (mode === 'recitation') {
+      startRecitation()
+      return
+    }
+
+    if (mode === 'somali') {
+      somaliAutoRef.current = true
+      setSomaliAutoPlaying(true)
+      void (async () => {
+        const firstVerseKey = await findNextSomaliVerse(null)
+        if (firstVerseKey) {
+          await playSomaliVoiceRef.current(firstVerseKey)
+          return
+        }
+        somaliAutoRef.current = false
+        setSomaliAutoPlaying(false)
+      })()
+    }
+  }, [currentPage, pageVerses, startRecitation, findNextSomaliVerse])
+
+  useWakeLock(playbackActive)
+
+  useEffect(() => {
+    if (!playbackActive) return
+    setUiVisible(false)
+  }, [playbackActive, highlightedVerseKey])
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
@@ -466,10 +535,11 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
+          suppressHighlightScroll={playbackActive}
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, playbackActive]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -632,7 +702,10 @@ function ReadPageContent() {
           'relative min-h-0 flex-1',
           showTranslation
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
-            : 'overflow-x-clip overflow-y-hidden px-1 pb-14 sm:px-2'
+            : cn(
+                'overflow-x-clip overflow-y-hidden px-1 sm:px-2',
+                uiVisible ? 'pb-36' : 'pb-4'
+              )
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
@@ -646,6 +719,7 @@ function ReadPageContent() {
             chapters={chapters}
             translationLanguage={translationLanguage}
             highlightedVerseKey={highlightedVerseKey}
+            suppressHighlightScroll={playbackActive}
           />
         ) : verticalPages ? (
           <MushafPageCarousel
@@ -676,6 +750,7 @@ function ReadPageContent() {
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
+            suppressHighlightScroll={playbackActive}
           />
         )}
       </div>

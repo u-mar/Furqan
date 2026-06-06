@@ -16,6 +16,7 @@ interface MushafTranslationViewProps {
   translationLanguage: TranslationLanguageId
   highlightedVerseKey?: string | null
   showArabic?: boolean
+  suppressHighlightScroll?: boolean
 }
 
 function verseNumber(verseKey: string): number {
@@ -32,6 +33,7 @@ export default function MushafTranslationView({
   translationLanguage,
   highlightedVerseKey = null,
   showArabic = true,
+  suppressHighlightScroll = false,
 }: MushafTranslationViewProps) {
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(
@@ -57,11 +59,11 @@ export default function MushafTranslationView({
   })
 
   useEffect(() => {
-    if (!highlightedVerseKey) return
+    if (!highlightedVerseKey || suppressHighlightScroll) return
     const el = ayahRefs.current.get(highlightedVerseKey)
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
-  }, [highlightedVerseKey])
+  }, [highlightedVerseKey, suppressHighlightScroll])
 
   if (loading && rows.length === 0) {
     return (
@@ -123,12 +125,12 @@ export default function MushafTranslationView({
 
             <div
               className={cn(
-                'rounded-2xl px-4 py-3.5',
-                isReciting ? 'bg-teal-500/15 ring-1 ring-teal-500/30' : 'bg-stone-100 dark:bg-[#1a1a1a]'
+                'mushaf-translation-body rounded-2xl px-4 py-3.5',
+                isReciting && 'ring-1 ring-teal-500/30 bg-teal-500/15'
               )}
             >
-              <p className="text-left text-[15px] leading-relaxed text-[var(--mushaf-read-text)]">
-                <span className="text-[var(--mushaf-read-meta)]">({num})</span>{' '}
+              <p className="text-left mushaf-translation-text">
+                <span className="mushaf-translation-ayah-num">({num})</span>{' '}
                 {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
               </p>
             </div>

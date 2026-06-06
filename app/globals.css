@@ -379,6 +379,29 @@ html:not(.dark) .mushaf-translation-ayah--reciting {
   box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
 }
 
+.mushaf-translation-body {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html.dark .mushaf-translation-body {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mushaf-translation-text {
+  font-size: clamp(0.95rem, 3.8vw, 1.05rem);
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  color: var(--mushaf-read-text);
+}
+
+.mushaf-translation-ayah-num {
+  font-weight: 600;
+  color: var(--mushaf-read-meta);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Translation scroll mode */
 .mushaf-reader {
   --mushaf-sheet-bg: #f8f4ea;

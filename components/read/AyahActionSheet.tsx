@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Play, Languages, X, ChevronLeft, Square, SkipForward, Volume2, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import AyahTranslationBlock from '@/components/read/AyahTranslationBlock'
 
 interface AyahActionSheetProps {
   verseKey: string
@@ -69,10 +70,6 @@ export default function AyahActionSheet({
 
   if (!open || !mounted) return null
 
-  const ayahNum = verseKey.split(':')[1] || ''
-  const surahNum = verseKey.split(':')[0] || ''
-  const displayArabic = arabicText.trim() || 'Arabic text unavailable for this ayah.'
-
   const nextAyahButton = (
     <button
       type="button"
@@ -134,17 +131,14 @@ export default function AyahActionSheet({
           </button>
         </div>
 
-        <div className="mb-4 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain rounded-xl border-2 border-teal-500/50 bg-[#1a1a1a] px-4 py-4">
-          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-teal-400">
-            {surahNum}:{ayahNum}
-          </p>
-          <p
-            className="amiri arabic-text ayah-sheet-arabic text-center text-[clamp(1.25rem,5vw,1.65rem)] leading-[2.2]"
-            dir="rtl"
-            lang="ar"
-          >
-            {displayArabic}
-          </p>
+        <div className="mb-4 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain">
+          <AyahTranslationBlock
+            verseKey={verseKey}
+            arabicText={arabicText}
+            translation={null}
+            compact
+            showTranslation={false}
+          />
         </div>
 
         {view === 'menu' && (
@@ -209,16 +203,12 @@ export default function AyahActionSheet({
 
         {view === 'translation' && (
           <div className="space-y-3">
-            <div className="rounded-xl bg-[var(--app-surface)] px-4 py-3.5">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--app-muted)]">
-                Translation
-              </p>
-              <p className="text-left text-[15px] leading-relaxed text-[var(--app-text)]">
-                {translationLoading
-                  ? 'Loading translation…'
-                  : translation || 'Translation unavailable.'}
-              </p>
-            </div>
+            <AyahTranslationBlock
+              verseKey={verseKey}
+              arabicText={arabicText}
+              translation={translation}
+              loading={translationLoading}
+            />
             {nextAyahButton}
           </div>
         )}
