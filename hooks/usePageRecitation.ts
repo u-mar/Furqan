@@ -25,6 +25,8 @@ interface UsePageRecitationOptions {
   reciterId: string
   verses: Verse[]
   onPageFinished?: () => void
+  /** When true, verse list swap resumes playback instead of stopping (auto page advance). */
+  resumeOnPageChangeRef?: import('react').MutableRefObject<boolean>
 }
 
 interface PreloadedClip {
@@ -64,7 +66,7 @@ function waitForAudioReady(audio: HTMLAudioElement): Promise<void> {
   })
 }
 
-export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePageRecitationOptions) {
+export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnPageChangeRef }: UsePageRecitationOptions) {
   const [state, setState] = useState<PageRecitationState>(idleState)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
@@ -365,6 +367,13 @@ export function usePageRecitation({ reciterId, verses, onPageFinished }: UsePage
   }, [clearMainObjectUrl, clearPreload, finishPlayback, handlePageEnd, playIndex, preloadAheadFromIndex])
 
   useEffect(() => {
+    if (resumeOnPageChangeRef?.current) {
+      resumeOnPageChangeRef.current = false
+      playModeRef.current = 'page'
+      indexRef.current = 0
+      void playIndex(0, sessionRef.current)
+      return
+    }
     if (!state.playing && !state.loading) return
     sessionRef.current += 1
     abortingRef.current = true

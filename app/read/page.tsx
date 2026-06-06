@@ -80,6 +80,7 @@ function ReadPageContent() {
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
   const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | null>(null)
+  const resumeRecitationOnPageRef = useRef(false)
   const currentPageRef = useRef(1)
   const navigatePageRef = useRef<
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
@@ -112,6 +113,7 @@ function ReadPageContent() {
   const applyPage = useCallback((page: number, verses: Verse[]) => {
     pageVersesRef.current = verses
     currentPageRef.current = page
+    setPageSlide(null)
     setPageVerses(verses)
     setCurrentPage(page)
     setSliderPage(page)
@@ -168,6 +170,7 @@ function ReadPageContent() {
     const page = currentPageRef.current
     if (page >= TOTAL_MUSHAF_PAGES) return
     autoContinuePlaybackRef.current = 'recitation'
+    resumeRecitationOnPageRef.current = true
     void navigatePageRef.current(page + 1, { autoContinue: true })
   }, [])
 
@@ -176,6 +179,7 @@ function ReadPageContent() {
       reciterId,
       verses: pageVerses,
       onPageFinished: handleRecitationPageComplete,
+      resumeOnPageChangeRef: resumeRecitationOnPageRef,
     })
 
   const findNextSomaliVerse = useCallback(async (afterVerseKey?: string | null): Promise<string | null> => {
@@ -378,7 +382,6 @@ function ReadPageContent() {
   const juzPart = juzForChapter(currentSurahNum)
   const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
   const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying
-  const showReaderChrome = uiVisible && !playbackActive
 
   const handleRecitationToggle = () => {
     if (isActive) {
@@ -434,7 +437,6 @@ function ReadPageContent() {
     autoContinuePlaybackRef.current = null
 
     if (mode === 'recitation') {
-      startRecitation()
       return
     }
 
@@ -451,7 +453,7 @@ function ReadPageContent() {
         setSomaliAutoPlaying(false)
       })()
     }
-  }, [currentPage, pageVerses, startRecitation, findNextSomaliVerse])
+  }, [currentPage, pageVerses, findNextSomaliVerse])
 
   useWakeLock(playbackActive)
 
@@ -621,7 +623,6 @@ function ReadPageContent() {
   }, [currentPage, showTranslation])
 
   const handleContentTap = () => {
-    if (playbackActive) return
     if (didSwipe.current) {
       didSwipe.current = false
       return
@@ -684,14 +685,23 @@ function ReadPageContent() {
         </div>
       )}
 
-      {/* Minimal header — always visible (like reference app) */}
-      <div
-        className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]"
-        dir="ltr"
-      >
-        <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
-        <span className="text-sm text-[var(--mushaf-read-meta)]">Juz {juzPart}</span>
-      </div>
+      {/* Top meta — fixed slot so mushaf height never jumps when chrome toggles */}
+      {!uiVisible ? (
+        <div
+          className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]"
+          dir="ltr"
+        >
+          <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
+          <span className="text-sm text-[var(--mushaf-read-meta)]">Juz {juzPart}</span>
+        </div>
+      ) : (
+        <div
+          className="relative z-10 shrink-0 pt-[max(0.65rem,env(safe-area-inset-top))]"
+          aria-hidden
+        >
+          <div className="h-6" />
+        </div>
+      )}
 
       {/* Mushaf body — fixed fit when reading; scroll when translation */}
       <div
@@ -700,10 +710,7 @@ function ReadPageContent() {
           'relative min-h-0 flex-1',
           showTranslation
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
-            : cn(
-                'overflow-x-clip overflow-y-hidden px-1 sm:px-2',
-                uiVisible && !playbackActive ? 'pb-36' : 'pb-4'
-              )
+            : 'overflow-x-clip overflow-y-hidden px-1 pb-4 sm:px-2'
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
@@ -767,9 +774,8 @@ function ReadPageContent() {
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 backdrop-blur',
-          playbackActive ? 'pointer-events-none translate-y-full' : 'transition-transform duration-300',
-          !playbackActive && (showReaderChrome ? 'translate-y-0' : '-translate-y-full')
+          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur transition-transform duration-300',
+          uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -781,6 +787,10 @@ function ReadPageContent() {
         >
           <Menu className="h-6 w-6" />
         </button>
+        <div className="min-w-0 flex-1 px-2 text-center">
+          <p className="truncate text-sm text-stone-300">{surahTitle}</p>
+          <p className="text-xs text-stone-500">Juz {juzPart}</p>
+        </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -807,9 +817,8 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4',
-          playbackActive ? 'pointer-events-none translate-y-full' : 'transition-transform duration-300',
-          !playbackActive && (showReaderChrome ? 'translate-y-0' : 'translate-y-full')
+          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4 transition-transform duration-300',
+          uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1005,7 +1014,7 @@ function ReadPageContent() {
         onNextAyah={handleAyahMenuNext}
       />
 
-      {showReaderChrome && (
+      {uiVisible && (
         <Link
           href="/"
           className="absolute left-4 top-16 z-20 rounded-full bg-black/50 px-3 py-1 text-xs text-stone-400"
