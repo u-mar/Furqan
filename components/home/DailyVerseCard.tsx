@@ -145,7 +145,7 @@ export default function DailyVerseCard() {
   return (
     <section className="mb-8" aria-label="Daily verse">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">Daily Verse</h2>
+        <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">Weekly Verse</h2>
         <button
           type="button"
           onClick={() => void handleShare()}
