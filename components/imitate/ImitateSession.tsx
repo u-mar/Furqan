@@ -16,9 +16,10 @@ import HomeScreen from '@/components/home/HomeScreen'
 import VoiceSimilarityCard from '@/components/imitate/VoiceSimilarityCard'
 import WaveformCompare from '@/components/imitate/WaveformCompare'
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder'
-import { getReciterById, everyAyahAudioUrl } from '@/lib/reciters'
+import { getReciterById } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl } from '@/lib/offline-audio'
 import { savePracticeRecord } from '@/lib/imitate-progress'
+import { decodeToAudioBuffer } from '@/lib/audio-decode'
 import { analyzeVoiceSimilarity, type VoiceSimilarityResult } from '@/lib/voice-similarity'
 import { cn } from '@/lib/cn'
 
@@ -53,7 +54,8 @@ export default function ImitateSession({
   const [result, setResult] = useState<VoiceSimilarityResult | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const userAudioRef = useRef<HTMLAudioElement | null>(null)
-  const refBlobRef = useRef<Blob | null>(null)
+  const refAudioBufferRef = useRef<AudioBuffer | null>(null)
+  const refObjectUrlRef = useRef<string | null>(null)
   const { recording, blob, error: recorderError, startRecording, stopRecording, clearRecording } =
     useRecitationRecorder()
 
@@ -73,36 +75,43 @@ export default function ImitateSession({
   useEffect(() => () => stopAudio(), [stopAudio])
 
   useEffect(() => {
-    void getPlayableAyahAudioUrl(reciter.folder, surah, ayah).then(async (url) => {
-      if (!url) return
-      try {
-        const res = await fetch(url)
-        refBlobRef.current = await res.blob()
-        if (url.startsWith('blob:')) URL.revokeObjectURL(url)
-      } catch {
-        // fetched on demand during analyze
+    return () => {
+      if (refObjectUrlRef.current) {
+        URL.revokeObjectURL(refObjectUrlRef.current)
+        refObjectUrlRef.current = null
       }
-    })
-  }, [reciter.folder, surah, ayah])
+    }
+  }, [])
 
-  const fetchReferenceBlob = useCallback(async () => {
-    if (refBlobRef.current) return refBlobRef.current
+  const loadReferenceAudio = useCallback(async (): Promise<AudioBuffer> => {
+    if (refAudioBufferRef.current) return refAudioBufferRef.current
+
     const url = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
-    if (!url) throw new Error('Reference audio unavailable')
-    const res = await fetch(url)
-    const blob = await res.blob()
-    if (url.startsWith('blob:')) URL.revokeObjectURL(url)
-    refBlobRef.current = blob
-    return blob
+    if (!url) {
+      throw new Error('No internet — connect to load reciter audio, or download the surah in Listen')
+    }
+
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('fetch failed')
+      const arrayBuffer = await res.arrayBuffer()
+      const buffer = await decodeToAudioBuffer(arrayBuffer)
+      refAudioBufferRef.current = buffer
+      return buffer
+    } finally {
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url)
+      }
+    }
   }, [reciter.folder, surah, ayah])
 
   const runAnalysis = useCallback(
-    async (userBlob: Blob) => {
+    async (userAudio: Blob | AudioBuffer) => {
       setPhase('analyzing')
       setError(null)
       try {
-        const refBlob = await fetchReferenceBlob()
-        const analysis = await analyzeVoiceSimilarity(refBlob, userBlob)
+        const refBuffer = await loadReferenceAudio()
+        const analysis = await analyzeVoiceSimilarity(refBuffer, userAudio)
         setResult(analysis)
         savePracticeRecord({
           reciterId,
@@ -116,17 +125,11 @@ export default function ImitateSession({
         setPhase('results')
       } catch (e) {
         const detail = e instanceof Error ? e.message : ''
-        if (detail.includes('too short') || detail.includes('empty')) {
-          setError('Recording was too short. Tap Listen, then record the full ayah.')
-        } else if (detail.includes('decode') || detail.includes('EncodingError')) {
-          setError('Could not read your recording. Try again using Chrome or Edge.')
-        } else {
-          setError('Analysis failed — tap Listen first, then record the full ayah and try again.')
-        }
+        setError(detail || 'Something went wrong. Tap Listen first, then record again.')
         setPhase('idle')
       }
     },
-    [fetchReferenceBlob, reciterId, surah, ayah]
+    [loadReferenceAudio, reciterId, surah, ayah]
   )
 
   const playReference = useCallback(async () => {
@@ -134,13 +137,15 @@ export default function ImitateSession({
     stopAudio()
     setPhase('playing')
     try {
+      await loadReferenceAudio()
       const url = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
       if (!url) throw new Error('Could not play reciter audio.')
+      if (refObjectUrlRef.current) URL.revokeObjectURL(refObjectUrlRef.current)
+      refObjectUrlRef.current = url.startsWith('blob:') ? url : null
       const audio = new Audio(url)
       audioRef.current = audio
       audio.onended = () => {
         setPhase((p) => (p === 'playing' ? 'idle' : p))
-        if (url.startsWith('blob:')) URL.revokeObjectURL(url)
       }
       audio.onerror = () => {
         setError('Could not play reciter audio.')
@@ -151,17 +156,17 @@ export default function ImitateSession({
       setError('Could not play reciter audio.')
       setPhase('idle')
     }
-  }, [reciter.folder, stopAudio, surah, ayah])
+  }, [loadReferenceAudio, reciter.folder, stopAudio, surah, ayah])
 
   const handleRecord = useCallback(async () => {
     if (recording) {
-      const userBlob = await stopRecording()
-      if (!userBlob || userBlob.size < 100) {
+      const { blob: recordedBlob, audioBuffer } = await stopRecording()
+      if (!audioBuffer || !recordedBlob) {
         setError('Recording was too short. Tap Listen first, then recite the full ayah.')
         setPhase('idle')
         return
       }
-      await runAnalysis(userBlob)
+      await runAnalysis(audioBuffer)
       return
     }
     setError(null)
@@ -184,13 +189,15 @@ export default function ImitateSession({
   const playBoth = useCallback(async () => {
     stopAudio()
     try {
-      const refUrl = everyAyahAudioUrl(reciter.folder, surah, ayah)
+      const refUrl = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
+      if (!refUrl) throw new Error('no url')
       const refAudio = new Audio(refUrl)
       audioRef.current = refAudio
       await refAudio.play()
       await new Promise<void>((resolve) => {
         refAudio.onended = () => resolve()
       })
+      if (refUrl.startsWith('blob:')) URL.revokeObjectURL(refUrl)
       if (blob) {
         const userUrl = URL.createObjectURL(blob)
         const userAudio = new Audio(userUrl)

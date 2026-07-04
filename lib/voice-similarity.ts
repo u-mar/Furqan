@@ -1,5 +1,8 @@
 import { PitchDetector } from 'pitchy'
 import { clampScore, cosineSimilarity, dtwAlign, pearsonCorrelation } from '@/lib/dtw'
+import { decodeToAudioBuffer, type AudioInput } from '@/lib/audio-decode'
+
+export type { AudioInput } from '@/lib/audio-decode'
 
 export interface AudioFrame {
   rms: number
@@ -43,22 +46,6 @@ function downmixToMono(buffer: AudioBuffer): Float32Array {
   return mono
 }
 
-export async function decodeAudioSource(source: Blob | ArrayBuffer): Promise<AudioBuffer> {
-  const arrayBuffer = source instanceof Blob ? await source.arrayBuffer() : source
-  if (arrayBuffer.byteLength < 44) {
-    throw new Error('Recording file is empty')
-  }
-
-  const ctx = new AudioContext()
-  try {
-    if (ctx.state === 'suspended') await ctx.resume()
-    const copy = arrayBuffer.slice(0)
-    return await ctx.decodeAudioData(copy)
-  } finally {
-    await ctx.close()
-  }
-}
-
 function bandEnergy(slice: Float32Array, bands: number): number[] {
   const out = new Array(bands).fill(0)
   const size = Math.max(1, Math.floor(slice.length / bands))
@@ -70,6 +57,22 @@ function bandEnergy(slice: Float32Array, bands: number): number[] {
     out[b] = Math.sqrt(sum / Math.max(1, end - start))
   }
   return out
+}
+
+function safeFindPitch(
+  detector: ReturnType<typeof PitchDetector.forFloat32Array>,
+  slice: Float32Array,
+  sampleRate: number,
+  rms: number
+): number | null {
+  if (rms <= 0.008) return null
+  try {
+    const [hz, clarity] = detector.findPitch(slice, sampleRate)
+    if (clarity > 0.7 && hz > 55 && hz < 550) return hz
+  } catch {
+    // pitch detection can fail on very short slices
+  }
+  return null
 }
 
 function extractFrames(buffer: AudioBuffer): AudioFrame[] {
@@ -84,12 +87,7 @@ function extractFrames(buffer: AudioBuffer): AudioFrame[] {
     let sumSq = 0
     for (let i = 0; i < slice.length; i++) sumSq += slice[i] * slice[i]
     const rms = Math.sqrt(sumSq / slice.length)
-
-    let pitch: number | null = null
-    if (rms > 0.008) {
-      const [hz, clarity] = detector.findPitch(slice, sampleRate)
-      if (clarity > 0.75 && hz > 55 && hz < 550) pitch = hz
-    }
+    const pitch = safeFindPitch(detector, slice, sampleRate, rms)
 
     frames.push({
       rms,
@@ -230,16 +228,30 @@ function buildTips(tone: number, sound: number, flow: number, regions: VoiceDiff
 }
 
 export async function analyzeVoiceSimilarity(
-  reference: Blob | ArrayBuffer,
-  userRecording: Blob
+  reference: AudioInput,
+  userRecording: AudioInput
 ): Promise<VoiceSimilarityResult> {
-  const [refBuffer, userBuffer] = await Promise.all([
-    decodeAudioSource(reference),
-    decodeAudioSource(userRecording),
-  ])
+  let refBuffer: AudioBuffer
+  let userBuffer: AudioBuffer
 
-  if (userBuffer.duration < 0.3) {
+  try {
+    refBuffer = await decodeToAudioBuffer(reference)
+  } catch {
+    throw new Error('Could not load reciter audio — connect to the internet and tap Listen first')
+  }
+
+  try {
+    userBuffer = await decodeToAudioBuffer(userRecording)
+  } catch {
+    throw new Error('Could not read your recording')
+  }
+
+  if (userBuffer.duration < 0.2) {
     throw new Error('Recording too short')
+  }
+
+  if (refBuffer.duration < 0.1) {
+    throw new Error('Reciter audio is invalid')
   }
 
   const refFrames = extractFrames(refBuffer)
