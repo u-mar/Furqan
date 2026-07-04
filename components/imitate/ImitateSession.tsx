@@ -12,6 +12,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import HomeScreen from '@/components/home/HomeScreen'
 import VoiceSimilarityCard from '@/components/imitate/VoiceSimilarityCard'
 import WaveformCompare from '@/components/imitate/WaveformCompare'
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder'
@@ -113,8 +114,15 @@ export default function ImitateSession({
           flow: analysis.flow,
         })
         setPhase('results')
-      } catch {
-        setError('Could not analyze your recording. Try again in a quiet room.')
+      } catch (e) {
+        const detail = e instanceof Error ? e.message : ''
+        if (detail.includes('too short') || detail.includes('empty')) {
+          setError('Recording was too short. Tap Listen, then record the full ayah.')
+        } else if (detail.includes('decode') || detail.includes('EncodingError')) {
+          setError('Could not read your recording. Try again using Chrome or Edge.')
+        } else {
+          setError('Analysis failed — tap Listen first, then record the full ayah and try again.')
+        }
         setPhase('idle')
       }
     },
@@ -148,8 +156,8 @@ export default function ImitateSession({
   const handleRecord = useCallback(async () => {
     if (recording) {
       const userBlob = await stopRecording()
-      if (!userBlob || userBlob.size < 500) {
-        setError('Recording was too short. Listen first, then recite the full ayah.')
+      if (!userBlob || userBlob.size < 100) {
+        setError('Recording was too short. Tap Listen first, then recite the full ayah.')
         setPhase('idle')
         return
       }
@@ -206,9 +214,9 @@ export default function ImitateSession({
   const displayArabic = arabicText.trim() || 'Loading ayah text…'
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4">
+    <HomeScreen className="max-w-lg mx-auto">
+      <div className="pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <header className="mb-6 flex items-center gap-3">
           <Link
             href="/imitate"
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] hover:bg-[var(--app-surface)]"
@@ -376,6 +384,6 @@ export default function ImitateSession({
           </p>
         )}
       </div>
-    </main>
+    </HomeScreen>
   )
 }

@@ -1,11 +1,10 @@
-import Meyda from 'meyda'
 import { PitchDetector } from 'pitchy'
 import { clampScore, cosineSimilarity, dtwAlign, pearsonCorrelation } from '@/lib/dtw'
 
 export interface AudioFrame {
   rms: number
   pitch: number | null
-  mfcc: number[]
+  spectrum: number[]
 }
 
 export interface VoiceDiffRegion {
@@ -29,8 +28,8 @@ export interface VoiceSimilarityResult {
   tips: string[]
 }
 
-const FRAME_MS = 50
-const MFCC_SIZE = 13
+const FRAME_MS = 64
+const SPECTRUM_BANDS = 12
 
 function downmixToMono(buffer: AudioBuffer): Float32Array {
   const length = buffer.length
@@ -45,24 +44,40 @@ function downmixToMono(buffer: AudioBuffer): Float32Array {
 }
 
 export async function decodeAudioSource(source: Blob | ArrayBuffer): Promise<AudioBuffer> {
-  const ctx = new AudioContext()
   const arrayBuffer = source instanceof Blob ? await source.arrayBuffer() : source
+  if (arrayBuffer.byteLength < 44) {
+    throw new Error('Recording file is empty')
+  }
+
+  const ctx = new AudioContext()
   try {
-    return await ctx.decodeAudioData(arrayBuffer.slice(0))
+    if (ctx.state === 'suspended') await ctx.resume()
+    const copy = arrayBuffer.slice(0)
+    return await ctx.decodeAudioData(copy)
   } finally {
     await ctx.close()
   }
 }
 
+function bandEnergy(slice: Float32Array, bands: number): number[] {
+  const out = new Array(bands).fill(0)
+  const size = Math.max(1, Math.floor(slice.length / bands))
+  for (let b = 0; b < bands; b++) {
+    let sum = 0
+    const start = b * size
+    const end = Math.min(slice.length, start + size)
+    for (let i = start; i < end; i++) sum += slice[i] * slice[i]
+    out[b] = Math.sqrt(sum / Math.max(1, end - start))
+  }
+  return out
+}
+
 function extractFrames(buffer: AudioBuffer): AudioFrame[] {
   const sampleRate = buffer.sampleRate
   const mono = downmixToMono(buffer)
-  const frameSamples = Math.max(1, Math.round((sampleRate * FRAME_MS) / 1000))
+  const frameSamples = Math.max(512, Math.round((sampleRate * FRAME_MS) / 1000))
   const detector = PitchDetector.forFloat32Array(sampleRate)
   const frames: AudioFrame[] = []
-
-  Meyda.bufferSize = frameSamples
-  Meyda.sampleRate = sampleRate
 
   for (let start = 0; start + frameSamples <= mono.length; start += frameSamples) {
     const slice = mono.subarray(start, start + frameSamples)
@@ -71,27 +86,20 @@ function extractFrames(buffer: AudioBuffer): AudioFrame[] {
     const rms = Math.sqrt(sumSq / slice.length)
 
     let pitch: number | null = null
-    if (rms > 0.01) {
+    if (rms > 0.008) {
       const [hz, clarity] = detector.findPitch(slice, sampleRate)
-      if (clarity > 0.85 && hz > 60 && hz < 500) pitch = hz
+      if (clarity > 0.75 && hz > 55 && hz < 550) pitch = hz
     }
 
-    let mfcc = new Array(MFCC_SIZE).fill(0)
-    try {
-      const sliceArray = Array.from(slice)
-      const extracted = Meyda.extract('mfcc', sliceArray) as Record<string, number | number[]>
-      if (Array.isArray(extracted.mfcc)) {
-        mfcc = extracted.mfcc.slice(0, MFCC_SIZE)
-      }
-    } catch {
-      mfcc = [rms, pitch ?? 0, ...new Array(MFCC_SIZE - 2).fill(0)]
-    }
-
-    frames.push({ rms, pitch, mfcc })
+    frames.push({
+      rms,
+      pitch,
+      spectrum: bandEnergy(slice, SPECTRUM_BANDS),
+    })
   }
 
   if (frames.length === 0) {
-    frames.push({ rms: 0, pitch: null, mfcc: new Array(MFCC_SIZE).fill(0) })
+    frames.push({ rms: 0, pitch: null, spectrum: new Array(SPECTRUM_BANDS).fill(0) })
   }
 
   return frames
@@ -126,9 +134,7 @@ function detectPauses(rms: number[], frameMs: number): { startMs: number; endMs:
     if (silent && start === null) start = i
     if (!silent && start !== null) {
       const duration = (i - start) * frameMs
-      if (duration >= 120) {
-        pauses.push({ startMs: start * frameMs, endMs: i * frameMs })
-      }
+      if (duration >= 100) pauses.push({ startMs: start * frameMs, endMs: i * frameMs })
       start = null
     }
   }
@@ -141,23 +147,18 @@ function pauseAlignmentScore(
   userPauses: { startMs: number; endMs: number }[]
 ): number {
   if (refPauses.length === 0) return 100
-  const tolerance = 250
+  const tolerance = 280
   let matched = 0
   for (const ref of refPauses) {
     const refMid = (ref.startMs + ref.endMs) / 2
-    const hit = userPauses.some((u) => {
-      const mid = (u.startMs + u.endMs) / 2
-      return Math.abs(mid - refMid) <= tolerance
-    })
-    if (hit) matched++
+    if (userPauses.some((u) => Math.abs((u.startMs + u.endMs) / 2 - refMid) <= tolerance)) matched++
   }
   return clampScore((matched / refPauses.length) * 100)
 }
 
 function paceScore(refDuration: number, userDuration: number): number {
   if (refDuration <= 0 || userDuration <= 0) return 0
-  const ratio = userDuration / refDuration
-  return clampScore(100 - Math.abs(1 - ratio) * 200)
+  return clampScore(100 - Math.abs(1 - userDuration / refDuration) * 200)
 }
 
 function buildDiffRegions(
@@ -166,7 +167,7 @@ function buildDiffRegions(
   alignment: { refIdx: number; userIdx: number }[],
   frameMs: number
 ): VoiceDiffRegion[] {
-  const chunk = Math.max(4, Math.floor(alignment.length / 8))
+  const chunk = Math.max(3, Math.floor(alignment.length / 6))
   const regions: VoiceDiffRegion[] = []
   const refMean = pitchMean(refFrames.map((f) => f.pitch))
   const userMean = pitchMean(userFrames.map((f) => f.pitch))
@@ -184,10 +185,10 @@ function buildDiffRegions(
 
     const flowCorr = pearsonCorrelation(refRms, userRms)
     const toneCorr = pearsonCorrelation(refPitchNorm, userPitchNorm)
-    const mfccSims = slice.map((p) =>
-      cosineSimilarity(refFrames[p.refIdx]?.mfcc ?? [], userFrames[p.userIdx]?.mfcc ?? [])
+    const specSims = slice.map((p) =>
+      cosineSimilarity(refFrames[p.refIdx]?.spectrum ?? [], userFrames[p.userIdx]?.spectrum ?? [])
     )
-    const soundSim = mfccSims.reduce((s, v) => s + v, 0) / Math.max(mfccSims.length, 1)
+    const soundSim = specSims.reduce((s, v) => s + v, 0) / Math.max(specSims.length, 1)
 
     const scores = [
       { layer: 'flow' as const, score: scoreFromCorrelation(flowCorr) },
@@ -198,29 +199,33 @@ function buildDiffRegions(
     const severity = clampScore(100 - worst.score) / 100
     if (severity < 0.25) continue
 
-    const startMs = slice[0].refIdx * frameMs
-    const endMs = (slice[slice.length - 1].refIdx + 1) * frameMs
     let tip = 'Listen closely and try to match the reciter here.'
     if (worst.layer === 'tone') tip = "Match the reciter's rise and fall in this phrase."
-    if (worst.layer === 'sound') tip = "Try to copy the fullness and tone color of the reciter's voice."
+    if (worst.layer === 'sound') tip = "Try to copy how the reciter's voice sounds on each syllable."
     if (worst.layer === 'flow') tip = "Match the reciter's pace and pauses in this section."
 
-    regions.push({ startMs, endMs, layer: worst.layer, severity, tip })
+    regions.push({
+      startMs: slice[0].refIdx * frameMs,
+      endMs: (slice[slice.length - 1].refIdx + 1) * frameMs,
+      layer: worst.layer,
+      severity,
+      tip,
+    })
   }
 
-  return regions.slice(0, 6)
+  return regions.slice(0, 5)
 }
 
 function buildTips(tone: number, sound: number, flow: number, regions: VoiceDiffRegion[]): string[] {
   const ordered = [
-    { score: tone, tip: "Focus on matching the reciter's intonation — when their voice rises and falls." },
-    { score: sound, tip: "Listen to the reciter's voice color and try to copy how each syllable sounds." },
-    { score: flow, tip: "Match the reciter's rhythm — pauses, pace, and how long sounds are held." },
+    { score: tone, tip: "Focus on matching the reciter's intonation." },
+    { score: sound, tip: "Copy the reciter's voice color on each word." },
+    { score: flow, tip: "Match the reciter's rhythm and pauses." },
   ].sort((a, b) => a.score - b.score)
 
   const tips = [ordered[0].tip]
   if (regions[0]?.tip) tips.push(regions[0].tip)
-  if (ordered[0].score >= 75) tips.push('Good progress — keep practicing this ayah to refine your match.')
+  if (ordered[0].score >= 70) tips.push('Good effort — try again to improve your score.')
   return [...new Set(tips)].slice(0, 3)
 }
 
@@ -233,11 +238,19 @@ export async function analyzeVoiceSimilarity(
     decodeAudioSource(userRecording),
   ])
 
+  if (userBuffer.duration < 0.3) {
+    throw new Error('Recording too short')
+  }
+
   const refFrames = extractFrames(refBuffer)
   const userFrames = extractFrames(userBuffer)
   const refRms = refFrames.map((f) => f.rms)
   const userRms = userFrames.map((f) => f.rms)
   const alignment = dtwAlign(refRms, userRms)
+
+  if (alignment.length === 0) {
+    throw new Error('Could not align audio')
+  }
 
   const refMean = pitchMean(refFrames.map((f) => f.pitch))
   const userMean = pitchMean(userFrames.map((f) => f.pitch))
@@ -249,11 +262,12 @@ export async function analyzeVoiceSimilarity(
   )
   const tone = scoreFromCorrelation(pearsonCorrelation(alignedRefPitch, alignedUserPitch))
 
-  const mfccSimilarities = alignment.map((p) =>
-    cosineSimilarity(refFrames[p.refIdx]?.mfcc ?? [], userFrames[p.userIdx]?.mfcc ?? [])
+  const specSims = alignment.map((p) =>
+    cosineSimilarity(refFrames[p.refIdx]?.spectrum ?? [], userFrames[p.userIdx]?.spectrum ?? [])
   )
-  const avgMfcc = mfccSimilarities.reduce((s, v) => s + v, 0) / Math.max(mfccSimilarities.length, 1)
-  const sound = scoreFromCosine(avgMfcc)
+  const sound = scoreFromCosine(
+    specSims.reduce((s, v) => s + v, 0) / Math.max(specSims.length, 1)
+  )
 
   const alignedRefRms = alignment.map((p) => refFrames[p.refIdx]?.rms ?? 0)
   const alignedUserRms = alignment.map((p) => userFrames[p.userIdx]?.rms ?? 0)
