@@ -1,11 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, Users, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Menu, Mic } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
 import HomeScreen from '@/components/home/HomeScreen'
+import ImitatePinDialog from '@/components/imitate/ImitatePinDialog'
 import {
   IconListen,
   IconRead,
@@ -14,17 +16,20 @@ import {
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { cn } from '@/lib/cn'
 import { getSignedInUser } from '@/lib/auth'
+import { isImitateUnlocked } from '@/lib/imitate-access'
 
 const exploreTiles = [
   { id: 'read', label: 'Read', href: '/read', Icon: IconRead, themed: true },
   { id: 'test', label: 'Test', href: '/test/select', Icon: IconTest, themed: true },
-  { id: 'community', label: 'Community', href: null, Icon: Users, themed: false },
+  { id: 'imitate', label: 'Imitate', href: null, Icon: Mic, themed: false },
   { id: 'listen', label: 'Listen', href: '/listen', Icon: IconListen, themed: true },
 ] as const
 
 export default function Home() {
   useAppSettings()
-  const [communityOpen, setCommunityOpen] = useState(false)
+  const router = useRouter()
+  const [pinOpen, setPinOpen] = useState(false)
+  const [imitateUnlocked, setImitateUnlocked] = useState(false)
   const [displayName, setDisplayName] = useState('Guest')
 
   useEffect(() => {
@@ -33,6 +38,21 @@ export default function Home() {
     window.addEventListener('auth-user-changed', syncName)
     return () => window.removeEventListener('auth-user-changed', syncName)
   }, [])
+
+  useEffect(() => {
+    const sync = () => setImitateUnlocked(isImitateUnlocked())
+    sync()
+    window.addEventListener('imitate-access-changed', sync)
+    return () => window.removeEventListener('imitate-access-changed', sync)
+  }, [])
+
+  function handleImitateClick() {
+    if (imitateUnlocked) {
+      router.push('/imitate')
+      return
+    }
+    setPinOpen(true)
+  }
 
   return (
     <HomeScreen className="max-w-lg mx-auto">
@@ -69,19 +89,19 @@ export default function Home() {
                       tile.themed ? 'bg-[var(--home-sage-soft)]' : 'bg-stone-200/50 dark:bg-white/10'
                     )}
                   >
-                    <Icon className="h-7 w-7" strokeWidth={tile.id === 'community' ? 1.75 : undefined} />
+                    <Icon className="h-7 w-7" strokeWidth={tile.id === 'imitate' ? 1.75 : undefined} />
                   </span>
                 </span>
                 <span className="text-sm font-medium text-[var(--home-heading)]">{tile.label}</span>
               </div>
             )
 
-            if (tile.id === 'community') {
+            if (tile.id === 'imitate') {
               return (
                 <button
                   key={tile.id}
                   type="button"
-                  onClick={() => setCommunityOpen(true)}
+                  onClick={handleImitateClick}
                   className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--home-sage)]/50 rounded-2xl"
                 >
                   {inner}
@@ -102,43 +122,13 @@ export default function Home() {
         </div>
       </section>
 
-      {communityOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 pt-10 sm:items-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="community-title"
-          onClick={() => setCommunityOpen(false)}
-        >
-          <div
-            className={cn(
-              'w-full max-w-md rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 text-[var(--app-text)] shadow-2xl'
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-[var(--home-sage)]">
-                  Coming soon
-                </p>
-                <h2 id="community-title" className="home-serif mt-1 text-xl font-semibold">
-                  Community
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCommunityOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface)]"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="text-sm leading-relaxed text-[var(--app-muted)]">
-              A public place where users can record their own qiraat and share recitations.
-            </p>
-          </div>
-        </div>
+      {pinOpen && (
+        <ImitatePinDialog
+          open
+          navigateOnUnlock
+          onClose={() => setPinOpen(false)}
+          onUnlocked={() => setImitateUnlocked(true)}
+        />
       )}
     </HomeScreen>
   )
