@@ -195,7 +195,7 @@ function extractFrames(buffer: AudioBuffer): AudioFrame[] {
   return frames
 }
 
-function extractPeakWaveform(buffer: AudioBuffer, points: number): number[] {
+export function extractPeakWaveform(buffer: AudioBuffer, points: number): number[] {
   const mono = downmixToMono(buffer)
   const block = Math.max(1, Math.floor(mono.length / points))
   const peaks: number[] = []

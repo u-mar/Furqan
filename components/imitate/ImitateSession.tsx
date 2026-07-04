@@ -20,10 +20,16 @@ import { getReciterById } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl } from '@/lib/offline-audio'
 import { savePracticeRecord } from '@/lib/imitate-progress'
 import { decodeToAudioBuffer } from '@/lib/audio-decode'
-import { analyzeVoiceSimilarity, type VoiceSimilarityResult } from '@/lib/voice-similarity'
+import { analyzeVoiceSimilarity, extractPeakWaveform, type VoiceSimilarityResult } from '@/lib/voice-similarity'
+import type { WaveformPlaybackTrack } from '@/components/imitate/WaveformCompare'
 import { cn } from '@/lib/cn'
 
 type Phase = 'idle' | 'playing' | 'recording' | 'analyzing' | 'results'
+
+interface PlaybackState {
+  progress: number
+  track: WaveformPlaybackTrack
+}
 
 interface ImitateSessionProps {
   surah: number
@@ -52,14 +58,30 @@ export default function ImitateSession({
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<VoiceSimilarityResult | null>(null)
+  const [refPreviewWaveform, setRefPreviewWaveform] = useState<number[]>([])
+  const [refDurationMs, setRefDurationMs] = useState(0)
+  const [playback, setPlayback] = useState<PlaybackState>({ progress: 0, track: null })
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const userAudioRef = useRef<HTMLAudioElement | null>(null)
+  const playbackRafRef = useRef<number | null>(null)
   const refAudioBufferRef = useRef<AudioBuffer | null>(null)
   const refObjectUrlRef = useRef<string | null>(null)
   const { recording, blob, error: recorderError, startRecording, stopRecording, clearRecording } =
     useRecitationRecorder()
 
   const activeStep = stepIndex(phase)
+
+  const stopPlaybackTracking = useCallback(() => {
+    if (playbackRafRef.current !== null) {
+      cancelAnimationFrame(playbackRafRef.current)
+      playbackRafRef.current = null
+    }
+  }, [])
+
+  const clearPlayback = useCallback(() => {
+    stopPlaybackTracking()
+    setPlayback({ progress: 0, track: null })
+  }, [stopPlaybackTracking])
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -70,7 +92,44 @@ export default function ImitateSession({
       userAudioRef.current.pause()
       userAudioRef.current = null
     }
-  }, [])
+    clearPlayback()
+  }, [clearPlayback])
+
+  const attachPlaybackTracking = useCallback(
+    (audio: HTMLAudioElement, track: NonNullable<WaveformPlaybackTrack>) => {
+      stopPlaybackTracking()
+      setPlayback({ progress: 0, track })
+
+      const tick = () => {
+        if (audio.paused || audio.ended) return
+        const progress = audio.duration > 0 ? audio.currentTime / audio.duration : 0
+        setPlayback({ progress, track })
+        playbackRafRef.current = requestAnimationFrame(tick)
+      }
+
+      const onPlay = () => {
+        stopPlaybackTracking()
+        playbackRafRef.current = requestAnimationFrame(tick)
+      }
+
+      const onEnded = () => clearPlayback()
+
+      audio.addEventListener('play', onPlay)
+      audio.addEventListener('ended', onEnded)
+      audio.addEventListener('pause', () => {
+        if (audio.ended) return
+        stopPlaybackTracking()
+        setPlayback({ progress: audio.duration > 0 ? audio.currentTime / audio.duration : 0, track })
+      })
+
+      return () => {
+        audio.removeEventListener('play', onPlay)
+        audio.removeEventListener('ended', onEnded)
+        stopPlaybackTracking()
+      }
+    },
+    [clearPlayback, stopPlaybackTracking]
+  )
 
   useEffect(() => () => stopAudio(), [stopAudio])
 
@@ -97,6 +156,8 @@ export default function ImitateSession({
       const arrayBuffer = await res.arrayBuffer()
       const buffer = await decodeToAudioBuffer(arrayBuffer)
       refAudioBufferRef.current = buffer
+      setRefPreviewWaveform(extractPeakWaveform(buffer, 280))
+      setRefDurationMs(Math.round(buffer.duration * 1000))
       return buffer
     } finally {
       if (url.startsWith('blob:')) {
@@ -144,10 +205,13 @@ export default function ImitateSession({
       refObjectUrlRef.current = url.startsWith('blob:') ? url : null
       const audio = new Audio(url)
       audioRef.current = audio
+      const detach = attachPlaybackTracking(audio, 'ref')
       audio.onended = () => {
+        detach()
         setPhase((p) => (p === 'playing' ? 'idle' : p))
       }
       audio.onerror = () => {
+        detach()
         setError('Could not play reciter audio.')
         setPhase('idle')
       }
@@ -156,7 +220,7 @@ export default function ImitateSession({
       setError('Could not play reciter audio.')
       setPhase('idle')
     }
-  }, [loadReferenceAudio, reciter.folder, stopAudio, surah, ayah])
+  }, [attachPlaybackTracking, loadReferenceAudio, reciter.folder, stopAudio, surah, ayah])
 
   const handleRecord = useCallback(async () => {
     if (recording) {
@@ -182,9 +246,13 @@ export default function ImitateSession({
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
     userAudioRef.current = audio
-    audio.onended = () => URL.revokeObjectURL(url)
+    const detach = attachPlaybackTracking(audio, 'user')
+    audio.onended = () => {
+      detach()
+      URL.revokeObjectURL(url)
+    }
     void audio.play()
-  }, [blob, stopAudio])
+  }, [attachPlaybackTracking, blob, stopAudio])
 
   const playBoth = useCallback(async () => {
     stopAudio()
@@ -193,30 +261,60 @@ export default function ImitateSession({
       if (!refUrl) throw new Error('no url')
       const refAudio = new Audio(refUrl)
       audioRef.current = refAudio
+      const detachRef = attachPlaybackTracking(refAudio, 'ref')
       await refAudio.play()
       await new Promise<void>((resolve) => {
-        refAudio.onended = () => resolve()
+        refAudio.onended = () => {
+          detachRef()
+          resolve()
+        }
       })
       if (refUrl.startsWith('blob:')) URL.revokeObjectURL(refUrl)
       if (blob) {
         const userUrl = URL.createObjectURL(blob)
         const userAudio = new Audio(userUrl)
         userAudioRef.current = userAudio
-        userAudio.onended = () => URL.revokeObjectURL(userUrl)
+        const detachUser = attachPlaybackTracking(userAudio, 'user')
         await userAudio.play()
+        await new Promise<void>((resolve) => {
+          userAudio.onended = () => {
+            detachUser()
+            URL.revokeObjectURL(userUrl)
+            resolve()
+          }
+        })
       }
     } catch {
+      clearPlayback()
       setError('Playback failed.')
     }
-  }, [blob, reciter.folder, stopAudio, surah, ayah])
+  }, [attachPlaybackTracking, blob, clearPlayback, reciter.folder, stopAudio, surah, ayah])
 
   const reset = useCallback(() => {
     stopAudio()
     clearRecording()
     setResult(null)
+    setRefPreviewWaveform([])
+    setRefDurationMs(0)
     setError(null)
     setPhase('idle')
   }, [clearRecording, stopAudio])
+
+  const showWaveform = Boolean(result || refPreviewWaveform.length > 0)
+  const waveformDurationMs = result?.durationMs ?? refDurationMs
+  const waveformProps = result
+    ? {
+        alignedRef: result.alignedRef,
+        alignedUser: result.alignedUser,
+        matchHeatmap: result.matchHeatmap,
+        refPitch: result.alignedRefPitch,
+        userPitch: result.alignedUserPitch,
+        diffRegions: result.diffRegions,
+        frameMs: result.frameMs,
+      }
+    : {
+        alignedRef: refPreviewWaveform,
+      }
 
   const displayArabic = arabicText.trim() || 'Loading ayah text…'
 
@@ -274,6 +372,17 @@ export default function ImitateSession({
             {displayArabic}
           </p>
         </div>
+
+        {showWaveform && (
+          <div className="mb-6">
+            <WaveformCompare
+              {...waveformProps}
+              durationMs={waveformDurationMs}
+              playheadProgress={playback.progress}
+              activeTrack={playback.track}
+            />
+          </div>
+        )}
 
         <div className="mb-6 flex flex-col items-center gap-4">
           <button
@@ -355,16 +464,6 @@ export default function ImitateSession({
               sound={result.sound}
               flow={result.flow}
               detail={result.detail}
-            />
-            <WaveformCompare
-              alignedRef={result.alignedRef}
-              alignedUser={result.alignedUser}
-              matchHeatmap={result.matchHeatmap}
-              refPitch={result.alignedRefPitch}
-              userPitch={result.alignedUserPitch}
-              diffRegions={result.diffRegions}
-              durationMs={result.durationMs}
-              frameMs={result.frameMs}
             />
             <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">

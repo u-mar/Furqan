@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { VoiceAnalysisDetail } from '@/lib/voice-similarity'
 
@@ -10,6 +12,7 @@ interface VoiceSimilarityCardProps {
   flow: number
   detail?: VoiceAnalysisDetail
   className?: string
+  defaultOpen?: boolean
 }
 
 function scoreLabel(value: number): string {
@@ -59,10 +62,7 @@ function DetailGrid({ detail }: { detail: VoiceAnalysisDetail }) {
   return (
     <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[var(--home-card-border)] pt-4">
       {items.map((item) => (
-        <div
-          key={item.label}
-          className="rounded-lg bg-[var(--app-surface)]/60 px-2.5 py-2"
-        >
+        <div key={item.label} className="rounded-lg bg-[var(--app-surface)]/60 px-2.5 py-2">
           <p className="text-[10px] text-[var(--app-muted)]">{item.label}</p>
           <p className="text-sm font-semibold" style={{ color: scoreColor(item.value) }}>
             {item.value}%
@@ -80,33 +80,71 @@ export default function VoiceSimilarityCard({
   flow,
   detail,
   className,
+  defaultOpen = false,
 }: VoiceSimilarityCardProps) {
+  const [open, setOpen] = useState(defaultOpen)
+
   return (
     <div
       className={cn(
-        'rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]',
+        'rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]',
         className
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--home-sage)]">
-        Voice similarity
-      </p>
-      <div className="mt-1 flex items-end gap-2">
-        <p className="home-serif text-4xl font-semibold text-[var(--home-heading)]">
-          {voiceSimilarity}%
-        </p>
-        <p className="mb-1 text-sm font-medium" style={{ color: scoreColor(voiceSimilarity) }}>
-          {scoreLabel(voiceSimilarity)}
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 p-4 text-left"
+        aria-expanded={open}
+      >
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[var(--home-sage)]">
+            Voice similarity
+          </p>
+          <div className="mt-1 flex items-end gap-2">
+            <p className="home-serif text-3xl font-semibold text-[var(--home-heading)]">
+              {voiceSimilarity}%
+            </p>
+            <p className="mb-0.5 text-sm font-medium" style={{ color: scoreColor(voiceSimilarity) }}>
+              {scoreLabel(voiceSimilarity)}
+            </p>
+          </div>
+          {!open && (
+            <p className="mt-1 text-xs text-[var(--app-muted)]">
+              Tone {tone}% · Sound {sound}% · Flow {flow}%
+            </p>
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            'h-5 w-5 shrink-0 text-[var(--app-muted)] transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
 
-      <div className="mt-4 space-y-3">
-        <ScoreBar label="Tone · intonation & melody" value={tone} sub="How closely your pitch rises and falls" />
-        <ScoreBar label="Sound · voice color" value={sound} sub="Timbre, brightness, and vocal quality" />
-        <ScoreBar label="Flow · rhythm & pauses" value={flow} sub="Timing, breath points, and pace" />
-      </div>
-
-      {detail && <DetailGrid detail={detail} />}
+      {open && (
+        <div className="border-t border-[var(--home-card-border)] px-4 pb-4 pt-3">
+          <div className="space-y-3">
+            <ScoreBar
+              label="Tone · intonation & melody"
+              value={tone}
+              sub="How closely your pitch rises and falls"
+            />
+            <ScoreBar
+              label="Sound · voice color"
+              value={sound}
+              sub="Timbre, brightness, and vocal quality"
+            />
+            <ScoreBar
+              label="Flow · rhythm & pauses"
+              value={flow}
+              sub="Timing, breath points, and pace"
+            />
+          </div>
+          {detail && <DetailGrid detail={detail} />}
+        </div>
+      )}
     </div>
   )
 }
