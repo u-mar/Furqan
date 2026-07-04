@@ -354,11 +354,17 @@ export default function ImitateSession({
               tone={result.tone}
               sound={result.sound}
               flow={result.flow}
+              detail={result.detail}
             />
             <WaveformCompare
-              refWaveform={result.refWaveform}
-              userWaveform={result.userWaveform}
+              alignedRef={result.alignedRef}
+              alignedUser={result.alignedUser}
+              matchHeatmap={result.matchHeatmap}
+              refPitch={result.alignedRefPitch}
+              userPitch={result.alignedUserPitch}
               diffRegions={result.diffRegions}
+              durationMs={result.durationMs}
+              frameMs={result.frameMs}
             />
             <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
