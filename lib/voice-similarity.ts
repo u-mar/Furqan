@@ -78,7 +78,8 @@ function extractFrames(buffer: AudioBuffer): AudioFrame[] {
 
     let mfcc = new Array(MFCC_SIZE).fill(0)
     try {
-      const extracted = Meyda.extract('mfcc', slice) as Record<string, number | number[]>
+      const sliceArray = Array.from(slice)
+      const extracted = Meyda.extract('mfcc', sliceArray) as Record<string, number | number[]>
       if (Array.isArray(extracted.mfcc)) {
         mfcc = extracted.mfcc.slice(0, MFCC_SIZE)
       }

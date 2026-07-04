@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import HomeScreen from '@/components/home/HomeScreen'
 import ImitateAccessGuard from '@/components/imitate/ImitateAccessGuard'
 import ImitateSession from '@/components/imitate/ImitateSession'
 import { useAppSettings } from '@/hooks/useAppSettings'
@@ -37,15 +36,13 @@ export default function ImitateAyahPage() {
 
   return (
     <ImitateAccessGuard>
-      <HomeScreen className="max-w-lg mx-auto">
-        <ImitateSession
-          surah={surah}
-          ayah={ayah}
-          reciterId={settings.reciterId}
-          arabicText={arabicText}
-          surahName={surahName}
-        />
-      </HomeScreen>
+      <ImitateSession
+        surah={surah}
+        ayah={ayah}
+        reciterId={settings.reciterId}
+        arabicText={arabicText}
+        surahName={surahName}
+      />
     </ImitateAccessGuard>
   )
 }

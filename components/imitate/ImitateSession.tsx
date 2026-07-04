@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   ChevronLeft,
   Loader2,
@@ -8,8 +9,8 @@ import {
   Play,
   RotateCcw,
   Square,
+  Volume2,
 } from 'lucide-react'
-import Link from 'next/link'
 import Button from '@/components/ui/Button'
 import VoiceSimilarityCard from '@/components/imitate/VoiceSimilarityCard'
 import WaveformCompare from '@/components/imitate/WaveformCompare'
@@ -30,6 +31,14 @@ interface ImitateSessionProps {
   surahName: string
 }
 
+const STEPS = ['Listen', 'Record', 'Results'] as const
+
+function stepIndex(phase: Phase): number {
+  if (phase === 'results') return 2
+  if (phase === 'recording' || phase === 'analyzing') return 1
+  return 0
+}
+
 export default function ImitateSession({
   surah,
   ayah,
@@ -47,6 +56,8 @@ export default function ImitateSession({
   const { recording, blob, error: recorderError, startRecording, stopRecording, clearRecording } =
     useRecitationRecorder()
 
+  const activeStep = stepIndex(phase)
+
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause()
@@ -60,7 +71,21 @@ export default function ImitateSession({
 
   useEffect(() => () => stopAudio(), [stopAudio])
 
+  useEffect(() => {
+    void getPlayableAyahAudioUrl(reciter.folder, surah, ayah).then(async (url) => {
+      if (!url) return
+      try {
+        const res = await fetch(url)
+        refBlobRef.current = await res.blob()
+        if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+      } catch {
+        // fetched on demand during analyze
+      }
+    })
+  }, [reciter.folder, surah, ayah])
+
   const fetchReferenceBlob = useCallback(async () => {
+    if (refBlobRef.current) return refBlobRef.current
     const url = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
     if (!url) throw new Error('Reference audio unavailable')
     const res = await fetch(url)
@@ -69,6 +94,32 @@ export default function ImitateSession({
     refBlobRef.current = blob
     return blob
   }, [reciter.folder, surah, ayah])
+
+  const runAnalysis = useCallback(
+    async (userBlob: Blob) => {
+      setPhase('analyzing')
+      setError(null)
+      try {
+        const refBlob = await fetchReferenceBlob()
+        const analysis = await analyzeVoiceSimilarity(refBlob, userBlob)
+        setResult(analysis)
+        savePracticeRecord({
+          reciterId,
+          surah,
+          ayah,
+          voiceSimilarity: analysis.voiceSimilarity,
+          tone: analysis.tone,
+          sound: analysis.sound,
+          flow: analysis.flow,
+        })
+        setPhase('results')
+      } catch {
+        setError('Could not analyze your recording. Try again in a quiet room.')
+        setPhase('idle')
+      }
+    },
+    [fetchReferenceBlob, reciterId, surah, ayah]
+  )
 
   const playReference = useCallback(async () => {
     setError(null)
@@ -80,7 +131,7 @@ export default function ImitateSession({
       const audio = new Audio(url)
       audioRef.current = audio
       audio.onended = () => {
-        setPhase('idle')
+        setPhase((p) => (p === 'playing' ? 'idle' : p))
         if (url.startsWith('blob:')) URL.revokeObjectURL(url)
       }
       audio.onerror = () => {
@@ -96,8 +147,13 @@ export default function ImitateSession({
 
   const handleRecord = useCallback(async () => {
     if (recording) {
-      stopRecording()
-      setPhase('idle')
+      const userBlob = await stopRecording()
+      if (!userBlob || userBlob.size < 500) {
+        setError('Recording was too short. Listen first, then recite the full ayah.')
+        setPhase('idle')
+        return
+      }
+      await runAnalysis(userBlob)
       return
     }
     setError(null)
@@ -105,37 +161,7 @@ export default function ImitateSession({
     clearRecording()
     await startRecording()
     setPhase('recording')
-  }, [clearRecording, recording, startRecording, stopRecording])
-
-  const analyze = useCallback(async () => {
-    if (!blob) return
-    setPhase('analyzing')
-    setError(null)
-    try {
-      const refBlob = refBlobRef.current ?? (await fetchReferenceBlob())
-      const analysis = await analyzeVoiceSimilarity(refBlob, blob)
-      setResult(analysis)
-      savePracticeRecord({
-        reciterId,
-        surah,
-        ayah,
-        voiceSimilarity: analysis.voiceSimilarity,
-        tone: analysis.tone,
-        sound: analysis.sound,
-        flow: analysis.flow,
-      })
-      setPhase('results')
-    } catch {
-      setError('Could not analyze your recording. Try again in a quiet room.')
-      setPhase('idle')
-    }
-  }, [blob, fetchReferenceBlob, reciterId, surah, ayah])
-
-  useEffect(() => {
-    if (!recording && blob && phase === 'recording') {
-      void analyze()
-    }
-  }, [recording, blob, phase, analyze])
+  }, [clearRecording, recording, runAnalysis, startRecording, stopRecording])
 
   const playUserRecording = useCallback(() => {
     if (!blob) return
@@ -177,115 +203,179 @@ export default function ImitateSession({
     setPhase('idle')
   }, [clearRecording, stopAudio])
 
+  const displayArabic = arabicText.trim() || 'Loading ayah text…'
+
   return (
-    <div className="mx-auto max-w-lg pb-8">
-      <header className="mb-6 flex items-center gap-3">
-        <Link
-          href="/imitate"
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--app-muted)] hover:bg-[var(--app-surface)]"
-          aria-label="Back"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Link>
-        <div className="min-w-0">
-          <p className="truncate text-sm text-[var(--app-muted)]">{reciter.name}</p>
-          <h1 className="home-serif truncate text-lg font-semibold">
-            {surahName} · Ayah {ayah}
-          </h1>
+    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div className="mx-auto max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4">
+          <Link
+            href="/imitate"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] hover:bg-[var(--app-surface)]"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+              {reciter.name}
+            </p>
+            <h1 className="home-serif truncate text-xl font-semibold text-[var(--home-heading)]">
+              {surahName} · Ayah {ayah}
+            </h1>
+          </div>
+        </header>
+
+        <div className="mb-6 flex gap-2">
+          {STEPS.map((label, i) => (
+            <div
+              key={label}
+              className={cn(
+                'flex-1 rounded-xl border px-2 py-2 text-center text-xs font-medium transition-colors',
+                i <= activeStep
+                  ? 'border-[var(--home-sage)]/40 bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
+                  : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-[var(--app-muted)]'
+              )}
+            >
+              {label}
+            </div>
+          ))}
         </div>
-      </header>
 
-      <div
-        className="mb-6 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 text-right font-quran text-2xl leading-loose text-[var(--app-text)]"
-        dir="rtl"
-      >
-        {arabicText}
-      </div>
+        <div
+          className={cn(
+            'mb-6 rounded-2xl border-2 px-4 py-5 shadow-[var(--home-card-shadow)]',
+            'border-[var(--home-sage)]/25 bg-[var(--home-card-bg)]'
+          )}
+        >
+          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-[var(--home-sage-deep)]">
+            {surah}:{ayah}
+          </p>
+          <p
+            className="amiri arabic-text text-center text-[clamp(1.35rem,5.5vw,1.85rem)] leading-[2.2] text-[var(--home-heading)]"
+            dir="rtl"
+            lang="ar"
+          >
+            {displayArabic}
+          </p>
+        </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          onClick={() => void playReference()}
-          disabled={phase === 'playing' || phase === 'analyzing'}
-        >
-          <Play className="h-4 w-4" />
-          Listen
-        </Button>
-        <Button
-          variant={recording ? 'primary' : 'secondary'}
-          onClick={() => void handleRecord()}
-          disabled={phase === 'analyzing' || phase === 'playing'}
-          className={cn(recording && 'bg-red-600 hover:bg-red-700 dark:bg-red-500')}
-        >
-          {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          {recording ? 'Stop' : 'Record'}
-        </Button>
-        {blob && phase !== 'analyzing' && (
-          <Button variant="ghost" onClick={reset}>
-            <RotateCcw className="h-4 w-4" />
-            Retry
+        <div className="mb-6 flex flex-col items-center gap-4">
+          <button
+            type="button"
+            onClick={() => void handleRecord()}
+            disabled={phase === 'analyzing' || phase === 'playing'}
+            className={cn(
+              'relative flex h-28 w-28 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 disabled:opacity-50',
+              recording
+                ? 'bg-red-500 text-white ring-4 ring-red-500/30'
+                : 'bg-[var(--home-sage-deep)] text-white ring-4 ring-[var(--home-sage)]/25'
+            )}
+            aria-label={recording ? 'Stop recording' : 'Start recording'}
+          >
+            {phase === 'analyzing' ? (
+              <Loader2 className="h-10 w-10 animate-spin" />
+            ) : recording ? (
+              <Square className="h-9 w-9 fill-current" />
+            ) : (
+              <Mic className="h-10 w-10" />
+            )}
+            {recording && (
+              <span className="absolute -top-1 right-0 flex h-4 w-4">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-300 opacity-75" />
+                <span className="relative inline-flex h-4 w-4 rounded-full bg-red-200" />
+              </span>
+            )}
+          </button>
+          <p className="text-center text-sm font-medium text-[var(--home-heading)]">
+            {phase === 'analyzing'
+              ? 'Analyzing voice similarity…'
+              : recording
+                ? 'Tap to stop recording'
+                : 'Tap to record your recitation'}
+          </p>
+        </div>
+
+        <div className="mb-5 grid grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => void playReference()}
+            disabled={phase === 'playing' || phase === 'analyzing' || recording}
+            className="w-full"
+          >
+            <Play className="h-4 w-4" />
+            Listen
           </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={reset}
+            disabled={phase === 'analyzing' || recording}
+            className="w-full"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Start over
+          </Button>
+        </div>
+
+        {phase === 'playing' && (
+          <p className="mb-4 flex items-center justify-center gap-2 text-sm text-[var(--home-sage-deep)]">
+            <Volume2 className="h-4 w-4" />
+            Playing reciter…
+          </p>
+        )}
+
+        {(error || recorderError) && (
+          <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+            {error ?? recorderError}
+          </p>
+        )}
+
+        {result && (
+          <div className="space-y-4">
+            <VoiceSimilarityCard
+              voiceSimilarity={result.voiceSimilarity}
+              tone={result.tone}
+              sound={result.sound}
+              flow={result.flow}
+            />
+            <WaveformCompare
+              refWaveform={result.refWaveform}
+              userWaveform={result.userWaveform}
+              diffRegions={result.diffRegions}
+            />
+            <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+                Coaching tips
+              </p>
+              <ul className="space-y-2">
+                {result.tips.map((tip, i) => (
+                  <li key={i} className="text-sm leading-relaxed text-[var(--app-text)]">
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="secondary" size="lg" onClick={() => void playBoth()} className="w-full">
+                Compare A/B
+              </Button>
+              <Button variant="secondary" size="lg" onClick={playUserRecording} className="w-full">
+                Play yours
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {phase === 'idle' && !result && !error && !recorderError && (
+          <p className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-sm leading-relaxed text-[var(--app-muted)]">
+            First tap <strong className="text-[var(--home-heading)]">Listen</strong> to hear the
+            reciter, then tap the mic button and recite the same ayah. We&apos;ll score how similar
+            your voice sounds.
+          </p>
         )}
       </div>
-
-      {phase === 'playing' && (
-        <p className="mb-4 text-sm text-[var(--home-sage)]">Playing reciter…</p>
-      )}
-      {phase === 'recording' && (
-        <p className="mb-4 animate-pulse text-sm text-red-500">Recording — recite the ayah now…</p>
-      )}
-      {phase === 'analyzing' && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-[var(--app-muted)]">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Analyzing voice similarity…
-        </div>
-      )}
-      {(error || recorderError) && (
-        <p className="mb-4 text-sm text-red-500">{error ?? recorderError}</p>
-      )}
-
-      {result && (
-        <div className="space-y-4">
-          <VoiceSimilarityCard
-            voiceSimilarity={result.voiceSimilarity}
-            tone={result.tone}
-            sound={result.sound}
-            flow={result.flow}
-          />
-          <WaveformCompare
-            refWaveform={result.refWaveform}
-            userWaveform={result.userWaveform}
-            diffRegions={result.diffRegions}
-          />
-          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
-              Coaching tips
-            </p>
-            <ul className="space-y-2">
-              {result.tips.map((tip, i) => (
-                <li key={i} className="text-sm leading-relaxed text-[var(--app-text)]">
-                  {tip}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => void playBoth()} className="flex-1">
-              Compare A/B
-            </Button>
-            <Button variant="secondary" onClick={playUserRecording} className="flex-1">
-              Play yours
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {phase === 'idle' && !result && (
-        <p className="text-sm leading-relaxed text-[var(--app-muted)]">
-          Listen to the reciter, then record yourself reciting the same ayah. We&apos;ll score how
-          similar your voice sounds in tone, sound, and flow.
-        </p>
-      )}
-    </div>
+    </main>
   )
 }
