@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
@@ -10,8 +10,7 @@ import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { surahHasOpeningBasmalah } from '@/lib/mushaf-basmalah'
 import { getVerseArabicText } from '@/lib/quran-display'
 import {
-  getVerseQcfGlyphLines,
-  getVerseQcfGlyphs,
+  getVerseQcfGlyphWords,
   pageHasQcfData,
   qcfPageFontFamily,
   qcfPageSampleGlyphs,
@@ -42,38 +41,69 @@ function surahNumber(verseKey: string): number {
   return Number(verseKey.split(':')[0] || 0)
 }
 
-function TranslationQcfLine({ text }: { text: string }) {
-  const outerRef = useRef<HTMLParagraphElement>(null)
-  const innerRef = useRef<HTMLSpanElement>(null)
+function TranslationQcfAyah({ words }: { words: string[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLSpanElement>(null)
+  const [lines, setLines] = useState<string[]>(words.length ? [words.join('')] : [])
 
   useLayoutEffect(() => {
-    const outer = outerRef.current
-    const inner = innerRef.current
-    if (!outer || !inner) return
-
-    const fit = () => {
-      inner.style.fontSize = ''
-      const available = outer.clientWidth * 0.98
-      const needed = inner.scrollWidth
-      if (needed <= available || available <= 0) return
-      const basePx = parseFloat(getComputedStyle(inner).fontSize)
-      if (!Number.isFinite(basePx) || basePx <= 0) return
-      const ratio = (available / needed) * 0.98
-      inner.style.fontSize = `${Math.max(12, basePx * ratio)}px`
+    const container = containerRef.current
+    const measure = measureRef.current
+    if (!container || !measure || words.length === 0) {
+      setLines([])
+      return
     }
 
-    fit()
-    const observer = new ResizeObserver(fit)
-    observer.observe(outer)
+    const pack = () => {
+      const maxWidth = container.clientWidth
+      if (maxWidth <= 0) {
+        setLines([words.join('')])
+        return
+      }
+
+      const widths = words.map((word) => {
+        measure.textContent = word
+        return measure.getBoundingClientRect().width
+      })
+
+      const packed: string[] = []
+      let bucket: string[] = []
+      let bucketWidth = 0
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i]
+        const wordWidth = widths[i]
+        if (bucket.length > 0 && bucketWidth + wordWidth > maxWidth) {
+          packed.push(bucket.join(''))
+          bucket = [word]
+          bucketWidth = wordWidth
+        } else {
+          bucket.push(word)
+          bucketWidth += wordWidth
+        }
+      }
+
+      if (bucket.length > 0) packed.push(bucket.join(''))
+      setLines(packed.length > 0 ? packed : [words.join('')])
+    }
+
+    pack()
+    const observer = new ResizeObserver(pack)
+    observer.observe(container)
     return () => observer.disconnect()
-  }, [text])
+  }, [words])
 
   return (
-    <p ref={outerRef} className="mushaf-translation-arabic-line">
-      <span ref={innerRef} className="mushaf-translation-arabic-line__glyphs">
-        {text}
+    <div ref={containerRef} className="mushaf-translation-qcf-ayah">
+      <span ref={measureRef} className="mushaf-translation-qcf-measure" aria-hidden>
+        {words[0] ?? ''}
       </span>
-    </p>
+      {lines.map((line, index) => (
+        <p key={index} className="mushaf-translation-arabic-line">
+          {line}
+        </p>
+      ))}
+    </div>
   )
 }
 
@@ -81,7 +111,7 @@ interface TranslationAyahArticleProps {
   row: {
     verse_key: string
     text_uthmani: string
-    qcfLines: string[]
+    qcfWords: string[]
     endWord?: VerseWord
     translation: string
   }
@@ -161,11 +191,9 @@ function TranslationAyahArticle({
             lang="ar"
           >
             {showGlyphAyah ? (
-              row.qcfLines.map((line, lineIndex) => (
-                <TranslationQcfLine key={lineIndex} text={line} />
-              ))
+              <TranslationQcfAyah words={row.qcfWords} />
             ) : (
-              <p className="mushaf-translation-arabic-line text-center">
+              <p className="mushaf-translation-arabic-line mushaf-translation-arabic-line--plain">
                 {row.text_uthmani}{' '}
                 <AyahEndMark
                   verseKey={row.verse_key}
@@ -256,13 +284,11 @@ export default function MushafTranslationView({
 
   const displayRows = verses.map((verse) => {
     const endWord = verse.words?.find((word) => word.char_type_name === 'end')
-    const qcfGlyphs = getVerseQcfGlyphs(verse, page)
-    const qcfLines = getVerseQcfGlyphLines(verse, page)
+    const qcfWords = getVerseQcfGlyphWords(verse, page)
     return {
       verse_key: verse.verse_key,
       text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
-      qcfGlyphs,
-      qcfLines,
+      qcfWords,
       endWord,
       translation: byKey[verse.verse_key]?.translation || '',
     }
@@ -304,7 +330,7 @@ export default function MushafTranslationView({
         const isReciting = highlightedVerseKey === row.verse_key
         const isSelected = selectedVerseKey === row.verse_key && !isReciting
         const showBasmalah = num === 1 && surahHasOpeningBasmalah(surah)
-        const showGlyphAyah = useQcfGlyphs && row.qcfLines.length > 0
+        const showGlyphAyah = useQcfGlyphs && row.qcfWords.length > 0
 
         return (
           <TranslationAyahArticle

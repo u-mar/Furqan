@@ -121,6 +121,23 @@ export function getVerseQcfGlyphLines(verse: Verse, pageNumber: number): string[
     .map(([, parts]) => parts.join(''))
 }
 
+/** Per-word QCF glyphs for one ayah (reading order). */
+export function getVerseQcfGlyphWords(verse: Verse, pageNumber: number): string[] {
+  const items: Array<VerseWord & { verseKey: string }> = []
+
+  for (const word of verse.words || []) {
+    if (!wordOnVisualPage(word, pageNumber, verse)) continue
+    const code = word.code_v2?.trim()
+    if (!code) continue
+    items.push({ ...word, verseKey: verse.verse_key })
+  }
+
+  if (items.length === 0) return []
+
+  items.sort(compareMushafWords)
+  return items.map((word) => word.code_v2!.trim())
+}
+
 /** QCF glyph run for one ayah on a printed page (same font as mushaf read mode). */
 export function getVerseQcfGlyphs(verse: Verse, pageNumber: number): string {
   const items: Array<VerseWord & { verseKey: string }> = []

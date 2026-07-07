@@ -326,12 +326,14 @@ html.dark .mushaf-fit-line {
 
 .mushaf-translation-arabic {
   position: relative;
-  margin-inline: auto;
-  max-width: 42rem;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
   font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
   font-size: clamp(1.2rem, 4.8vw, 1.65rem);
   line-height: 2.15;
   color: var(--mushaf-read-text);
+  text-align: end;
 }
 
 .mushaf-translation-arabic--qcf {
@@ -343,20 +345,32 @@ html.dark .mushaf-fit-line {
   font-variant-ligatures: normal !important;
   font-synthesis: none;
   max-width: 100%;
-  overflow: hidden;
+}
+
+.mushaf-translation-qcf-ayah {
+  width: 100%;
+}
+
+.mushaf-translation-qcf-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .mushaf-translation-arabic-line {
   margin: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-align: center;
+  text-align: end;
+  white-space: nowrap;
 }
 
-.mushaf-translation-arabic-line__glyphs {
-  display: inline-block;
-  max-width: 100%;
-  white-space: nowrap;
+.mushaf-translation-arabic-line--plain {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .mushaf-translation-body .mushaf-translation-arabic {
