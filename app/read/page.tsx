@@ -545,8 +545,9 @@ function ReadPageContent() {
 
   const handleAyahSelect = useCallback(
     (verseKey: string) => {
-      if (!ayahMenu || verseKey === ayahMenu.verseKey) return
+      if (!ayahMenu) return
       longPressBlockTap.current = true
+      if (verseKey === ayahMenu.verseKey) return
       const verse = pageVerses.find((v) => v.verse_key === verseKey)
       if (!verse) return
       setAyahMenu({
@@ -795,10 +796,7 @@ function ReadPageContent() {
       longPressBlockTap.current = false
       return
     }
-    if (ayahMenu) {
-      setAyahMenu(null)
-      return
-    }
+    if (ayahMenu) return
     toggleUi()
   }
 
