@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Square, Bookmark, Languages, SkipForward, X } from 'lucide-react'
+import { Play, Square, Bookmark, Languages, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 export interface AyahMenuAnchor {
@@ -18,7 +18,6 @@ interface AyahContextMenuProps {
   anchor: AyahMenuAnchor | null
   translation: string | null
   translationLoading: boolean
-  hasNextAyah: boolean
   isReciting: boolean
   isBookmarked: boolean
   somaliVoiceAvailable?: boolean
@@ -26,7 +25,6 @@ interface AyahContextMenuProps {
   onClose: () => void
   onPlay: () => void
   onToggleBookmark: () => void
-  onNextAyah: () => void
   onPlaySomaliVoice?: () => void
   onStopSomaliVoice?: () => void
   onStopRecitation?: () => void
@@ -41,7 +39,6 @@ export default function AyahContextMenu({
   anchor,
   translation,
   translationLoading,
-  hasNextAyah,
   isReciting,
   isBookmarked,
   somaliVoiceAvailable = false,
@@ -49,7 +46,6 @@ export default function AyahContextMenu({
   onClose,
   onPlay,
   onToggleBookmark,
-  onNextAyah,
   onPlaySomaliVoice,
   onStopSomaliVoice,
   onStopRecitation,
@@ -131,8 +127,7 @@ export default function AyahContextMenu({
       ref={cardRef}
       data-ayah-menu
       className={cn(
-        'ayah-context-card fixed z-[101] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md',
-        'border-[var(--mushaf-read-popup-border)] bg-[var(--mushaf-read-popup-bg)] text-[var(--mushaf-read-popup-text,#2f2a26)]'
+        'ayah-context-card fixed z-[101] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl'
       )}
       style={{
         left: cardPos?.left ?? anchor.left + anchor.width / 2,
@@ -152,7 +147,7 @@ export default function AyahContextMenu({
             <button
               type="button"
               onClick={() => setShowTranslation(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-stone-500 hover:bg-black/5 dark:hover:bg-white/10"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-meta)] hover:bg-[var(--mushaf-read-accent-soft)]"
               aria-label="Hide translation"
             >
               <X className="h-3.5 w-3.5" />
@@ -165,14 +160,14 @@ export default function AyahContextMenu({
       )}
 
       <div
-        className="flex items-center justify-center gap-0.5 px-1.5 py-1.5"
+        className="ayah-context-card__toolbar flex items-center justify-center gap-0.5 px-1.5 py-1.5"
         role="toolbar"
         aria-label={`Ayah ${verseKey} actions`}
       >
         <button
           type="button"
           onClick={isReciting ? onStopRecitation : onPlay}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--mushaf-read-accent)] hover:bg-[var(--mushaf-read-accent-soft)] dark:hover:bg-teal-500/15"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--mushaf-read-accent)] hover:bg-[var(--mushaf-read-accent-soft)]"
           aria-label={isReciting ? 'Stop recitation' : 'Play from this ayah'}
         >
           {isReciting ? (
@@ -188,7 +183,7 @@ export default function AyahContextMenu({
             'flex h-9 w-9 items-center justify-center rounded-full',
             isBookmarked
               ? 'text-[var(--mushaf-read-accent)]'
-              : 'text-[var(--mushaf-read-meta)] hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
+              : 'text-[var(--mushaf-read-meta)] hover:bg-[var(--mushaf-read-accent-soft)]'
           )}
           aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark ayah'}
           aria-pressed={isBookmarked}
@@ -202,7 +197,7 @@ export default function AyahContextMenu({
             'flex h-9 w-9 items-center justify-center rounded-full',
             showTranslation
               ? 'bg-[var(--mushaf-read-accent-soft)] text-[var(--mushaf-read-accent)]'
-              : 'text-[var(--mushaf-read-meta)] hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
+              : 'text-[var(--mushaf-read-meta)] hover:bg-[var(--mushaf-read-accent-soft)]'
           )}
           aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
           aria-pressed={showTranslation}
@@ -217,7 +212,7 @@ export default function AyahContextMenu({
               'flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold',
               isSomaliVoicePlaying
                 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                : 'text-stone-600 hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
+                : 'text-[var(--mushaf-read-meta)] hover:bg-[var(--mushaf-read-accent-soft)]'
             )}
             aria-label={isSomaliVoicePlaying ? 'Stop Somali voice' : 'Play Somali voice'}
           >
@@ -226,20 +221,8 @@ export default function AyahContextMenu({
         ) : null}
         <button
           type="button"
-          onClick={onNextAyah}
-          disabled={!hasNextAyah}
-          className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full text-stone-600 hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10',
-            !hasNextAyah && 'cursor-not-allowed opacity-35'
-          )}
-          aria-label="Next ayah on page"
-        >
-          <SkipForward className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
           onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-stone-500 hover:bg-black/5 dark:hover:bg-white/10"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--mushaf-read-meta)] hover:bg-[var(--mushaf-read-accent-soft)]"
           aria-label="Close"
         >
           <X className="h-4 w-4" />

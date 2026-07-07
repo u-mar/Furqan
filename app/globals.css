@@ -161,53 +161,68 @@ html.dark .ayah-sheet-arabic {
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.14);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.11);
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.26);
-  --mushaf-read-popup-bg: #cfc7b8;
-  --mushaf-read-popup-border: rgba(47, 42, 38, 0.14);
+  --mushaf-read-popup-bg: #e8e2d6;
+  --mushaf-read-popup-border: rgba(47, 42, 38, 0.22);
   background: var(--mushaf-read-bg);
   color: var(--mushaf-read-text);
 }
 
 html:not(.dark) {
-  --mushaf-read-popup-bg: #cfc7b8;
-  --mushaf-read-popup-border: rgba(47, 42, 38, 0.14);
+  --mushaf-read-popup-bg: #e8e2d6;
+  --mushaf-read-popup-border: rgba(47, 42, 38, 0.22);
   --mushaf-read-popup-text: #2f2a26;
+  --mushaf-read-popup-shadow: 0 10px 36px rgba(47, 42, 38, 0.22);
 }
 
 html.dark .mushaf-reader-immersive {
-  --mushaf-read-bg: #090b10;
-  --mushaf-read-text: #e5e7eb;
-  --mushaf-read-meta: #6b7280;
-  --mushaf-read-badge-bg: #151922;
-  --mushaf-read-badge-text: #9ca3af;
-  --mushaf-read-card-bg: rgba(255, 255, 255, 0.04);
-  --mushaf-read-card-border: rgba(255, 255, 255, 0.08);
-  --mushaf-read-chrome-bg: rgba(26, 26, 26, 0.95);
-  --mushaf-read-chrome-border: rgba(255, 255, 255, 0.1);
-  --mushaf-read-accent: #2dd4bf;
-  --mushaf-read-accent-soft: rgba(45, 212, 191, 0.18);
-  --mushaf-read-highlight-bg: rgba(45, 212, 191, 0.08);
-  --mushaf-read-highlight-border: rgba(45, 212, 191, 0.25);
-  --mushaf-read-popup-bg: #1a1a1a;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.12);
+  --mushaf-read-bg: #06080c;
+  --mushaf-read-text: #c9ced4;
+  --mushaf-read-meta: #7a828c;
+  --mushaf-read-badge-bg: #12151c;
+  --mushaf-read-badge-text: #8b939e;
+  --mushaf-read-card-bg: rgba(255, 255, 255, 0.035);
+  --mushaf-read-card-border: rgba(255, 255, 255, 0.07);
+  --mushaf-read-chrome-bg: #12151c;
+  --mushaf-read-chrome-border: rgba(255, 255, 255, 0.08);
+  --mushaf-read-accent: #4db8a8;
+  --mushaf-read-accent-soft: rgba(77, 184, 168, 0.14);
+  --mushaf-read-highlight-bg: rgba(77, 184, 168, 0.07);
+  --mushaf-read-highlight-border: rgba(77, 184, 168, 0.2);
+  --mushaf-read-popup-bg: #1a1e26;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
 }
 
 html.dark {
-  --mushaf-read-popup-bg: #1a1a1a;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.12);
-  --mushaf-read-popup-text: #e5e7eb;
+  --mushaf-read-popup-bg: #1a1e26;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
+  --mushaf-read-popup-text: #c9ced4;
+  --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 
 .mushaf-read-chrome-bar {
   border-color: var(--mushaf-read-chrome-border);
   background: var(--mushaf-read-chrome-bg);
   color: var(--mushaf-read-text);
-  backdrop-filter: blur(10px);
 }
 
 .mushaf-read-chrome-panel {
   border: 1px solid var(--mushaf-read-chrome-border);
   background: var(--mushaf-read-chrome-bg);
-  backdrop-filter: blur(10px);
+}
+
+.ayah-context-card {
+  background: var(--mushaf-read-popup-bg);
+  border: 1px solid var(--mushaf-read-popup-border);
+  color: var(--mushaf-read-popup-text);
+  box-shadow: var(--mushaf-read-popup-shadow, 0 10px 36px rgba(47, 42, 38, 0.22));
+}
+
+.ayah-context-card__toolbar {
+  background: var(--mushaf-read-popup-toolbar-bg, rgba(47, 42, 38, 0.06));
+}
+
+html.dark .ayah-context-card__toolbar {
+  --mushaf-read-popup-toolbar-bg: rgba(0, 0, 0, 0.22);
 }
 
 .mushaf-read-chrome-btn {

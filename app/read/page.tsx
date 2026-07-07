@@ -591,30 +591,6 @@ function ReadPageContent() {
     }
   }, [ayahMenu?.verseKey, currentPage, pageVerses, showTranslation, uiVisible])
 
-  const getNextVerseOnPage = useCallback(
-    (verseKey: string) => {
-      const idx = pageVerses.findIndex((v) => v.verse_key === verseKey)
-      if (idx < 0 || idx >= pageVerses.length - 1) return null
-      return pageVerses[idx + 1]
-    },
-    [pageVerses]
-  )
-
-  const handleAyahMenuNext = useCallback(() => {
-    if (!ayahMenu) return
-    const next = getNextVerseOnPage(ayahMenu.verseKey)
-    if (!next) return
-    ayahChangeBlockTapUntilRef.current = Date.now() + 700
-    setAyahMenu({ verseKey: next.verse_key, arabic: getVerseArabicText(next) })
-    setAyahMenuBookmarked(isBookmarked(next.verse_key))
-    contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
-    window.scrollTo(0, 0)
-    if (isActive) {
-      setUiVisible(false)
-      playVerse(next.verse_key)
-    }
-  }, [ayahMenu, getNextVerseOnPage, isActive, playVerse])
-
   const handleToggleBookmark = useCallback(() => {
     if (!ayahMenu) return
     const verse = pageVerses.find((v) => v.verse_key === ayahMenu.verseKey)
@@ -632,8 +608,6 @@ function ReadPageContent() {
     })
     setAyahMenuBookmarked(saved)
   }, [ayahMenu, chapters, currentPage, pageVerses])
-
-  const ayahMenuHasNext = ayahMenu ? Boolean(getNextVerseOnPage(ayahMenu.verseKey)) : false
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? null
   const ayahSelectMode = Boolean(ayahMenu)
@@ -1149,7 +1123,6 @@ function ReadPageContent() {
           ayahMenu ? translationByKey[ayahMenu.verseKey]?.translation ?? null : null
         }
         translationLoading={ayahTranslationLoading}
-        hasNextAyah={ayahMenuHasNext}
         isReciting={isActive || isPaused}
         isBookmarked={ayahMenuBookmarked}
         somaliVoiceAvailable={somaliVoiceAvailable}
@@ -1190,7 +1163,6 @@ function ReadPageContent() {
           stopSomaliVoice()
         }}
         onStopRecitation={stopRecitation}
-        onNextAyah={handleAyahMenuNext}
       />
 
       {uiVisible && (

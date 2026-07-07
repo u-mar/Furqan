@@ -154,6 +154,14 @@ html:not(.dark) .mushaf-qcf-segment--selected {
   background: rgba(13, 107, 99, 0.1);
 }
 
+html.dark .mushaf-qcf-segment--reciting {
+  background: rgba(77, 184, 168, 0.2);
+}
+
+html.dark .mushaf-qcf-segment--selected {
+  background: rgba(77, 184, 168, 0.11);
+}
+
 .mushaf-qcf-line--reveal-target {
   cursor: pointer;
   border: 0;
