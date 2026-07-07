@@ -147,11 +147,11 @@
 }
 
 html:not(.dark) .mushaf-qcf-segment--reciting {
-  background: rgba(20, 184, 166, 0.22);
+  background: rgba(13, 107, 99, 0.18);
 }
 
 html:not(.dark) .mushaf-qcf-segment--selected {
-  background: rgba(20, 184, 166, 0.12);
+  background: rgba(13, 107, 99, 0.1);
 }
 
 .mushaf-qcf-line--reveal-target {

@@ -132,8 +132,7 @@ export default function AyahContextMenu({
       data-ayah-menu
       className={cn(
         'ayah-context-card fixed z-[101] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md',
-        'border-stone-200/90 bg-[#faf6ef]/98 text-[#2a2218]',
-        'dark:border-white/15 dark:bg-[#1a1a1a]/98 dark:text-stone-100'
+        'border-[var(--mushaf-read-popup-border)] bg-[var(--mushaf-read-popup-bg)] text-[var(--mushaf-read-popup-text,#2f2a26)]'
       )}
       style={{
         left: cardPos?.left ?? anchor.left + anchor.width / 2,
@@ -145,9 +144,9 @@ export default function AyahContextMenu({
       aria-label={`Ayah ${verseKey} actions`}
     >
       {showTranslation && (
-        <div className="ayah-context-card__translation border-b border-stone-200/80 px-3.5 py-3 dark:border-white/10">
+        <div className="ayah-context-card__translation border-b border-[var(--mushaf-read-popup-border)] px-3.5 py-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-400">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent,#0d6b63)]">
               Translation · {verseKey}
             </p>
             <button
@@ -159,7 +158,7 @@ export default function AyahContextMenu({
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <p className="max-h-[min(36vh,14rem)] overflow-y-auto overscroll-contain text-left text-sm leading-relaxed text-stone-800 dark:text-stone-200">
+          <p className="max-h-[min(36vh,14rem)] overflow-y-auto overscroll-contain text-left text-sm leading-relaxed opacity-90">
             {translationLoading ? 'Loading…' : translation || 'Translation unavailable.'}
           </p>
         </div>
@@ -173,7 +172,7 @@ export default function AyahContextMenu({
         <button
           type="button"
           onClick={isReciting ? onStopRecitation : onPlay}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-teal-700 hover:bg-teal-600/10 dark:text-teal-400 dark:hover:bg-teal-500/15"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--mushaf-read-accent)] hover:bg-[var(--mushaf-read-accent-soft)] dark:hover:bg-teal-500/15"
           aria-label={isReciting ? 'Stop recitation' : 'Play from this ayah'}
         >
           {isReciting ? (
@@ -188,8 +187,8 @@ export default function AyahContextMenu({
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-full',
             isBookmarked
-              ? 'text-teal-700 dark:text-teal-400'
-              : 'text-stone-600 hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
+              ? 'text-[var(--mushaf-read-accent)]'
+              : 'text-[var(--mushaf-read-meta)] hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
           )}
           aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark ayah'}
           aria-pressed={isBookmarked}
@@ -202,8 +201,8 @@ export default function AyahContextMenu({
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-full',
             showTranslation
-              ? 'bg-teal-600/15 text-teal-700 dark:text-teal-400'
-              : 'text-stone-600 hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
+              ? 'bg-[var(--mushaf-read-accent-soft)] text-[var(--mushaf-read-accent)]'
+              : 'text-[var(--mushaf-read-meta)] hover:bg-black/5 dark:text-stone-300 dark:hover:bg-white/10'
           )}
           aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
           aria-pressed={showTranslation}

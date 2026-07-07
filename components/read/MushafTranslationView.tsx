@@ -112,7 +112,7 @@ function TranslationAyahArticle({
         className={cn(
           'mushaf-translation-body rounded-2xl px-4 py-4 transition-colors duration-300',
           isReciting && 'mushaf-translation-body--reciting',
-          isSelected && 'ring-1 ring-teal-500/35'
+          isSelected && 'ring-1 ring-[var(--mushaf-read-highlight-border)]'
         )}
       >
         {showBasmalah && (

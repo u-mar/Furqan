@@ -949,7 +949,7 @@ function ReadPageContent() {
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header
         className={cn(
-          'absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/10 bg-black/90 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur',
+          'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
@@ -958,27 +958,27 @@ function ReadPageContent() {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="rounded-lg p-2 text-teal-400 hover:bg-white/5"
+          className="mushaf-read-chrome-btn rounded-lg p-2"
           aria-label="Open contents"
         >
           <Menu className="h-6 w-6" />
         </button>
         <div className="min-w-0 flex-1 px-2 text-center">
-          <p className="truncate text-sm text-stone-300">{surahTitle}</p>
-          <p className="text-xs text-stone-500">Juz {juzPart}</p>
+          <p className="mushaf-read-chrome-title truncate text-sm">{surahTitle}</p>
+          <p className="mushaf-read-chrome-subtitle text-xs">Juz {juzPart}</p>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={openSearch}
-            className="rounded-lg p-2 text-teal-400 hover:bg-white/5"
+            className="mushaf-read-chrome-btn rounded-lg p-2"
             aria-label="Search surah"
           >
             <Search className="h-5 w-5" />
           </button>
           <Link
             href="/settings"
-            className="rounded-lg p-2 text-teal-600 hover:bg-black/5 dark:text-teal-400 dark:hover:bg-white/5"
+            className="mushaf-read-chrome-btn rounded-lg p-2"
             aria-label="Settings"
             onClick={(e) => {
               e.stopPropagation()
@@ -1004,7 +1004,7 @@ function ReadPageContent() {
             {somaliNotice}
           </p>
         ) : null}
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-4 py-3 backdrop-blur">
+        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl px-4 py-3">
           <button
             type="button"
             onClick={() => {
@@ -1013,15 +1013,15 @@ function ReadPageContent() {
             }}
             disabled={pageVerses.length === 0}
             className={cn(
-              'flex h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors disabled:opacity-40',
+              'mushaf-read-chrome-btn flex h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors disabled:opacity-40',
               somaliAutoPlaying || isSomaliVoiceActive
-                ? 'bg-teal-500/20 text-teal-300'
-                : 'text-teal-400 hover:bg-white/5'
+                ? 'bg-[var(--mushaf-read-accent-soft)]'
+                : undefined
             )}
             aria-label={somaliAutoPlaying || isSomaliVoiceActive ? 'Stop Somali voice' : 'Play Somali voice'}
           >
             {somaliVoiceState.loading ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
             ) : somaliAutoPlaying || isSomaliVoiceActive ? (
               <Square className="h-4 w-4 fill-current" />
             ) : (
@@ -1034,13 +1034,13 @@ function ReadPageContent() {
             type="button"
             onClick={handleRecitationToggle}
             disabled={pageVerses.length === 0}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
+            className="mushaf-read-chrome-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
             aria-label={
               isActive ? 'Pause recitation' : isPaused ? 'Resume recitation' : 'Play page recitation'
             }
           >
             {recitation.loading ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
             ) : isActive ? (
               <Square className="h-5 w-5 fill-current" />
             ) : (
@@ -1049,12 +1049,12 @@ function ReadPageContent() {
           </button>
         </div>
 
-        <div className="mx-auto flex max-w-lg items-center gap-2 rounded-xl border border-white/10 bg-[#1a1a1a]/95 px-3 py-3 backdrop-blur">
+        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center gap-2 rounded-xl px-3 py-3">
           <button
             type="button"
             onClick={goPrevPage}
             disabled={currentPage <= 1}
-            className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
+            className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
             aria-label="Previous page"
           >
             {verticalPages ? (
@@ -1065,7 +1065,7 @@ function ReadPageContent() {
           </button>
 
           <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--app-muted)]">
+            <span className="mushaf-read-chrome-subtitle text-[11px] font-medium uppercase tracking-wider">
               Page
             </span>
             <input
@@ -1080,12 +1080,12 @@ function ReadPageContent() {
               onTouchEnd={() => {
                 if (sliderPage !== currentPage) navigatePage(sliderPage)
               }}
-              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-300 accent-teal-600 dark:bg-stone-700 dark:accent-teal-500"
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
               aria-label="Page slider"
             />
-            <span className="text-sm font-semibold tabular-nums text-[var(--app-text)]">
+            <span className="mushaf-read-chrome-title text-sm font-semibold tabular-nums">
               {currentPage}
-              <span className="font-normal text-[var(--app-muted)]"> / {TOTAL_MUSHAF_PAGES}</span>
+              <span className="mushaf-read-chrome-subtitle font-normal"> / {TOTAL_MUSHAF_PAGES}</span>
             </span>
           </div>
 
@@ -1093,7 +1093,7 @@ function ReadPageContent() {
             type="button"
             onClick={goNextPage}
             disabled={currentPage >= TOTAL_MUSHAF_PAGES}
-            className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center text-teal-600 disabled:opacity-30 dark:text-teal-400"
+            className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
             aria-label="Next page"
           >
             {verticalPages ? (
@@ -1113,8 +1113,8 @@ function ReadPageContent() {
               setShowTranslation((v) => !v)
             }}
             className={cn(
-              'rounded-lg p-2 hover:bg-white/5',
-              showTranslation ? 'bg-teal-600/20 text-teal-400' : 'text-teal-400'
+              'mushaf-read-chrome-btn rounded-lg p-2',
+              showTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
             )}
             aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
             aria-pressed={showTranslation}
@@ -1196,7 +1196,7 @@ function ReadPageContent() {
       {uiVisible && (
         <Link
           href="/"
-          className="absolute left-4 top-16 z-20 rounded-full bg-black/50 px-3 py-1 text-xs text-stone-400"
+          className="mushaf-read-chrome-panel absolute left-4 top-16 z-20 rounded-full px-3 py-1 text-xs text-[var(--mushaf-read-meta)]"
           onClick={(e) => e.stopPropagation()}
         >
           Home

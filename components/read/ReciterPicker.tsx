@@ -30,7 +30,7 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex max-w-full items-center gap-1 text-sm font-medium text-teal-600 dark:text-teal-400"
+        className="flex max-w-full items-center gap-1 text-sm font-medium text-[var(--mushaf-read-accent)]"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
