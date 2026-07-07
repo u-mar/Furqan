@@ -186,17 +186,17 @@ html.dark .mushaf-reader-immersive {
 
 .mushaf-boundary-toast-card {
   animation: mushaf-boundary-in 2s ease-out forwards;
-  border-radius: 1.25rem;
-  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.5);
   color: #f8fafc;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(6px);
 }
 
 html:not(.dark) .mushaf-boundary-toast-card {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--mushaf-read-text);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
 }
 
 .mushaf-boundary-toast-title {

@@ -27,12 +27,12 @@ export default function MushafBoundaryToast({ boundary, onDismiss }: MushafBound
       aria-live="polite"
       aria-label={title}
     >
-      <div className="mushaf-boundary-toast-card px-10 py-8 text-center">
-        <p className="mushaf-boundary-toast-title home-serif text-[clamp(2rem,9vw,3.25rem)] font-semibold leading-none tracking-tight">
+      <div className="mushaf-boundary-toast-card px-5 py-3.5 text-center">
+        <p className="mushaf-boundary-toast-title home-serif text-[clamp(1.1rem,4.5vw,1.5rem)] font-semibold leading-tight tracking-tight">
           {title}
         </p>
         {subtitle && (
-          <p className="mt-2 text-sm font-medium text-[var(--mushaf-read-meta)]">{subtitle}</p>
+          <p className="mt-1 text-[11px] font-medium text-[var(--mushaf-read-meta)]">{subtitle}</p>
         )}
       </div>
     </div>
