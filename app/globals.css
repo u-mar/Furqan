@@ -336,12 +336,27 @@ html.dark .mushaf-fit-line {
 
 .mushaf-translation-arabic--qcf {
   font-family: var(--mushaf-qcf-font-family, serif) !important;
-  font-size: clamp(1.35rem, 5.2vw, 1.9rem);
+  font-size: clamp(1.2rem, 4.6vw, 1.75rem);
   line-height: 2;
   letter-spacing: 0;
   font-feature-settings: normal !important;
   font-variant-ligatures: normal !important;
   font-synthesis: none;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.mushaf-translation-arabic-line {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+}
+
+.mushaf-translation-arabic-line__glyphs {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .mushaf-translation-body .mushaf-translation-arabic {

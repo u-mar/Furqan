@@ -15,6 +15,8 @@ export interface MushafPageViewProps {
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
   suppressHighlightScroll?: boolean
   hifdhReveal?: {
     startVerseKey: string
@@ -34,6 +36,8 @@ export default function MushafPageView({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
   suppressHighlightScroll = false,
   hifdhReveal,
   className,
@@ -72,6 +76,8 @@ export default function MushafPageView({
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}
         onAyahLongPress={onAyahLongPress}
+        onAyahSelect={onAyahSelect}
+        ayahSelectMode={ayahSelectMode}
         hifdhReveal={hifdhReveal}
       />
     </div>

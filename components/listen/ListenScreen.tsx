@@ -41,7 +41,7 @@ export default function ListenScreen() {
   const [downloadedOnly, setDownloadedOnly] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
 
-  const { state, surahProgress, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
+  const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
     useSurahPlayer(settings.reciterId)
 
   useEffect(() => {
@@ -110,7 +110,7 @@ export default function ListenScreen() {
     }
   }
 
-  const ayahProgress =
+  const playbackProgress =
     state.duration > 0 ? Math.min(100, Math.round((state.currentTime / state.duration) * 100)) : 0
 
   function formatTime(seconds: number): string {
@@ -314,7 +314,7 @@ export default function ListenScreen() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{state.surahName}</p>
                 <p className="text-xs text-[var(--app-muted)]">
-                  Full surah · Ayah {state.currentAyah} of {state.versesCount}
+                  Full surah
                   {state.error && <span className="ml-2 text-red-500">{state.error}</span>}
                 </p>
               </div>
@@ -362,25 +362,6 @@ export default function ListenScreen() {
               </div>
             </div>
             <div className="space-y-2">
-              <div>
-                <div className="mb-1 flex justify-between text-[10px] font-medium uppercase tracking-wide text-[var(--app-muted)]">
-                  <span>Surah progress</span>
-                  <span className="tabular-nums">{surahProgress}%</span>
-                </div>
-                <div
-                  className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700"
-                  role="progressbar"
-                  aria-valuenow={surahProgress}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Full surah playback progress"
-                >
-                  <div
-                    className="h-full rounded-full bg-[var(--home-sage-deep)] transition-[width] duration-300"
-                    style={{ width: `${surahProgress}%` }}
-                  />
-                </div>
-              </div>
               <input
                 type="range"
                 min={0}
@@ -391,12 +372,12 @@ export default function ListenScreen() {
                 disabled={!state.duration}
                 className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-teal-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-stone-700 dark:accent-teal-500"
                 style={{
-                  background: `linear-gradient(to right, var(--home-sage-deep) ${ayahProgress}%, rgb(229 231 235) ${ayahProgress}%)`,
+                  background: `linear-gradient(to right, var(--home-sage-deep) ${playbackProgress}%, rgb(229 231 235) ${playbackProgress}%)`,
                 }}
-                aria-label="Seek within current ayah"
+                aria-label="Seek within surah"
               />
               <div className="flex justify-between text-[11px] font-medium tabular-nums text-[var(--app-muted)]">
-                <span>This ayah {formatTime(state.currentTime)}</span>
+                <span>{formatTime(state.currentTime)}</span>
                 <span>{formatTime(state.duration)}</span>
               </div>
             </div>

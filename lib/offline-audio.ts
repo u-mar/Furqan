@@ -4,6 +4,7 @@ import {
   ayahAudioUrl,
   getReciterById,
   isSurahOnlyReciter,
+  listenSurahAudioUrl,
   surahAudioUrl,
 } from '@/lib/reciters'
 
@@ -32,31 +33,14 @@ export async function downloadSurahAudio(
   if (typeof caches === 'undefined') throw new Error('Audio cache is not supported in this browser.')
   const cache = await caches.open(AUDIO_CACHE)
   const reciter = getReciterById(reciterId)
-
-  if (isSurahOnlyReciter(reciter)) {
-    const url = surahAudioUrl(reciter, surah)
-    const existing = await cache.match(url)
-    if (!existing) {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed downloading surah ${surah}`)
-      await cache.put(url, res.clone())
-    }
-    onProgress?.(100)
-    markSurahDownloaded(reciterId, surah)
-    return
+  const url = listenSurahAudioUrl(reciter, surah)
+  const existing = await cache.match(url)
+  if (!existing) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Failed downloading surah ${surah}`)
+    await cache.put(url, res.clone())
   }
-
-  for (let ayah = 1; ayah <= versesCount; ayah++) {
-    const url = ayahAudioUrl(reciter, surah, ayah)
-    const existing = await cache.match(url)
-    if (!existing) {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed downloading ayah ${ayah}`)
-      await cache.put(url, res.clone())
-    }
-    onProgress?.(Math.round((ayah / versesCount) * 100))
-  }
-
+  onProgress?.(100)
   markSurahDownloaded(reciterId, surah)
 }
 
@@ -85,6 +69,20 @@ async function playableFromCache(onlineUrl: string): Promise<string | null> {
     return null
   }
   return null
+}
+
+export async function getPlayableListenSurahAudioUrl(
+  reciterId: string,
+  surah: number
+): Promise<string | null> {
+  const reciter = getReciterById(reciterId)
+  const onlineUrl = listenSurahAudioUrl(reciter, surah)
+
+  const cached = await playableFromCache(onlineUrl)
+  if (cached) return cached
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null
+  return onlineUrl
 }
 
 export async function getPlayableSurahAudioUrl(

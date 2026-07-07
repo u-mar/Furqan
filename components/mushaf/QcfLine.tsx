@@ -13,12 +13,16 @@ function QcfSegment({
   highlightedVerseKey,
   selectedVerseKey,
   onLongPress,
+  onSelect,
+  ayahSelectMode,
 }: {
   segment: QcfPageSegment
   index: number
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onLongPress?: (verseKey: string) => void
+  onSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
 }) {
   const longPress = useLongPress(() => onLongPress?.(segment.verseKey))
   const isReciting = highlightedVerseKey === segment.verseKey
@@ -30,11 +34,16 @@ function QcfSegment({
       data-verse-key={segment.verseKey}
       className={cn(
         'mushaf-qcf-segment',
-        onLongPress && 'mushaf-qcf-segment--pressable',
+        (onLongPress || onSelect) && 'mushaf-qcf-segment--pressable',
         isReciting && 'mushaf-qcf-segment--reciting',
         isSelected && 'mushaf-qcf-segment--selected'
       )}
       {...(onLongPress ? longPress.handlers : {})}
+      onClick={(e) => {
+        if (!ayahSelectMode || !onSelect) return
+        e.stopPropagation()
+        onSelect(segment.verseKey)
+      }}
     >
       {segment.text}
     </span>
@@ -49,6 +58,8 @@ function QcfLineGlyphs({
   highlightedVerseKey,
   selectedVerseKey,
   onSegmentLongPress,
+  onSegmentSelect,
+  ayahSelectMode,
 }: {
   segments: QcfPageSegment[]
   style: CSSProperties
@@ -56,6 +67,8 @@ function QcfLineGlyphs({
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onSegmentLongPress?: (verseKey: string) => void
+  onSegmentSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
@@ -102,6 +115,8 @@ function QcfLineGlyphs({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onLongPress={onSegmentLongPress}
+            onSelect={onSegmentSelect}
+            ayahSelectMode={ayahSelectMode}
           />
         ))}
       </span>
@@ -115,6 +130,8 @@ export interface QcfLineProps {
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onLineLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
   revealState?: QcfLineRevealState
   nextVerseKey?: string | null
   onReveal?: (verseKey: string) => void
@@ -126,6 +143,8 @@ function QcfLineComponent({
   highlightedVerseKey,
   selectedVerseKey,
   onLineLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
   revealState = 'shown',
   nextVerseKey = null,
   onReveal,
@@ -170,6 +189,8 @@ function QcfLineComponent({
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}
         onSegmentLongPress={segmentLongPress}
+        onSegmentSelect={ayahSelectMode ? onAyahSelect : undefined}
+        ayahSelectMode={ayahSelectMode}
       />
     )
 

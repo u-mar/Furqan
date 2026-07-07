@@ -1,10 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getReciterById, isSurahOnlyReciter } from '@/lib/reciters'
 import {
-  getPlayableAyahAudioUrl,
-  getPlayableSurahAudioUrl,
+  getPlayableListenSurahAudioUrl,
   OFFLINE_AUDIO_HINT,
   revokePlayableAyahAudioUrl,
 } from '@/lib/offline-audio'
@@ -13,7 +11,6 @@ export interface SurahPlayerState {
   surahId: number | null
   surahName: string
   versesCount: number
-  currentAyah: number
   currentTime: number
   duration: number
   playing: boolean
@@ -25,48 +22,11 @@ const initialState: SurahPlayerState = {
   surahId: null,
   surahName: '',
   versesCount: 0,
-  currentAyah: 0,
   currentTime: 0,
   duration: 0,
   playing: false,
   loading: false,
   error: null,
-}
-
-const PRELOAD_AHEAD = 2
-
-interface PreloadedAyah {
-  surahId: number
-  ayah: number
-  url: string
-  audio: HTMLAudioElement
-}
-
-function ayahKey(surahId: number, ayah: number): string {
-  return `${surahId}:${ayah}`
-}
-
-function waitForAudioReady(audio: HTMLAudioElement): Promise<void> {
-  if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-    return Promise.resolve()
-  }
-  return new Promise((resolve, reject) => {
-    const onReady = () => {
-      cleanup()
-      resolve()
-    }
-    const onFail = () => {
-      cleanup()
-      reject(new Error('Audio preload failed'))
-    }
-    const cleanup = () => {
-      audio.removeEventListener('canplaythrough', onReady)
-      audio.removeEventListener('error', onFail)
-    }
-    audio.addEventListener('canplaythrough', onReady, { once: true })
-    audio.addEventListener('error', onFail, { once: true })
-    audio.load()
-  })
 }
 
 export function useSurahPlayer(reciterId: string) {
@@ -75,24 +35,6 @@ export function useSurahPlayer(reciterId: string) {
   const sessionRef = useRef(0)
   const reciterRef = useRef(reciterId)
   const objectUrlRef = useRef<string | null>(null)
-  const preloadMapRef = useRef<Map<string, PreloadedAyah>>(new Map())
-  const preloadBlobUrlsRef = useRef<Map<string, string>>(new Map())
-  const preloadingKeysRef = useRef<Set<string>>(new Set())
-
-  const surahOnly = isSurahOnlyReciter(getReciterById(reciterId))
-
-  const clearPreload = useCallback(() => {
-    for (const pre of preloadMapRef.current.values()) {
-      pre.audio.pause()
-      pre.audio.src = ''
-    }
-    preloadMapRef.current.clear()
-    for (const url of preloadBlobUrlsRef.current.values()) {
-      revokePlayableAyahAudioUrl(url)
-    }
-    preloadBlobUrlsRef.current.clear()
-    preloadingKeysRef.current.clear()
-  }, [])
 
   const clearMainObjectUrl = useCallback(() => {
     if (objectUrlRef.current) {
@@ -100,59 +42,6 @@ export function useSurahPlayer(reciterId: string) {
       objectUrlRef.current = null
     }
   }, [])
-
-  const takePreloaded = useCallback((surahId: number, ayah: number): PreloadedAyah | null => {
-    const key = ayahKey(surahId, ayah)
-    const pre = preloadMapRef.current.get(key)
-    if (!pre || pre.audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) return null
-    preloadMapRef.current.delete(key)
-    pre.audio.pause()
-    pre.audio.src = ''
-    return pre
-  }, [])
-
-  const preloadAyah = useCallback(
-    async (surahId: number, ayah: number, versesCount: number, session: number) => {
-      if (ayah > versesCount || session !== sessionRef.current) return
-
-      const key = ayahKey(surahId, ayah)
-      if (preloadMapRef.current.has(key) || preloadingKeysRef.current.has(key)) return
-
-      preloadingKeysRef.current.add(key)
-      try {
-        const url = await getPlayableAyahAudioUrl(reciterRef.current, surahId, ayah)
-        if (!url || session !== sessionRef.current) return
-
-        const preAudio = new Audio()
-        preAudio.preload = 'auto'
-        preAudio.src = url
-        await waitForAudioReady(preAudio)
-        if (session !== sessionRef.current) {
-          preAudio.pause()
-          preAudio.src = ''
-          if (url.startsWith('blob:')) revokePlayableAyahAudioUrl(url)
-          return
-        }
-
-        preloadMapRef.current.set(key, { surahId, ayah, url, audio: preAudio })
-        if (url.startsWith('blob:')) preloadBlobUrlsRef.current.set(key, url)
-      } catch {
-        /* skip failed ayah; playback will retry on demand */
-      } finally {
-        preloadingKeysRef.current.delete(key)
-      }
-    },
-    [reciterId]
-  )
-
-  const preloadAhead = useCallback(
-    (surahId: number, currentAyah: number, versesCount: number, session: number) => {
-      for (let offset = 1; offset <= PRELOAD_AHEAD; offset++) {
-        void preloadAyah(surahId, currentAyah + offset, versesCount, session)
-      }
-    },
-    [preloadAyah]
-  )
 
   const stop = useCallback(() => {
     sessionRef.current += 1
@@ -162,96 +51,11 @@ export function useSurahPlayer(reciterId: string) {
       clearMainObjectUrl()
       audio.src = ''
     }
-    clearPreload()
     setState(initialState)
-  }, [clearMainObjectUrl, clearPreload])
-
-  const playAyah = useCallback(
-    async (
-      surahId: number,
-      ayah: number,
-      versesCount: number,
-      surahName: string,
-      session: number,
-      options?: { seamless?: boolean }
-    ) => {
-      const audio = audioRef.current
-      if (!audio || session !== sessionRef.current) return
-
-      if (ayah > versesCount) {
-        setState((s) => ({ ...s, playing: false, loading: false, currentAyah: versesCount }))
-        return
-      }
-
-      const pre = options?.seamless ? takePreloaded(surahId, ayah) : null
-      const usePreload = Boolean(pre)
-
-      setState((s) => ({
-        ...s,
-        surahId,
-        surahName,
-        versesCount,
-        currentAyah: ayah,
-        currentTime: 0,
-        duration: 0,
-        playing: true,
-        loading: !usePreload,
-        error: null,
-      }))
-
-      let url: string | null = null
-      if (usePreload && pre) {
-        url = pre.url
-      } else {
-        url = await getPlayableAyahAudioUrl(reciterRef.current, surahId, ayah)
-      }
-
-      if (!url) {
-        if (session !== sessionRef.current) return
-        setState((s) => ({
-          ...s,
-          loading: false,
-          playing: false,
-          error: OFFLINE_AUDIO_HINT,
-        }))
-        return
-      }
-
-      try {
-        clearMainObjectUrl()
-        const key = ayahKey(surahId, ayah)
-        const blobFromPreload = preloadBlobUrlsRef.current.get(key)
-        if (blobFromPreload) {
-          preloadBlobUrlsRef.current.delete(key)
-          objectUrlRef.current = blobFromPreload
-        } else if (url.startsWith('blob:')) {
-          objectUrlRef.current = url
-        }
-        audio.src = url
-        await audio.play()
-        if (session !== sessionRef.current) return
-        setState((s) => ({ ...s, loading: false }))
-        preloadAhead(surahId, ayah, versesCount, session)
-      } catch {
-        if (session !== sessionRef.current) return
-        setState((s) => ({
-          ...s,
-          loading: false,
-          playing: false,
-          error: `Could not play ayah ${ayah}`,
-        }))
-      }
-    },
-    [clearMainObjectUrl, preloadAhead, takePreloaded]
-  )
+  }, [clearMainObjectUrl])
 
   const playSurahFile = useCallback(
-    async (
-      surahId: number,
-      surahName: string,
-      versesCount: number,
-      session: number
-    ) => {
+    async (surahId: number, surahName: string, versesCount: number, session: number) => {
       const audio = audioRef.current
       if (!audio || session !== sessionRef.current) return
 
@@ -259,7 +63,6 @@ export function useSurahPlayer(reciterId: string) {
         surahId,
         surahName,
         versesCount,
-        currentAyah: 1,
         currentTime: 0,
         duration: 0,
         playing: true,
@@ -267,7 +70,7 @@ export function useSurahPlayer(reciterId: string) {
         error: null,
       })
 
-      const url = await getPlayableSurahAudioUrl(reciterRef.current, surahId)
+      const url = await getPlayableListenSurahAudioUrl(reciterRef.current, surahId)
       if (!url || session !== sessionRef.current) {
         setState((s) => ({
           ...s,
@@ -301,15 +104,9 @@ export function useSurahPlayer(reciterId: string) {
   const playSurah = useCallback(
     (surahId: number, surahName: string, versesCount: number) => {
       sessionRef.current += 1
-      clearPreload()
-      const session = sessionRef.current
-      if (isSurahOnlyReciter(getReciterById(reciterRef.current))) {
-        void playSurahFile(surahId, surahName, versesCount, session)
-      } else {
-        void playAyah(surahId, 1, versesCount, surahName, session)
-      }
+      void playSurahFile(surahId, surahName, versesCount, sessionRef.current)
     },
-    [clearPreload, playAyah, playSurahFile]
+    [playSurahFile]
   )
 
   const seekRelative = useCallback((seconds: number) => {
@@ -341,32 +138,18 @@ export function useSurahPlayer(reciterId: string) {
       return
     }
 
-    if (state.currentAyah > 0) {
-      audio
-        .play()
-        .then(() => setState((s) => ({ ...s, playing: true, error: null })))
-        .catch(() => setState((s) => ({ ...s, error: 'Playback failed' })))
-    }
-  }, [state.currentAyah, state.loading, state.playing, state.surahId])
+    audio
+      .play()
+      .then(() => setState((s) => ({ ...s, playing: true, error: null })))
+      .catch(() => setState((s) => ({ ...s, error: 'Playback failed' })))
+  }, [state.loading, state.playing, state.surahId])
 
   useEffect(() => {
     const audio = new Audio()
     audioRef.current = audio
 
     const onEnded = () => {
-      const session = sessionRef.current
-      if (isSurahOnlyReciter(getReciterById(reciterRef.current))) {
-        setState((s) => ({ ...s, playing: false, loading: false }))
-        return
-      }
-      setState((s) => {
-        if (!s.surahId || s.currentAyah >= s.versesCount) {
-          return { ...s, playing: false, loading: false }
-        }
-        const nextAyah = s.currentAyah + 1
-        void playAyah(s.surahId, nextAyah, s.versesCount, s.surahName, session, { seamless: true })
-        return s
-      })
+      setState((s) => ({ ...s, playing: false, loading: false }))
     }
 
     const onLoadedMetadata = () => {
@@ -377,39 +160,15 @@ export function useSurahPlayer(reciterId: string) {
     }
 
     const onTimeUpdate = () => {
-      setState((s) => {
-        const duration = Number.isFinite(audio.duration) ? audio.duration : s.duration
-        if (
-          s.surahId &&
-          s.currentAyah > 0 &&
-          s.currentAyah < s.versesCount &&
-          duration > 0 &&
-          audio.currentTime >= duration * 0.45
-        ) {
-          const session = sessionRef.current
-          preloadAhead(s.surahId, s.currentAyah, s.versesCount, session)
-        }
-        return {
-          ...s,
-          currentTime: audio.currentTime,
-          duration,
-        }
-      })
+      setState((s) => ({
+        ...s,
+        currentTime: audio.currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : s.duration,
+      }))
     }
 
     const onError = () => {
-      setState((s) => {
-        if (!s.surahId) return s
-        const session = sessionRef.current
-        if (s.currentAyah < s.versesCount) {
-          void playAyah(s.surahId, s.currentAyah + 1, s.versesCount, s.surahName, session, {
-            seamless: true,
-          })
-        } else {
-          return { ...s, playing: false, loading: false }
-        }
-        return { ...s, loading: false, error: `Skipped ayah ${s.currentAyah}` }
-      })
+      setState((s) => ({ ...s, playing: false, loading: false, error: 'Playback failed' }))
     }
 
     audio.addEventListener('ended', onEnded)
@@ -424,47 +183,24 @@ export function useSurahPlayer(reciterId: string) {
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.pause()
       clearMainObjectUrl()
-      clearPreload()
       audio.src = ''
     }
-  }, [clearMainObjectUrl, clearPreload, playAyah, preloadAhead])
+  }, [clearMainObjectUrl])
 
   useEffect(() => {
     if (reciterRef.current === reciterId) return
     reciterRef.current = reciterId
-    clearPreload()
 
     setState((s) => {
-      if (!s.surahId || !s.currentAyah) return s
+      if (!s.surahId) return s
       const session = sessionRef.current
-      if (isSurahOnlyReciter(getReciterById(reciterRef.current))) {
-        void playSurahFile(s.surahId, s.surahName, s.versesCount, session)
-      } else {
-        void playAyah(s.surahId, s.currentAyah, s.versesCount, s.surahName, session)
-      }
+      void playSurahFile(s.surahId, s.surahName, s.versesCount, session)
       return { ...s, loading: true, error: null }
     })
-  }, [reciterId, clearPreload, playAyah, playSurahFile])
-
-  const surahProgress = surahOnly
-    ? state.duration > 0
-      ? Math.min(100, Math.round((state.currentTime / state.duration) * 100))
-      : 0
-    : state.versesCount > 0 && state.currentAyah > 0
-      ? Math.min(
-          100,
-          Math.round(
-            ((state.currentAyah - 1 +
-              (state.duration > 0 ? state.currentTime / state.duration : 0)) /
-              state.versesCount) *
-              100
-          )
-        )
-      : 0
+  }, [reciterId, playSurahFile])
 
   return {
     state,
-    surahProgress,
     playSurah,
     togglePlayPause,
     seekRelative,

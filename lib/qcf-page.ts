@@ -100,6 +100,27 @@ export function qcfPageSampleGlyphs(verses: Verse[], pageNumber: number): string
   return pageText.slice(0, 12)
 }
 
+/** QCF glyph lines for one ayah (wraps at printed mushaf line breaks). */
+export function getVerseQcfGlyphLines(verse: Verse, pageNumber: number): string[] {
+  const byLine = new Map<number, string[]>()
+
+  for (const word of verse.words || []) {
+    if (!wordOnVisualPage(word, pageNumber, verse)) continue
+    const code = word.code_v2?.trim()
+    if (!code) continue
+    const line = word.line_number ?? 1
+    const bucket = byLine.get(line) || []
+    bucket.push(code)
+    byLine.set(line, bucket)
+  }
+
+  if (byLine.size === 0) return []
+
+  return [...byLine.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, parts]) => parts.join(''))
+}
+
 /** QCF glyph run for one ayah on a printed page (same font as mushaf read mode). */
 export function getVerseQcfGlyphs(verse: Verse, pageNumber: number): string {
   const items: Array<VerseWord & { verseKey: string }> = []

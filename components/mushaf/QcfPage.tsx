@@ -15,6 +15,8 @@ export interface QcfPageProps {
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
   /** Hifdh test: hide unrevealed ayahs and tap to reveal the next one. */
   hifdhReveal?: {
     startVerseKey: string
@@ -33,6 +35,8 @@ function QcfPageComponent({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
   hifdhReveal,
 }: QcfPageProps) {
   const layout = useMemo(() => buildQcfPageLayout(verses, pageNumber), [verses, pageNumber])
@@ -79,6 +83,8 @@ function QcfPageComponent({
               highlightedVerseKey={highlightedVerseKey}
               selectedVerseKey={selectedVerseKey}
               onLineLongPress={onAyahLongPress}
+              onAyahSelect={onAyahSelect}
+              ayahSelectMode={ayahSelectMode}
               revealState={revealState}
               nextVerseKey={hifdhReveal?.nextVerseKey ?? null}
               onReveal={hifdhReveal?.onReveal}

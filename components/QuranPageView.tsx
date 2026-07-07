@@ -36,6 +36,8 @@ interface QuranPageViewProps {
   hideRevealBoxes?: boolean
   pageNumber?: number
   onAyahLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
   /** Skip scroll-into-view when ayah highlight changes (e.g. during audio playback). */
   suppressHighlightScroll?: boolean
 }
@@ -91,11 +93,15 @@ function UnicodeMushafVerse({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
 }: {
   verse: Verse
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
 }) {
   const longPress = useLongPress(() => onAyahLongPress?.(verse.verse_key))
   const pageWords = verse.words?.filter((word) => word.char_type_name !== 'end') ?? []
@@ -123,6 +129,11 @@ function UnicodeMushafVerse({
         selected && !active && 'mushaf-line--selected'
       )}
       {...(onAyahLongPress ? longPress.handlers : {})}
+      onClick={(e) => {
+        if (!ayahSelectMode || !onAyahSelect) return
+        e.stopPropagation()
+        onAyahSelect(verse.verse_key)
+      }}
     >
       {text}
       {hasEndMark && (
@@ -143,11 +154,15 @@ function UnicodeMushafPage({
   highlightedVerseKey,
   selectedVerseKey,
   onAyahLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
 }: {
   verses: Verse[]
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onAyahLongPress?: (verseKey: string) => void
+  onAyahSelect?: (verseKey: string) => void
+  ayahSelectMode?: boolean
 }) {
   return (
     <div className="mushaf-unicode-page" style={{ fontFamily: PLAIN_MUSHAF_FONT }}>
@@ -165,6 +180,8 @@ function UnicodeMushafPage({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={onAyahLongPress}
+            onAyahSelect={onAyahSelect}
+            ayahSelectMode={ayahSelectMode}
           />
         </div>
       ))}
@@ -251,6 +268,8 @@ export default function QuranPageView({
   highlightedVerseKey = null,
   selectedVerseKey = null,
   onAyahLongPress,
+  onAyahSelect,
+  ayahSelectMode = false,
   suppressHighlightScroll = false,
 }: QuranPageViewProps) {
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
@@ -356,6 +375,7 @@ export default function QuranPageView({
   const textClass = readMode ? 'text-[var(--mushaf-read-text)]' : 'text-[var(--mushaf-sheet-text)]'
 
   const ayahLongPress = readMode && onAyahLongPress ? onAyahLongPress : undefined
+  const ayahSelect = readMode && ayahSelectMode && onAyahSelect ? onAyahSelect : undefined
   const gridRef = useRef<HTMLDivElement>(null)
   const focusKey = highlightedVerseKey || selectedVerseKey
 
@@ -389,6 +409,8 @@ export default function QuranPageView({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
+            onAyahSelect={ayahSelect}
+            ayahSelectMode={ayahSelectMode}
           />
         </div>
       </div>
@@ -472,6 +494,8 @@ export default function QuranPageView({
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
+            onAyahSelect={ayahSelect}
+            ayahSelectMode={ayahSelectMode}
             suppressHighlightScroll={suppressHighlightScroll}
             hifdhReveal={
               hifdhRevealMode

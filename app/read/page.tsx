@@ -519,9 +519,11 @@ function ReadPageContent() {
     prevHighlightedVerseKeyRef.current = highlightedVerseKey
     ayahChangeBlockTapUntilRef.current = Date.now() + 700
     setUiVisible(false)
-    contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
-    window.scrollTo(0, 0)
-  }, [playbackActive, highlightedVerseKey])
+    if (!showTranslation) {
+      contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
+      window.scrollTo(0, 0)
+    }
+  }, [playbackActive, highlightedVerseKey, showTranslation])
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
@@ -541,27 +543,52 @@ function ReadPageContent() {
     [isActive, pageVerses, pauseRecitation, stopSomaliVoice]
   )
 
+  const handleAyahSelect = useCallback(
+    (verseKey: string) => {
+      if (!ayahMenu || verseKey === ayahMenu.verseKey) return
+      longPressBlockTap.current = true
+      const verse = pageVerses.find((v) => v.verse_key === verseKey)
+      if (!verse) return
+      setAyahMenu({
+        verseKey,
+        arabic: getVerseArabicText(verse),
+      })
+      setAyahMenuBookmarked(isBookmarked(verseKey))
+    },
+    [ayahMenu, pageVerses]
+  )
+
   useLayoutEffect(() => {
     if (!ayahMenu?.verseKey) {
       setAyahMenuAnchor(null)
       return
     }
-    const key = ayahMenu.verseKey
-    const el =
-      document.querySelector(`[data-verse-key="${key}"]`) ??
-      document.querySelector(`[data-verse-keys="${key}"]`)
-    if (!el) {
-      setAyahMenuAnchor(null)
-      return
+    const measure = () => {
+      const key = ayahMenu.verseKey
+      const el =
+        document.querySelector(`[data-verse-key="${key}"]`) ??
+        document.querySelector(`[data-verse-keys="${key}"]`) ??
+        document.querySelector(`[data-translation-ayah="${key}"]`)
+      if (!el) {
+        setAyahMenuAnchor(null)
+        return
+      }
+      const rect = el.getBoundingClientRect()
+      setAyahMenuAnchor({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      })
     }
-    const rect = el.getBoundingClientRect()
-    setAyahMenuAnchor({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    })
-  }, [ayahMenu?.verseKey, currentPage, pageVerses, showTranslation])
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+    }
+  }, [ayahMenu?.verseKey, currentPage, pageVerses, showTranslation, uiVisible])
 
   const getNextVerseOnPage = useCallback(
     (verseKey: string) => {
@@ -608,6 +635,7 @@ function ReadPageContent() {
   const ayahMenuHasNext = ayahMenu ? Boolean(getNextVerseOnPage(ayahMenu.verseKey)) : false
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? null
+  const ayahSelectMode = Boolean(ayahMenu)
 
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
@@ -628,11 +656,20 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
+          onAyahSelect={handleAyahSelect}
+          ayahSelectMode={ayahSelectMode}
           suppressHighlightScroll
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
+    [
+      ayahSelectMode,
+      chapterNamesById,
+      handleAyahLongPress,
+      handleAyahSelect,
+      highlightedVerseKey,
+      mushafSelectedVerseKey,
+    ]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -720,7 +757,7 @@ function ReadPageContent() {
     const el = contentScrollRef.current
     if (el) el.scrollTop = 0
     window.scrollTo(0, 0)
-  }, [currentPage, showTranslation, highlightedVerseKey])
+  }, [currentPage, showTranslation])
 
   useEffect(() => {
     if (showTranslation) return
@@ -756,6 +793,10 @@ function ReadPageContent() {
     }
     if (longPressBlockTap.current) {
       longPressBlockTap.current = false
+      return
+    }
+    if (ayahMenu) {
+      setAyahMenu(null)
       return
     }
     toggleUi()
@@ -853,7 +894,12 @@ function ReadPageContent() {
             chapters={chapters}
             translationLanguage={translationLanguage}
             highlightedVerseKey={highlightedVerseKey}
-            suppressHighlightScroll
+            selectedVerseKey={mushafSelectedVerseKey}
+            scrollContainerRef={contentScrollRef}
+            followPlaybackScroll={playbackActive}
+            onAyahLongPress={handleAyahLongPress}
+            onAyahSelect={handleAyahSelect}
+            ayahSelectMode={ayahSelectMode}
           />
         ) : verticalPages ? (
           <MushafPageCarousel
@@ -884,6 +930,8 @@ function ReadPageContent() {
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
+            onAyahSelect={handleAyahSelect}
+            ayahSelectMode={ayahSelectMode}
             suppressHighlightScroll
           />
         )}
