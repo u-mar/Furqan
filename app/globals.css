@@ -165,6 +165,44 @@ html.dark .mushaf-reader-immersive {
   --mushaf-read-badge-text: #9ca3af;
 }
 
+@keyframes mushaf-boundary-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+.mushaf-boundary-toast-card {
+  animation: mushaf-boundary-in 2s ease-out forwards;
+  border-radius: 1.25rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+html:not(.dark) .mushaf-boundary-toast-card {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--mushaf-read-text);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+}
+
+.mushaf-boundary-toast-title {
+  color: inherit;
+}
+
 .mushaf-fit-grid {
   display: grid;
   grid-template-rows: repeat(15, 1fr);

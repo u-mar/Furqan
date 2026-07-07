@@ -33,6 +33,7 @@ import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
 import AyahActionSheet from '@/components/read/AyahActionSheet'
 import MushafPageCarousel, { type PageSlideDirection } from '@/components/read/MushafPageCarousel'
+import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
 import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
@@ -49,6 +50,12 @@ import {
   LAST_READ_PAGE_KEY,
   TOTAL_MUSHAF_PAGES,
 } from '@/lib/mushaf'
+import {
+  boundaryAtPage,
+  resolveBoundaryIndex,
+  type MushafBoundary,
+  type MushafBoundaryIndex,
+} from '@/lib/mushaf-boundaries'
 import {
   getChapters,
   getMushafPage,
@@ -109,6 +116,9 @@ function ReadPageContent() {
     incomingVerses: Verse[]
     incomingPage: number
   } | null>(null)
+  const [boundaryIndex, setBoundaryIndex] = useState<MushafBoundaryIndex | null>(null)
+  const [boundaryToast, setBoundaryToast] = useState<MushafBoundary | null>(null)
+  const prevReadPageRef = useRef<number | null>(null)
 
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
@@ -132,6 +142,32 @@ function ReadPageContent() {
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
     prefetchMushafPages(page, 3)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (!isOfflineReady()) {
+        const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
+        await ensureOfflineHydrated().catch(() => {})
+      }
+      const index = await resolveBoundaryIndex()
+      if (!cancelled) setBoundaryIndex(index)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!boundaryIndex || loading) return
+
+    const prev = prevReadPageRef.current
+    prevReadPageRef.current = currentPage
+    if (prev === null || prev === currentPage) return
+
+    const boundary = boundaryAtPage(boundaryIndex, currentPage)
+    if (boundary) setBoundaryToast(boundary)
+  }, [boundaryIndex, currentPage, loading])
 
   const loadPage = useCallback(
     async (page: number, options?: { silent?: boolean }) => {
@@ -748,6 +784,8 @@ function ReadPageContent() {
           <div className="h-full w-1/3 animate-pulse bg-teal-500" />
         </div>
       )}
+
+      <MushafBoundaryToast boundary={boundaryToast} onDismiss={() => setBoundaryToast(null)} />
 
       {/* Top meta — fixed slot so mushaf height never jumps when chrome toggles */}
       {!uiVisible ? (
