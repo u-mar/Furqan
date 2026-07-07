@@ -333,7 +333,9 @@ html.dark .mushaf-fit-line {
   font-size: clamp(1.2rem, 4.8vw, 1.65rem);
   line-height: 2.15;
   color: var(--mushaf-read-text);
-  text-align: end;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: isolate;
 }
 
 .mushaf-translation-arabic--qcf {
@@ -348,29 +350,37 @@ html.dark .mushaf-fit-line {
 }
 
 .mushaf-translation-qcf-ayah {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-content: flex-start;
   width: 100%;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: isolate;
 }
 
-.mushaf-translation-qcf-measure {
-  position: absolute;
-  visibility: hidden;
-  pointer-events: none;
+.mushaf-translation-qcf-word {
+  flex: 0 0 auto;
+  max-width: 100%;
   white-space: nowrap;
-  font-family: inherit;
-  font-size: inherit;
+  line-height: inherit;
 }
 
 .mushaf-translation-arabic-line {
   margin: 0;
+  width: 100%;
   max-width: 100%;
-  text-align: end;
-  white-space: nowrap;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: isolate;
 }
 
 .mushaf-translation-arabic-line--plain {
   white-space: normal;
-  overflow-wrap: anywhere;
-  text-wrap: pretty;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .mushaf-translation-body .mushaf-translation-arabic {
