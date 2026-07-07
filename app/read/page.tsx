@@ -31,7 +31,7 @@ import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
-import AyahActionSheet from '@/components/read/AyahActionSheet'
+import AyahContextMenu, { type AyahMenuAnchor } from '@/components/read/AyahContextMenu'
 import MushafPageCarousel, { type PageSlideDirection } from '@/components/read/MushafPageCarousel'
 import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
 import { useSwipe } from '@/hooks/useSwipe'
@@ -108,6 +108,7 @@ function ReadPageContent() {
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
   const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
+  const [ayahMenuAnchor, setAyahMenuAnchor] = useState<AyahMenuAnchor | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
@@ -221,7 +222,7 @@ function ReadPageContent() {
     void navigatePageRef.current(page + 1, { autoContinue: true })
   }, [])
 
-  const { state: recitation, stop: stopRecitation, start: startRecitation, playVerse, isActive } =
+  const { state: recitation, stop: stopRecitation, pause: pauseRecitation, resume: resumeRecitation, start: startRecitation, playVerse, isActive, isPaused } =
     usePageRecitation({
       reciterId,
       verses: pageVerses,
@@ -432,14 +433,18 @@ function ReadPageContent() {
 
   const handleRecitationToggle = () => {
     if (isActive) {
-      stopRecitation()
+      pauseRecitation()
       return
     }
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
     stopSomaliVoice()
     setUiVisible(false)
-    startRecitation()
+    if (isPaused) {
+      resumeRecitation()
+    } else {
+      startRecitation()
+    }
   }
 
   const handleSomaliPageToggle = async () => {
@@ -521,7 +526,7 @@ function ReadPageContent() {
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
       longPressBlockTap.current = true
-      stopRecitation()
+      if (isActive) pauseRecitation()
       stopSomaliVoice()
       somaliAutoRef.current = false
       setSomaliAutoPlaying(false)
@@ -533,8 +538,30 @@ function ReadPageContent() {
       })
       setAyahMenuBookmarked(isBookmarked(verseKey))
     },
-    [pageVerses, stopRecitation, stopSomaliVoice]
+    [isActive, pageVerses, pauseRecitation, stopSomaliVoice]
   )
+
+  useLayoutEffect(() => {
+    if (!ayahMenu?.verseKey) {
+      setAyahMenuAnchor(null)
+      return
+    }
+    const key = ayahMenu.verseKey
+    const el =
+      document.querySelector(`[data-verse-key="${key}"]`) ??
+      document.querySelector(`[data-verse-keys="${key}"]`)
+    if (!el) {
+      setAyahMenuAnchor(null)
+      return
+    }
+    const rect = el.getBoundingClientRect()
+    setAyahMenuAnchor({
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    })
+  }, [ayahMenu?.verseKey, currentPage, pageVerses, showTranslation])
 
   const getNextVerseOnPage = useCallback(
     (verseKey: string) => {
@@ -962,7 +989,9 @@ function ReadPageContent() {
             onClick={handleRecitationToggle}
             disabled={pageVerses.length === 0}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-teal-400 hover:bg-white/5 disabled:opacity-40"
-            aria-label={isActive ? 'Stop recitation' : 'Play page recitation'}
+            aria-label={
+              isActive ? 'Pause recitation' : isPaused ? 'Resume recitation' : 'Play page recitation'
+            }
           >
             {recitation.loading ? (
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
@@ -1066,16 +1095,16 @@ function ReadPageContent() {
         onGoToPage={navigatePage}
       />
 
-      <AyahActionSheet
+      <AyahContextMenu
         open={Boolean(ayahMenu)}
         verseKey={ayahMenu?.verseKey ?? ''}
-        arabicText={ayahMenu?.arabic ?? ''}
+        anchor={ayahMenuAnchor}
         translation={
           ayahMenu ? translationByKey[ayahMenu.verseKey]?.translation ?? null : null
         }
         translationLoading={ayahTranslationLoading}
         hasNextAyah={ayahMenuHasNext}
-        isReciting={isActive}
+        isReciting={isActive || isPaused}
         isBookmarked={ayahMenuBookmarked}
         somaliVoiceAvailable={somaliVoiceAvailable}
         isSomaliVoicePlaying={

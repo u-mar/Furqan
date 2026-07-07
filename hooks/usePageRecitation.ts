@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getReciterById } from '@/lib/reciters'
+import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 import type { Verse } from '@/types'
 
@@ -81,6 +81,8 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
   const preloadMapRef = useRef<Map<string, PreloadedClip>>(new Map())
   const preloadBlobUrlsRef = useRef<Map<string, string>>(new Map())
   const preloadingKeysRef = useRef<Set<string>>(new Set())
+  const pausedRef = useRef(false)
+  const [isPaused, setIsPaused] = useState(false)
 
   versesRef.current = verses
   reciterRef.current = reciterId
@@ -128,8 +130,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
 
     preloadingKeysRef.current.add(verseKey)
     try {
-      const folder = getReciterById(reciterRef.current).folder
-      const url = await getPlayableAyahAudioUrl(folder, parsed.surah, parsed.ayah)
+      const url = await getPlayableAyahAudioUrl(reciterRef.current, parsed.surah, parsed.ayah)
       if (!url || session !== sessionRef.current) return
 
       const preAudio = new Audio()
@@ -162,6 +163,8 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
   )
 
   const stop = useCallback(() => {
+    pausedRef.current = false
+    setIsPaused(false)
     sessionRef.current += 1
     abortingRef.current = true
     const audio = audioRef.current
@@ -180,6 +183,8 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
   }, [clearMainObjectUrl, clearPreload])
 
   const finishPlayback = useCallback(() => {
+    pausedRef.current = false
+    setIsPaused(false)
     sessionRef.current += 1
     abortingRef.current = true
     const audio = audioRef.current
@@ -241,7 +246,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
         url = pre.url
       } else {
         const folder = getReciterById(reciterRef.current).folder
-        url = await getPlayableAyahAudioUrl(folder, parsed.surah, parsed.ayah)
+        url = await getPlayableAyahAudioUrl(reciterRef.current, parsed.surah, parsed.ayah)
       }
 
       if (!url) {
@@ -284,19 +289,69 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
     [clearMainObjectUrl, handlePageEnd, preloadAheadFromIndex, takePreloaded]
   )
 
+  const pause = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio?.src) return
+    audio.pause()
+    pausedRef.current = true
+    setIsPaused(true)
+    setState((s) => ({ ...s, playing: false, loading: false }))
+  }, [])
+
   const start = useCallback(() => {
+    if (isSurahOnlyReciter(getReciterById(reciterRef.current))) {
+      setState({
+        ...idleState,
+        error: SURAH_ONLY_RECITER_HINT,
+      })
+      return
+    }
     sessionRef.current += 1
+    pausedRef.current = false
+    setIsPaused(false)
     clearPreload()
     playModeRef.current = 'page'
     indexRef.current = 0
     void playIndex(0, sessionRef.current)
   }, [clearPreload, playIndex])
 
+  const resume = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio?.src) {
+      pausedRef.current = false
+      setIsPaused(false)
+      start()
+      return
+    }
+    pausedRef.current = false
+    setIsPaused(false)
+    const verse = versesRef.current[indexRef.current]
+    setState((s) => ({
+      ...s,
+      playing: true,
+      loading: false,
+      error: null,
+      highlightedVerseKey: verse?.verse_key ?? s.highlightedVerseKey,
+    }))
+    void audio.play().catch(() => {
+      setState((s) => ({ ...s, playing: false, error: 'Playback failed' }))
+    })
+  }, [start])
+
   const playVerse = useCallback(
     (verseKey: string, options?: { continueOnPage?: boolean }) => {
+      if (isSurahOnlyReciter(getReciterById(reciterRef.current))) {
+        setState({
+          ...idleState,
+          error: SURAH_ONLY_RECITER_HINT,
+        })
+        return
+      }
       const index = versesRef.current.findIndex((v) => v.verse_key === verseKey)
       if (index < 0) return
       sessionRef.current += 1
+      pausedRef.current = false
+      setIsPaused(false)
       clearPreload()
       playModeRef.current = options?.continueOnPage === false ? 'single' : 'page'
       indexRef.current = index
@@ -375,6 +430,8 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
       return
     }
     if (!state.playing && !state.loading) return
+    pausedRef.current = false
+    setIsPaused(false)
     sessionRef.current += 1
     abortingRef.current = true
     const audio = audioRef.current
@@ -394,6 +451,8 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
 
   useEffect(() => {
     if (!state.playing && !state.loading) return
+    pausedRef.current = false
+    setIsPaused(false)
     sessionRef.current += 1
     clearPreload()
     void playIndex(indexRef.current, sessionRef.current)
@@ -402,5 +461,5 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
 
   const isActive = state.playing || state.loading
 
-  return { state, stop, start, playVerse, isActive }
+  return { state, stop, pause, resume, start, playVerse, isActive, isPaused }
 }

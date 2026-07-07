@@ -1,6 +1,7 @@
 import { buildMushafPageModel, surahHeaderToken } from '@/lib/mushaf-engine'
 import type { MushafLineKind, MushafLineModel } from '@/lib/mushaf-engine'
-import type { Verse } from '@/types'
+import type { Verse, VerseWord } from '@/types'
+import { compareMushafWords, wordOnVisualPage } from '@/lib/mushaf-engine/word-order'
 
 const LINES_PER_PAGE = 15
 
@@ -97,6 +98,23 @@ export function pageHasQcfData(verses: Verse[]): boolean {
 export function qcfPageSampleGlyphs(verses: Verse[], pageNumber: number): string {
   const { pageText } = buildQcfPageLayout(verses, pageNumber)
   return pageText.slice(0, 12)
+}
+
+/** QCF glyph run for one ayah on a printed page (same font as mushaf read mode). */
+export function getVerseQcfGlyphs(verse: Verse, pageNumber: number): string {
+  const items: Array<VerseWord & { verseKey: string }> = []
+
+  for (const word of verse.words || []) {
+    if (!wordOnVisualPage(word, pageNumber, verse)) continue
+    const code = word.code_v2?.trim()
+    if (!code) continue
+    items.push({ ...word, verseKey: verse.verse_key })
+  }
+
+  if (items.length === 0) return ''
+
+  items.sort(compareMushafWords)
+  return items.map((word) => word.code_v2!.trim()).join('')
 }
 
 export { LINES_PER_PAGE }

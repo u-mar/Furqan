@@ -72,10 +72,10 @@ export default function ListenScreen() {
   useEffect(() => {
     const next: Record<number, boolean> = {}
     for (const chapter of chapters) {
-      next[chapter.id] = isSurahAudioDownloaded(currentReciter.folder, chapter.id)
+      next[chapter.id] = isSurahAudioDownloaded(currentReciter.id, chapter.id)
     }
     setDownloaded(next)
-  }, [chapters, currentReciter.folder])
+  }, [chapters, currentReciter.id])
 
   function selectReciter(id: string) {
     setAppSettings({ reciterId: id })
@@ -98,7 +98,7 @@ export default function ListenScreen() {
     setDownloadingSurah(chapter.id)
     setDownloadProgress(0)
     try {
-      await downloadSurahAudio(currentReciter.folder, chapter.id, chapter.versesCount, (p) =>
+      await downloadSurahAudio(currentReciter.id, chapter.id, chapter.versesCount, (p) =>
         setDownloadProgress(p)
       )
       setDownloaded((prev) => ({ ...prev, [chapter.id]: true }))

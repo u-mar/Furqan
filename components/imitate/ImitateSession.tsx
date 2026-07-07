@@ -16,7 +16,7 @@ import HomeScreen from '@/components/home/HomeScreen'
 import VoiceSimilarityCard from '@/components/imitate/VoiceSimilarityCard'
 import WaveformCompare from '@/components/imitate/WaveformCompare'
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder'
-import { getReciterById } from '@/lib/reciters'
+import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl } from '@/lib/offline-audio'
 import { savePracticeRecord } from '@/lib/imitate-progress'
 import { decodeToAudioBuffer } from '@/lib/audio-decode'
@@ -143,9 +143,12 @@ export default function ImitateSession({
   }, [])
 
   const loadReferenceAudio = useCallback(async (): Promise<AudioBuffer> => {
+    if (isSurahOnlyReciter(reciter)) {
+      throw new Error(SURAH_ONLY_RECITER_HINT)
+    }
     if (refAudioBufferRef.current) return refAudioBufferRef.current
 
-    const url = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
+    const url = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
     if (!url) {
       throw new Error('No internet — connect to load reciter audio, or download the surah in Listen')
     }
@@ -164,7 +167,7 @@ export default function ImitateSession({
         URL.revokeObjectURL(url)
       }
     }
-  }, [reciter.folder, surah, ayah])
+  }, [reciter, surah, ayah])
 
   const runAnalysis = useCallback(
     async (userAudio: Blob | AudioBuffer) => {
@@ -199,7 +202,7 @@ export default function ImitateSession({
     setPhase('playing')
     try {
       await loadReferenceAudio()
-      const url = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
+      const url = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
       if (!url) throw new Error('Could not play reciter audio.')
       if (refObjectUrlRef.current) URL.revokeObjectURL(refObjectUrlRef.current)
       refObjectUrlRef.current = url.startsWith('blob:') ? url : null
@@ -220,7 +223,7 @@ export default function ImitateSession({
       setError('Could not play reciter audio.')
       setPhase('idle')
     }
-  }, [attachPlaybackTracking, loadReferenceAudio, reciter.folder, stopAudio, surah, ayah])
+  }, [attachPlaybackTracking, loadReferenceAudio, reciterId, stopAudio, surah, ayah])
 
   const handleRecord = useCallback(async () => {
     if (recording) {
@@ -257,7 +260,7 @@ export default function ImitateSession({
   const playBoth = useCallback(async () => {
     stopAudio()
     try {
-      const refUrl = await getPlayableAyahAudioUrl(reciter.folder, surah, ayah)
+      const refUrl = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
       if (!refUrl) throw new Error('no url')
       const refAudio = new Audio(refUrl)
       audioRef.current = refAudio
@@ -288,7 +291,7 @@ export default function ImitateSession({
       clearPlayback()
       setError('Playback failed.')
     }
-  }, [attachPlaybackTracking, blob, clearPlayback, reciter.folder, stopAudio, surah, ayah])
+  }, [attachPlaybackTracking, blob, clearPlayback, reciterId, stopAudio, surah, ayah])
 
   const reset = useCallback(() => {
     stopAudio()

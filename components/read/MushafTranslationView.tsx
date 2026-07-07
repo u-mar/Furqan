@@ -1,11 +1,19 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
+import { useQcfFont } from '@/hooks/useQcfFont'
+import { BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { surahHasOpeningBasmalah } from '@/lib/mushaf-basmalah'
 import { getVerseArabicText } from '@/lib/quran-display'
+import {
+  getVerseQcfGlyphs,
+  pageHasQcfData,
+  qcfPageFontFamily,
+  qcfPageSampleGlyphs,
+} from '@/lib/qcf-page'
 import type { TranslationLanguageId } from '@/lib/translations'
 import type { Chapter, Verse } from '@/types'
 
@@ -48,11 +56,22 @@ export default function MushafTranslationView({
   )
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
+  const hasQcf = pageHasQcfData(verses)
+  const qcfSample = useMemo(
+    () => (hasQcf && page > 0 ? qcfPageSampleGlyphs(verses, page) : ''),
+    [hasQcf, page, verses]
+  )
+  const qcfFamily = qcfPageFontFamily(page)
+  const { ready: qcfFontReady } = useQcfFont(page, hasQcf, qcfSample)
+  const useQcfGlyphs = hasQcf && qcfFontReady
+
   const displayRows = verses.map((verse) => {
     const endWord = verse.words?.find((word) => word.char_type_name === 'end')
+    const qcfGlyphs = getVerseQcfGlyphs(verse, page)
     return {
       verse_key: verse.verse_key,
       text_uthmani: arabicByKey[verse.verse_key] || getVerseArabicText(verse),
+      qcfGlyphs,
       endWord,
       translation: byKey[verse.verse_key]?.translation || '',
     }
@@ -74,12 +93,16 @@ export default function MushafTranslationView({
   }
 
   return (
-    <div className="space-y-8 pb-8">
+    <div
+      className={cn('mushaf-root space-y-5 pb-8', useQcfGlyphs && 'mushaf-translation-qcf')}
+      style={{ '--mushaf-qcf-font-family': qcfFamily } as React.CSSProperties}
+    >
       {displayRows.map((row) => {
         const num = verseNumber(row.verse_key)
         const surah = surahNumber(row.verse_key)
         const isReciting = highlightedVerseKey === row.verse_key
         const showBasmalah = num === 1 && surahHasOpeningBasmalah(surah)
+        const showGlyphAyah = useQcfGlyphs && Boolean(row.qcfGlyphs)
 
         return (
           <article
@@ -89,47 +112,53 @@ export default function MushafTranslationView({
               else ayahRefs.current.delete(row.verse_key)
             }}
             id={`translation-ayah-${row.verse_key.replace(':', '-')}`}
-            className={cn(
-              'space-y-4 rounded-2xl px-2 py-2 transition-colors duration-300',
-              isReciting && 'mushaf-translation-ayah--reciting'
-            )}
+            className="px-1"
           >
-            {showBasmalah && (
-              <p
-                className="mushaf-translation-arabic text-center text-[clamp(1.2rem,4.8vw,1.65rem)] leading-[2.15] text-[var(--mushaf-read-text)]"
-                dir="rtl"
-                lang="ar"
-              >
-                ﷽
-              </p>
-            )}
-            {showArabic && (
-              <p
-                className={cn(
-                  'mushaf-translation-arabic text-center text-[clamp(1.2rem,4.8vw,1.65rem)] leading-[2.15] text-[var(--mushaf-read-text)]',
-                  isReciting && 'mushaf-translation-arabic--reciting'
-                )}
-                dir="rtl"
-                lang="ar"
-              >
-                {row.text_uthmani}{' '}
-                <AyahEndMark
-                  verseKey={row.verse_key}
-                  pageNumber={row.endWord?.v2_page || row.endWord?.page_number || page}
-                  codeV2={row.endWord?.code_v2}
-                  fallbackText={row.endWord?.text_uthmani || row.endWord?.text_qpc_hafs || ''}
-                  glyphFontReady={false}
-                />
-              </p>
-            )}
-
             <div
               className={cn(
-                'mushaf-translation-body rounded-2xl px-4 py-3.5',
-                isReciting && 'ring-1 ring-teal-500/30 bg-teal-500/15'
+                'mushaf-translation-body rounded-2xl px-4 py-4 transition-colors duration-300',
+                isReciting && 'mushaf-translation-body--reciting'
               )}
             >
-              <p className="text-left mushaf-translation-text">
+              {showBasmalah && (
+                <p
+                  className="mushaf-translation-basmalah mb-3 text-center"
+                  dir="rtl"
+                  lang="ar"
+                  aria-label="Basmalah"
+                >
+                  {BASMALAH_ORNAMENT}
+                </p>
+              )}
+
+              {showArabic && (
+                <p
+                  className={cn(
+                    'mushaf-translation-arabic text-center',
+                    showGlyphAyah && 'mushaf-translation-arabic--qcf',
+                    isReciting && 'mushaf-translation-arabic--reciting'
+                  )}
+                  dir="rtl"
+                  lang="ar"
+                >
+                  {showGlyphAyah ? (
+                    row.qcfGlyphs
+                  ) : (
+                    <>
+                      {row.text_uthmani}{' '}
+                      <AyahEndMark
+                        verseKey={row.verse_key}
+                        pageNumber={row.endWord?.v2_page || row.endWord?.page_number || page}
+                        codeV2={row.endWord?.code_v2}
+                        fallbackText={row.endWord?.text_uthmani || row.endWord?.text_qpc_hafs || ''}
+                        glyphFontReady={qcfFontReady}
+                      />
+                    </>
+                  )}
+                </p>
+              )}
+
+              <p className="mushaf-translation-text">
                 <span className="mushaf-translation-ayah-num">({num})</span>{' '}
                 {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
               </p>
@@ -140,5 +169,3 @@ export default function MushafTranslationView({
     </div>
   )
 }
-
-

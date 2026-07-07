@@ -328,13 +328,37 @@ html.dark .mushaf-fit-line {
   position: relative;
   margin-inline: auto;
   max-width: 42rem;
-  border-radius: 0.75rem;
-  padding: 0.65rem clamp(0.75rem, 4vw, 1.25rem);
   font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
+  font-size: clamp(1.2rem, 4.8vw, 1.65rem);
+  line-height: 2.15;
+  color: var(--mushaf-read-text);
+}
+
+.mushaf-translation-arabic--qcf {
+  font-family: var(--mushaf-qcf-font-family, serif) !important;
+  font-size: clamp(1.35rem, 5.2vw, 1.9rem);
+  line-height: 2;
+  letter-spacing: 0;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: normal !important;
+  font-synthesis: none;
+}
+
+.mushaf-translation-body .mushaf-translation-arabic {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.mushaf-translation-basmalah {
+  font-family: 'SurahNameV2', serif;
+  font-size: clamp(1.35rem, 5vw, 1.85rem);
+  line-height: 1.6;
+  color: var(--mushaf-read-text);
 }
 
 html.dark .mushaf-translation-arabic {
-  background: rgba(255, 255, 255, 0.03);
+  background: none;
 }
 
 .mushaf-fit-line--header {
@@ -420,7 +444,8 @@ html:not(.dark) .mushaf-line--selected {
   color: var(--mushaf-read-badge-text);
 }
 
-.mushaf-translation-ayah--reciting {
+.mushaf-translation-ayah--reciting,
+.mushaf-translation-body--reciting {
   background: rgba(45, 212, 191, 0.08);
   box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.25);
 }
@@ -429,7 +454,8 @@ html:not(.dark) .mushaf-line--selected {
   color: var(--mushaf-read-text);
 }
 
-html:not(.dark) .mushaf-translation-ayah--reciting {
+html:not(.dark) .mushaf-translation-ayah--reciting,
+html:not(.dark) .mushaf-translation-body--reciting {
   background: rgba(13, 148, 136, 0.08);
   box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.2);
 }
@@ -444,11 +470,22 @@ html.dark .mushaf-translation-body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.mushaf-translation-body .mushaf-translation-text {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html.dark .mushaf-translation-body .mushaf-translation-text {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
 .mushaf-translation-text {
   font-size: clamp(0.95rem, 3.8vw, 1.05rem);
   line-height: 1.75;
   letter-spacing: 0.01em;
   color: var(--mushaf-read-text);
+  text-align: left;
 }
 
 .mushaf-translation-ayah-num {

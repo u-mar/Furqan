@@ -7,7 +7,7 @@ import HomeScreen from '@/components/home/HomeScreen'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { setAppSettings } from '@/lib/app-settings'
-import { RECITERS } from '@/lib/reciters'
+import { RECITERS, isSurahOnlyReciter } from '@/lib/reciters'
 import { getChapters, getVersesByChapter } from '@/lib/quran'
 import { getRecentPractice } from '@/lib/imitate-progress'
 import type { PracticeRecord } from '@/lib/imitate-progress'
@@ -31,7 +31,9 @@ export default function ImitateScreen() {
   const [loadingAyahs, setLoadingAyahs] = useState(false)
   const [recent, setRecent] = useState<PracticeRecord[]>([])
 
-  const currentReciter = RECITERS.find((r) => r.id === settings.reciterId) ?? RECITERS[0]
+  const imitateReciters = RECITERS.filter((r) => !isSurahOnlyReciter(r))
+  const currentReciter =
+    imitateReciters.find((r) => r.id === settings.reciterId) ?? imitateReciters[0]
   const pickedChapter = chapters.find((c) => c.id === pickedSurah)
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function ImitateScreen() {
           Reciter
         </p>
         <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {RECITERS.map((r) => (
+          {imitateReciters.map((r) => (
             <button
               key={r.id}
               type="button"

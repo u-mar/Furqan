@@ -1,35 +1,53 @@
 'use client'
 
-import { everyAyahAudioUrl, resolveReciterFolder } from '@/lib/reciters'
+import {
+  ayahAudioUrl,
+  getReciterById,
+  isSurahOnlyReciter,
+  surahAudioUrl,
+} from '@/lib/reciters'
 
 const AUDIO_CACHE = 'muyassar-audio-v1'
 
-function surahKey(reciterFolder: string, surah: number): string {
-  return `offline_audio_${reciterFolder}_${surah}`
+function surahKey(reciterId: string, surah: number): string {
+  return `offline_audio_${reciterId}_${surah}`
 }
 
-export function isSurahAudioDownloaded(reciterFolder: string, surah: number): boolean {
+export function isSurahAudioDownloaded(reciterId: string, surah: number): boolean {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem(surahKey(reciterFolder, surah)) === '1'
+  return localStorage.getItem(surahKey(reciterId, surah)) === '1'
 }
 
-function markSurahDownloaded(reciterFolder: string, surah: number): void {
+function markSurahDownloaded(reciterId: string, surah: number): void {
   if (typeof window === 'undefined') return
-  localStorage.setItem(surahKey(reciterFolder, surah), '1')
+  localStorage.setItem(surahKey(reciterId, surah), '1')
 }
 
 export async function downloadSurahAudio(
-  reciterFolder: string,
+  reciterId: string,
   surah: number,
   versesCount: number,
   onProgress?: (percent: number) => void
 ): Promise<void> {
   if (typeof caches === 'undefined') throw new Error('Audio cache is not supported in this browser.')
   const cache = await caches.open(AUDIO_CACHE)
+  const reciter = getReciterById(reciterId)
 
-  const folder = resolveReciterFolder(reciterFolder)
+  if (isSurahOnlyReciter(reciter)) {
+    const url = surahAudioUrl(reciter, surah)
+    const existing = await cache.match(url)
+    if (!existing) {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed downloading surah ${surah}`)
+      await cache.put(url, res.clone())
+    }
+    onProgress?.(100)
+    markSurahDownloaded(reciterId, surah)
+    return
+  }
+
   for (let ayah = 1; ayah <= versesCount; ayah++) {
-    const url = everyAyahAudioUrl(folder, surah, ayah)
+    const url = ayahAudioUrl(reciter, surah, ayah)
     const existing = await cache.match(url)
     if (!existing) {
       const res = await fetch(url)
@@ -39,44 +57,63 @@ export async function downloadSurahAudio(
     onProgress?.(Math.round((ayah / versesCount) * 100))
   }
 
-  markSurahDownloaded(reciterFolder, surah)
+  markSurahDownloaded(reciterId, surah)
 }
 
 export async function isAyahAudioCached(
-  reciterFolder: string,
+  reciterId: string,
   surah: number,
   ayah: number
 ): Promise<boolean> {
   if (typeof caches === 'undefined') return false
-  const folder = resolveReciterFolder(reciterFolder)
-  const url = everyAyahAudioUrl(folder, surah, ayah)
+  const reciter = getReciterById(reciterId)
+  const url = isSurahOnlyReciter(reciter) ? surahAudioUrl(reciter, surah) : ayahAudioUrl(reciter, surah, ayah)
   const cache = await caches.open(AUDIO_CACHE)
   const hit = await cache.match(url)
   return Boolean(hit)
 }
 
+async function playableFromCache(onlineUrl: string): Promise<string | null> {
+  if (typeof caches === 'undefined') return null
+  const cache = await caches.open(AUDIO_CACHE)
+  const hit = await cache.match(onlineUrl)
+  if (!hit) return null
+  try {
+    const blob = await hit.blob()
+    if (blob.size > 0) return URL.createObjectURL(blob)
+  } catch {
+    return null
+  }
+  return null
+}
+
+export async function getPlayableSurahAudioUrl(
+  reciterId: string,
+  surah: number
+): Promise<string | null> {
+  const reciter = getReciterById(reciterId)
+  const onlineUrl = surahAudioUrl(reciter, surah)
+
+  const cached = await playableFromCache(onlineUrl)
+  if (cached) return cached
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null
+  return onlineUrl
+}
+
 export async function getPlayableAyahAudioUrl(
-  reciterFolder: string,
+  reciterId: string,
   surah: number,
   ayah: number
 ): Promise<string | null> {
-  const folder = resolveReciterFolder(reciterFolder)
-  const onlineUrl = everyAyahAudioUrl(folder, surah, ayah)
-  if (typeof caches === 'undefined') {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) return null
-    return onlineUrl
+  const reciter = getReciterById(reciterId)
+  if (isSurahOnlyReciter(reciter)) {
+    return getPlayableSurahAudioUrl(reciterId, surah)
   }
 
-  const cache = await caches.open(AUDIO_CACHE)
-  const hit = await cache.match(onlineUrl)
-  if (hit) {
-    try {
-      const blob = await hit.blob()
-      if (blob.size > 0) return URL.createObjectURL(blob)
-    } catch {
-      /* fall through */
-    }
-  }
+  const onlineUrl = ayahAudioUrl(reciter, surah, ayah)
+  const cached = await playableFromCache(onlineUrl)
+  if (cached) return cached
 
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null
   return onlineUrl
