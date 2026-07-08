@@ -127,7 +127,7 @@ export default function AyahContextMenu({
       ref={cardRef}
       data-ayah-menu
       className={cn(
-        'fixed z-[101] w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-teal-500/30 bg-teal-50/95 text-teal-950 shadow-[0_18px_40px_rgba(4,120,87,0.22)] dark:bg-teal-950/95 dark:text-teal-100 dark:border-teal-500/35'
+        'fixed z-[101] w-[min(17.5rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-teal-500/45 bg-teal-950/98 text-teal-50 shadow-[0_18px_40px_rgba(0,0,0,0.45)]'
       )}
       style={{
         left: cardPos?.left ?? anchor.left + anchor.width / 2,
@@ -139,35 +139,35 @@ export default function AyahContextMenu({
       aria-label={`Ayah ${verseKey} actions`}
     >
       {showTranslation && (
-        <div className="border-b border-teal-500/20 bg-teal-100/55 px-3 py-2.5 dark:border-teal-500/20 dark:bg-teal-900/30">
+        <div className="border-b border-teal-500/20 bg-teal-950/70 px-3 py-2">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-800 dark:text-teal-200">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-200">
               Translation · {verseKey}
             </p>
             <button
               type="button"
               onClick={() => setShowTranslation(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-teal-800 hover:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/15"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-teal-200 hover:bg-teal-500/15"
               aria-label="Hide translation"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <p className="max-h-[min(32vh,12rem)] overflow-y-auto overscroll-contain text-left text-sm leading-relaxed text-teal-950/90 dark:text-teal-100/90">
+          <p className="max-h-[min(30vh,11.5rem)] overflow-y-auto overscroll-contain text-left text-sm leading-relaxed text-teal-50/90">
             {translationLoading ? 'Loading…' : translation || 'Translation unavailable.'}
           </p>
         </div>
       )}
 
       <div
-        className="flex items-center justify-center gap-1 bg-teal-600/10 px-2 py-2 dark:bg-teal-500/10"
+        className="flex items-center justify-center gap-1 bg-teal-900/80 px-2 py-1.5"
         role="toolbar"
         aria-label={`Ayah ${verseKey} actions`}
       >
         <button
           type="button"
           onClick={isReciting ? onStopRecitation : onPlay}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-600 text-white shadow-sm hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-400"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-white shadow-sm hover:bg-teal-600"
           aria-label={isReciting ? 'Stop recitation' : 'Play from this ayah'}
         >
           {isReciting ? (
@@ -180,10 +180,10 @@ export default function AyahContextMenu({
           type="button"
           onClick={onToggleBookmark}
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full',
+            'flex h-8 w-8 items-center justify-center rounded-full',
             isBookmarked
-              ? 'bg-teal-500/15 text-teal-700 dark:text-teal-200'
-              : 'text-teal-800 hover:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/15'
+              ? 'bg-teal-500/20 text-teal-200'
+              : 'text-teal-200 hover:bg-teal-500/15'
           )}
           aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark ayah'}
           aria-pressed={isBookmarked}
@@ -194,10 +194,10 @@ export default function AyahContextMenu({
           type="button"
           onClick={() => setShowTranslation((v) => !v)}
           className={cn(
-            'flex h-9 w-9 items-center justify-center rounded-full',
+            'flex h-8 w-8 items-center justify-center rounded-full',
             showTranslation
-              ? 'bg-teal-500/15 text-teal-700 dark:text-teal-200'
-              : 'text-teal-800 hover:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/15'
+              ? 'bg-teal-500/20 text-teal-200'
+              : 'text-teal-200 hover:bg-teal-500/15'
           )}
           aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
           aria-pressed={showTranslation}
@@ -209,10 +209,10 @@ export default function AyahContextMenu({
             type="button"
             onClick={isSomaliVoicePlaying ? onStopSomaliVoice : onPlaySomaliVoice}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold',
+              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold',
               isSomaliVoicePlaying
-                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                : 'text-teal-800 hover:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/15'
+                ? 'bg-amber-500/15 text-amber-200'
+                : 'text-teal-200 hover:bg-teal-500/15'
             )}
             aria-label={isSomaliVoicePlaying ? 'Stop Somali voice' : 'Play Somali voice'}
           >
@@ -222,7 +222,7 @@ export default function AyahContextMenu({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-teal-800 hover:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/15"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-teal-200 hover:bg-teal-500/15"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
