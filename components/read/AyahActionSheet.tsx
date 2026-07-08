@@ -74,7 +74,7 @@ export default function AyahActionSheet({
   const displayArabic = arabicText.trim() || 'Arabic text unavailable for this ayah.'
 
   const actionButtonBase =
-    'flex min-h-[56px] flex-col items-center justify-center gap-1.5 rounded-2xl border text-sm font-semibold transition-all duration-200 active:scale-[0.98]'
+    'flex min-h-[48px] flex-col items-center justify-center gap-1 rounded-2xl border px-3 py-2 text-sm font-semibold transition-all duration-200 active:scale-[0.98]'
 
   const nextAyahButton = (
     <button
@@ -84,8 +84,8 @@ export default function AyahActionSheet({
       className={cn(
         'w-full items-center justify-center gap-2 rounded-2xl px-4',
         actionButtonBase,
-        'border-[var(--mushaf-read-popup-border)] bg-white/80 text-[var(--mushaf-read-accent)] shadow-sm backdrop-blur',
-        'dark:bg-white/5',
+        'border-teal-500/40 bg-teal-600/20 text-teal-900 shadow-sm backdrop-blur',
+        'dark:bg-teal-500/15 dark:text-teal-200',
         !hasNextAyah && 'cursor-not-allowed opacity-40'
       )}
     >
@@ -104,8 +104,10 @@ export default function AyahActionSheet({
       />
       <div
         className={cn(
-          'ayah-context-card fixed inset-x-0 bottom-0 z-[101] mx-auto max-w-lg overflow-hidden rounded-t-[1.75rem] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4',
-          'border-t shadow-2xl'
+          'fixed inset-x-0 bottom-0 z-[101] mx-auto max-w-lg overflow-hidden rounded-t-[1.75rem] border shadow-2xl px-4',
+          'bg-teal-50/90 text-teal-900 border-teal-500/25',
+          'dark:bg-teal-950/90 dark:text-teal-100 dark:border-teal-500/30',
+          'pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3'
         )}
         role="dialog"
         aria-modal="true"
@@ -117,7 +119,7 @@ export default function AyahActionSheet({
               : `Ayah ${verseKey} actions`
         }
       >
-        <div className="ayah-context-card__toolbar -mx-4 mb-4 flex items-center justify-between border-b border-black/5 px-4 pb-3 dark:border-white/5">
+        <div className="flex -mx-4 mb-3 items-center justify-between border-b border-black/5 px-4 pb-2.5 dark:border-white/10">
           {view === 'translation' || view === 'playing' ? (
             <button
               type="button"
@@ -125,21 +127,21 @@ export default function AyahActionSheet({
                 if (view === 'playing' && isReciting) onStopRecitation()
                 setView('menu')
               }}
-              className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-[var(--mushaf-read-meta)] transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+              className="flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-teal-800 transition-colors hover:bg-teal-500/10 dark:text-teal-200 dark:hover:bg-teal-500/15"
             >
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
           ) : (
             <div>
-              <p className="text-sm font-semibold text-[var(--mushaf-read-text)]">Ayah options</p>
-              <p className="text-xs text-[var(--mushaf-read-meta)]">Quick actions and translation</p>
+              <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">Ayah options</p>
+              <p className="text-xs text-teal-800/70 dark:text-teal-200/70">Quick actions and translation</p>
             </div>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-[var(--mushaf-read-meta)] transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+            className="rounded-xl p-2 text-teal-800 transition-colors hover:bg-teal-500/10 dark:text-teal-200 dark:hover:bg-teal-500/15"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -148,17 +150,16 @@ export default function AyahActionSheet({
 
         <div
           className={cn(
-            'mb-5 max-h-[min(40vh,220px)] overflow-y-auto overscroll-contain rounded-[1.4rem] border px-5 py-5',
-            'bg-gradient-to-br from-white/85 via-white/65 to-[var(--mushaf-read-accent-soft)]',
-            'border-[var(--mushaf-read-popup-border)] shadow-[inset_0_1px_0_rgba(255,255,255,0.38)]',
-            'dark:from-white/8 dark:via-white/5 dark:to-[var(--mushaf-read-accent-soft)]'
+            'mb-3 max-h-[min(20vh,118px)] overflow-y-auto overscroll-contain rounded-[1.1rem] border px-4 py-3',
+            'bg-teal-100/55 border-teal-500/25',
+            'dark:bg-teal-900/25 dark:border-teal-500/25'
           )}
         >
-          <p className="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--mushaf-read-accent)]">
+          <p className="mb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-200">
             {surahNum}:{ayahNum}
           </p>
           <p
-            className="amiri arabic-text ayah-sheet-arabic text-center text-[clamp(1.3rem,5vw,1.8rem)] leading-[2.2]"
+            className="amiri arabic-text ayah-sheet-arabic text-center text-[clamp(1.15rem,4.4vw,1.5rem)] leading-[1.9]"
             dir="rtl"
             lang="ar"
           >
@@ -173,7 +174,7 @@ export default function AyahActionSheet({
               onClick={onPlay}
               className={cn(
                 actionButtonBase,
-                'border-transparent bg-[var(--mushaf-read-accent)] text-white shadow-lg shadow-teal-950/15'
+                'border-transparent bg-teal-600 text-white shadow-lg shadow-teal-950/15'
               )}
             >
               <Play className="h-5 w-5 fill-current" />
@@ -193,7 +194,7 @@ export default function AyahActionSheet({
                   actionButtonBase,
                   isSomaliVoicePlaying
                     ? 'border-amber-500/40 bg-amber-500/15 text-amber-800 shadow-sm dark:text-amber-300'
-                    : 'border-[var(--mushaf-read-popup-border)] bg-white/80 text-[var(--mushaf-read-popup-text)] shadow-sm backdrop-blur dark:bg-white/5'
+                    : 'border-teal-500/25 bg-teal-50/70 text-teal-900 shadow-sm backdrop-blur dark:bg-teal-900/25 dark:text-teal-100'
                 )}
               >
                 {isSomaliVoicePlaying ? (
@@ -210,8 +211,8 @@ export default function AyahActionSheet({
               className={cn(
                 actionButtonBase,
                 isBookmarked
-                  ? 'border-teal-500/40 bg-teal-500/15 text-[var(--mushaf-read-accent)] shadow-sm'
-                  : 'border-[var(--mushaf-read-popup-border)] bg-white/80 text-[var(--mushaf-read-accent)] shadow-sm backdrop-blur dark:bg-white/5'
+                  ? 'border-teal-500/40 bg-teal-500/15 text-teal-700 shadow-sm dark:text-teal-200'
+                  : 'border-teal-500/25 bg-teal-50/70 text-teal-700 shadow-sm backdrop-blur dark:bg-teal-900/25 dark:text-teal-200'
               )}
               aria-pressed={isBookmarked}
             >
@@ -223,7 +224,7 @@ export default function AyahActionSheet({
               onClick={() => setView('translation')}
               className={cn(
                 actionButtonBase,
-                'border-[var(--mushaf-read-popup-border)] bg-white/80 text-[var(--mushaf-read-accent)] shadow-sm backdrop-blur dark:bg-white/5'
+                'border-teal-500/25 bg-teal-50/70 text-teal-800 shadow-sm backdrop-blur dark:bg-teal-900/25 dark:text-teal-100'
               )}
             >
               <Languages className="h-5 w-5" />
@@ -233,18 +234,18 @@ export default function AyahActionSheet({
         )}
 
         {view === 'translation' && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div
               className={cn(
-                'rounded-[1.35rem] px-4 py-4',
-                'bg-white/80 ring-1 ring-[var(--mushaf-read-popup-border)] shadow-sm backdrop-blur',
-                'dark:bg-white/5'
+                'rounded-[1.1rem] px-4 py-3',
+                'bg-teal-50/70 ring-1 ring-teal-500/20 shadow-sm backdrop-blur',
+                'dark:bg-teal-900/25 dark:ring-teal-500/25'
               )}
             >
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--mushaf-read-meta)]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-teal-800/80 dark:text-teal-200/80">
                 Translation
               </p>
-              <p className="text-left text-[15px] leading-relaxed text-[var(--mushaf-read-popup-text)]">
+              <p className="text-left text-[15px] leading-relaxed text-teal-900 dark:text-teal-100">
                 {translationLoading
                   ? 'Loading translation…'
                   : translation || 'Translation unavailable.'}
@@ -273,7 +274,7 @@ export default function AyahActionSheet({
                 onClick={() => setView('translation')}
                 className={cn(
                   actionButtonBase,
-                  'border-[var(--mushaf-read-popup-border)] bg-white/80 text-[var(--mushaf-read-accent)] shadow-sm backdrop-blur dark:bg-white/5'
+                  'border-teal-500/25 bg-teal-50/70 text-teal-800 shadow-sm backdrop-blur dark:bg-teal-900/25 dark:text-teal-100'
                 )}
               >
                 <Languages className="h-5 w-5" />
