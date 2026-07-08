@@ -543,22 +543,6 @@ function ReadPageContent() {
     [isActive, pageVerses, pauseRecitation, stopSomaliVoice]
   )
 
-  const handleAyahSelect = useCallback(
-    (verseKey: string) => {
-      if (!ayahMenu) return
-      longPressBlockTap.current = true
-      if (verseKey === ayahMenu.verseKey) return
-      const verse = pageVerses.find((v) => v.verse_key === verseKey)
-      if (!verse) return
-      setAyahMenu({
-        verseKey,
-        arabic: getVerseArabicText(verse),
-      })
-      setAyahMenuBookmarked(isBookmarked(verseKey))
-    },
-    [ayahMenu, pageVerses]
-  )
-
   useLayoutEffect(() => {
     if (!ayahMenu?.verseKey) {
       setAyahMenuAnchor(null)
@@ -610,7 +594,6 @@ function ReadPageContent() {
   }, [ayahMenu, chapters, currentPage, pageVerses])
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? null
-  const ayahSelectMode = Boolean(ayahMenu)
 
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
@@ -631,20 +614,11 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
-          onAyahSelect={handleAyahSelect}
-          ayahSelectMode={ayahSelectMode}
           suppressHighlightScroll
         />
       )
     },
-    [
-      ayahSelectMode,
-      chapterNamesById,
-      handleAyahLongPress,
-      handleAyahSelect,
-      highlightedVerseKey,
-      mushafSelectedVerseKey,
-    ]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -870,8 +844,6 @@ function ReadPageContent() {
             scrollContainerRef={contentScrollRef}
             followPlaybackScroll={playbackActive}
             onAyahLongPress={handleAyahLongPress}
-            onAyahSelect={handleAyahSelect}
-            ayahSelectMode={ayahSelectMode}
           />
         ) : verticalPages ? (
           <MushafPageCarousel
@@ -902,8 +874,6 @@ function ReadPageContent() {
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
             onAyahLongPress={handleAyahLongPress}
-            onAyahSelect={handleAyahSelect}
-            ayahSelectMode={ayahSelectMode}
             suppressHighlightScroll
           />
         )}
