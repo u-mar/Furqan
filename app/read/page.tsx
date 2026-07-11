@@ -100,6 +100,7 @@ function ReadPageContent() {
   const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | null>(null)
   const resumeRecitationOnPageRef = useRef(false)
   const currentPageRef = useRef(1)
+  const pageLoadSeqRef = useRef(0)
   const navigatePageRef = useRef<
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
@@ -173,14 +174,18 @@ function ReadPageContent() {
   const loadPage = useCallback(
     async (page: number, options?: { silent?: boolean }) => {
       const next = clampPage(page)
+      const seq = ++pageLoadSeqRef.current
       setLoadError(null)
 
       if (!isOfflineReady()) {
         const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
         await ensureOfflineHydrated().catch(() => {})
       }
+      if (seq !== pageLoadSeqRef.current) return
+
       const instant = getLocalMushafPage(next)
       if (instant && instant.length > 0) {
+        if (seq !== pageLoadSeqRef.current) return
         applyPage(next, instant)
         setLoading(false)
         setPageLoading(false)
@@ -192,14 +197,18 @@ function ReadPageContent() {
 
       try {
         const verses = await getMushafPage(next)
+        if (seq !== pageLoadSeqRef.current) return
         applyPage(next, verses)
       } catch (err) {
+        if (seq !== pageLoadSeqRef.current) return
         const message = err instanceof Error ? err.message : 'Failed to load page'
         console.error('Failed to load page:', err)
         setLoadError(message)
       } finally {
-        setLoading(false)
-        setPageLoading(false)
+        if (seq === pageLoadSeqRef.current) {
+          setLoading(false)
+          setPageLoading(false)
+        }
       }
     },
     [applyPage]
@@ -312,7 +321,8 @@ function ReadPageContent() {
   const navigatePage = useCallback(
     async (page: number, options?: { autoContinue?: boolean }) => {
       const next = clampPage(page)
-      if (next === currentPage || pageSlide) return
+      const fromPage = currentPageRef.current
+      if (next === fromPage || pageSlide) return
 
       if (!options?.autoContinue) {
         stopRecitation()
@@ -327,13 +337,16 @@ function ReadPageContent() {
         return
       }
 
+      const slideSeq = ++pageLoadSeqRef.current
       setPageLoading(true)
       setLoadError(null)
       try {
         const incomingVerses = await fetchVersesForPage(next)
-        const direction: PageSlideDirection = next > currentPage ? 'next' : 'prev'
+        if (slideSeq !== pageLoadSeqRef.current) return
+        const direction: PageSlideDirection = next > fromPage ? 'next' : 'prev'
         setPageSlide({ direction, incomingVerses, incomingPage: next })
       } catch (err) {
+        if (slideSeq !== pageLoadSeqRef.current) return
         const message = err instanceof Error ? err.message : 'Failed to load page'
         console.error('Failed to load page:', err)
         setLoadError(message)
@@ -346,7 +359,6 @@ function ReadPageContent() {
       }
     },
     [
-      currentPage,
       fetchVersesForPage,
       loadPage,
       pageSlide,
@@ -625,12 +637,14 @@ function ReadPageContent() {
   const chromeAnimates = !playbackActive
 
   const goNextPage = useCallback(() => {
-    if (currentPage < TOTAL_MUSHAF_PAGES) void navigatePage(currentPage + 1)
-  }, [currentPage, navigatePage])
+    const page = currentPageRef.current
+    if (page < TOTAL_MUSHAF_PAGES) void navigatePage(page + 1)
+  }, [navigatePage])
 
   const goPrevPage = useCallback(() => {
-    if (currentPage > 1) void navigatePage(currentPage - 1)
-  }, [currentPage, navigatePage])
+    const page = currentPageRef.current
+    if (page > 1) void navigatePage(page - 1)
+  }, [navigatePage])
 
   const mushafSwipe = useSwipe(
     verticalPages
@@ -673,8 +687,8 @@ function ReadPageContent() {
 
     if (absX >= threshold && absX > absY) {
       didSwipe.current = true
-      if (dx < 0) goNextPage()
-      else goPrevPage()
+      if (dx < 0) goPrevPage()
+      else goNextPage()
       return
     }
 
