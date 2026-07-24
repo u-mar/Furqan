@@ -117,7 +117,7 @@ function TranslationAyahArticle({
 
       <div
         className={cn(
-          'mushaf-translation-body rounded-2xl px-4 py-4 transition-colors duration-300',
+          'mushaf-translation-body px-2.5 py-6 transition-colors duration-300',
           isReciting && 'mushaf-translation-body--reciting',
           isSelected && 'ring-1 ring-[var(--mushaf-read-highlight-border)]'
         )}
@@ -298,7 +298,7 @@ export default function MushafTranslationView({
 
   return (
     <div
-      className={cn('mushaf-root space-y-5 pb-8', useQcfGlyphs && 'mushaf-translation-qcf')}
+      className={cn('mushaf-root pb-8', useQcfGlyphs && 'mushaf-translation-qcf')}
       style={{ '--mushaf-qcf-font-family': qcfFamily } as React.CSSProperties}
     >
       {displayRows.map((row) => {

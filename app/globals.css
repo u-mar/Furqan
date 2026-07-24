@@ -230,56 +230,67 @@ html.dark .ayah-sheet-arabic {
   -webkit-text-fill-color: transparent;
 }
 
-/* Immersive read screen — warm parchment light / deep night dark */
+/* Immersive read screen — warm Madinah-paper cream (day) / soft warm night.
+   Palette tuned to feel like the Ayah app's mushaf reading surface. */
 .mushaf-reader-immersive {
-  --mushaf-read-bg: #dbd4c6;
-  --mushaf-read-text: #2f2a26;
-  --mushaf-read-meta: #6f6860;
-  --mushaf-read-badge-bg: rgba(47, 42, 38, 0.1);
-  --mushaf-read-badge-text: #5c5650;
-  --mushaf-read-card-bg: #cfc7b8;
-  --mushaf-read-card-border: rgba(47, 42, 38, 0.14);
-  --mushaf-read-chrome-bg: rgba(207, 199, 184, 0.96);
-  --mushaf-read-chrome-border: rgba(47, 42, 38, 0.12);
+  --mushaf-read-bg: #f7f0dc;
+  --mushaf-read-text: #2a2620;
+  --mushaf-read-meta: #877b66;
+  --mushaf-read-badge-bg: rgba(66, 52, 30, 0.08);
+  --mushaf-read-badge-text: #6a5f4b;
+  --mushaf-read-card-bg: #fcf6e6;
+  --mushaf-read-card-border: rgba(66, 52, 30, 0.13);
+  --mushaf-read-chrome-bg: rgba(247, 240, 220, 0.94);
+  --mushaf-read-chrome-border: rgba(66, 52, 30, 0.1);
   --mushaf-read-accent: #0d6b63;
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.14);
-  --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.16);
-  --mushaf-read-highlight-border: rgba(13, 107, 99, 0.36);
-  --mushaf-read-popup-bg: #e8e2d6;
-  --mushaf-read-popup-border: rgba(47, 42, 38, 0.22);
-  background: var(--mushaf-read-bg);
+  --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.15);
+  --mushaf-read-highlight-border: rgba(13, 107, 99, 0.34);
+  --mushaf-read-popup-bg: #fbf5e4;
+  --mushaf-read-popup-border: rgba(66, 52, 30, 0.2);
+  background-color: var(--mushaf-read-bg);
+  background-image: radial-gradient(
+    150% 100% at 50% -18%,
+    rgba(255, 252, 240, 0.7),
+    transparent 55%
+  );
   color: var(--mushaf-read-text);
 }
 
 html:not(.dark) {
-  --mushaf-read-popup-bg: #e8e2d6;
-  --mushaf-read-popup-border: rgba(47, 42, 38, 0.22);
-  --mushaf-read-popup-text: #2f2a26;
-  --mushaf-read-popup-shadow: 0 10px 36px rgba(47, 42, 38, 0.22);
+  --mushaf-read-popup-bg: #fbf5e4;
+  --mushaf-read-popup-border: rgba(66, 52, 30, 0.2);
+  --mushaf-read-popup-text: #2a2620;
+  --mushaf-read-popup-shadow: 0 12px 38px rgba(66, 52, 30, 0.2);
 }
 
 html.dark .mushaf-reader-immersive {
-  --mushaf-read-bg: #06080c;
-  --mushaf-read-text: #c9ced4;
-  --mushaf-read-meta: #7a828c;
-  --mushaf-read-badge-bg: #12151c;
-  --mushaf-read-badge-text: #8b939e;
-  --mushaf-read-card-bg: rgba(255, 255, 255, 0.035);
-  --mushaf-read-card-border: rgba(255, 255, 255, 0.07);
-  --mushaf-read-chrome-bg: #12151c;
-  --mushaf-read-chrome-border: rgba(255, 255, 255, 0.08);
-  --mushaf-read-accent: #4db8a8;
-  --mushaf-read-accent-soft: rgba(77, 184, 168, 0.14);
-  --mushaf-read-highlight-bg: rgba(77, 184, 168, 0.11);
-  --mushaf-read-highlight-border: rgba(77, 184, 168, 0.3);
-  --mushaf-read-popup-bg: #1a1e26;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
+  --mushaf-read-bg: #14110c;
+  --mushaf-read-text: #e7ddc9;
+  --mushaf-read-meta: #928778;
+  --mushaf-read-badge-bg: #221e16;
+  --mushaf-read-badge-text: #a89d89;
+  --mushaf-read-card-bg: rgba(255, 246, 226, 0.045);
+  --mushaf-read-card-border: rgba(255, 240, 214, 0.08);
+  --mushaf-read-chrome-bg: #1b1710;
+  --mushaf-read-chrome-border: rgba(255, 240, 214, 0.09);
+  --mushaf-read-accent: #57c2a9;
+  --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
+  --mushaf-read-highlight-bg: rgba(87, 194, 169, 0.12);
+  --mushaf-read-highlight-border: rgba(87, 194, 169, 0.32);
+  --mushaf-read-popup-bg: #221d15;
+  --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
+  background-image: radial-gradient(
+    150% 100% at 50% -18%,
+    rgba(74, 58, 32, 0.32),
+    transparent 55%
+  );
 }
 
 html.dark {
-  --mushaf-read-popup-bg: #1a1e26;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
-  --mushaf-read-popup-text: #c9ced4;
+  --mushaf-read-popup-bg: #221d15;
+  --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
+  --mushaf-read-popup-text: #e7ddc9;
   --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
 }
 
@@ -664,14 +675,28 @@ html:not(.dark) .mushaf-translation-body--reciting {
   box-shadow: 0 0 0 1px var(--mushaf-read-highlight-border);
 }
 
+/* Continuous "paper page" — ayahs blend into the sheet, split by hairlines
+   (like the Ayah app) rather than sitting in separate boxes. */
 .mushaf-translation-body {
-  background: var(--mushaf-read-card-bg);
-  border: 1px solid var(--mushaf-read-card-border);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--mushaf-read-card-border);
+  border-radius: 0.6rem;
 }
 
 html.dark .mushaf-translation-body {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 240, 214, 0.08);
+}
+
+.mushaf-root > article:last-child .mushaf-translation-body {
+  border-bottom: none;
+}
+
+/* Reciting / selected verse gets a soft paper-tint block. */
+.mushaf-translation-body--reciting {
+  background: var(--mushaf-read-highlight-bg);
 }
 
 .mushaf-translation-body .mushaf-translation-text {
