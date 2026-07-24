@@ -31,7 +31,48 @@ interface AyahContextMenuProps {
 }
 
 const VIEWPORT_PAD = 12
-const MENU_GAP = 8
+const MENU_GAP = 10
+
+interface ActionButtonProps {
+  label: string
+  active?: boolean
+  primary?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}
+
+function ActionButton({ label, active, primary, onClick, children }: ActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex min-w-[3.4rem] flex-col items-center gap-1 rounded-xl px-1.5 py-1.5 transition-colors"
+    >
+      <span
+        className={cn(
+          'flex h-10 w-10 items-center justify-center rounded-full transition-all active:scale-90',
+          primary
+            ? 'bg-[var(--mushaf-read-accent)] text-white shadow-[0_8px_18px_-8px_var(--mushaf-read-accent)]'
+            : active
+              ? 'bg-[var(--mushaf-read-accent-soft)] text-[var(--mushaf-read-accent)] ring-1 ring-[var(--mushaf-read-accent)]/40'
+              : 'bg-[var(--mushaf-read-badge-bg)] text-[var(--mushaf-read-popup-text)] group-hover:bg-[var(--mushaf-read-accent-soft)]'
+        )}
+      >
+        {children}
+      </span>
+      <span
+        className={cn(
+          'text-[10px] font-medium leading-none',
+          active || primary
+            ? 'text-[var(--mushaf-read-accent)]'
+            : 'text-[var(--mushaf-read-meta)]'
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  )
+}
 
 export default function AyahContextMenu({
   open,
@@ -122,111 +163,114 @@ export default function AyahContextMenu({
 
   if (!open || !mounted || !anchor) return null
 
+  const anchorCenterX = anchor.left + anchor.width / 2
+  const caretLeft = cardPos
+    ? Math.max(18, Math.min((cardRef.current?.offsetWidth ?? 300) - 18, anchorCenterX - (cardPos.left - (cardRef.current?.offsetWidth ?? 300) / 2)))
+    : 0
+
   const menu = (
     <div
       ref={cardRef}
       data-ayah-menu
-      className={cn(
-        'fixed z-[101] w-[min(17.5rem,calc(100vw-1.25rem))] overflow-hidden rounded-xl border border-teal-500/45 bg-teal-950/98 text-teal-50 shadow-[0_18px_40px_rgba(0,0,0,0.45)]'
-      )}
+      className="fixed z-[101] w-[min(19rem,calc(100vw-1.25rem))] overflow-visible rounded-2xl border text-[var(--mushaf-read-popup-text)]"
       style={{
         left: cardPos?.left ?? anchor.left + anchor.width / 2,
         top: cardPos?.top ?? anchor.top - MENU_GAP,
         transform: cardPos?.below ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
         visibility: cardPos ? 'visible' : 'hidden',
+        background: 'var(--mushaf-read-popup-bg)',
+        borderColor: 'var(--mushaf-read-popup-border)',
+        boxShadow: 'var(--mushaf-read-popup-shadow, 0 18px 44px rgba(0,0,0,0.4))',
+        backdropFilter: 'blur(8px)',
       }}
       role="dialog"
       aria-label={`Ayah ${verseKey} actions`}
     >
+      {/* pointer caret */}
+      <span
+        aria-hidden
+        className="absolute h-3 w-3 rotate-45 border"
+        style={{
+          left: caretLeft || '50%',
+          [cardPos?.below ? 'top' : 'bottom']: -6,
+          marginLeft: caretLeft ? -6 : 0,
+          background: 'var(--mushaf-read-popup-bg)',
+          borderColor: 'var(--mushaf-read-popup-border)',
+          borderTopColor: cardPos?.below ? 'var(--mushaf-read-popup-border)' : 'transparent',
+          borderLeftColor: cardPos?.below ? 'var(--mushaf-read-popup-border)' : 'transparent',
+          borderBottomColor: cardPos?.below ? 'transparent' : 'var(--mushaf-read-popup-border)',
+          borderRightColor: cardPos?.below ? 'transparent' : 'var(--mushaf-read-popup-border)',
+        }}
+      />
+
+      {/* header */}
+      <div className="flex items-center justify-between px-3.5 pt-2.5">
+        <span className="rounded-full bg-[var(--mushaf-read-badge-bg)] px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[var(--mushaf-read-accent)]">
+          {verseKey}
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--mushaf-read-meta)]">
+          Ayah actions
+        </span>
+      </div>
+
       {showTranslation && (
-        <div className="border-b border-teal-500/20 bg-teal-950/70 px-3 py-2">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-teal-200">
-              Translation · {verseKey}
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowTranslation(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-teal-200 hover:bg-teal-500/15"
-              aria-label="Hide translation"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <p className="max-h-[min(30vh,11.5rem)] overflow-y-auto overscroll-contain text-left text-sm leading-relaxed text-teal-50/90">
+        <div className="mx-3.5 mt-2 rounded-xl bg-[var(--mushaf-read-badge-bg)] px-3 py-2.5">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent)]">
+            Translation
+          </p>
+          <p className="max-h-[min(30vh,11.5rem)] overflow-y-auto overscroll-contain text-left text-[13px] leading-relaxed text-[var(--mushaf-read-popup-text)]">
             {translationLoading ? 'Loading…' : translation || 'Translation unavailable.'}
           </p>
         </div>
       )}
 
+      {/* toolbar */}
       <div
-        className="flex items-center justify-center gap-1 bg-teal-900/80 px-2 py-1.5"
+        className="flex items-stretch justify-around px-1.5 pb-2 pt-1.5"
         role="toolbar"
         aria-label={`Ayah ${verseKey} actions`}
       >
-        <button
-          type="button"
-          onClick={isReciting ? onStopRecitation : onPlay}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-700 text-white shadow-sm hover:bg-teal-600"
-          aria-label={isReciting ? 'Stop recitation' : 'Play from this ayah'}
+        <ActionButton
+          label={isReciting ? 'Stop' : 'Play'}
+          primary
+          onClick={isReciting ? () => onStopRecitation?.() : onPlay}
         >
           {isReciting ? (
             <Square className="h-4 w-4 fill-current" />
           ) : (
             <Play className="h-4 w-4 fill-current" />
           )}
-        </button>
-        <button
-          type="button"
+        </ActionButton>
+
+        <ActionButton
+          label={isBookmarked ? 'Saved' : 'Save'}
+          active={isBookmarked}
           onClick={onToggleBookmark}
-          className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full',
-            isBookmarked
-              ? 'bg-teal-500/20 text-teal-200'
-              : 'text-teal-200 hover:bg-teal-500/15'
-          )}
-          aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark ayah'}
-          aria-pressed={isBookmarked}
         >
-          <Bookmark className={cn('h-4 w-4', isBookmarked && 'fill-current')} />
-        </button>
-        <button
-          type="button"
+          <Bookmark className={cn('h-[18px] w-[18px]', isBookmarked && 'fill-current')} />
+        </ActionButton>
+
+        <ActionButton
+          label="Translate"
+          active={showTranslation}
           onClick={() => setShowTranslation((v) => !v)}
-          className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-full',
-            showTranslation
-              ? 'bg-teal-500/20 text-teal-200'
-              : 'text-teal-200 hover:bg-teal-500/15'
-          )}
-          aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
-          aria-pressed={showTranslation}
         >
-          <Languages className="h-4 w-4" />
-        </button>
+          <Languages className="h-[18px] w-[18px]" />
+        </ActionButton>
+
         {somaliVoiceAvailable && onPlaySomaliVoice ? (
-          <button
-            type="button"
-            onClick={isSomaliVoicePlaying ? onStopSomaliVoice : onPlaySomaliVoice}
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold',
-              isSomaliVoicePlaying
-                ? 'bg-amber-500/15 text-amber-200'
-                : 'text-teal-200 hover:bg-teal-500/15'
-            )}
-            aria-label={isSomaliVoicePlaying ? 'Stop Somali voice' : 'Play Somali voice'}
+          <ActionButton
+            label="Somali"
+            active={isSomaliVoicePlaying}
+            onClick={isSomaliVoicePlaying ? () => onStopSomaliVoice?.() : onPlaySomaliVoice}
           >
-            SO
-          </button>
+            <span className="text-xs font-bold">SO</span>
+          </ActionButton>
         ) : null}
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-teal-200 hover:bg-teal-500/15"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
+
+        <ActionButton label="Close" onClick={onClose}>
+          <X className="h-[18px] w-[18px]" />
+        </ActionButton>
       </div>
     </div>
   )

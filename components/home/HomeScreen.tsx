@@ -10,8 +10,9 @@ export default function HomeScreen({ children, className }: HomeScreenProps) {
   return (
     <main
       className={cn(
-        'home-screen relative min-h-[100dvh] w-full bg-[var(--app-bg)] text-[var(--app-text)]',
+        'home-screen relative min-h-[100dvh] w-full overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]',
         'pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+        '[touch-action:pan-y] [overscroll-behavior-x:none]',
         className
       )}
     >

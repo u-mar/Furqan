@@ -7,6 +7,8 @@ export interface RecorderState {
   blob: Blob | null
   audioBuffer: AudioBuffer | null
   error: string | null
+  /** Live input loudness 0–1 while recording (for the mic meter). */
+  level: number
 }
 
 function mergePcmChunks(chunks: Float32Array[]): Float32Array {
@@ -69,29 +71,42 @@ export function useRecitationRecorder() {
     blob: null,
     audioBuffer: null,
     error: null,
+    level: 0,
   })
 
   const streamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const meterRafRef = useRef<number | null>(null)
   const pcmChunksRef = useRef<Float32Array[]>([])
 
+  const stopMeter = useCallback(() => {
+    if (meterRafRef.current !== null) {
+      cancelAnimationFrame(meterRafRef.current)
+      meterRafRef.current = null
+    }
+  }, [])
+
   const cleanup = useCallback(() => {
+    stopMeter()
     processorRef.current?.disconnect()
     sourceRef.current?.disconnect()
+    analyserRef.current?.disconnect()
     processorRef.current = null
     sourceRef.current = null
+    analyserRef.current = null
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
     void audioContextRef.current?.close()
     audioContextRef.current = null
     pcmChunksRef.current = []
-  }, [])
+  }, [stopMeter])
 
   const startRecording = useCallback(async () => {
     cleanup()
-    setState({ recording: false, blob: null, audioBuffer: null, error: null })
+    setState({ recording: false, blob: null, audioBuffer: null, error: null, level: 0 })
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -105,6 +120,10 @@ export function useRecitationRecorder() {
 
       const source = ctx.createMediaStreamSource(stream)
       const processor = ctx.createScriptProcessor(4096, 1, 1)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 1024
+      analyser.smoothingTimeConstant = 0.6
+      analyserRef.current = analyser
       pcmChunksRef.current = []
 
       processor.onaudioprocess = (event) => {
@@ -112,6 +131,7 @@ export function useRecitationRecorder() {
         pcmChunksRef.current.push(new Float32Array(input))
       }
 
+      source.connect(analyser)
       source.connect(processor)
       const silent = ctx.createGain()
       silent.gain.value = 0
@@ -121,7 +141,25 @@ export function useRecitationRecorder() {
       sourceRef.current = source
       processorRef.current = processor
 
-      setState({ recording: true, blob: null, audioBuffer: null, error: null })
+      // Live loudness meter, smoothed toward the peak for a lively feel.
+      const meterBuf = new Float32Array(analyser.fftSize)
+      let smoothed = 0
+      const tick = () => {
+        const a = analyserRef.current
+        if (!a) return
+        a.getFloatTimeDomainData(meterBuf)
+        let sumSq = 0
+        for (let i = 0; i < meterBuf.length; i++) sumSq += meterBuf[i] * meterBuf[i]
+        const rms = Math.sqrt(sumSq / meterBuf.length)
+        // map roughly to 0–1 with headroom, then ease
+        const norm = Math.min(1, rms * 3.2)
+        smoothed = norm > smoothed ? norm : smoothed * 0.82 + norm * 0.18
+        setState((s) => (s.recording ? { ...s, level: smoothed } : s))
+        meterRafRef.current = requestAnimationFrame(tick)
+      }
+      meterRafRef.current = requestAnimationFrame(tick)
+
+      setState({ recording: true, blob: null, audioBuffer: null, error: null, level: 0 })
     } catch {
       cleanup()
       setState({
@@ -129,6 +167,7 @@ export function useRecitationRecorder() {
         blob: null,
         audioBuffer: null,
         error: 'Microphone access is required to record your recitation.',
+        level: 0,
       })
     }
   }, [cleanup])
@@ -142,21 +181,24 @@ export function useRecitationRecorder() {
         return
       }
 
+      stopMeter()
       processorRef.current.onaudioprocess = null
       const samples = mergePcmChunks(pcmChunksRef.current)
       pcmChunksRef.current = []
 
       processorRef.current.disconnect()
       sourceRef.current?.disconnect()
+      analyserRef.current?.disconnect()
       processorRef.current = null
       sourceRef.current = null
+      analyserRef.current = null
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
 
       if (samples.length < ctx.sampleRate * 0.25) {
         void ctx.close()
         audioContextRef.current = null
-        setState({ recording: false, blob: null, audioBuffer: null, error: null })
+        setState({ recording: false, blob: null, audioBuffer: null, error: null, level: 0 })
         resolve({ blob: null, audioBuffer: null })
         return
       }
@@ -166,14 +208,14 @@ export function useRecitationRecorder() {
       void ctx.close()
       audioContextRef.current = null
 
-      setState({ recording: false, blob, audioBuffer, error: null })
+      setState({ recording: false, blob, audioBuffer, error: null, level: 0 })
       resolve({ blob, audioBuffer })
     })
   }, [cleanup])
 
   const clearRecording = useCallback(() => {
     cleanup()
-    setState({ recording: false, blob: null, audioBuffer: null, error: null })
+    setState({ recording: false, blob: null, audioBuffer: null, error: null, level: 0 })
   }, [cleanup])
 
   useEffect(() => () => cleanup(), [cleanup])

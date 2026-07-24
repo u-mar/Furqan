@@ -1,24 +1,31 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ChevronLeft,
+  Gauge,
+  Headphones,
   Loader2,
   Mic,
+  Pause,
   Play,
+  Repeat,
   RotateCcw,
+  Sparkles,
   Square,
-  Volume2,
+  Target,
+  TrendingUp,
+  Trophy,
 } from 'lucide-react'
-import Button from '@/components/ui/Button'
 import HomeScreen from '@/components/home/HomeScreen'
+import VoiceScoreRing from '@/components/imitate/VoiceScoreRing'
 import VoiceSimilarityCard from '@/components/imitate/VoiceSimilarityCard'
 import WaveformCompare from '@/components/imitate/WaveformCompare'
 import { useRecitationRecorder } from '@/hooks/useRecitationRecorder'
 import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl } from '@/lib/offline-audio'
-import { savePracticeRecord } from '@/lib/imitate-progress'
+import { getBestForAyah, savePracticeRecord, type SaveResult } from '@/lib/imitate-progress'
 import { decodeToAudioBuffer } from '@/lib/audio-decode'
 import { analyzeVoiceSimilarity, extractPeakWaveform, type VoiceSimilarityResult } from '@/lib/voice-similarity'
 import type { WaveformPlaybackTrack } from '@/components/imitate/WaveformCompare'
@@ -39,12 +46,67 @@ interface ImitateSessionProps {
   surahName: string
 }
 
-const STEPS = ['Listen', 'Record', 'Results'] as const
+const SPEEDS = [0.5, 0.75, 1] as const
+type Speed = (typeof SPEEDS)[number]
+
+const STEPS = ['Listen', 'Record', 'Result'] as const
 
 function stepIndex(phase: Phase): number {
   if (phase === 'results') return 2
   if (phase === 'recording' || phase === 'analyzing') return 1
   return 0
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
+}
+
+const FOCUS_COPY: Record<'tone' | 'sound' | 'flow', { title: string; body: string }> = {
+  tone: {
+    title: 'Focus: Melody & intonation',
+    body: 'Your pitch drifts from the reciter. Hum their tune first, then match how the voice rises and falls across the ayah.',
+  },
+  sound: {
+    title: 'Focus: Voice color',
+    body: 'Your timbre differs from the reciter. Relax the throat and shape each vowel like they do — aim for the same depth and brightness.',
+  },
+  flow: {
+    title: 'Focus: Rhythm & pauses',
+    body: 'Your timing differs. Copy where the reciter breathes and how long each word is held. Slow practice locks this in.',
+  },
+}
+
+/** Tiny improvement sparkline from the attempt history. */
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null
+  const w = 100
+  const h = 28
+  const max = Math.max(...values, 100)
+  const min = Math.min(...values, 0)
+  const range = Math.max(max - min, 1)
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w
+    const y = h - ((v - min) / range) * (h - 4) - 2
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const last = values[values.length - 1]
+  const lastX = w
+  const lastY = h - ((last - min) / range) * (h - 4) - 2
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-7 w-full" preserveAspectRatio="none" aria-hidden>
+      <polyline
+        points={pts.join(' ')}
+        fill="none"
+        stroke="var(--home-sage-deep)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle cx={lastX} cy={lastY} r={2.4} fill="var(--home-sage-deep)" />
+    </svg>
+  )
 }
 
 export default function ImitateSession({
@@ -58,18 +120,35 @@ export default function ImitateSession({
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<VoiceSimilarityResult | null>(null)
+  const [saveResult, setSaveResult] = useState<SaveResult | null>(null)
   const [refPreviewWaveform, setRefPreviewWaveform] = useState<number[]>([])
   const [refDurationMs, setRefDurationMs] = useState(0)
   const [playback, setPlayback] = useState<PlaybackState>({ progress: 0, track: null })
+  const [speed, setSpeed] = useState<Speed>(1)
+  const [loopRef, setLoopRef] = useState(false)
+  const [priorBest, setPriorBest] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const userAudioRef = useRef<HTMLAudioElement | null>(null)
   const playbackRafRef = useRef<number | null>(null)
   const refAudioBufferRef = useRef<AudioBuffer | null>(null)
   const refObjectUrlRef = useRef<string | null>(null)
-  const { recording, blob, error: recorderError, startRecording, stopRecording, clearRecording } =
-    useRecitationRecorder()
+  const {
+    recording,
+    blob,
+    level,
+    error: recorderError,
+    startRecording,
+    stopRecording,
+    clearRecording,
+  } = useRecitationRecorder()
 
   const activeStep = stepIndex(phase)
+  const surahOnly = isSurahOnlyReciter(reciter)
+
+  useEffect(() => {
+    const best = getBestForAyah(reciterId, surah, ayah)
+    setPriorBest(best?.bestVoiceSimilarity ?? null)
+  }, [reciterId, surah, ayah])
 
   const stopPlaybackTracking = useCallback(() => {
     if (playbackRafRef.current !== null) {
@@ -133,6 +212,11 @@ export default function ImitateSession({
 
   useEffect(() => () => stopAudio(), [stopAudio])
 
+  // Live speed changes on the currently-playing reciter track.
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed
+  }, [speed])
+
   useEffect(() => {
     return () => {
       if (refObjectUrlRef.current) {
@@ -167,7 +251,7 @@ export default function ImitateSession({
         URL.revokeObjectURL(url)
       }
     }
-  }, [reciter, surah, ayah])
+  }, [reciter, reciterId, surah, ayah])
 
   const runAnalysis = useCallback(
     async (userAudio: Blob | AudioBuffer) => {
@@ -177,7 +261,7 @@ export default function ImitateSession({
         const refBuffer = await loadReferenceAudio()
         const analysis = await analyzeVoiceSimilarity(refBuffer, userAudio)
         setResult(analysis)
-        savePracticeRecord({
+        const saved = savePracticeRecord({
           reciterId,
           surah,
           ayah,
@@ -186,6 +270,7 @@ export default function ImitateSession({
           sound: analysis.sound,
           flow: analysis.flow,
         })
+        setSaveResult(saved)
         setPhase('results')
       } catch (e) {
         const detail = e instanceof Error ? e.message : ''
@@ -196,34 +281,56 @@ export default function ImitateSession({
     [loadReferenceAudio, reciterId, surah, ayah]
   )
 
-  const playReference = useCallback(async () => {
-    setError(null)
-    stopAudio()
-    setPhase('playing')
-    try {
-      await loadReferenceAudio()
-      const url = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
-      if (!url) throw new Error('Could not play reciter audio.')
-      if (refObjectUrlRef.current) URL.revokeObjectURL(refObjectUrlRef.current)
-      refObjectUrlRef.current = url.startsWith('blob:') ? url : null
-      const audio = new Audio(url)
-      audioRef.current = audio
-      const detach = attachPlaybackTracking(audio, 'ref')
-      audio.onended = () => {
-        detach()
-        setPhase((p) => (p === 'playing' ? 'idle' : p))
-      }
-      audio.onerror = () => {
-        detach()
+  const playReference = useCallback(
+    async (opts?: { rate?: Speed; loop?: boolean }) => {
+      const rate = opts?.rate ?? speed
+      const loop = opts?.loop ?? loopRef
+      setError(null)
+      stopAudio()
+      setPhase('playing')
+      try {
+        await loadReferenceAudio()
+        const url = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
+        if (!url) throw new Error('Could not play reciter audio.')
+        if (refObjectUrlRef.current) URL.revokeObjectURL(refObjectUrlRef.current)
+        refObjectUrlRef.current = url.startsWith('blob:') ? url : null
+        const audio = new Audio(url)
+        audio.playbackRate = rate
+        audio.loop = loop
+        audioRef.current = audio
+        const detach = attachPlaybackTracking(audio, 'ref')
+        audio.onended = () => {
+          detach()
+          setPhase((p) => (p === 'playing' ? 'idle' : p))
+        }
+        audio.onerror = () => {
+          detach()
+          setError('Could not play reciter audio.')
+          setPhase('idle')
+        }
+        await audio.play()
+      } catch {
         setError('Could not play reciter audio.')
         setPhase('idle')
       }
-      await audio.play()
-    } catch {
-      setError('Could not play reciter audio.')
+    },
+    [attachPlaybackTracking, loadReferenceAudio, loopRef, reciterId, speed, stopAudio, surah, ayah]
+  )
+
+  const toggleListen = useCallback(() => {
+    if (phase === 'playing') {
+      stopAudio()
       setPhase('idle')
+      return
     }
-  }, [attachPlaybackTracking, loadReferenceAudio, reciterId, stopAudio, surah, ayah])
+    void playReference()
+  }, [phase, playReference, stopAudio])
+
+  const practiceSlowly = useCallback(() => {
+    setSpeed(0.5)
+    setLoopRef(true)
+    void playReference({ rate: 0.5, loop: true })
+  }, [playReference])
 
   const handleRecord = useCallback(async () => {
     if (recording) {
@@ -238,10 +345,12 @@ export default function ImitateSession({
     }
     setError(null)
     setResult(null)
+    setSaveResult(null)
+    stopAudio()
     clearRecording()
     await startRecording()
     setPhase('recording')
-  }, [clearRecording, recording, runAnalysis, startRecording, stopRecording])
+  }, [clearRecording, recording, runAnalysis, startRecording, stopAudio, stopRecording])
 
   const playUserRecording = useCallback(() => {
     if (!blob) return
@@ -297,6 +406,7 @@ export default function ImitateSession({
     stopAudio()
     clearRecording()
     setResult(null)
+    setSaveResult(null)
     setRefPreviewWaveform([])
     setRefDurationMs(0)
     setError(null)
@@ -321,54 +431,82 @@ export default function ImitateSession({
 
   const displayArabic = arabicText.trim() || 'Loading ayah text…'
 
+  const focus = useMemo(() => {
+    if (!result) return null
+    const layers = [
+      { key: 'tone' as const, v: result.tone },
+      { key: 'sound' as const, v: result.sound },
+      { key: 'flow' as const, v: result.flow },
+    ].sort((a, b) => a.v - b.v)
+    return { ...layers[0], ...FOCUS_COPY[layers[0].key] }
+  }, [result])
+
+  const isPlaying = phase === 'playing'
+
   return (
     <HomeScreen className="max-w-lg mx-auto">
       <div className="pb-[max(2rem,env(safe-area-inset-bottom))]">
-        <header className="mb-6 flex items-center gap-3">
+        {/* Header with reciter identity */}
+        <header className="reveal mb-5 flex items-center gap-3">
           <Link
             href="/imitate"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] hover:bg-[var(--app-surface)]"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-[var(--home-card-bg)] text-[var(--home-heading)] ring-1 ring-[var(--home-card-border)] transition-colors hover:bg-[var(--home-sage-soft)]"
             aria-label="Back"
           >
-            <ChevronLeft className="h-7 w-7" />
+            <ChevronLeft className="h-6 w-6" />
           </Link>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-sm font-bold text-[#2a2258] shadow-[0_8px_20px_-8px_rgba(226,171,83,0.85)]">
+            {initialsOf(reciter.name)}
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+            <p className="truncate text-xs font-semibold uppercase tracking-wider text-[var(--home-sage-deep)]">
               {reciter.name}
             </p>
-            <h1 className="home-serif truncate text-xl font-semibold text-[var(--home-heading)]">
+            <h1 className="home-serif truncate text-lg font-semibold leading-tight text-[var(--home-heading)]">
               {surahName} · Ayah {ayah}
             </h1>
           </div>
+          {priorBest !== null && (
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--home-sage-soft)] px-2.5 py-1 text-xs font-bold text-[var(--home-sage-deep)]">
+              <Trophy className="h-3.5 w-3.5" />
+              {priorBest}%
+            </span>
+          )}
         </header>
 
-        <div className="mb-6 flex gap-2">
+        {/* Stepper */}
+        <div className="reveal mb-5 flex items-center gap-1.5" style={{ animationDelay: '60ms' }}>
           {STEPS.map((label, i) => (
-            <div
-              key={label}
-              className={cn(
-                'flex-1 rounded-xl border px-2 py-2 text-center text-xs font-medium transition-colors',
-                i <= activeStep
-                  ? 'border-[var(--home-sage)]/40 bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
-                  : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-[var(--app-muted)]'
-              )}
-            >
-              {label}
+            <div key={label} className="flex flex-1 items-center gap-1.5">
+              <div
+                className={cn(
+                  'flex-1 rounded-full py-1.5 text-center text-[11px] font-semibold transition-colors',
+                  i < activeStep && 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]',
+                  i === activeStep &&
+                    'bg-[var(--home-sage-deep)] text-white shadow-[0_6px_16px_-8px_var(--home-sage-deep)]',
+                  i > activeStep && 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
+                )}
+              >
+                {label}
+              </div>
             </div>
           ))}
         </div>
 
+        {/* Ayah */}
         <div
-          className={cn(
-            'mb-6 rounded-2xl border-2 px-4 py-5 shadow-[var(--home-card-shadow)]',
-            'border-[var(--home-sage)]/25 bg-[var(--home-card-bg)]'
-          )}
+          className="reveal relative mb-5 overflow-hidden rounded-[1.5rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 py-6 shadow-[var(--home-card-shadow)]"
+          style={{ animationDelay: '120ms' }}
         >
-          <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-[var(--home-sage-deep)]">
-            {surah}:{ayah}
+          <div
+            className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[var(--home-sage)]/10 blur-3xl"
+            aria-hidden
+          />
+          <p className="mb-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-[var(--home-sage-deep)]">
+            {surah} : {ayah}
           </p>
           <p
-            className="amiri arabic-text text-center text-[clamp(1.35rem,5.5vw,1.85rem)] leading-[2.2] text-[var(--home-heading)]"
+            className="amiri arabic-text text-center text-[clamp(1.4rem,6vw,2rem)] leading-[2.2] text-[var(--home-heading)]"
             dir="rtl"
             lang="ar"
           >
@@ -376,8 +514,70 @@ export default function ImitateSession({
           </p>
         </div>
 
+        {/* Listen / study panel */}
+        <div className="reveal mb-5 rounded-[1.5rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]" style={{ animationDelay: '180ms' }}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="flex items-center gap-2 text-sm font-semibold text-[var(--home-heading)]">
+              <Headphones className="h-4 w-4 text-[var(--home-sage-deep)]" />
+              Study the reciter
+            </p>
+            <button
+              type="button"
+              onClick={() => setLoopRef((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                loopRef
+                  ? 'bg-[var(--home-sage-deep)] text-white'
+                  : 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
+              )}
+              aria-pressed={loopRef}
+            >
+              <Repeat className="h-3.5 w-3.5" />
+              Loop
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleListen}
+            disabled={phase === 'analyzing' || recording || surahOnly}
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[var(--home-sage-deep)] py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_-14px_var(--home-sage-deep)] transition-transform active:scale-[0.98] disabled:opacity-50"
+          >
+            {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="h-5 w-5 fill-current" />}
+            {isPlaying ? 'Stop' : loopRef ? 'Play on loop' : 'Play reciter'}
+          </button>
+
+          <div className="mt-3 flex items-center gap-2">
+            <span className="flex items-center gap-1 text-xs font-medium text-[var(--home-muted)]">
+              <Gauge className="h-3.5 w-3.5" />
+              Speed
+            </span>
+            <div className="flex flex-1 gap-1.5">
+              {SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSpeed(s)}
+                  className={cn(
+                    'flex-1 rounded-lg py-1.5 text-xs font-bold transition-colors',
+                    speed === s
+                      ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)] ring-1 ring-[var(--home-sage)]/40'
+                      : 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
+                  )}
+                >
+                  {s === 1 ? '1×' : `${s}×`}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-2.5 text-[11px] leading-relaxed text-[var(--home-muted)]">
+            Slow it to <strong className="text-[var(--home-heading)]">0.5×</strong> and loop to study every
+            rise, fall, and pause before you record.
+          </p>
+        </div>
+
         {showWaveform && (
-          <div className="mb-6">
+          <div className="mb-5">
             <WaveformCompare
               {...waveformProps}
               durationMs={waveformDurationMs}
@@ -387,70 +587,78 @@ export default function ImitateSession({
           </div>
         )}
 
-        <div className="mb-6 flex flex-col items-center gap-4">
-          <button
-            type="button"
-            onClick={() => void handleRecord()}
-            disabled={phase === 'analyzing' || phase === 'playing'}
-            className={cn(
-              'relative flex h-28 w-28 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 disabled:opacity-50',
-              recording
-                ? 'bg-red-500 text-white ring-4 ring-red-500/30'
-                : 'bg-[var(--home-sage-deep)] text-white ring-4 ring-[var(--home-sage)]/25'
-            )}
-            aria-label={recording ? 'Stop recording' : 'Start recording'}
-          >
-            {phase === 'analyzing' ? (
-              <Loader2 className="h-10 w-10 animate-spin" />
-            ) : recording ? (
-              <Square className="h-9 w-9 fill-current" />
-            ) : (
-              <Mic className="h-10 w-10" />
-            )}
-            {recording && (
-              <span className="absolute -top-1 right-0 flex h-4 w-4">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-300 opacity-75" />
-                <span className="relative inline-flex h-4 w-4 rounded-full bg-red-200" />
-              </span>
-            )}
-          </button>
+        {/* Record zone with live level meter */}
+        <div className="mb-5 flex flex-col items-center gap-3">
+          <div className="relative flex h-32 w-32 items-center justify-center">
+            {/* live level halo */}
+            <span
+              className={cn(
+                'pointer-events-none absolute inset-0 rounded-full transition-opacity',
+                recording ? 'opacity-100' : 'opacity-0'
+              )}
+              style={{
+                background: 'radial-gradient(circle, rgba(239,68,68,0.45), transparent 70%)',
+                transform: `scale(${1 + level * 0.6})`,
+              }}
+              aria-hidden
+            />
+            <span
+              className={cn(
+                'pointer-events-none absolute inset-2 rounded-full ring-2 transition-transform',
+                recording ? 'ring-red-500/40' : 'ring-transparent'
+              )}
+              style={{ transform: `scale(${1 + level * 0.28})` }}
+              aria-hidden
+            />
+            <button
+              type="button"
+              onClick={() => void handleRecord()}
+              disabled={phase === 'analyzing' || phase === 'playing'}
+              className={cn(
+                'relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl transition-all active:scale-95 disabled:opacity-50',
+                recording
+                  ? 'bg-red-500 text-white'
+                  : 'bg-gradient-to-br from-[var(--home-sage)] to-[var(--home-sage-deep)] text-white'
+              )}
+              aria-label={recording ? 'Stop recording' : 'Start recording'}
+            >
+              {phase === 'analyzing' ? (
+                <Loader2 className="h-9 w-9 animate-spin" />
+              ) : recording ? (
+                <Square className="h-8 w-8 fill-current" />
+              ) : (
+                <Mic className="h-9 w-9" />
+              )}
+            </button>
+          </div>
           <p className="text-center text-sm font-medium text-[var(--home-heading)]">
             {phase === 'analyzing'
-              ? 'Analyzing voice similarity…'
+              ? 'Analyzing your voice…'
               : recording
-                ? 'Tap to stop recording'
-                : 'Tap to record your recitation'}
+                ? 'Listening — tap to finish'
+                : result
+                  ? 'Record again to beat your score'
+                  : 'Tap to record your recitation'}
           </p>
+          {surahOnly && (
+            <p className="max-w-xs text-center text-xs text-[var(--home-muted)]">
+              {SURAH_ONLY_RECITER_HINT}
+            </p>
+          )}
         </div>
 
-        <div className="mb-5 grid grid-cols-2 gap-3">
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => void playReference()}
-            disabled={phase === 'playing' || phase === 'analyzing' || recording}
-            className="w-full"
-          >
-            <Play className="h-4 w-4" />
-            Listen
-          </Button>
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={reset}
-            disabled={phase === 'analyzing' || recording}
-            className="w-full"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Start over
-          </Button>
-        </div>
-
-        {phase === 'playing' && (
-          <p className="mb-4 flex items-center justify-center gap-2 text-sm text-[var(--home-sage-deep)]">
-            <Volume2 className="h-4 w-4" />
-            Playing reciter…
-          </p>
+        {!result && (
+          <div className="mb-5">
+            <button
+              type="button"
+              onClick={reset}
+              disabled={phase === 'analyzing' || recording}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 text-sm font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)] disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Start over
+            </button>
+          </div>
         )}
 
         {(error || recorderError) && (
@@ -459,44 +667,144 @@ export default function ImitateSession({
           </p>
         )}
 
+        {/* Results */}
         {result && (
           <div className="space-y-4">
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">
+              {saveResult?.isNewBest && (
+                <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f4d59b] to-[#e2ab53] px-2.5 py-1 text-xs font-bold text-[#2a2258] shadow">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  New best!
+                </span>
+              )}
+              <div className="flex flex-col items-center">
+                <VoiceScoreRing value={result.voiceSimilarity} />
+              </div>
+
+              {/* delta / best / attempt row */}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-[var(--app-surface)] px-2 py-2.5 text-center ring-1 ring-[var(--home-card-border)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--home-muted)]">Change</p>
+                  <p
+                    className={cn(
+                      'mt-0.5 flex items-center justify-center gap-0.5 text-sm font-bold',
+                      saveResult?.delta == null
+                        ? 'text-[var(--home-muted)]'
+                        : saveResult.delta >= 0
+                          ? 'text-emerald-500'
+                          : 'text-red-500'
+                    )}
+                  >
+                    {saveResult?.delta != null && <TrendingUp className="h-3.5 w-3.5" />}
+                    {saveResult?.delta == null
+                      ? 'First'
+                      : `${saveResult.delta >= 0 ? '+' : ''}${saveResult.delta}`}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[var(--app-surface)] px-2 py-2.5 text-center ring-1 ring-[var(--home-card-border)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--home-muted)]">Best</p>
+                  <p className="mt-0.5 text-sm font-bold text-[var(--home-sage-deep)]">
+                    {saveResult?.record.bestVoiceSimilarity ?? result.voiceSimilarity}%
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[var(--app-surface)] px-2 py-2.5 text-center ring-1 ring-[var(--home-card-border)]">
+                  <p className="text-[10px] uppercase tracking-wider text-[var(--home-muted)]">Attempt</p>
+                  <p className="mt-0.5 text-sm font-bold text-[var(--home-heading)]">
+                    #{saveResult?.record.attempts ?? 1}
+                  </p>
+                </div>
+              </div>
+
+              {saveResult && saveResult.record.history.length > 2 && (
+                <div className="mt-3 rounded-xl bg-[var(--app-surface)] px-3 py-2 ring-1 ring-[var(--home-card-border)]">
+                  <p className="mb-0.5 text-[10px] uppercase tracking-wider text-[var(--home-muted)]">
+                    Your progress
+                  </p>
+                  <Sparkline values={saveResult.record.history} />
+                </div>
+              )}
+            </div>
+
+            {/* Focus drill */}
+            {focus && (
+              <div className="rounded-2xl border border-[var(--home-sage)]/30 bg-[var(--home-sage-soft)] p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-[var(--home-heading)]">
+                  <Target className="h-4 w-4 text-[var(--home-sage-deep)]" />
+                  {focus.title}
+                  <span className="ml-auto text-xs font-bold text-[var(--home-sage-deep)]">{focus.v}%</span>
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-[var(--app-text)]">{focus.body}</p>
+                <button
+                  type="button"
+                  onClick={practiceSlowly}
+                  disabled={recording || phase === 'analyzing' || surahOnly}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--home-sage-deep)] py-2.5 text-sm font-bold text-white transition-transform active:scale-[0.98] disabled:opacity-50"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  Practice this slowly (0.5× loop)
+                </button>
+              </div>
+            )}
+
             <VoiceSimilarityCard
               voiceSimilarity={result.voiceSimilarity}
               tone={result.tone}
               sound={result.sound}
               flow={result.flow}
               detail={result.detail}
+              defaultOpen
             />
+
             <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--app-muted)]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
                 Coaching tips
               </p>
               <ul className="space-y-2">
                 {result.tips.map((tip, i) => (
-                  <li key={i} className="text-sm leading-relaxed text-[var(--app-text)]">
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-[var(--app-text)]">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--home-sage-deep)]" />
                     {tip}
                   </li>
                 ))}
               </ul>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" size="lg" onClick={() => void playBoth()} className="w-full">
+              <button
+                type="button"
+                onClick={() => void playBoth()}
+                className="flex items-center justify-center gap-2 rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 text-sm font-semibold text-[var(--home-heading)] shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.98]"
+              >
+                <Play className="h-4 w-4 fill-current" />
                 Compare A/B
-              </Button>
-              <Button variant="secondary" size="lg" onClick={playUserRecording} className="w-full">
+              </button>
+              <button
+                type="button"
+                onClick={playUserRecording}
+                className="flex items-center justify-center gap-2 rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 text-sm font-semibold text-[var(--home-heading)] shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.98]"
+              >
+                <Headphones className="h-4 w-4" />
                 Play yours
-              </Button>
+              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleRecord()}
+              disabled={phase === 'analyzing'}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[var(--home-sage)] to-[var(--home-sage-deep)] py-3.5 text-sm font-bold text-white shadow-[0_14px_30px_-14px_var(--home-sage-deep)] transition-transform active:scale-[0.98] disabled:opacity-50"
+            >
+              <Mic className="h-4 w-4" />
+              Try again
+            </button>
           </div>
         )}
 
         {phase === 'idle' && !result && !error && !recorderError && (
-          <p className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3 text-sm leading-relaxed text-[var(--app-muted)]">
-            First tap <strong className="text-[var(--home-heading)]">Listen</strong> to hear the
-            reciter, then tap the mic button and recite the same ayah. We&apos;ll score how similar
-            your voice sounds.
-          </p>
+          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3.5 text-sm leading-relaxed text-[var(--home-muted)]">
+            <span className="font-semibold text-[var(--home-heading)]">How it works:</span> listen to the
+            reciter (slow it down to study), then tap the mic and recite the same ayah. You&apos;ll get a
+            voice-match score with tone, sound, and flow breakdowns — and a focus drill to improve.
+          </div>
         )}
       </div>
     </HomeScreen>

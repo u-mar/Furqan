@@ -106,6 +106,8 @@ body {
   min-height: 100%;
   background: var(--app-bg);
   color: var(--app-text);
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 @font-face {
@@ -694,6 +696,75 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
   font-weight: 600;
   color: var(--mushaf-read-meta);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- quran.com-style translation reading layout ---- */
+.mushaf-tr-surah-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin: 0.5rem auto 1.1rem;
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--mushaf-read-text);
+  text-align: center;
+}
+.mushaf-tr-surah-header::before,
+.mushaf-tr-surah-header::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  max-width: 3.5rem;
+  background: linear-gradient(
+    to var(--_dir, right),
+    transparent,
+    var(--mushaf-read-accent)
+  );
+  opacity: 0.5;
+}
+.mushaf-tr-surah-header::before {
+  --_dir: left;
+}
+
+.mushaf-tr-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+.mushaf-tr-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.85rem;
+  min-width: 1.85rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--mushaf-read-accent-soft);
+  color: var(--mushaf-read-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--mushaf-read-accent) 40%, transparent);
+}
+.mushaf-tr-key {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--mushaf-read-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.mushaf-tr-translator {
+  margin-top: 0.7rem;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--mushaf-read-meta);
+  text-align: left;
 }
 
 /* Translation scroll mode */

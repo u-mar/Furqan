@@ -63,6 +63,8 @@ interface TranslationAyahArticleProps {
   }
   page: number
   num: number
+  surahLabel: string | null
+  translator: string
   showBasmalah: boolean
   showArabic: boolean
   showGlyphAyah: boolean
@@ -80,6 +82,8 @@ function TranslationAyahArticle({
   row,
   page,
   num,
+  surahLabel,
+  translator,
   showBasmalah,
   showArabic,
   showGlyphAyah,
@@ -93,13 +97,14 @@ function TranslationAyahArticle({
   articleRef,
 }: TranslationAyahArticleProps) {
   const longPress = useLongPress(() => onAyahLongPress?.(row.verse_key))
+  const hasTranslation = Boolean(row.translation)
 
   return (
     <article
       ref={articleRef}
       id={`translation-ayah-${row.verse_key.replace(':', '-')}`}
       data-translation-ayah={row.verse_key}
-      className={cn('px-1', ayahSelectMode && 'cursor-pointer')}
+      className={cn(ayahSelectMode && 'cursor-pointer')}
       onClick={(e) => {
         if (!ayahSelectMode || !onAyahSelect) return
         e.stopPropagation()
@@ -108,6 +113,8 @@ function TranslationAyahArticle({
       {...(onAyahLongPress ? longPress.handlers : {})}
       onContextMenu={(e) => e.preventDefault()}
     >
+      {surahLabel && <h2 className="mushaf-tr-surah-header">{surahLabel}</h2>}
+
       <div
         className={cn(
           'mushaf-translation-body rounded-2xl px-4 py-4 transition-colors duration-300',
@@ -115,9 +122,17 @@ function TranslationAyahArticle({
           isSelected && 'ring-1 ring-[var(--mushaf-read-highlight-border)]'
         )}
       >
+        {/* meta row — verse number badge */}
+        <div className="mushaf-tr-meta">
+          <span className="mushaf-tr-badge" aria-hidden>
+            {num}
+          </span>
+          <span className="mushaf-tr-key">{row.verse_key}</span>
+        </div>
+
         {showBasmalah && (
           <p
-            className="mushaf-translation-basmalah mb-3 text-center"
+            className="mushaf-translation-basmalah mb-3 mt-1 text-center"
             dir="rtl"
             lang="ar"
             aria-label="Basmalah"
@@ -159,12 +174,18 @@ function TranslationAyahArticle({
         )}
 
         <p className="mushaf-translation-text">
-          <span className="mushaf-translation-ayah-num">({num})</span>{' '}
           {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
         </p>
+
+        {hasTranslation && <p className="mushaf-tr-translator">— {translator}</p>}
       </div>
     </article>
   )
+}
+
+const TRANSLATOR_BY_LANG: Record<TranslationLanguageId, string> = {
+  en: 'Sahih International',
+  so: 'Mahmud Muhammad Abduh',
 }
 
 const AYAH_STACK_GAP_PX = 20
@@ -200,6 +221,7 @@ function scrollAyahToContainerTop(
 export default function MushafTranslationView({
   verses,
   page,
+  chapters,
   translationLanguage,
   highlightedVerseKey = null,
   selectedVerseKey = null,
@@ -210,6 +232,11 @@ export default function MushafTranslationView({
   onAyahSelect,
   ayahSelectMode = false,
 }: MushafTranslationViewProps) {
+  const chapterNameById = useMemo(
+    () => Object.fromEntries(chapters.map((c) => [c.id, c.englishName || c.name])),
+    [chapters]
+  )
+  const translator = TRANSLATOR_BY_LANG[translationLanguage] ?? 'Translation'
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(
     verses.map((v) => [v.verse_key, getVerseArabicText(v, { omitEndMark: true })])
@@ -281,6 +308,7 @@ export default function MushafTranslationView({
         const isSelected = selectedVerseKey === row.verse_key && !isReciting
         const showBasmalah = num === 1 && surahHasOpeningBasmalah(surah)
         const showGlyphAyah = useQcfGlyphs && row.qcfWords.length > 0
+        const surahLabel = num === 1 ? chapterNameById[surah] || `Surah ${surah}` : null
 
         return (
           <TranslationAyahArticle
@@ -288,6 +316,8 @@ export default function MushafTranslationView({
             row={row}
             page={page}
             num={num}
+            surahLabel={surahLabel}
+            translator={translator}
             showBasmalah={showBasmalah}
             showArabic={showArabic}
             showGlyphAyah={showGlyphAyah}

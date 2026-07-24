@@ -6,6 +6,7 @@ import ImitateAccessGuard from '@/components/imitate/ImitateAccessGuard'
 import ImitateSession from '@/components/imitate/ImitateSession'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getChapters, getVersesByChapter } from '@/lib/quran'
+import { getVerseArabicText } from '@/lib/quran-display'
 
 export default function ImitateAyahPage() {
   const params = useParams()
@@ -22,7 +23,7 @@ export default function ImitateAyahPage() {
         const chapter = chapters.find((c) => c.id === surah)
         setSurahName(chapter?.englishName ?? `Surah ${surah}`)
         const verse = verses.find((v) => v.verse_number === ayah || v.verse_key === `${surah}:${ayah}`)
-        setArabicText(verse?.text_uthmani ?? '')
+        setArabicText(verse ? getVerseArabicText(verse, { omitEndMark: true }) : '')
       })
       .catch(() => {
         setSurahName(`Surah ${surah}`)
