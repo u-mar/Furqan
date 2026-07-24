@@ -16,7 +16,7 @@ export default function HomeScreen({ children, className }: HomeScreenProps) {
       )}
     >
       <div
-        className="pointer-events-none absolute inset-0 hidden bg-[var(--home-glow)] dark:block"
+        className="float-glow pointer-events-none absolute inset-x-0 top-0 h-[70vh] bg-[var(--home-glow)]"
         aria-hidden
       />
       <div className="relative z-10 mx-auto w-full px-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6 lg:px-10 lg:pt-8 xl:px-14 xl:pt-10">

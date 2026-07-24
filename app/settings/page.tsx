@@ -83,7 +83,7 @@ function SettingsToggle({
       <span
         className={cn(
           'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-          enabled ? 'bg-[var(--home-sage-deep)]' : 'bg-[#ddd5c8] dark:bg-stone-600'
+          enabled ? 'bg-[var(--home-sage-deep)]' : 'bg-[var(--home-track)]'
         )}
         aria-hidden
       >
@@ -265,49 +265,64 @@ export default function SettingsPage() {
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div className="pointer-events-none absolute inset-0 bg-[var(--home-glow)]" aria-hidden />
       <div className="relative mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <header className="mb-8 flex items-center gap-3">
-          <Link
-            href={returnHref}
-            className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-xl text-[var(--home-heading)] transition-colors hover:bg-black/5 active:scale-95 dark:hover:bg-white/10"
-            aria-label="Back to home"
+        <section className="reveal mb-8">
+          <div
+            className="gold-sheen relative overflow-hidden rounded-[1.9rem] px-5 pb-5 pt-4 text-white shadow-[0_26px_60px_-20px_rgba(58,42,128,0.85)] ring-1 ring-white/10"
+            style={{ background: 'var(--home-sage-gradient)' }}
           >
-            <ChevronLeft className="h-7 w-7" strokeWidth={1.75} />
-          </Link>
-          <h1 className="home-serif text-[2rem] font-semibold leading-tight text-[var(--home-heading)]">
-            Settings
-          </h1>
-        </header>
-
-        <section className="mb-8">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-4 shadow-[var(--home-card-shadow)]">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-[var(--home-muted)]">
-                Profile
-              </p>
-              <p className="home-serif mt-0.5 truncate text-xl font-semibold text-[var(--home-heading)]">
-                {signedInName || 'Anonymous'}
-              </p>
-              {signedInUsername ? (
-                <p className="mt-0.5 truncate text-xs text-[var(--home-muted)]">@{signedInUsername}</p>
-              ) : null}
+            <div
+              className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#e2ab53]/25 blur-3xl"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-[#6a4bd0]/40 blur-3xl"
+              aria-hidden
+            />
+            <div className="relative flex items-center gap-3">
+              <Link
+                href={returnHref}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm transition-all hover:bg-white/25 active:scale-95"
+                aria-label="Back to home"
+              >
+                <ChevronLeft className="h-6 w-6" strokeWidth={1.9} />
+              </Link>
+              <h1 className="home-serif text-[1.9rem] font-semibold leading-tight text-white drop-shadow-sm">
+                Settings
+              </h1>
             </div>
-            {signedInName ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="shrink-0 rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm font-semibold text-[var(--home-heading)]"
-              >
-                Sign out
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAccountOpen(true)}
-                className="shrink-0 rounded-xl bg-[var(--home-sage-deep)] px-3 py-2 text-sm font-semibold text-white"
-              >
-                Add account
-              </button>
-            )}
+
+            <div className="relative mt-5 flex items-center justify-between gap-3 rounded-2xl bg-white/12 px-4 py-3.5 backdrop-blur-sm">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-lg font-bold text-[#2a2258] shadow-[0_8px_20px_-8px_rgba(226,171,83,0.85)]">
+                  {(signedInName || 'A').charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <p className="home-serif truncate text-lg font-semibold leading-tight text-white">
+                    {signedInName || 'Anonymous'}
+                  </p>
+                  <p className="truncate text-xs text-white/70">
+                    {signedInUsername ? `@${signedInUsername}` : 'Not signed in'}
+                  </p>
+                </div>
+              </div>
+              {signedInName ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="shrink-0 rounded-xl bg-white/20 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                >
+                  Sign out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAccountOpen(true)}
+                  className="shrink-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-[var(--home-sage-dark)] transition-transform active:scale-95"
+                >
+                  Add account
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -343,7 +358,7 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-[var(--home-muted)]">
-            Light mode uses the warm cream and sage palette from the home screen.
+            Switch between the deep midnight theme and a soft daylight palette.
           </p>
         </section>
 
@@ -374,7 +389,7 @@ export default function SettingsPage() {
 
           {downloadingTranslationLang && (
             <div className="mt-4">
-              <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
+              <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[var(--home-track)]">
                 <div
                   className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
                   style={{ width: `${translationProgress}%` }}
@@ -439,7 +454,7 @@ export default function SettingsPage() {
 
             {downloading && (
               <div className="mb-4">
-                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[#e8e0d4] dark:bg-stone-700">
+                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[var(--home-track)]">
                   <div
                     className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
                     style={{ width: `${progress}%` }}

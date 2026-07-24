@@ -157,11 +157,15 @@ export default function DailyVerseCard() {
       </div>
 
       <div
-        className="relative overflow-hidden rounded-3xl px-5 py-6 text-white shadow-[0_16px_44px_rgba(93,122,72,0.38)]"
+        className="relative overflow-hidden rounded-[1.6rem] px-5 py-6 text-white shadow-[0_24px_54px_-20px_rgba(58,42,128,0.85)] ring-1 ring-white/10"
         style={{ background: 'var(--home-sage-gradient)' }}
       >
         <div
-          className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/15 blur-2xl"
+          className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#e2ab53]/20 blur-3xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-14 -left-8 h-36 w-36 rounded-full bg-[#6a4bd0]/35 blur-3xl"
           aria-hidden
         />
         <div className="relative mb-4 flex items-start justify-between gap-3">
@@ -213,7 +217,7 @@ export default function DailyVerseCard() {
           <button
             type="button"
             onClick={handlePlayToggle}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#c5d9ab] text-[#2f3d27] shadow-sm transition-colors hover:bg-[#d3e2bd] dark:bg-[#d3e2bd] dark:text-[#2f3d27]"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-[#2a2258] shadow-[0_10px_24px_-8px_rgba(226,171,83,0.85)] transition-transform hover:scale-105 active:scale-95"
             aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
             {playing ? (

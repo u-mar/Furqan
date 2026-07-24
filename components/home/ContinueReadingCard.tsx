@@ -83,7 +83,7 @@ export default function ContinueReadingCard() {
             Continue Reading
           </h2>
         </div>
-        <div className="h-[88px] animate-pulse rounded-2xl bg-stone-100 dark:bg-white/10" />
+        <div className="h-[88px] animate-pulse rounded-2xl bg-[var(--home-track)]" />
       </section>
     )
   }
@@ -110,9 +110,9 @@ export default function ContinueReadingCard() {
           <span className="mt-0.5 block text-sm text-[var(--home-muted)]">
             Ayah {state.ayah} · Page {state.page}
           </span>
-          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
+          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
             <span
-              className="block h-full rounded-full bg-[var(--home-sage-deep)]"
+              className="block h-full rounded-full bg-gradient-to-r from-[var(--home-sage)] to-[var(--home-sage-deep)]"
               style={{ width: `${state.progress}%` }}
             />
           </span>

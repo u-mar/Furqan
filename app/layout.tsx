@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Amiri, Cormorant_Garamond } from 'next/font/google'
+import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import AppSplash from '@/components/AppSplash'
@@ -19,10 +19,18 @@ const amiri = Amiri({
   display: 'swap',
 })
 
-const homeSerif = Cormorant_Garamond({
+const homeSerif = Fraunces({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
   variable: '--font-home-serif',
+  display: 'swap',
+})
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
   display: 'swap',
 })
 
@@ -59,7 +67,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${amiri.variable} ${homeSerif.variable}`}
+      className={`dark ${amiri.variable} ${homeSerif.variable} ${sans.variable}`}
       suppressHydrationWarning
     >
       <head>
