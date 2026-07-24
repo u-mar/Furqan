@@ -233,35 +233,36 @@ html.dark .ayah-sheet-arabic {
 /* Immersive read screen — warm Madinah-paper cream (day) / soft warm night.
    Palette tuned to feel like the Ayah app's mushaf reading surface. */
 .mushaf-reader-immersive {
-  --mushaf-read-bg: #f7f0dc;
-  --mushaf-read-text: #2a2620;
-  --mushaf-read-meta: #877b66;
-  --mushaf-read-badge-bg: rgba(66, 52, 30, 0.08);
-  --mushaf-read-badge-text: #6a5f4b;
-  --mushaf-read-card-bg: #fcf6e6;
-  --mushaf-read-card-border: rgba(66, 52, 30, 0.13);
-  --mushaf-read-chrome-bg: rgba(247, 240, 220, 0.94);
-  --mushaf-read-chrome-border: rgba(66, 52, 30, 0.1);
+  --mushaf-read-bg: #f4ead0;
+  --mushaf-read-text: #2c2620;
+  --mushaf-read-meta: #8b7e66;
+  --mushaf-read-badge-bg: rgba(74, 58, 30, 0.09);
+  --mushaf-read-badge-text: #6c5f47;
+  --mushaf-read-card-bg: #faf3df;
+  --mushaf-read-card-border: rgba(74, 58, 30, 0.14);
+  --mushaf-read-chrome-bg: rgba(244, 234, 208, 0.94);
+  --mushaf-read-chrome-border: rgba(74, 58, 30, 0.11);
   --mushaf-read-accent: #0d6b63;
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.14);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.15);
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.34);
-  --mushaf-read-popup-bg: #fbf5e4;
-  --mushaf-read-popup-border: rgba(66, 52, 30, 0.2);
+  --mushaf-read-popup-bg: #f9f1da;
+  --mushaf-read-popup-border: rgba(74, 58, 30, 0.22);
+  --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   background-color: var(--mushaf-read-bg);
-  background-image: radial-gradient(
-    150% 100% at 50% -18%,
-    rgba(255, 252, 240, 0.7),
-    transparent 55%
-  );
+  background-image: var(--mushaf-grain),
+    radial-gradient(150% 100% at 50% -18%, rgba(255, 250, 235, 0.7), transparent 55%);
+  background-size: 200px 200px, auto;
+  background-repeat: repeat, no-repeat;
+  background-blend-mode: multiply, normal;
   color: var(--mushaf-read-text);
 }
 
 html:not(.dark) {
-  --mushaf-read-popup-bg: #fbf5e4;
-  --mushaf-read-popup-border: rgba(66, 52, 30, 0.2);
-  --mushaf-read-popup-text: #2a2620;
-  --mushaf-read-popup-shadow: 0 12px 38px rgba(66, 52, 30, 0.2);
+  --mushaf-read-popup-bg: #f9f1da;
+  --mushaf-read-popup-border: rgba(74, 58, 30, 0.2);
+  --mushaf-read-popup-text: #2c2620;
+  --mushaf-read-popup-shadow: 0 12px 38px rgba(74, 58, 30, 0.2);
 }
 
 html.dark .mushaf-reader-immersive {
@@ -280,11 +281,11 @@ html.dark .mushaf-reader-immersive {
   --mushaf-read-highlight-border: rgba(87, 194, 169, 0.32);
   --mushaf-read-popup-bg: #221d15;
   --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
-  background-image: radial-gradient(
-    150% 100% at 50% -18%,
-    rgba(74, 58, 32, 0.32),
-    transparent 55%
-  );
+  background-image: var(--mushaf-grain),
+    radial-gradient(150% 100% at 50% -18%, rgba(74, 58, 32, 0.32), transparent 55%);
+  background-size: 200px 200px, auto;
+  background-repeat: repeat, no-repeat;
+  background-blend-mode: overlay, normal;
 }
 
 html.dark {
