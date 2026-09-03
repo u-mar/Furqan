@@ -4,14 +4,24 @@ const EVENT_NAME = 'reciter-favorites-changed'
 /** You can keep a small, curated bench of favorites — not the whole list. */
 export const MAX_FAVORITE_RECITERS = 5
 
+/** Shown until the user customizes their favorites — they're free to unfavorite any of these. */
+const DEFAULT_FAVORITE_RECITER_IDS = [
+  'ajmi',
+  'soufi',
+  'idris_abkar',
+  'nourin_siddig',
+  'hazaa_balushi',
+]
+
 function readIds(): string[] {
-  if (typeof window === 'undefined') return []
+  if (typeof window === 'undefined') return DEFAULT_FAVORITE_RECITER_IDS
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as unknown) : []
+    if (raw === null) return DEFAULT_FAVORITE_RECITER_IDS
+    const parsed = JSON.parse(raw) as unknown
     return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
   } catch {
-    return []
+    return DEFAULT_FAVORITE_RECITER_IDS
   }
 }
 
