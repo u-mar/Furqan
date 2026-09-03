@@ -105,8 +105,7 @@ function ReadPageContent() {
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { reciterId, translationLanguage, mushafFrame } = useAppSettings()
-  const framed = mushafFrame === 'framed'
+  const { reciterId, translationLanguage, mushafWidth } = useAppSettings()
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
   const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
@@ -830,8 +829,12 @@ function ReadPageContent() {
           className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]"
           dir="ltr"
         >
-          <span className="text-sm text-[var(--mushaf-read-meta)]">{surahTitle}</span>
-          <span className="text-sm text-[var(--mushaf-read-meta)]">Juz {juzPart}</span>
+          <span className="text-[15px] font-semibold text-[var(--mushaf-read-meta)]">
+            {surahTitle}
+          </span>
+          <span className="text-[15px] font-semibold text-[var(--mushaf-read-meta)]">
+            Juz {juzPart}
+          </span>
         </div>
       ) : (
         <div
@@ -851,7 +854,7 @@ function ReadPageContent() {
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
             : cn(
                 'mushaf-read-scroll-lock overflow-hidden overscroll-none pb-4',
-                framed ? 'mushaf-framed px-1.5' : 'px-1 sm:px-2'
+                mushafWidth === 'full' ? 'mushaf-width-full px-0' : 'mushaf-width-spaced px-1 sm:px-2'
               )
         )}
         onClick={handleContentTap}
@@ -886,26 +889,6 @@ function ReadPageContent() {
           >
             {renderMushafPage(pageVerses, currentPage)}
           </MushafPageCarousel>
-        ) : framed ? (
-          <div className="mushaf-frame">
-            <div className="mushaf-frame__inner">
-              <QuranPageView
-                verses={pageVerses}
-                chapterNamesById={chapterNamesById}
-                startVerseKey={startVerseKey}
-                revealableVerseKeys={pageVerseKeys}
-                revealedAyahs={pageVerseKeys}
-                onReveal={() => {}}
-                readOnly
-                readMode
-                pageNumber={currentPage}
-                highlightedVerseKey={highlightedVerseKey}
-                selectedVerseKey={mushafSelectedVerseKey}
-                onAyahLongPress={handleAyahLongPress}
-                suppressHighlightScroll
-              />
-            </div>
-          </div>
         ) : (
           <QuranPageView
             verses={pageVerses}
@@ -925,10 +908,10 @@ function ReadPageContent() {
         )}
       </div>
 
-      {/* Page number — centered pill at the bottom, in both page styles */}
+      {/* Page number — pill at the bottom left of the page */}
       {!showTranslation && (
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-center"
+          className="pointer-events-none absolute bottom-[max(0.55rem,env(safe-area-inset-bottom))] left-5 z-10"
           dir="ltr"
           aria-hidden
         >

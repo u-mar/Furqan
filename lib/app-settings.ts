@@ -6,17 +6,21 @@ function isThemeMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'sepia' || value === 'dark'
 }
 
-/** How the mushaf page is presented: edge-to-edge, or inside a printed-style frame. */
-export type MushafFrameMode = 'edge' | 'framed'
+/**
+ * How wide the mushaf page runs.
+ * - `full`   — text runs to the edges, so the script renders larger (Ayah-style)
+ * - `spaced` — generous side margins, so the script renders smaller
+ */
+export type MushafWidthMode = 'full' | 'spaced'
 
-function isFrameMode(value: unknown): value is MushafFrameMode {
-  return value === 'edge' || value === 'framed'
+function isWidthMode(value: unknown): value is MushafWidthMode {
+  return value === 'full' || value === 'spaced'
 }
 
 export interface AppSettings {
   theme: ThemeMode
-  /** Mushaf page presentation style. */
-  mushafFrame: MushafFrameMode
+  /** Mushaf page width. */
+  mushafWidth: MushafWidthMode
   offlineDownloaded: boolean
   translationsDownloaded: boolean
   /** Reciter for ayah-by-ayah audio (Read highlighting, Imitate). */
@@ -40,7 +44,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafFrame: 'edge',
+  mushafWidth: 'full',
   offlineDownloaded: false,
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
@@ -56,7 +60,7 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
       : DEFAULT_RECITER_ID
   return {
     theme: isThemeMode(parsed.theme) ? parsed.theme : 'dark',
-    mushafFrame: isFrameMode(parsed.mushafFrame) ? parsed.mushafFrame : 'edge',
+    mushafWidth: isWidthMode(parsed.mushafWidth) ? parsed.mushafWidth : 'full',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
     reciterId,

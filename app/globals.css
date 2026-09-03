@@ -702,34 +702,29 @@ html.dark .mushaf-reader-immersive {
   --mushaf-ornament-fill: rgba(255, 240, 214, 0.05);
 }
 
-.mushaf-frame {
-  height: 100%;
-  border: 1px solid var(--mushaf-ornament);
-  border-radius: 0.7rem;
-  padding: 2px;
+/* ---- Page width ----
+   Each mushaf line shrinks to fit its container (see QcfLine), so the side
+   padding decides how large the script renders. */
+
+/* Full — runs to the edges, so the script is at its largest (Ayah-style). */
+.mushaf-width-full .mushaf-root .mushaf-fit-grid {
+  --mushaf-line-fit: 0.985;
+  padding-left: max(2px, env(safe-area-inset-left, 0px));
+  padding-right: max(2px, env(safe-area-inset-right, 0px));
 }
 
-.mushaf-frame__inner {
-  height: 100%;
-  overflow: hidden;
-  border: 1px solid var(--mushaf-ornament-soft);
-  border-radius: 0.5rem;
-  padding: 2px;
-}
-
-/* The QCF lines are `nowrap` and sized from viewport height, so the frame's
-   chrome would clip them. Give the width back by tightening the page's own
-   padding while framed (net line width ends up slightly wider than edge mode). */
-.mushaf-framed .mushaf-root .mushaf-fit-grid {
-  padding-block: clamp(4px, 1dvh, 12px);
-  padding-left: max(clamp(8px, 2.4vw, 18px), env(safe-area-inset-left, 0px));
-  padding-right: max(clamp(9px, 2.6vw, 20px), env(safe-area-inset-right, 0px));
+/* Spaced — generous margins, smaller script (the original look). */
+.mushaf-width-spaced .mushaf-root .mushaf-fit-grid {
+  --mushaf-line-fit: 0.92;
+  padding-left: max(clamp(20px, 6vw, 42px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(22px, 6.5vw, 44px), env(safe-area-inset-right, 0px));
 }
 
 /* Ornamental band around the surah name, like the printed mushaf header.
-   Covers both render paths: QCF glyph lines and the plain fallback. */
-.mushaf-framed .mushaf-qcf-line__surah-name,
-.mushaf-framed span.surah-header {
+   Always shown (it belongs to the page, not to any frame). Covers both render
+   paths: QCF glyph lines and the plain fallback. */
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name,
+.mushaf-reader-immersive span.surah-header {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -740,10 +735,10 @@ html.dark .mushaf-reader-immersive {
   background: var(--mushaf-ornament-fill);
 }
 
-.mushaf-framed .mushaf-qcf-line__surah-name::before,
-.mushaf-framed .mushaf-qcf-line__surah-name::after,
-.mushaf-framed span.surah-header::before,
-.mushaf-framed span.surah-header::after {
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name::before,
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name::after,
+.mushaf-reader-immersive span.surah-header::before,
+.mushaf-reader-immersive span.surah-header::after {
   content: '❁';
   font-family: serif;
   font-size: 0.42em;
@@ -755,7 +750,7 @@ html.dark .mushaf-reader-immersive {
 /* The fit grid stretches to fill the page, so reserve room at its foot for the
    centred page pill — otherwise the 15th line sits underneath it. */
 .mushaf-reader-immersive .mushaf-root .mushaf-fit-grid {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.9rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.3rem);
 }
 
 /* Page-number pill, centred at the foot of the page (hizb/juz is announced by
@@ -764,15 +759,15 @@ html.dark .mushaf-reader-immersive {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.9rem;
+  min-width: 2.4rem;
   border: 1px solid var(--mushaf-ornament-soft);
   border-radius: 999px;
   background: transparent;
   color: var(--mushaf-read-meta);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 600;
   line-height: 1;
-  padding: 0.34rem 0.9rem;
+  padding: 0.3rem 0.6rem;
 }
 
 .mushaf-translation-ayah--reciting,

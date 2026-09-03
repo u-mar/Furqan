@@ -82,7 +82,13 @@ function QcfLineGlyphs({
       inner.style.transform = 'none'
       inner.style.fontSize = ''
 
-      const available = outer.clientWidth * 0.92
+      // How much of the line's width the script may occupy. Full-width mode
+      // raises this so the glyphs shrink less and render larger.
+      const fitVar = parseFloat(
+        getComputedStyle(outer).getPropertyValue('--mushaf-line-fit')
+      )
+      const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
+      const available = outer.clientWidth * fitFactor
       let needed = inner.scrollWidth
       if (needed <= available || available <= 0) return
 

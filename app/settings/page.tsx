@@ -10,7 +10,7 @@ import {
   applyThemeToDocument,
   getAppSettings,
   setAppSettings,
-  type MushafFrameMode,
+  type MushafWidthMode,
   type ThemeMode,
 } from '@/lib/app-settings'
 import {
@@ -108,7 +108,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export default function SettingsPage() {
   const [returnHref, setReturnHref] = useState('/')
   const [theme, setTheme] = useState<ThemeMode>('dark')
-  const [mushafFrame, setMushafFrame] = useState<MushafFrameMode>('framed')
+  const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('full')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
@@ -138,7 +138,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const s = getAppSettings()
     setTheme(s.theme)
-    setMushafFrame(s.mushafFrame)
+    setMushafWidth(s.mushafWidth)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
@@ -375,30 +375,30 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
             {(
               [
-                { mode: 'framed' as MushafFrameMode, label: 'Framed', hint: 'Printed page' },
-                { mode: 'edge' as MushafFrameMode, label: 'Full page', hint: 'Edge to edge' },
+                { mode: 'full' as MushafWidthMode, label: 'Full width', hint: 'Bigger script' },
+                { mode: 'spaced' as MushafWidthMode, label: 'Spaced', hint: 'Margins on the sides' },
               ] as const
             ).map(({ mode, label, hint }) => (
               <button
                 key={mode}
                 type="button"
                 onClick={() => {
-                  setMushafFrame(mode)
-                  setAppSettings({ mushafFrame: mode })
+                  setMushafWidth(mode)
+                  setAppSettings({ mushafWidth: mode })
                 }}
                 className={cn(
                   'flex min-h-[64px] flex-col items-center justify-center gap-0.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
-                  mushafFrame === mode
+                  mushafWidth === mode
                     ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
                     : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
                 )}
-                aria-pressed={mushafFrame === mode}
+                aria-pressed={mushafWidth === mode}
               >
                 {label}
                 <span
                   className={cn(
                     'text-[10px] font-medium',
-                    mushafFrame === mode ? 'text-white/70' : 'text-[var(--home-muted)]'
+                    mushafWidth === mode ? 'text-white/70' : 'text-[var(--home-muted)]'
                   )}
                 >
                   {hint}
@@ -407,8 +407,9 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-[var(--home-muted)]">
-            <strong className="text-[var(--home-heading)]">Framed</strong> borders the page like a
-            printed mushaf, with an ornamental surah band and a centred page plate.
+            <strong className="text-[var(--home-heading)]">Full width</strong> runs the lines to the
+            edges so the script is larger. <strong className="text-[var(--home-heading)]">Spaced</strong>{' '}
+            keeps margins on the sides, which makes it smaller.
           </p>
         </section>
 
