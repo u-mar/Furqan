@@ -8,7 +8,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Read the Quran and practice your hifdh with Al Furqaan',
     start_url: '/',
     scope: '/',
-    display: 'standalone',
+    // Fullscreen hides the phone's status and navigation bars while reading.
+    // display_override lets browsers fall back if fullscreen is unsupported.
+    display: 'fullscreen',
+    display_override: ['fullscreen', 'standalone', 'minimal-ui'],
     orientation: 'portrait',
     background_color: APP_ICON_THEME_COLOR,
     theme_color: APP_ICON_THEME_COLOR,

@@ -78,31 +78,56 @@ function QcfLineGlyphs({
     const inner = innerRef.current
     if (!outer || !inner) return
 
+    // Both the line box and its scale wrapper grow to fit their own nowrap
+    // content, so neither can tell us the real constraint. Measure against the
+    // page column (.mushaf-fit-grid), which is bounded by the viewport.
+    const lineEl = outer.parentElement
+    const container = outer.closest('.mushaf-fit-grid') ?? lineEl ?? outer
+
     const fit = () => {
       inner.style.transform = 'none'
       inner.style.fontSize = ''
 
-      // How much of the line's width the script may occupy. Full-width mode
-      // raises this so the glyphs shrink less and render larger.
+      // How much of the column the script may occupy. Full-width mode raises
+      // this so the glyphs shrink less and render larger.
       const fitVar = parseFloat(
         getComputedStyle(outer).getPropertyValue('--mushaf-line-fit')
       )
       const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
-      const available = outer.clientWidth * fitFactor
-      let needed = inner.scrollWidth
+      const lineCs = lineEl ? getComputedStyle(lineEl) : null
+      const inset = lineCs
+        ? (parseFloat(lineCs.paddingLeft) || 0) + (parseFloat(lineCs.paddingRight) || 0)
+        : 0
+      const available = (container.clientWidth - inset) * fitFactor
+      const needed = inner.scrollWidth
       if (needed <= available || available <= 0) return
 
       const basePx = parseFloat(getComputedStyle(inner).fontSize)
       if (!Number.isFinite(basePx) || basePx <= 0) return
 
-      const ratio = (available / needed) * 0.97
+      const ratio = (available / needed) * 0.995
       inner.style.fontSize = `${Math.max(14, basePx * ratio)}px`
     }
 
     fit()
     const observer = new ResizeObserver(fit)
-    observer.observe(outer)
-    return () => observer.disconnect()
+    observer.observe(container)
+
+    // Glyph widths change once the page's QCF font swaps in, so the first
+    // measurement can under-report and skip the shrink. Re-fit when fonts settle.
+    let cancelled = false
+    const refit = () => {
+      if (!cancelled) fit()
+    }
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined
+    fonts?.ready.then(refit).catch(() => {})
+    fonts?.addEventListener?.('loadingdone', refit)
+
+    return () => {
+      cancelled = true
+      observer.disconnect()
+      fonts?.removeEventListener?.('loadingdone', refit)
+    }
   }, [segments])
 
   return (

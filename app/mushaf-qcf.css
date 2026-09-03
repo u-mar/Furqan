@@ -94,8 +94,10 @@
   white-space: nowrap;
   overflow: visible;
   font-family: var(--mushaf-qcf-font-family, inherit) !important;
-  font-size: clamp(19px, calc((100dvh - 88px) / 15 * 0.47), 36px);
-  line-height: 1.8;
+  /* 0.55 of the per-line height (was 0.47) so the script fills the line box —
+     any line that then runs too wide is shrunk back to fit by QcfLine. */
+  font-size: clamp(19px, calc((100dvh - 88px) / 15 * 0.55), 40px);
+  line-height: 1.7;
   letter-spacing: 0;
   word-spacing: 0;
   font-kerning: none;

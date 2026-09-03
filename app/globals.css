@@ -253,6 +253,9 @@ html.dark .ayah-sheet-arabic {
   --mushaf-read-popup-bg: #ffffff;
   --mushaf-read-popup-border: rgba(28, 26, 23, 0.16);
   --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  /* The mushaf page is a fixed layout — allow panning but never pinch-zoom,
+     so the page stays exactly as typeset (like the Ayah app). */
+  touch-action: pan-x pan-y;
   background-color: var(--mushaf-read-bg);
   background-image: var(--mushaf-grain),
     radial-gradient(150% 100% at 50% -18%, rgba(255, 250, 235, 0.7), transparent 55%);
@@ -558,6 +561,9 @@ html.dark .mushaf-fit-line {
   flex-direction: row;
   justify-content: flex-start;
   align-content: flex-start;
+  /* Words are separate flex items, so they need an explicit gap — without it
+     they butt right up against each other. */
+  gap: 0.15em 0.34em;
   width: 100%;
   direction: rtl;
   text-align: right;
@@ -584,6 +590,7 @@ html.dark .mushaf-fit-line {
   white-space: normal;
   overflow-wrap: break-word;
   word-break: normal;
+  word-spacing: 0.14em;
 }
 
 .mushaf-translation-body .mushaf-translation-arabic {
@@ -592,8 +599,11 @@ html.dark .mushaf-fit-line {
   background: none;
 }
 
+/* Decorative bismillah — must win over the page's QCF font, which would
+   otherwise map ﷽ to an unrelated page glyph. */
+.mushaf-root .mushaf-translation-basmalah,
 .mushaf-translation-basmalah {
-  font-family: 'SurahNameV2', serif;
+  font-family: 'SurahNameV2', serif !important;
   font-size: clamp(1.35rem, 5vw, 1.85rem);
   line-height: 1.6;
   color: var(--mushaf-read-text);
@@ -708,9 +718,20 @@ html.dark .mushaf-reader-immersive {
 
 /* Full — runs to the edges, so the script is at its largest (Ayah-style). */
 .mushaf-width-full .mushaf-root .mushaf-fit-grid {
-  --mushaf-line-fit: 0.985;
-  padding-left: max(2px, env(safe-area-inset-left, 0px));
-  padding-right: max(2px, env(safe-area-inset-right, 0px));
+  --mushaf-line-fit: 0.99;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Full width also drops the per-line inset so the script can run edge to edge. */
+.mushaf-width-full .mushaf-root .mushaf-fit-line.mushaf-qcf-line {
+  padding-inline: 0;
+}
+
+/* Keep the line box inside the column. Without this it grows to its own
+   nowrap content, which pushes the centred glyphs off-screen. */
+.mushaf-reader-immersive .mushaf-root .mushaf-fit-line.mushaf-qcf-line {
+  max-width: 100%;
 }
 
 /* Spaced — generous margins, smaller script (the original look). */
@@ -826,6 +847,10 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
   letter-spacing: 0.01em;
   color: var(--mushaf-read-text);
   text-align: left;
+  /* Isolate from the surrounding RTL ayah, otherwise trailing punctuation
+     ("." and the em dash) is pushed to the start of the line. */
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .mushaf-translation-ayah-num {
@@ -927,6 +952,8 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
   font-style: italic;
   color: var(--mushaf-read-meta);
   text-align: left;
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 /* Translation scroll mode */
