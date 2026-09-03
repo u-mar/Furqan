@@ -249,8 +249,13 @@ html.dark .ayah-sheet-arabic {
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.32);
-  --mushaf-read-popup-bg: #ffffff;
-  --mushaf-read-popup-border: rgba(28, 26, 23, 0.16);
+  /* Solid brand-indigo card — a plain white/near-white popup used to blend
+     straight into this near-white page. Badge/meta tokens are re-tinted for
+     legibility against the darker card. */
+  --mushaf-read-popup-bg: #2a2258;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
+  --mushaf-popup-badge-bg: rgba(255, 255, 255, 0.12);
+  --mushaf-popup-meta: rgba(238, 234, 255, 0.68);
   --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   /* The mushaf page is a fixed layout — allow panning but never pinch-zoom,
      so the page stays exactly as typeset (like the Ayah app). */
@@ -265,10 +270,10 @@ html.dark .ayah-sheet-arabic {
 }
 
 html:not(.dark) {
-  --mushaf-read-popup-bg: #ffffff;
-  --mushaf-read-popup-border: rgba(28, 26, 23, 0.16);
-  --mushaf-read-popup-text: #1c1a17;
-  --mushaf-read-popup-shadow: 0 12px 38px rgba(28, 26, 23, 0.18);
+  --mushaf-read-popup-bg: #2a2258;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
+  --mushaf-read-popup-text: #f4f2ff;
+  --mushaf-read-popup-shadow: 0 20px 48px -12px rgba(36, 29, 78, 0.55);
 }
 
 /* ---- Pure black (AMOLED) — builds on .dark, then flattens to true black ---- */
@@ -299,6 +304,8 @@ html.dark.black .mushaf-reader-immersive {
   --mushaf-read-chrome-border: rgba(255, 255, 255, 0.1);
   --mushaf-read-popup-bg: #121212;
   --mushaf-read-popup-border: rgba(255, 255, 255, 0.16);
+  --mushaf-popup-badge-bg: var(--mushaf-read-badge-bg);
+  --mushaf-popup-meta: var(--mushaf-read-meta);
   --mushaf-ornament: rgba(255, 255, 255, 0.3);
   --mushaf-ornament-soft: rgba(255, 255, 255, 0.16);
   --mushaf-ornament-fill: rgba(255, 255, 255, 0.05);
@@ -329,6 +336,8 @@ html.dark .mushaf-reader-immersive {
   --mushaf-read-highlight-border: rgba(87, 194, 169, 0.32);
   --mushaf-read-popup-bg: #221d15;
   --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
+  --mushaf-popup-badge-bg: var(--mushaf-read-badge-bg);
+  --mushaf-popup-meta: var(--mushaf-read-meta);
   /* Flat page at night — no bloom, just a whisper of grain. */
   background-image: var(--mushaf-grain);
   background-size: 200px 200px;

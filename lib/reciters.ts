@@ -60,6 +60,8 @@ export interface Reciter {
   accent: [string, string]
   /** Portrait photo URL (way2quran.com), when we have one. */
   photoUrl?: string
+  /** Well-known, mainstream reciter — shown under the "Top" filter. */
+  top?: boolean
 }
 
 /** A calm, varied palette so each reciter card is distinguishable. */
@@ -80,6 +82,7 @@ export const RECITERS: Reciter[] = [
   // ---- Ayah-by-ayah capable (EveryAyah) — usable in Read, Imitate and Listen ----
   {
     id: 'alafasy',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/mishary-alafasy.jpg',
     name: 'Mishary Alafasy',
     source: 'everyayah',
@@ -91,6 +94,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'husary',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/mahmoud-khalil-al-hosary.jpg',
     name: 'Mahmoud Al-Husary',
     source: 'everyayah',
@@ -102,6 +106,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'minshawi',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/muhammad-siddiq-al-minshawi.jpg',
     name: 'Mohamed Siddiq Al-Minshawi',
     source: 'everyayah',
@@ -113,6 +118,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'abdulbasit',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/abdul-basit-abdul-samad.jpg',
     name: 'Abdul Basit Abdul Samad',
     source: 'everyayah',
@@ -124,6 +130,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'sudais',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/abdul-rahman-al-sudais.jpg',
     name: 'Abdur-Rahman As-Sudais',
     source: 'everyayah',
@@ -135,6 +142,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'maher',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/maher-almaikulai.jpg',
     name: 'Maher Al-Muaiqly',
     source: 'everyayah',
     folder: 'MaherAlMuaiqly128kbps',
@@ -145,6 +154,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'ghamadi',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/saad-al-ghamdi.jpg',
     name: 'Saad Al-Ghamdi',
     source: 'everyayah',
@@ -156,6 +166,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'shatri',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/abu-bakr-al-shatri.jpg',
     name: 'Abu Bakr Al-Shatri',
     source: 'everyayah',
@@ -167,6 +178,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'qatami',
+    top: true,
     name: 'Nasser Al-Qatami',
     source: 'everyayah',
     folder: 'Nasser_Alqatami_128kbps',
@@ -179,6 +191,7 @@ export const RECITERS: Reciter[] = [
   // ---- Full-surah only (MP3Quran) — Hafs 'an 'Asim ----
   {
     id: 'shuraim',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/saud-al-shuraim.jpg',
     name: 'Saud Al-Shuraim',
     source: 'mp3quran',
@@ -190,6 +203,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'ajmi',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/ahmed-al-agamy.jpg',
     name: 'Ahmad Al-Ajmi',
     source: 'mp3quran',
     folder: 'https://server10.mp3quran.net/ajm',
@@ -200,7 +215,9 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'johany',
-    name: 'Abdullah Al-Johany',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/abdullah-al-juhani.jpg',
+    name: 'Abdullah Al Juhani',
     source: 'mp3quran',
     folder: 'https://server13.mp3quran.net/jhn',
     mp3quranBase: 'https://server13.mp3quran.net/jhn',
@@ -210,6 +227,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'balilah',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/bandar-balila.jpg',
     name: 'Bandar Balilah',
     source: 'mp3quran',
@@ -221,6 +239,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'yasser_dosari',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/yasser-al-dosary.jpg',
     name: 'Yasser Al-Dosari',
     source: 'mp3quran',
@@ -232,6 +251,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'hani',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/hani-al-rifai.jpg',
     name: 'Hani Ar-Rifai',
     source: 'mp3quran',
@@ -243,6 +263,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'bukhatir',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/salah-boukhatir.jpg',
     name: 'Salah Bukhatir',
     source: 'mp3quran',
     folder: 'https://server8.mp3quran.net/bu_khtr',
@@ -253,6 +275,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'twfeeq',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/tawfiq-al-sayegh.jpg',
     name: 'Tawfeeq As-Sayegh',
     source: 'mp3quran',
@@ -264,6 +287,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'ayyub',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/mohamed-ayoub.jpg',
     name: 'Mohammed Ayyub',
     source: 'mp3quran',
     folder: 'https://server8.mp3quran.net/ayyub',
@@ -274,6 +299,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'banna',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/mahmoud-ali-al-banna.jpg',
     name: 'Mahmoud Ali Al-Banna',
     source: 'mp3quran',
@@ -285,7 +311,9 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'akdar',
-    name: 'Ibrahim Al-Akdar',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/ibrahim-al-akhdar.jpeg',
+    name: 'Ibrahim Al-Akhdar',
     source: 'mp3quran',
     folder: 'https://server6.mp3quran.net/akdr',
     mp3quranBase: 'https://server6.mp3quran.net/akdr',
@@ -295,6 +323,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'qahtani',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/khalid-al-qahtani.jpg',
     name: 'Khaled Al-Qahtani',
     source: 'mp3quran',
@@ -306,6 +335,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'huthaifi',
+    top: true,
     name: 'Ali Al-Huthaifi',
     source: 'mp3quran',
     folder: 'https://server9.mp3quran.net/hthfi',
@@ -316,6 +346,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'aloosi',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/abdul-rahman-al-awsi.jpg',
     name: 'Abdulrahman Al-Aloosi',
     source: 'mp3quran',
     folder: 'https://server6.mp3quran.net/aloosi',
@@ -326,6 +358,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'budair',
+    top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/salah-al-badir.jpg',
     name: 'Salah Al-Budair',
     source: 'mp3quran',
     folder: 'https://server6.mp3quran.net/s_bud',
@@ -336,6 +370,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'mrifai',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/mahmoud-al-rifai.jpg',
     name: 'Mahmood Al-Rifai',
     source: 'mp3quran',
@@ -347,6 +382,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'a_ahmed',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/abdul-aziz-al-ahmad.jpg',
     name: 'Abdul Aziz Al-Ahmad',
     source: 'mp3quran',
@@ -358,6 +394,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'soufi',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/abdul-rashid-sufi.jpg',
     name: 'Abdul Rashid Sufi',
     source: 'mp3quran',
@@ -382,6 +419,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'maher_mujawwad',
+    photoUrl: 'https://media.way2quran.com/imgs/maher-almaikulai.jpg',
     name: 'Maher Al-Muaiqly',
     source: 'mp3quran',
     folder: 'https://server12.mp3quran.net/maher/Almusshaf-Al-Mojawwad',
@@ -448,6 +486,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'nourin_siddig',
+    photoUrl: 'https://media.way2quran.com/imgs/noreen-muhammad-siddiq.jpg',
     name: 'Noreen Mohammad Siddiq',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/nourin_siddig/Rewayat-Aldori-A-n-Abi-Amr',
@@ -480,6 +519,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'deban_shubah',
+    photoUrl: 'https://media.way2quran.com/imgs/ahmed-diban.jpg',
     name: 'Ahmad Deban',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/deban/Rewayat-Sho-bah-A-n-Asim',
@@ -490,6 +530,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'deban_bizzi',
+    photoUrl: 'https://media.way2quran.com/imgs/ahmed-diban.jpg',
     name: 'Ahmad Deban',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/deban/Rewayat-Albizi-A-n-Ibn-Katheer',
@@ -500,6 +541,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'deban_qunbul',
+    photoUrl: 'https://media.way2quran.com/imgs/ahmed-diban.jpg',
     name: 'Ahmad Deban',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/deban/Rewayat-Qunbol-A-n-Ibn-Katheer',
@@ -510,6 +552,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'deban_warsh_azraq',
+    photoUrl: 'https://media.way2quran.com/imgs/ahmed-diban.jpg',
     name: 'Ahmad Deban',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/deban/Rewayat-Warsh-A-n-Nafi-Men-Tariq-Alazraq',
@@ -550,7 +593,8 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'qari_warsh',
-    name: 'Al-Qaria Yassen',
+    photoUrl: 'https://media.way2quran.com/imgs/yassin-al-jazairi.jpeg',
+    name: 'Yassin Al-Jazairi',
     source: 'mp3quran',
     folder: 'https://server11.mp3quran.net/qari',
     mp3quranBase: 'https://server11.mp3quran.net/qari',
@@ -572,6 +616,7 @@ export const RECITERS: Reciter[] = [
   // ---- More top reciters (way2quran.com photos + mp3quran audio) ----
   {
     id: 'mustafa_ismail',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/mustafa-ismail.jpg',
     name: 'Mustafa Ismail',
     source: 'mp3quran',
@@ -843,6 +888,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'ali_jaber',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/ali-jaber.jpg',
     name: 'Ali Jaber',
     source: 'mp3quran',
@@ -865,6 +911,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'fares_abbad',
+    top: true,
     photoUrl: 'https://media.way2quran.com/imgs/fares-abbad.jpg',
     name: 'Fares Abbad',
     source: 'mp3quran',
@@ -885,12 +932,42 @@ export const RECITERS: Reciter[] = [
     style: 'Murattal',
     accent: A.plum,
   },
+  {
+    id: 'hazaa_balushi',
+    photoUrl: 'https://media.way2quran.com/imgs/hazaa-al-balushi.jpg',
+    name: 'Hazaa Al-Balushi',
+    source: 'mp3quran',
+    folder: 'https://server11.mp3quran.net/hazza/',
+    mp3quranBase: 'https://server11.mp3quran.net/hazza/',
+    qiraat: 'hafs',
+    style: 'Murattal',
+    accent: A.sand,
+  },
 ]
 
 export const DEFAULT_RECITER_ID = 'alafasy'
 
 export function getReciterById(id: string): Reciter {
   return RECITERS.find((r) => r.id === id) ?? RECITERS[0]
+}
+
+/**
+ * All recorded narrations/styles for the same person as `reciter` (matched by
+ * exact display name), sorted with Hafs first. Includes `reciter` itself.
+ */
+export function getReciterVariants(reciter: Reciter): Reciter[] {
+  const variants = RECITERS.filter((r) => r.name === reciter.name)
+  return variants.sort((a, b) => {
+    if (a.qiraat === b.qiraat) return a.style === b.style ? 0 : a.style === 'Murattal' ? -1 : 1
+    if (a.qiraat === 'hafs') return -1
+    if (b.qiraat === 'hafs') return 1
+    return getQiraat(a.qiraat).short.localeCompare(getQiraat(b.qiraat).short)
+  })
+}
+
+/** Reciters marked as well-known/mainstream — the "Top" filter. */
+export function topReciters(): Reciter[] {
+  return RECITERS.filter((r) => r.top)
 }
 
 export function isSurahOnlyReciter(reciter: Reciter): boolean {

@@ -22,7 +22,15 @@ import { setAppSettings } from '@/lib/app-settings'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import ReciterPickerSheet from '@/components/listen/ReciterPickerSheet'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
-import { getQiraat, getReciterById, RECITERS } from '@/lib/reciters'
+import {
+  getQiraat,
+  getReciterById,
+  getReciterVariants,
+  topReciters,
+  RECITERS,
+  type QiraatId,
+  type Reciter,
+} from '@/lib/reciters'
 import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
@@ -33,20 +41,6 @@ import {
   OFFLINE_AUDIO_HINT,
 } from '@/lib/offline-audio'
 import type { Chapter } from '@/types'
-
-/** A short bench of well-known reciters for one-tap switching. */
-const QUICK_PICK_IDS = [
-  'alafasy',
-  'sudais',
-  'abdulbasit',
-  'minshawi',
-  'husary',
-  'maher',
-  'shuraim',
-  'ajmi',
-  'yasser_dosari',
-  'ghamadi',
-]
 
 export default function ListenScreen() {
   const settings = useAppSettings()
@@ -61,7 +55,8 @@ export default function ListenScreen() {
   const [isOffline, setIsOffline] = useState(false)
 
   const currentReciter = getReciterById(settings.listenReciterId)
-  const { favoriteIds, isFavorite, toggle: toggleFavorite } = useReciterFavorites()
+  const { favoriteIds, isFavorite, toggle: toggleFavorite, atLimit: favoritesAtLimit } =
+    useReciterFavorites()
 
   const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
     useSurahPlayer(currentReciter.id)
@@ -101,10 +96,25 @@ export default function ListenScreen() {
   const usingFavorites = favoriteReciters.length > 0
   const quickPicks = useMemo(() => {
     if (favoriteReciters.length > 0) return favoriteReciters
-    return QUICK_PICK_IDS.map((id) => RECITERS.find((r) => r.id === id)).filter(
-      (r): r is NonNullable<typeof r> => Boolean(r)
-    )
+    return topReciters()
   }, [favoriteReciters])
+
+  /** Other narrations recorded by the same person, e.g. Hafs vs Susi. */
+  const reciterVariants = useMemo(() => getReciterVariants(currentReciter), [currentReciter])
+  const qiraatOptions = useMemo(() => {
+    const byQiraat = new Map<QiraatId, Reciter>()
+    for (const v of reciterVariants) {
+      const existing = byQiraat.get(v.qiraat)
+      if (!existing || (v.style === 'Murattal' && existing.style !== 'Murattal')) {
+        byQiraat.set(v.qiraat, v)
+      }
+    }
+    return [...byQiraat.values()].sort((a, b) => {
+      if (a.qiraat === 'hafs') return -1
+      if (b.qiraat === 'hafs') return 1
+      return getQiraat(a.qiraat).short.localeCompare(getQiraat(b.qiraat).short)
+    })
+  }, [reciterVariants])
 
   useEffect(() => {
     const next: Record<number, boolean> = {}
@@ -216,12 +226,18 @@ export default function ListenScreen() {
               </h1>
               <button
                 type="button"
-                onClick={() => toggleFavorite(currentReciter.id)}
+                onClick={() => {
+                  if (!isFavorite(currentReciter.id) && favoritesAtLimit) return
+                  toggleFavorite(currentReciter.id)
+                }}
+                disabled={!isFavorite(currentReciter.id) && favoritesAtLimit}
                 className={cn(
                   'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
                   isFavorite(currentReciter.id)
                     ? 'text-rose-500'
-                    : 'text-[var(--home-muted)] hover:text-rose-400'
+                    : favoritesAtLimit
+                      ? 'text-[var(--home-muted)] opacity-40'
+                      : 'text-[var(--home-muted)] hover:text-rose-400'
                 )}
                 aria-label={
                   isFavorite(currentReciter.id)
@@ -244,11 +260,50 @@ export default function ListenScreen() {
               >
                 {getQiraat(currentReciter.qiraat).short}
               </span>
-              <span className="rounded-full border border-[var(--home-card-border)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--home-muted)]">
-                {currentReciter.style}
-              </span>
+              {currentReciter.style !== 'Murattal' && (
+                <span className="rounded-full border border-[var(--home-card-border)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--home-muted)]">
+                  {currentReciter.style}
+                </span>
+              )}
             </div>
-            <p className="mt-2 text-[11px] text-[var(--home-muted)]">
+
+            {qiraatOptions.length > 1 && (
+              <div className="mt-2.5">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+                  Also recites in
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {qiraatOptions.map((variant) => {
+                    const isCurrent = variant.id === currentReciter.id
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => selectReciter(variant.id)}
+                        className={cn(
+                          'rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                          isCurrent
+                            ? 'text-white'
+                            : 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
+                        )}
+                        style={
+                          isCurrent
+                            ? {
+                                background: `linear-gradient(135deg, ${variant.accent[0]}, ${variant.accent[1]})`,
+                              }
+                            : undefined
+                        }
+                        aria-pressed={isCurrent}
+                      >
+                        {getQiraat(variant.qiraat).short}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-2.5 text-[11px] text-[var(--home-muted)]">
               {RECITERS.length} reciters · {new Set(RECITERS.map((r) => r.qiraat)).size} qira&apos;at
             </p>
           </div>
@@ -300,11 +355,17 @@ export default function ListenScreen() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
+                      if (!isFavorite(r.id) && favoritesAtLimit) return
                       toggleFavorite(r.id)
                     }}
+                    disabled={!isFavorite(r.id) && favoritesAtLimit}
                     className={cn(
                       'absolute right-1 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--app-bg)] shadow-sm transition-colors active:scale-90',
-                      isFavorite(r.id) ? 'text-rose-500' : 'text-[var(--home-muted)]'
+                      isFavorite(r.id)
+                        ? 'text-rose-500'
+                        : favoritesAtLimit
+                          ? 'text-[var(--home-muted)] opacity-40'
+                          : 'text-[var(--home-muted)]'
                     )}
                     aria-label={
                       isFavorite(r.id) ? `Remove ${r.name} from favorites` : `Add ${r.name} to favorites`
@@ -365,7 +426,7 @@ export default function ListenScreen() {
             <Loader2 className="h-8 w-8 animate-spin text-[var(--home-sage-deep)]" />
           </div>
         ) : (
-          <ul className="space-y-0.5">
+          <ul className="space-y-2">
             {visibleChapters.map((chapter) => {
               const active = isActiveSurah(chapter.id)
               const isPlaying = active && state.playing && !state.loading
@@ -374,12 +435,17 @@ export default function ListenScreen() {
                 <li key={chapter.id}>
                   <div
                     className={cn(
-                      'flex min-h-[58px] w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors',
-                      !active && 'hover:bg-[var(--home-card-bg)]'
+                      'flex min-h-[64px] w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left shadow-[var(--home-card-shadow)] transition-all',
+                      active
+                        ? 'border-transparent'
+                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] active:scale-[0.99]'
                     )}
                     style={
                       active
-                        ? { background: `${currentReciter.accent[0]}22` }
+                        ? {
+                            background: `linear-gradient(135deg, ${currentReciter.accent[0]}18, ${currentReciter.accent[1]}0d)`,
+                            boxShadow: `0 0 0 1.5px ${currentReciter.accent[1]}55, 0 10px 24px -16px ${currentReciter.accent[1]}`,
+                          }
                         : undefined
                     }
                   >
@@ -388,13 +454,13 @@ export default function ListenScreen() {
                       onClick={() => handlePlaySurah(chapter)}
                       disabled={isOffline && !downloaded[chapter.id]}
                       className={cn(
-                        'flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]',
+                        'flex min-w-0 flex-1 items-center gap-3 text-left',
                         isOffline && !downloaded[chapter.id] && 'cursor-not-allowed opacity-55'
                       )}
                     >
                       <span
                         className={cn(
-                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-colors',
+                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-colors',
                           !active && 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]',
                           active && 'text-white'
                         )}
@@ -402,14 +468,15 @@ export default function ListenScreen() {
                           active
                             ? {
                                 background: `linear-gradient(135deg, ${currentReciter.accent[0]}, ${currentReciter.accent[1]})`,
+                                boxShadow: `0 8px 16px -8px ${currentReciter.accent[1]}`,
                               }
                             : undefined
                         }
                       >
                         {isPlaying ? (
-                          <Pause className="h-4 w-4 fill-current" />
+                          <Pause className="h-[18px] w-[18px] fill-current" />
                         ) : active && state.loading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-[18px] w-[18px] animate-spin" />
                         ) : (
                           chapter.id
                         )}
@@ -418,18 +485,21 @@ export default function ListenScreen() {
                         <span className="block truncate font-semibold text-[var(--home-heading)]">
                           {chapter.englishName}
                         </span>
-                        <span className="block truncate text-xs text-[var(--home-muted)]">
-                          {chapter.name} · {chapter.versesCount} ayahs
+                        <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-[var(--home-muted)]">
+                          <span className="amiri truncate">{chapter.name}</span>
+                          <span aria-hidden>·</span>
+                          <span className="shrink-0">{chapter.versesCount} ayahs</span>
                         </span>
                       </span>
                       <span
-                        className="shrink-0"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                         style={{
                           color: active ? currentReciter.accent[1] : 'var(--home-muted)',
+                          background: active ? `${currentReciter.accent[1]}1a` : undefined,
                         }}
                       >
                         {isPlaying ? (
-                          <span className="flex h-5 items-end gap-0.5" aria-hidden>
+                          <span className="flex h-4 items-end gap-0.5" aria-hidden>
                             <span className="w-0.5 animate-pulse bg-current" style={{ height: '60%' }} />
                             <span className="w-0.5 animate-pulse bg-current" style={{ height: '100%', animationDelay: '120ms' }} />
                             <span className="w-0.5 animate-pulse bg-current" style={{ height: '45%', animationDelay: '240ms' }} />
@@ -443,12 +513,12 @@ export default function ListenScreen() {
                       type="button"
                       onClick={() => void handleDownloadSurah(chapter)}
                       className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 transition-colors',
                         downloadingSurah === chapter.id
-                          ? 'border-[var(--home-sage-deep)] text-[var(--home-sage-deep)]'
+                          ? 'text-[var(--home-sage-deep)] ring-[var(--home-sage-deep)]/40'
                           : downloaded[chapter.id]
-                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                            : 'border-[var(--home-card-border)] text-[var(--home-muted)]'
+                            ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400'
+                            : 'text-[var(--home-muted)] ring-[var(--home-card-border)]'
                       )}
                       aria-label={
                         downloaded[chapter.id] ? 'Downloaded for offline' : 'Download surah for offline'
@@ -464,7 +534,7 @@ export default function ListenScreen() {
                     </button>
                   </div>
                   {downloadingSurah === chapter.id && (
-                    <p className="px-3 pt-1 text-[11px] text-[var(--home-sage-deep)]">
+                    <p className="px-3 pt-1.5 text-[11px] text-[var(--home-sage-deep)]">
                       Downloading… {downloadProgress}%
                     </p>
                   )}

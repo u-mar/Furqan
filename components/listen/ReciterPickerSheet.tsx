@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Heart, Search, X } from 'lucide-react'
+import { Check, Heart, Search, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
@@ -20,15 +20,25 @@ interface ReciterPickerSheetProps {
   onSelect: (id: string) => void
 }
 
+type ListMode = 'all' | 'favorites' | 'top'
+
 interface ReciterRowProps {
   reciter: Reciter
   active: boolean
   favorite: boolean
+  favoriteDisabled: boolean
   onSelect: () => void
   onToggleFavorite: () => void
 }
 
-function ReciterRow({ reciter, active, favorite, onSelect, onToggleFavorite }: ReciterRowProps) {
+function ReciterRow({
+  reciter,
+  active,
+  favorite,
+  favoriteDisabled,
+  onSelect,
+  onToggleFavorite,
+}: ReciterRowProps) {
   return (
     <div
       className={cn(
@@ -45,9 +55,11 @@ function ReciterRow({ reciter, active, favorite, onSelect, onToggleFavorite }: R
             {reciter.name}
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]">
-              {reciter.style}
-            </span>
+            {reciter.style !== 'Murattal' && (
+              <span className="rounded-full bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]">
+                {reciter.style}
+              </span>
+            )}
             <span className="text-[11px] text-[var(--home-muted)]">
               {getQiraat(reciter.qiraat).short}
             </span>
@@ -59,11 +71,17 @@ function ReciterRow({ reciter, active, favorite, onSelect, onToggleFavorite }: R
         type="button"
         onClick={(e) => {
           e.stopPropagation()
+          if (favoriteDisabled) return
           onToggleFavorite()
         }}
+        disabled={favoriteDisabled}
         className={cn(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
-          favorite ? 'text-rose-500' : 'text-[var(--home-muted)] hover:text-rose-400'
+          favorite
+            ? 'text-rose-500'
+            : favoriteDisabled
+              ? 'text-[var(--home-muted)] opacity-40'
+              : 'text-[var(--home-muted)] hover:text-rose-400'
         )}
         aria-label={
           favorite ? `Remove ${reciter.name} from favorites` : `Add ${reciter.name} to favorites`
@@ -84,14 +102,14 @@ export default function ReciterPickerSheet({
 }: ReciterPickerSheetProps) {
   const [query, setQuery] = useState('')
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const { favoriteIds, isFavorite, toggle } = useReciterFavorites()
+  const [mode, setMode] = useState<ListMode>('all')
+  const { favoriteIds, isFavorite, toggle, atLimit, maxFavorites } = useReciterFavorites()
 
   useEffect(() => {
     if (!open) {
       setQuery('')
       setQiraat('all')
-      setShowFavoritesOnly(false)
+      setMode('all')
     }
   }, [open])
 
@@ -107,7 +125,8 @@ export default function ReciterPickerSheet({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return RECITERS.filter((r) => {
-      if (showFavoritesOnly && !favoriteIds.includes(r.id)) return false
+      if (mode === 'favorites' && !favoriteIds.includes(r.id)) return false
+      if (mode === 'top' && !r.top) return false
       if (qiraat !== 'all' && r.qiraat !== qiraat) return false
       if (!q) return true
       return (
@@ -116,7 +135,7 @@ export default function ReciterPickerSheet({
         r.style.toLowerCase().includes(q)
       )
     })
-  }, [query, qiraat, showFavoritesOnly, favoriteIds])
+  }, [query, qiraat, mode, favoriteIds])
 
   const favoriteReciters = useMemo(
     () =>
@@ -140,7 +159,14 @@ export default function ReciterPickerSheet({
   if (!open) return null
 
   const showFavoritesSection =
-    !showFavoritesOnly && favoriteReciters.length > 0 && !query.trim() && qiraat === 'all'
+    mode === 'all' && favoriteReciters.length > 0 && !query.trim() && qiraat === 'all'
+
+  const emptyMessage =
+    mode === 'favorites'
+      ? 'No favorites yet — tap the heart on any reciter to save them here.'
+      : mode === 'top'
+        ? 'No top reciter matches that search.'
+        : 'No reciter matches that search.'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]">
@@ -152,8 +178,7 @@ export default function ReciterPickerSheet({
               Choose a reciter
             </h2>
             <p className="text-xs text-[var(--home-muted)]">
-              {RECITERS.length} reciters · {favoriteIds.length} favorite
-              {favoriteIds.length === 1 ? '' : 's'}
+              {RECITERS.length} reciters · {favoriteIds.length}/{maxFavorites} favorites
             </p>
           </div>
           <button
@@ -177,20 +202,34 @@ export default function ReciterPickerSheet({
           />
         </div>
 
-        {/* qira'at filter chips + favorites toggle */}
+        {/* qira'at filter chips + favorites/top toggles */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
-            onClick={() => setShowFavoritesOnly((v) => !v)}
+            onClick={() => setMode((m) => (m === 'top' ? 'all' : 'top'))}
             className={cn(
               'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-              showFavoritesOnly
+              mode === 'top'
+                ? 'bg-[var(--home-sage-deep)] text-white'
+                : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
+            )}
+            aria-pressed={mode === 'top'}
+          >
+            <Sparkles className={cn('h-3.5 w-3.5', mode === 'top' && 'fill-current')} />
+            Top
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode((m) => (m === 'favorites' ? 'all' : 'favorites'))}
+            className={cn(
+              'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+              mode === 'favorites'
                 ? 'bg-rose-500 text-white'
                 : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
             )}
-            aria-pressed={showFavoritesOnly}
+            aria-pressed={mode === 'favorites'}
           >
-            <Heart className={cn('h-3.5 w-3.5', showFavoritesOnly && 'fill-current')} />
+            <Heart className={cn('h-3.5 w-3.5', mode === 'favorites' && 'fill-current')} />
             Favorites
           </button>
           <button
@@ -221,16 +260,18 @@ export default function ReciterPickerSheet({
             </button>
           ))}
         </div>
+
+        {atLimit && mode !== 'favorites' && (
+          <p className="mt-2 text-[11px] text-[var(--home-muted)]">
+            You have {maxFavorites} favorites saved — remove one to add another.
+          </p>
+        )}
       </div>
 
       {/* list */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3">
         {grouped.length === 0 && (
-          <p className="py-12 text-center text-sm text-[var(--home-muted)]">
-            {showFavoritesOnly
-              ? 'No favorites yet — tap the heart on any reciter to save them here.'
-              : 'No reciter matches that search.'}
-          </p>
+          <p className="py-12 text-center text-sm text-[var(--home-muted)]">{emptyMessage}</p>
         )}
 
         {showFavoritesSection && (
@@ -247,6 +288,7 @@ export default function ReciterPickerSheet({
                     reciter={r}
                     active={r.id === selectedId}
                     favorite
+                    favoriteDisabled={false}
                     onSelect={() => {
                       onSelect(r.id)
                       onClose()
@@ -266,20 +308,24 @@ export default function ReciterPickerSheet({
               <span className="ml-2 font-medium text-[var(--home-muted)]">{list.length}</span>
             </h3>
             <ul className="space-y-2">
-              {list.map((r) => (
-                <li key={r.id}>
-                  <ReciterRow
-                    reciter={r}
-                    active={r.id === selectedId}
-                    favorite={isFavorite(r.id)}
-                    onSelect={() => {
-                      onSelect(r.id)
-                      onClose()
-                    }}
-                    onToggleFavorite={() => toggle(r.id)}
-                  />
-                </li>
-              ))}
+              {list.map((r) => {
+                const favorite = isFavorite(r.id)
+                return (
+                  <li key={r.id}>
+                    <ReciterRow
+                      reciter={r}
+                      active={r.id === selectedId}
+                      favorite={favorite}
+                      favoriteDisabled={!favorite && atLimit}
+                      onSelect={() => {
+                        onSelect(r.id)
+                        onClose()
+                      }}
+                      onToggleFavorite={() => toggle(r.id)}
+                    />
+                  </li>
+                )
+              })}
             </ul>
           </section>
         ))}

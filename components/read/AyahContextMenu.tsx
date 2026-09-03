@@ -55,7 +55,7 @@ function ActionButton({ label, active, primary, onClick, children }: ActionButto
             ? 'bg-[var(--mushaf-read-accent)] text-white shadow-[0_8px_18px_-8px_var(--mushaf-read-accent)]'
             : active
               ? 'bg-[var(--mushaf-read-accent-soft)] text-[var(--mushaf-read-accent)] ring-1 ring-[var(--mushaf-read-accent)]/40'
-              : 'bg-[var(--mushaf-read-badge-bg)] text-[var(--mushaf-read-popup-text)] group-hover:bg-[var(--mushaf-read-accent-soft)]'
+              : 'bg-[var(--mushaf-popup-badge-bg)] text-[var(--mushaf-read-popup-text)] group-hover:bg-[var(--mushaf-read-accent-soft)]'
         )}
       >
         {children}
@@ -65,7 +65,7 @@ function ActionButton({ label, active, primary, onClick, children }: ActionButto
           'text-[10px] font-medium leading-none',
           active || primary
             ? 'text-[var(--mushaf-read-accent)]'
-            : 'text-[var(--mushaf-read-meta)]'
+            : 'text-[var(--mushaf-popup-meta)]'
         )}
       >
         {label}
@@ -205,16 +205,16 @@ export default function AyahContextMenu({
 
       {/* header */}
       <div className="flex items-center justify-between px-3.5 pt-2.5">
-        <span className="rounded-full bg-[var(--mushaf-read-badge-bg)] px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[var(--mushaf-read-accent)]">
+        <span className="rounded-full bg-[var(--mushaf-popup-badge-bg)] px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[var(--mushaf-read-accent)]">
           {verseKey}
         </span>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--mushaf-read-meta)]">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
           Ayah actions
         </span>
       </div>
 
       {showTranslation && (
-        <div className="mx-3.5 mt-2 rounded-xl bg-[var(--mushaf-read-badge-bg)] px-3 py-2.5">
+        <div className="mx-3.5 mt-2 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3 py-2.5">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent)]">
             Translation
           </p>

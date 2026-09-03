@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   getFavoriteReciterIds,
   toggleFavoriteReciter,
+  MAX_FAVORITE_RECITERS,
   RECITER_FAVORITES_EVENT,
 } from '@/lib/reciter-favorites'
 
@@ -21,9 +22,10 @@ export function useReciterFavorites() {
 
   const isFavorite = useCallback((id: string) => favoriteIds.includes(id), [favoriteIds])
 
-  const toggle = useCallback((id: string) => {
-    toggleFavoriteReciter(id)
-  }, [])
+  /** Returns the new favorited state — stays `false` if the 5-favorite cap blocked an add. */
+  const toggle = useCallback((id: string) => toggleFavoriteReciter(id), [])
 
-  return { favoriteIds, isFavorite, toggle }
+  const atLimit = favoriteIds.length >= MAX_FAVORITE_RECITERS
+
+  return { favoriteIds, isFavorite, toggle, atLimit, maxFavorites: MAX_FAVORITE_RECITERS }
 }
