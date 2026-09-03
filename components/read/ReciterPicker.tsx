@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { setAppSettings } from '@/lib/app-settings'
-import { RECITERS } from '@/lib/reciters'
+import { ayahCapableReciters, RECITERS } from '@/lib/reciters'
 
 interface ReciterPickerProps {
   reciterId: string
@@ -47,7 +47,7 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
           className="absolute bottom-full left-0 z-50 mb-2 max-h-52 w-64 overflow-y-auto rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-1 shadow-[var(--home-card-shadow)]"
           role="listbox"
         >
-          {RECITERS.map((r) => (
+          {ayahCapableReciters().map((r) => (
             <li key={r.id} role="option" aria-selected={r.id === reciterId}>
               <button
                 type="button"

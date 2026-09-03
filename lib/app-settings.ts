@@ -1,10 +1,19 @@
-export type ThemeMode = 'light' | 'dark'
+export type ThemeMode = 'light' | 'sepia' | 'dark'
+
+export const THEME_MODES: ThemeMode[] = ['light', 'sepia', 'dark']
+
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'light' || value === 'sepia' || value === 'dark'
+}
 
 export interface AppSettings {
   theme: ThemeMode
   offlineDownloaded: boolean
   translationsDownloaded: boolean
+  /** Reciter for ayah-by-ayah audio (Read highlighting, Imitate). */
   reciterId: string
+  /** Reciter for full-surah playback in Listen — may be surah-only. */
+  listenReciterId: string
   /** Swipe up/down to turn pages instead of left/right. */
   verticalPages: boolean
   /** Translation text language in read mode. */
@@ -25,19 +34,25 @@ const defaults: AppSettings = {
   offlineDownloaded: false,
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
+  listenReciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
 }
 
 function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }): AppSettings {
+  const reciterId =
+    typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
+      ? parsed.reciterId
+      : DEFAULT_RECITER_ID
   return {
-    theme: parsed.theme === 'light' ? 'light' : 'dark',
+    theme: isThemeMode(parsed.theme) ? parsed.theme : 'dark',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
-    reciterId:
-      typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
-        ? parsed.reciterId
-        : DEFAULT_RECITER_ID,
+    reciterId,
+    listenReciterId:
+      typeof parsed.listenReciterId === 'string' && parsed.listenReciterId.length > 0
+        ? parsed.listenReciterId
+        : reciterId,
     verticalPages: Boolean(parsed.verticalPages),
     translationLanguage:
       parsed.translationLanguage && isTranslationLanguageId(parsed.translationLanguage)
@@ -74,15 +89,17 @@ export function setAppSettings(patch: Partial<AppSettings>): AppSettings {
 export function applyThemeToDocument(theme: ThemeMode): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  if (theme === 'light') {
-    root.classList.remove('dark')
-    root.style.colorScheme = 'light'
-  } else {
+  root.classList.remove('dark', 'sepia')
+  if (theme === 'dark') {
     root.classList.add('dark')
     root.style.colorScheme = 'dark'
+  } else {
+    if (theme === 'sepia') root.classList.add('sepia')
+    root.style.colorScheme = 'light'
   }
 
-  const themeColor = theme === 'light' ? '#faf6ef' : '#0a0a0a'
+  const themeColor =
+    theme === 'dark' ? '#080b18' : theme === 'sepia' ? '#f4ead0' : '#f7f7fb'
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')

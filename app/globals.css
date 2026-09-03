@@ -101,6 +101,40 @@ html:not(.dark) {
   --hifdh-muted: #78716c;
 }
 
+/* ---- Sepia app theme — warm paper tones with bronze/gold accents ---- */
+html.sepia {
+  color-scheme: light;
+  --app-bg: #f6eed8;
+  --app-surface: #fffaef;
+  --app-border: rgba(74, 58, 30, 0.14);
+  --app-text: #2c2620;
+  --app-muted: #7d7259;
+  --home-glow: radial-gradient(72% 46% at 50% -8%, rgba(154, 112, 36, 0.14), transparent 72%),
+    radial-gradient(42% 30% at 92% 0%, rgba(120, 88, 40, 0.1), transparent 70%);
+  --home-card-bg: #fffaef;
+  --home-card-border: rgba(74, 58, 30, 0.12);
+  --home-card-shadow: 0 16px 38px -18px rgba(74, 58, 30, 0.3);
+  --home-track: #e8dcc0;
+  --home-location-bg: #f2e7cd;
+  --home-heading: #2a241c;
+  --home-muted: #7d7259;
+  --home-sage: #b8892e;
+  --home-sage-deep: #9a7024;
+  --home-sage-dark: #6b4d16;
+  --home-sage-soft: rgba(184, 137, 46, 0.16);
+  --home-sage-gradient: linear-gradient(150deg, #3d2f18 0%, #6b5124 48%, #96702a 100%);
+  --hifdh-bg: #f6eed8;
+  --hifdh-surface: #fffaef;
+  --hifdh-border: rgba(74, 58, 30, 0.14);
+  --hifdh-text: #2c2620;
+  --hifdh-muted: #7d7259;
+}
+
+html.sepia .home-screen {
+  --home-card-shadow: 0 14px 36px -16px rgba(74, 58, 30, 0.3);
+  --home-card-border: rgba(74, 58, 30, 0.12);
+}
+
 html,
 body {
   min-height: 100%;
@@ -233,21 +267,21 @@ html.dark .ayah-sheet-arabic {
 /* Immersive read screen — warm Madinah-paper cream (day) / soft warm night.
    Palette tuned to feel like the Ayah app's mushaf reading surface. */
 .mushaf-reader-immersive {
-  --mushaf-read-bg: #f4ead0;
-  --mushaf-read-text: #2c2620;
-  --mushaf-read-meta: #8b7e66;
-  --mushaf-read-badge-bg: rgba(74, 58, 30, 0.09);
-  --mushaf-read-badge-text: #6c5f47;
-  --mushaf-read-card-bg: #faf3df;
-  --mushaf-read-card-border: rgba(74, 58, 30, 0.14);
-  --mushaf-read-chrome-bg: rgba(244, 234, 208, 0.94);
-  --mushaf-read-chrome-border: rgba(74, 58, 30, 0.11);
+  --mushaf-read-bg: #fdfcf9;
+  --mushaf-read-text: #1c1a17;
+  --mushaf-read-meta: #7c7568;
+  --mushaf-read-badge-bg: rgba(28, 26, 23, 0.07);
+  --mushaf-read-badge-text: #5f594e;
+  --mushaf-read-card-bg: #ffffff;
+  --mushaf-read-card-border: rgba(28, 26, 23, 0.11);
+  --mushaf-read-chrome-bg: rgba(253, 252, 249, 0.94);
+  --mushaf-read-chrome-border: rgba(28, 26, 23, 0.09);
   --mushaf-read-accent: #0d6b63;
-  --mushaf-read-accent-soft: rgba(13, 107, 99, 0.14);
-  --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.15);
-  --mushaf-read-highlight-border: rgba(13, 107, 99, 0.34);
-  --mushaf-read-popup-bg: #f9f1da;
-  --mushaf-read-popup-border: rgba(74, 58, 30, 0.22);
+  --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
+  --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.13);
+  --mushaf-read-highlight-border: rgba(13, 107, 99, 0.32);
+  --mushaf-read-popup-bg: #ffffff;
+  --mushaf-read-popup-border: rgba(28, 26, 23, 0.16);
   --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   background-color: var(--mushaf-read-bg);
   background-image: var(--mushaf-grain),
@@ -259,6 +293,28 @@ html.dark .ayah-sheet-arabic {
 }
 
 html:not(.dark) {
+  --mushaf-read-popup-bg: #ffffff;
+  --mushaf-read-popup-border: rgba(28, 26, 23, 0.16);
+  --mushaf-read-popup-text: #1c1a17;
+  --mushaf-read-popup-shadow: 0 12px 38px rgba(28, 26, 23, 0.18);
+}
+
+/* ---- Sepia reading theme — warm Madinah paper ---- */
+html.sepia .mushaf-reader-immersive {
+  --mushaf-read-bg: #f4ead0;
+  --mushaf-read-text: #2c2620;
+  --mushaf-read-meta: #8b7e66;
+  --mushaf-read-badge-bg: rgba(74, 58, 30, 0.09);
+  --mushaf-read-badge-text: #6c5f47;
+  --mushaf-read-card-bg: #faf3df;
+  --mushaf-read-card-border: rgba(74, 58, 30, 0.14);
+  --mushaf-read-chrome-bg: rgba(244, 234, 208, 0.94);
+  --mushaf-read-chrome-border: rgba(74, 58, 30, 0.11);
+  --mushaf-read-popup-bg: #f9f1da;
+  --mushaf-read-popup-border: rgba(74, 58, 30, 0.22);
+}
+
+html.sepia {
   --mushaf-read-popup-bg: #f9f1da;
   --mushaf-read-popup-border: rgba(74, 58, 30, 0.2);
   --mushaf-read-popup-text: #2c2620;
@@ -783,6 +839,32 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
   letter-spacing: 0.02em;
   color: var(--mushaf-read-meta);
   font-variant-numeric: tabular-nums;
+}
+
+.mushaf-tr-actions {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.mushaf-tr-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  width: 2rem;
+  border-radius: 999px;
+  color: var(--mushaf-read-meta);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.mushaf-tr-action:hover,
+.mushaf-tr-action:focus-visible {
+  background: var(--mushaf-read-accent-soft);
+  color: var(--mushaf-read-accent);
+  outline: none;
+}
+.mushaf-tr-action:active {
+  transform: scale(0.92);
 }
 
 .mushaf-tr-translator {

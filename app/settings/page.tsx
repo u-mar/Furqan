@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Download, CheckCircle2, Sun, Moon } from 'lucide-react'
+import { ChevronLeft, Download, CheckCircle2, Sun, Moon, BookOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
@@ -334,10 +334,11 @@ export default function SettingsPage() {
 
         <section className="mb-8">
           <SectionTitle>Appearance</SectionTitle>
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
             {(
               [
                 { mode: 'light' as ThemeMode, Icon: Sun, label: 'Light' },
+                { mode: 'sepia' as ThemeMode, Icon: BookOpen, label: 'Sepia' },
                 { mode: 'dark' as ThemeMode, Icon: Moon, label: 'Dark' },
               ] as const
             ).map(({ mode, Icon, label }) => (
@@ -346,11 +347,12 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => saveTheme(mode)}
                 className={cn(
-                  'flex min-h-[52px] items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
+                  'flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold transition-all active:scale-[0.98]',
                   theme === mode
                     ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
                     : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
                 )}
+                aria-pressed={theme === mode}
               >
                 <Icon className="h-4 w-4" />
                 {label}
@@ -358,7 +360,10 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-[var(--home-muted)]">
-            Switch between the deep midnight theme and a soft daylight palette.
+            <strong className="text-[var(--home-heading)]">Sepia</strong> gives the mushaf a warm
+            Madinah-paper page, <strong className="text-[var(--home-heading)]">Light</strong> a clean
+            white one, and <strong className="text-[var(--home-heading)]">Dark</strong> a soft night
+            page.
           </p>
         </section>
 

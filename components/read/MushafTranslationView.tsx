@@ -1,6 +1,7 @@
 'use client'
 
 import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react'
+import { Copy, Share2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useQcfFont } from '@/hooks/useQcfFont'
@@ -122,12 +123,43 @@ function TranslationAyahArticle({
           isSelected && 'ring-1 ring-[var(--mushaf-read-highlight-border)]'
         )}
       >
-        {/* meta row — verse number badge */}
+        {/* meta row — verse badge + quran.com-style actions */}
         <div className="mushaf-tr-meta">
           <span className="mushaf-tr-badge" aria-hidden>
             {num}
           </span>
           <span className="mushaf-tr-key">{row.verse_key}</span>
+          <span className="mushaf-tr-actions">
+            <button
+              type="button"
+              className="mushaf-tr-action"
+              aria-label={`Copy ayah ${row.verse_key}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                void navigator.clipboard
+                  ?.writeText(`${row.text_uthmani}\n\n${row.translation}\n\n(${row.verse_key})`)
+                  .catch(() => {})
+              }}
+            >
+              <Copy className="h-[15px] w-[15px]" />
+            </button>
+            <button
+              type="button"
+              className="mushaf-tr-action"
+              aria-label={`Share ayah ${row.verse_key}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                const text = `${row.text_uthmani}\n\n${row.translation}\n\n(${row.verse_key})`
+                if (navigator.share) {
+                  void navigator.share({ text }).catch(() => {})
+                } else {
+                  void navigator.clipboard?.writeText(text).catch(() => {})
+                }
+              }}
+            >
+              <Share2 className="h-[15px] w-[15px]" />
+            </button>
+          </span>
         </div>
 
         {showBasmalah && (
