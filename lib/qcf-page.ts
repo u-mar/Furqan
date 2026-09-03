@@ -94,6 +94,14 @@ export function pageHasQcfData(verses: Verse[]): boolean {
   return verses.some((verse) => verse.words?.some((word) => Boolean(word.code_v2?.trim())))
 }
 
+/**
+ * A verse's actual printed mushaf page, from its own word data — more reliable
+ * than a juz/quarter-derived estimate, which can land a page or two off.
+ */
+export function versePageNumber(verse: Verse): number {
+  return verse.words?.[0]?.v2_page || verse.words?.[0]?.page_number || verse.page_number || 0
+}
+
 /** First few QCF glyphs on a page — used to verify the page font actually renders. */
 export function qcfPageSampleGlyphs(verses: Verse[], pageNumber: number): string {
   const { pageText } = buildQcfPageLayout(verses, pageNumber)

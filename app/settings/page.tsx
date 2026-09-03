@@ -14,7 +14,10 @@ import {
   type ThemeMode,
 } from '@/lib/app-settings'
 import {
-  TRANSLATION_LANGUAGES,
+  DEFAULT_TRANSLATION_EDITION,
+  getTranslationOption,
+  translationLanguageLabel,
+  translationsForLanguage,
   type TranslationLanguageId,
 } from '@/lib/translations'
 import {
@@ -110,6 +113,9 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('full')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
+  const [translationEditionId, setTranslationEditionId] = useState<string>(
+    DEFAULT_TRANSLATION_EDITION.en
+  )
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -140,6 +146,7 @@ export default function SettingsPage() {
     setTheme(s.theme)
     setMushafWidth(s.mushafWidth)
     setTranslationLanguage(s.translationLanguage)
+    setTranslationEditionId(s.translationEditionId)
     setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
       en: areTranslationsCached('en'),
@@ -176,8 +183,15 @@ export default function SettingsPage() {
   }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
+    const nextEdition = DEFAULT_TRANSLATION_EDITION[next]
     setTranslationLanguage(next)
-    setAppSettings({ translationLanguage: next })
+    setTranslationEditionId(nextEdition)
+    setAppSettings({ translationLanguage: next, translationEditionId: nextEdition })
+  }
+
+  function saveTranslationEdition(next: string) {
+    setTranslationEditionId(next)
+    setAppSettings({ translationEditionId: next })
   }
 
   async function handleDownload() {
@@ -415,22 +429,53 @@ export default function SettingsPage() {
 
         <section className="mb-8">
           <SectionTitle>Translation</SectionTitle>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+            Language
+          </p>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
+            {(['en', 'so'] as const).map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => saveTranslationLanguage(lang)}
+                className={cn(
+                  'flex min-h-[48px] items-center justify-center rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
+                  translationLanguage === lang
+                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
+                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
+                )}
+                aria-pressed={translationLanguage === lang}
+              >
+                {translationLanguageLabel(lang)}
+              </button>
+            ))}
+          </div>
+
+          <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+            Translator
+          </p>
           <div className="space-y-2">
-            {TRANSLATION_LANGUAGES.map((lang) => (
+            {translationsForLanguage(translationLanguage).map((option) => (
               <SettingsRow
-                key={lang.id}
-                title={lang.label}
+                key={option.id}
+                title={option.label}
                 description={
-                  lang.id === 'en'
-                    ? 'Sahih International (English)'
-                    : 'Mahmud Muhammad Abduh (Somali)'
+                  option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
+                    ? 'Also available offline'
+                    : 'Online only'
                 }
-                selected={translationLanguage === lang.id}
-                onClick={() => saveTranslationLanguage(lang.id)}
+                selected={translationEditionId === option.id}
+                onClick={() => saveTranslationEdition(option.id)}
               />
             ))}
           </div>
-          <p className="mt-2 text-xs text-[var(--home-muted)]">
+          {translationsForLanguage(translationLanguage).length === 1 && (
+            <p className="mt-2 text-xs text-[var(--home-muted)]">
+              Only one {translationLanguageLabel(translationLanguage)} translation is available
+              right now.
+            </p>
+          )}
+          <p className="mt-3 text-xs text-[var(--home-muted)]">
             Used in Read translation mode and when you long-press an ayah.
           </p>
 
@@ -454,36 +499,36 @@ export default function SettingsPage() {
           )}
 
           <div className="mt-4 space-y-2">
-            {TRANSLATION_LANGUAGES.map((lang) => (
-              <div
-                key={lang.id}
-                className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]"
-              >
-                {translationCached[lang.id] ? (
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {lang.label} saved offline
-                  </div>
-                ) : (
-                  <p className="mb-3 text-sm text-[var(--home-muted)]">
-                    {lang.id === 'en'
-                      ? 'Sahih International — not downloaded yet'
-                      : 'Somali (Abduh) — not downloaded yet'}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={downloadingTranslationLang !== null || downloading}
-                  onClick={() => void handleDownloadTranslation(lang.id)}
-                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
+            {(['en', 'so'] as const).map((lang) => {
+              const label = translationLanguageLabel(lang)
+              const defaultEditionLabel = getTranslationOption(DEFAULT_TRANSLATION_EDITION[lang]).label
+              return (
+                <div
+                  key={lang}
+                  className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]"
                 >
-                  <Download className="h-4 w-4" />
-                  {translationCached[lang.id]
-                    ? `Re-download ${lang.label}`
-                    : `Download ${lang.label}`}
-                </button>
-              </div>
-            ))}
+                  {translationCached[lang] ? (
+                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      {label} saved offline
+                    </div>
+                  ) : (
+                    <p className="mb-3 text-sm text-[var(--home-muted)]">
+                      {defaultEditionLabel} ({label}) — not downloaded yet
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={downloadingTranslationLang !== null || downloading}
+                    onClick={() => void handleDownloadTranslation(lang)}
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
+                  >
+                    <Download className="h-4 w-4" />
+                    {translationCached[lang] ? `Re-download ${label}` : `Download ${label}`}
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </section>
 

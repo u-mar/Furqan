@@ -1,5 +1,5 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
-import { getTranslationLanguage, type TranslationLanguageId } from '@/lib/translations'
+import { translationLanguageLabel, type TranslationLanguageId } from '@/lib/translations'
 
 export interface TranslationRow {
   verse_key: string
@@ -78,7 +78,7 @@ export async function downloadOfflineTranslations(
     throw new Error('Translation caching is not supported in this browser.')
   }
 
-  const { label } = getTranslationLanguage(lang)
+  const label = translationLanguageLabel(lang)
   const cache = await caches.open(CACHE_NAME)
   const total = TOTAL_MUSHAF_PAGES
   let done = 0

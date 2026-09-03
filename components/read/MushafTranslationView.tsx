@@ -16,7 +16,11 @@ import {
   qcfPageFontFamily,
   qcfPageSampleGlyphs,
 } from '@/lib/qcf-page'
-import type { TranslationLanguageId } from '@/lib/translations'
+import {
+  DEFAULT_TRANSLATION_EDITION,
+  getTranslationOption,
+  type TranslationLanguageId,
+} from '@/lib/translations'
 import type { Chapter, Verse, VerseWord } from '@/types'
 
 interface MushafTranslationViewProps {
@@ -24,8 +28,10 @@ interface MushafTranslationViewProps {
   page: number
   chapters: Chapter[]
   translationLanguage: TranslationLanguageId
+  translationEditionId?: string
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
+  scrollToVerseKey?: string | null
   showArabic?: boolean
   scrollContainerRef?: RefObject<HTMLElement | null>
   followPlaybackScroll?: boolean
@@ -215,11 +221,6 @@ function TranslationAyahArticle({
   )
 }
 
-const TRANSLATOR_BY_LANG: Record<TranslationLanguageId, string> = {
-  en: 'Sahih International',
-  so: 'Mahmud Muhammad Abduh',
-}
-
 const AYAH_STACK_GAP_PX = 20
 const SCROLL_TOP_PAD_PX = 12
 
@@ -255,8 +256,10 @@ export default function MushafTranslationView({
   page,
   chapters,
   translationLanguage,
+  translationEditionId,
   highlightedVerseKey = null,
   selectedVerseKey = null,
+  scrollToVerseKey = null,
   showArabic = true,
   scrollContainerRef,
   followPlaybackScroll = false,
@@ -268,7 +271,8 @@ export default function MushafTranslationView({
     () => Object.fromEntries(chapters.map((c) => [c.id, c.englishName || c.name])),
     [chapters]
   )
-  const translator = TRANSLATOR_BY_LANG[translationLanguage] ?? 'Translation'
+  const activeEdition = translationEditionId || DEFAULT_TRANSLATION_EDITION[translationLanguage]
+  const translator = getTranslationOption(activeEdition).label
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(
     verses.map((v) => [v.verse_key, getVerseArabicText(v, { omitEndMark: true })])
@@ -278,7 +282,8 @@ export default function MushafTranslationView({
     true,
     verseKeys,
     arabicByKey,
-    translationLanguage
+    translationLanguage,
+    activeEdition
   )
   const ayahRefs = useRef<Map<string, HTMLElement>>(new Map())
 
@@ -319,6 +324,13 @@ export default function MushafTranslationView({
 
     scrollAyahToContainerTop(el, container)
   }, [highlightedVerseKey, followPlaybackScroll, scrollContainerRef, verses])
+
+  useLayoutEffect(() => {
+    if (!scrollToVerseKey) return
+    const el = ayahRefs.current.get(scrollToVerseKey)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [scrollToVerseKey])
 
   if (loading && rows.length === 0) {
     return (

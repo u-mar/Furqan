@@ -943,6 +943,17 @@ export const RECITERS: Reciter[] = [
     style: 'Murattal',
     accent: A.sand,
   },
+  {
+    id: 'idris_abkar',
+    photoUrl: 'https://media.way2quran.com/imgs/idris-abkar.jpg',
+    name: 'Idris Abkar',
+    source: 'mp3quran',
+    folder: 'https://server6.mp3quran.net/abkr/',
+    mp3quranBase: 'https://server6.mp3quran.net/abkr/',
+    qiraat: 'hafs',
+    style: 'Murattal',
+    accent: A.emerald,
+  },
 ]
 
 export const DEFAULT_RECITER_ID = 'alafasy'

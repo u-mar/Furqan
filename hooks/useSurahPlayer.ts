@@ -55,7 +55,13 @@ export function useSurahPlayer(reciterId: string) {
   }, [clearMainObjectUrl])
 
   const playSurahFile = useCallback(
-    async (surahId: number, surahName: string, versesCount: number, session: number) => {
+    async (
+      surahId: number,
+      surahName: string,
+      versesCount: number,
+      session: number,
+      resumeAt = 0
+    ) => {
       const audio = audioRef.current
       if (!audio || session !== sessionRef.current) return
 
@@ -63,7 +69,7 @@ export function useSurahPlayer(reciterId: string) {
         surahId,
         surahName,
         versesCount,
-        currentTime: 0,
+        currentTime: resumeAt,
         duration: 0,
         playing: true,
         loading: true,
@@ -85,8 +91,12 @@ export function useSurahPlayer(reciterId: string) {
         clearMainObjectUrl()
         if (url.startsWith('blob:')) objectUrlRef.current = url
         audio.src = url
+        // Same surah, different narration/reciter — pick up where you left off
+        // instead of restarting from the top.
+        if (resumeAt > 0) audio.currentTime = resumeAt
         await audio.play()
         if (session !== sessionRef.current) return
+        if (resumeAt > 0) audio.currentTime = resumeAt
         setState((s) => ({ ...s, loading: false }))
       } catch {
         if (session !== sessionRef.current) return
@@ -194,7 +204,9 @@ export function useSurahPlayer(reciterId: string) {
     setState((s) => {
       if (!s.surahId) return s
       const session = sessionRef.current
-      void playSurahFile(s.surahId, s.surahName, s.versesCount, session)
+      // Switching narration (e.g. Hafs → Susi) for the same reciter/surah should
+      // pick up at the same spot rather than restarting the surah.
+      void playSurahFile(s.surahId, s.surahName, s.versesCount, session, s.currentTime)
       return { ...s, loading: true, error: null }
     })
   }, [reciterId, playSurahFile])

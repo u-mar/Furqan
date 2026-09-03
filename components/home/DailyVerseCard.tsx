@@ -18,7 +18,7 @@ const FALLBACK_TRANSLATION =
   'So remember Me; I will remember you. And be grateful to Me and do not deny Me.'
 
 export default function DailyVerseCard() {
-  const { translationLanguage } = useAppSettings()
+  const { translationLanguage, translationEditionId } = useAppSettings()
   const [arabic, setArabic] = useState('')
   const [translation, setTranslation] = useState(FALLBACK_TRANSLATION)
   const [page, setPage] = useState(22)
@@ -56,7 +56,7 @@ export default function DailyVerseCard() {
         setPage(verse.page_number || 22)
 
         const res = await fetch(
-          `/api/ayah?type=translations&page=${verse.page_number || 22}&lang=${translationLanguage}`
+          `/api/ayah?type=translations&page=${verse.page_number || 22}&lang=${translationLanguage}&edition=${translationEditionId}`
         )
         if (res.ok) {
           const rows = (await res.json()) as Array<{
@@ -76,7 +76,7 @@ export default function DailyVerseCard() {
     return () => {
       cancelled = true
     }
-  }, [dailyVerseKey, translationLanguage])
+  }, [dailyVerseKey, translationLanguage, translationEditionId])
 
   useEffect(() => {
     return () => {

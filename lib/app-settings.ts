@@ -31,15 +31,20 @@ export interface AppSettings {
   verticalPages: boolean
   /** Translation text language in read mode. */
   translationLanguage: TranslationLanguageId
+  /** Which edition/translator of translationLanguage to show, e.g. "en.pickthall". */
+  translationEditionId: string
 }
 
 const STORAGE_KEY = 'al_quran_settings'
 
 import { DEFAULT_RECITER_ID } from '@/lib/reciters'
 import {
+  DEFAULT_TRANSLATION_EDITION,
   DEFAULT_TRANSLATION_LANGUAGE,
   type TranslationLanguageId,
+  isTranslationEditionId,
   isTranslationLanguageId,
+  languageForEdition,
 } from '@/lib/translations'
 
 const defaults: AppSettings = {
@@ -51,6 +56,7 @@ const defaults: AppSettings = {
   listenReciterId: DEFAULT_RECITER_ID,
   verticalPages: false,
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
+  translationEditionId: DEFAULT_TRANSLATION_EDITION[DEFAULT_TRANSLATION_LANGUAGE],
 }
 
 function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }): AppSettings {
@@ -69,11 +75,24 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
         ? parsed.listenReciterId
         : reciterId,
     verticalPages: Boolean(parsed.verticalPages),
-    translationLanguage:
-      parsed.translationLanguage && isTranslationLanguageId(parsed.translationLanguage)
-        ? parsed.translationLanguage
-        : DEFAULT_TRANSLATION_LANGUAGE,
+    ...parseTranslationChoice(parsed.translationLanguage, parsed.translationEditionId),
   }
+}
+
+/**
+ * Reconciles the stored language + edition into a consistent pair — an edition
+ * always wins over a mismatched language (e.g. a saved "en.pickthall" edition
+ * with a stray "so" language resolves to English, not Somali).
+ */
+function parseTranslationChoice(
+  language: unknown,
+  editionId: unknown
+): Pick<AppSettings, 'translationLanguage' | 'translationEditionId'> {
+  if (isTranslationEditionId(editionId)) {
+    return { translationLanguage: languageForEdition(editionId), translationEditionId: editionId }
+  }
+  const lang = isTranslationLanguageId(language) ? language : DEFAULT_TRANSLATION_LANGUAGE
+  return { translationLanguage: lang, translationEditionId: DEFAULT_TRANSLATION_EDITION[lang] }
 }
 
 export function getAppSettings(): AppSettings {

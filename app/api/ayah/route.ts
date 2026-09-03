@@ -6,7 +6,7 @@ import {
   getVersesByJuz,
 } from '@/lib/quran'
 import { getTranslationsByPageServer, getVersesByPageServer } from '@/lib/quran-server'
-import { getTranslationLanguage } from '@/lib/translations'
+import { DEFAULT_TRANSLATION_EDITION, isTranslationEditionId } from '@/lib/translations'
 import type { Verse } from '@/types'
 
 const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
@@ -210,8 +210,11 @@ export async function GET(request: NextRequest) {
       if (!page || page < 1 || page > 604) {
         return NextResponse.json({ error: 'valid page parameter required' }, { status: 400 })
       }
-      const lang = searchParams.get('lang') || 'en'
-      const editionId = getTranslationLanguage(lang).editionId
+      const requestedEdition = searchParams.get('edition')
+      const lang = searchParams.get('lang') === 'so' ? 'so' : 'en'
+      const editionId = isTranslationEditionId(requestedEdition)
+        ? requestedEdition
+        : DEFAULT_TRANSLATION_EDITION[lang]
       const items = await fetchTranslationsForPage(page, editionId)
       return NextResponse.json(items)
     }

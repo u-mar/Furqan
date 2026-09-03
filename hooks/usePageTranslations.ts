@@ -9,18 +9,26 @@ export interface TranslationRow {
 }
 
 import { getOfflineTranslations } from '@/lib/offline-translations'
-import type { TranslationLanguageId } from '@/lib/translations'
+import {
+  DEFAULT_TRANSLATION_EDITION,
+  languageForEdition,
+  type TranslationLanguageId,
+} from '@/lib/translations'
 
 export function usePageTranslations(
   page: number,
   enabled: boolean,
   verseKeys: string[],
   arabicByKey: Record<string, string>,
-  translationLanguage: TranslationLanguageId = 'en'
+  translationLanguage: TranslationLanguageId = 'en',
+  editionId?: string
 ) {
   const [rows, setRows] = useState<TranslationRow[]>([])
   const [loading, setLoading] = useState(false)
   const requestSeqRef = useRef(0)
+  const activeEdition = editionId || DEFAULT_TRANSLATION_EDITION[translationLanguage]
+  /** Offline downloads only ever cache the language's default edition. */
+  const isDefaultEdition = activeEdition === DEFAULT_TRANSLATION_EDITION[translationLanguage]
 
   useEffect(() => {
     if (!enabled || page < 1) {
@@ -30,7 +38,7 @@ export function usePageTranslations(
 
     const seq = ++requestSeqRef.current
 
-    const cacheKey = `translations:v1:${translationLanguage}:page:${page}`
+    const cacheKey = `translations:v1:${activeEdition}:page:${page}`
     const onPage = new Set(verseKeys)
     const order = new Map(verseKeys.map((k, i) => [k, i]))
 
@@ -71,15 +79,19 @@ export function usePageTranslations(
     setLoading(true)
     void (async () => {
       try {
-        const offlineRows = await getOfflineTranslations(page, translationLanguage)
-        if (offlineRows && offlineRows.length > 0) {
-          const normalized = normalizeRows(offlineRows)
-          if (!cancelled && seq === requestSeqRef.current) setRows(normalized)
-          if (normalized.length > 0) writeCache(normalized)
-          return
+        if (isDefaultEdition) {
+          const offlineRows = await getOfflineTranslations(page, translationLanguage)
+          if (offlineRows && offlineRows.length > 0) {
+            const normalized = normalizeRows(offlineRows)
+            if (!cancelled && seq === requestSeqRef.current) setRows(normalized)
+            if (normalized.length > 0) writeCache(normalized)
+            return
+          }
         }
 
-        const response = await fetch(`/api/ayah?type=translations&page=${page}&lang=${translationLanguage}`)
+        const response = await fetch(
+          `/api/ayah?type=translations&page=${page}&lang=${languageForEdition(activeEdition)}&edition=${activeEdition}`
+        )
         const data = (await response.json()) as unknown
         if (!Array.isArray(data)) {
           if (!cancelled && seq === requestSeqRef.current && cachedRows.length === 0) setRows([])
@@ -98,7 +110,7 @@ export function usePageTranslations(
     return () => {
       cancelled = true
     }
-  }, [page, enabled, translationLanguage, verseKeys.join(','), JSON.stringify(arabicByKey)])
+  }, [page, enabled, translationLanguage, activeEdition, isDefaultEdition, verseKeys.join(','), JSON.stringify(arabicByKey)])
 
   const byKey = Object.fromEntries(rows.map((r) => [r.verse_key, r]))
 

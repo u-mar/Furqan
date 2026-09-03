@@ -12,10 +12,11 @@ import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
 import { getVerseByKey, getVersesByJuz } from '@/lib/quran'
-import { getVerseArabicText } from '@/lib/quran-display'
 import { JUZ_STARTS, revelationLabel } from '@/lib/mushaf'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
-import type { Chapter } from '@/types'
+import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
+import { versePageNumber } from '@/lib/qcf-page'
+import type { Chapter, Verse } from '@/types'
 
 type TopTab = 'chapters' | 'quarters'
 type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
@@ -35,7 +36,7 @@ interface ContentsDrawerProps {
   currentSurahId: number
   onClose: () => void
   onSelectSurah: (chapterId: number) => void
-  onGoToPage: (page: number) => void
+  onGoToPage: (page: number, verseKey?: string) => void
 }
 
 function ProgressRing({ progress }: { progress: number }) {
@@ -75,7 +76,7 @@ export default function ContentsDrawer({
   const [bottomNav, setBottomNav] = useState<BottomNav>('chapters')
   const [meta, setMeta] = useState<ChapterMeta[]>([])
   const [quarters, setQuarters] = useState<QuarterMarker[]>([])
-  const [previewText, setPreviewText] = useState<Record<string, string>>({})
+  const [previewVerse, setPreviewVerse] = useState<Record<string, Verse>>({})
   const [bookmarks, setBookmarks] = useState<AyahBookmark[]>([])
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function ContentsDrawer({
   useEffect(() => {
     if (!open || topTab !== 'quarters' || quarters.length === 0) return
     let cancelled = false
-    const missing = quarters.filter((q) => !previewText[q.verseKey])
+    const missing = quarters.filter((q) => !previewVerse[q.verseKey])
     const BATCH = 16
 
     void (async () => {
@@ -132,20 +133,19 @@ export default function ContentsDrawer({
           batch.map(async (q) => {
             try {
               const verse = await getVerseByKey(q.verseKey)
-              const text = getVerseArabicText(verse)
-              return text ? { key: q.verseKey, text } : null
+              return verse ? { key: q.verseKey, verse } : null
             } catch {
               return null
             }
           })
         )
         if (cancelled) return
-        const updates: Record<string, string> = {}
+        const updates: Record<string, Verse> = {}
         for (const row of results) {
-          if (row) updates[row.key] = row.text
+          if (row) updates[row.key] = row.verse
         }
         if (Object.keys(updates).length > 0) {
-          setPreviewText((prev) => ({ ...prev, ...updates }))
+          setPreviewVerse((prev) => ({ ...prev, ...updates }))
         }
       }
     })()
@@ -153,7 +153,7 @@ export default function ContentsDrawer({
     return () => {
       cancelled = true
     }
-  }, [open, topTab, quarters, previewText])
+  }, [open, topTab, quarters, previewVerse])
 
   useEffect(() => {
     if (!open || bottomNav !== 'bookmarks') return
@@ -331,8 +331,21 @@ export default function ContentsDrawer({
                         <button
                           type="button"
                           onClick={() => {
-                            onGoToPage(q.page)
                             onClose()
+                            const cached = previewVerse[q.verseKey]
+                            if (cached) {
+                              onGoToPage(versePageNumber(cached) || q.page, q.verseKey)
+                              return
+                            }
+                            onGoToPage(q.page, q.verseKey)
+                            void getVerseByKey(q.verseKey)
+                              .then((verse) => {
+                                const realPage = versePageNumber(verse)
+                                if (realPage > 0 && realPage !== q.page) {
+                                  onGoToPage(realPage, q.verseKey)
+                                }
+                              })
+                              .catch(() => {})
                           }}
                           className="flex w-full items-start gap-2 rounded-lg px-2 py-3 text-left hover:bg-white/5"
                         >
@@ -340,12 +353,19 @@ export default function ContentsDrawer({
                             <p className="text-xs font-medium text-teal-400">
                               Quarter {q.indexInJuz} starts at {q.verseKey}
                             </p>
-                            <p
-                              className="arabic-text mt-1 line-clamp-2 text-xl leading-snug text-white"
-                              dir="rtl"
-                            >
-                              {previewText[q.verseKey] || '…'}
-                            </p>
+                            {previewVerse[q.verseKey] ? (
+                              <QuarterAyahPreview
+                                verse={previewVerse[q.verseKey]}
+                                className="mt-1 line-clamp-2 text-xl leading-snug text-white"
+                              />
+                            ) : (
+                              <p
+                                className="arabic-text mt-1 line-clamp-2 text-xl leading-snug text-white"
+                                dir="rtl"
+                              >
+                                …
+                              </p>
+                            )}
                             <p className="mt-1 text-xs text-stone-500">
                               {q.surahName} · Ayah {q.ayah} · Page {q.page}
                             </p>

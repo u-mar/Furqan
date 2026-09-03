@@ -33,6 +33,7 @@ import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
 import AyahContextMenu, { type AyahMenuAnchor } from '@/components/read/AyahContextMenu'
 import MushafPageCarousel, { type PageSlideDirection } from '@/components/read/MushafPageCarousel'
+import GallerySwipeView from '@/components/read/GallerySwipeView'
 import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
 import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
@@ -105,10 +106,11 @@ function ReadPageContent() {
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { reciterId, translationLanguage, mushafWidth } = useAppSettings()
+  const { reciterId, translationLanguage, translationEditionId, mushafWidth } = useAppSettings()
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
   const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
+  const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
   const [ayahMenuAnchor, setAyahMenuAnchor] = useState<AyahMenuAnchor | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
@@ -144,6 +146,30 @@ function ReadPageContent() {
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
     prefetchMushafPages(page, 3)
   }, [])
+
+  const [neighborVerses, setNeighborVerses] = useState<{
+    page: number
+    prev: Verse[] | null
+    next: Verse[] | null
+  }>({ page: 0, prev: null, next: null })
+
+  // Pre-render the surrounding pages so a gallery-style drag can peek at
+  // them immediately, with no loading gap mid-swipe.
+  useEffect(() => {
+    if (showTranslation || verticalPages) return
+    let cancelled = false
+    void (async () => {
+      const [prev, next] = await Promise.all([
+        currentPage > 1 ? fetchVersesForPage(currentPage - 1) : Promise.resolve(null),
+        currentPage < TOTAL_MUSHAF_PAGES ? fetchVersesForPage(currentPage + 1) : Promise.resolve(null),
+      ])
+      if (cancelled) return
+      setNeighborVerses({ page: currentPage, prev, next })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [currentPage, showTranslation, verticalPages, fetchVersesForPage])
 
   useEffect(() => {
     let cancelled = false
@@ -315,7 +341,8 @@ function ReadPageContent() {
     Boolean(ayahMenu),
     pageVerses.map((v) => v.verse_key),
     arabicByKey,
-    translationLanguage
+    translationLanguage,
+    translationEditionId
   )
 
   const navigatePage = useCallback(
@@ -554,6 +581,7 @@ function ReadPageContent() {
       setSomaliAutoPlaying(false)
       const verse = pageVerses.find((v) => v.verse_key === verseKey)
       if (!verse) return
+      setNavSelectedVerseKey(null)
       setAyahMenu({
         verseKey,
         arabic: getVerseArabicText(verse),
@@ -613,7 +641,7 @@ function ReadPageContent() {
     setAyahMenuBookmarked(saved)
   }, [ayahMenu, chapters, currentPage, pageVerses])
 
-  const mushafSelectedVerseKey = ayahMenu?.verseKey ?? null
+  const mushafSelectedVerseKey = ayahMenu?.verseKey ?? navSelectedVerseKey
 
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
@@ -647,12 +675,22 @@ function ReadPageContent() {
   const goNextPage = useCallback(() => {
     const page = currentPageRef.current
     if (page < TOTAL_MUSHAF_PAGES) void navigatePage(page + 1)
+    setNavSelectedVerseKey(null)
   }, [navigatePage])
 
   const goPrevPage = useCallback(() => {
     const page = currentPageRef.current
     if (page > 1) void navigatePage(page - 1)
+    setNavSelectedVerseKey(null)
   }, [navigatePage])
+
+  const handleGoToPageFromDrawer = useCallback(
+    (page: number, verseKey?: string) => {
+      void navigatePage(page)
+      setNavSelectedVerseKey(verseKey ?? null)
+    },
+    [navigatePage]
+  )
 
   const mushafSwipe = useSwipe(
     verticalPages
@@ -858,8 +896,12 @@ function ReadPageContent() {
               )
         )}
         onClick={handleContentTap}
-        onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
-        onTouchEnd={pageSlide ? undefined : contentSwipe.onTouchEnd}
+        onTouchStart={
+          pageSlide || (!showTranslation && !verticalPages) ? undefined : contentSwipe.onTouchStart
+        }
+        onTouchEnd={
+          pageSlide || (!showTranslation && !verticalPages) ? undefined : contentSwipe.onTouchEnd
+        }
         role="presentation"
       >
         {showTranslation ? (
@@ -868,8 +910,10 @@ function ReadPageContent() {
             page={currentPage}
             chapters={chapters}
             translationLanguage={translationLanguage}
+            translationEditionId={translationEditionId}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={mushafSelectedVerseKey}
+            scrollToVerseKey={navSelectedVerseKey}
             scrollContainerRef={contentScrollRef}
             followPlaybackScroll={playbackActive}
             onAyahLongPress={handleAyahLongPress}
@@ -890,20 +934,24 @@ function ReadPageContent() {
             {renderMushafPage(pageVerses, currentPage)}
           </MushafPageCarousel>
         ) : (
-          <QuranPageView
-            verses={pageVerses}
-            chapterNamesById={chapterNamesById}
-            startVerseKey={startVerseKey}
-            revealableVerseKeys={pageVerseKeys}
-            revealedAyahs={pageVerseKeys}
-            onReveal={() => {}}
-            readOnly
-            readMode
-            pageNumber={currentPage}
-            highlightedVerseKey={highlightedVerseKey}
-            selectedVerseKey={mushafSelectedVerseKey}
-            onAyahLongPress={handleAyahLongPress}
-            suppressHighlightScroll
+          <GallerySwipeView
+            pageKey={currentPage}
+            current={renderMushafPage(pageVerses, currentPage)}
+            prev={
+              neighborVerses.page === currentPage && neighborVerses.prev
+                ? renderMushafPage(neighborVerses.prev, currentPage - 1)
+                : null
+            }
+            next={
+              neighborVerses.page === currentPage && neighborVerses.next
+                ? renderMushafPage(neighborVerses.next, currentPage + 1)
+                : null
+            }
+            onCommitNext={goNextPage}
+            onCommitPrev={goPrevPage}
+            onDragStart={() => {
+              didSwipe.current = true
+            }}
           />
         )}
       </div>
@@ -1049,9 +1097,11 @@ function ReadPageContent() {
               onChange={(e) => setSliderPage(Number(e.target.value))}
               onMouseUp={() => {
                 if (sliderPage !== currentPage) navigatePage(sliderPage)
+                setNavSelectedVerseKey(null)
               }}
               onTouchEnd={() => {
                 if (sliderPage !== currentPage) navigatePage(sliderPage)
+                setNavSelectedVerseKey(null)
               }}
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
               aria-label="Page slider"
@@ -1111,7 +1161,7 @@ function ReadPageContent() {
         currentSurahId={currentSurahNum}
         onClose={() => setDrawerOpen(false)}
         onSelectSurah={handleSelectSurah}
-        onGoToPage={navigatePage}
+        onGoToPage={handleGoToPageFromDrawer}
       />
 
       <AyahContextMenu
