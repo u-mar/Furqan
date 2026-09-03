@@ -292,26 +292,26 @@ html.sepia {
 }
 
 html.dark .mushaf-reader-immersive {
-  --mushaf-read-bg: #14110c;
-  --mushaf-read-text: #e7ddc9;
-  --mushaf-read-meta: #928778;
-  --mushaf-read-badge-bg: #221e16;
-  --mushaf-read-badge-text: #a89d89;
-  --mushaf-read-card-bg: rgba(255, 246, 226, 0.045);
-  --mushaf-read-card-border: rgba(255, 240, 214, 0.08);
-  --mushaf-read-chrome-bg: #1b1710;
-  --mushaf-read-chrome-border: rgba(255, 240, 214, 0.09);
+  --mushaf-read-bg: #1b1a18;
+  --mushaf-read-text: #f3f1ec;
+  --mushaf-read-meta: #8d8880;
+  --mushaf-read-badge-bg: #262523;
+  --mushaf-read-badge-text: #a8a29a;
+  --mushaf-read-card-bg: rgba(255, 252, 245, 0.05);
+  --mushaf-read-card-border: rgba(255, 250, 240, 0.09);
+  --mushaf-read-chrome-bg: #201f1d;
+  --mushaf-read-chrome-border: rgba(255, 250, 240, 0.1);
   --mushaf-read-accent: #57c2a9;
   --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
   --mushaf-read-highlight-bg: rgba(87, 194, 169, 0.12);
   --mushaf-read-highlight-border: rgba(87, 194, 169, 0.32);
   --mushaf-read-popup-bg: #221d15;
   --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
-  background-image: var(--mushaf-grain),
-    radial-gradient(150% 100% at 50% -18%, rgba(74, 58, 32, 0.32), transparent 55%);
-  background-size: 200px 200px, auto;
-  background-repeat: repeat, no-repeat;
-  background-blend-mode: overlay, normal;
+  /* Flat page at night — no bloom, just a whisper of grain. */
+  background-image: var(--mushaf-grain);
+  background-size: 200px 200px;
+  background-repeat: repeat;
+  background-blend-mode: overlay;
 }
 
 html.dark {
@@ -752,25 +752,27 @@ html.dark .mushaf-reader-immersive {
   opacity: 0.85;
 }
 
-/* Footer page plate (hizb/juz is announced by the boundary toast instead) */
+/* The fit grid stretches to fill the page, so reserve room at its foot for the
+   centred page pill — otherwise the 15th line sits underneath it. */
+.mushaf-reader-immersive .mushaf-root .mushaf-fit-grid {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.9rem);
+}
+
+/* Page-number pill, centred at the foot of the page (hizb/juz is announced by
+   the boundary toast instead). Thin outline, no fill — matches the mushaf. */
 .mushaf-page-plate {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--mushaf-ornament);
-  border-radius: 0.45rem;
-  background: var(--mushaf-ornament-fill);
+  min-width: 2.9rem;
+  border: 1px solid var(--mushaf-ornament-soft);
+  border-radius: 999px;
+  background: transparent;
   color: var(--mushaf-read-meta);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   line-height: 1;
-  padding: 0.32rem 0.7rem;
-  backdrop-filter: blur(2px);
-}
-
-.mushaf-page-plate {
-  min-width: 2.6rem;
-  color: var(--mushaf-read-text);
+  padding: 0.34rem 0.9rem;
 }
 
 .mushaf-translation-ayah--reciting,

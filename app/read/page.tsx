@@ -925,25 +925,16 @@ function ReadPageContent() {
         )}
       </div>
 
-      {/* Page footer — centered plate when framed, small badge when edge-to-edge */}
-      {!showTranslation &&
-        (framed ? (
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-center"
-            dir="ltr"
-            aria-hidden
-          >
-            <span className="mushaf-page-plate tabular-nums">{currentPage}</span>
-          </div>
-        ) : (
-          <div
-            className="mushaf-page-badge pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-5 z-10 rounded-md px-2.5 py-1 text-sm font-medium tabular-nums"
-            dir="ltr"
-            aria-hidden
-          >
-            {currentPage}
-          </div>
-        ))}
+      {/* Page number — centered pill at the bottom, in both page styles */}
+      {!showTranslation && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-center"
+          dir="ltr"
+          aria-hidden
+        >
+          <span className="mushaf-page-plate tabular-nums">{currentPage}</span>
+        </div>
+      )}
 
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header

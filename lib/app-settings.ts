@@ -40,7 +40,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
-  mushafFrame: 'framed',
+  mushafFrame: 'edge',
   offlineDownloaded: false,
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
@@ -56,7 +56,7 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
       : DEFAULT_RECITER_ID
   return {
     theme: isThemeMode(parsed.theme) ? parsed.theme : 'dark',
-    mushafFrame: isFrameMode(parsed.mushafFrame) ? parsed.mushafFrame : 'framed',
+    mushafFrame: isFrameMode(parsed.mushafFrame) ? parsed.mushafFrame : 'edge',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
     reciterId,
