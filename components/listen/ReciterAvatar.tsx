@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { reciterInitials, type Reciter } from '@/lib/reciters'
 
@@ -14,9 +14,10 @@ interface ReciterAvatarProps {
 }
 
 /**
- * Reciter portrait. Uses `/reciters/<id>.jpg` when the file exists, otherwise
- * falls back to a calligraphic initials tile in the reciter's accent gradient.
- * Drop photos into `public/reciters/` to light them up — no code change needed.
+ * Reciter portrait. Tries the reciter's `photoUrl` (way2quran.com) first, then
+ * a local override at `/reciters/<id>.jpg` (drop a file there to use it
+ * instead — no code change needed), and finally falls back to a calligraphic
+ * initials tile in the reciter's accent gradient.
  */
 export default function ReciterAvatar({
   reciter,
@@ -25,8 +26,17 @@ export default function ReciterAvatar({
   ring = false,
   square = false,
 }: ReciterAvatarProps) {
-  const [failed, setFailed] = useState(false)
+  const candidates = [reciter.photoUrl, `/reciters/${reciter.id}.jpg`].filter(
+    (url): url is string => Boolean(url)
+  )
+  const [attempt, setAttempt] = useState(0)
   const [from, to] = reciter.accent
+  const exhausted = attempt >= candidates.length
+
+  // Reset the attempt counter whenever we're asked to show a different reciter.
+  useEffect(() => {
+    setAttempt(0)
+  }, [reciter.id])
 
   return (
     <span
@@ -44,16 +54,18 @@ export default function ReciterAvatar({
         outlineOffset: ring ? 2 : undefined,
       }}
     >
-      {!failed && (
+      {!exhausted && (
         <img
-          src={`/reciters/${reciter.id}.jpg`}
+          key={candidates[attempt]}
+          src={candidates[attempt]}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
-          loading="lazy"
-          onError={() => setFailed(true)}
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setAttempt((a) => a + 1)}
         />
       )}
-      {failed && (
+      {exhausted && (
         <span
           className="relative font-bold text-white"
           style={{ fontSize: Math.max(11, size * 0.34) }}

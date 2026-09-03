@@ -15,11 +15,13 @@ import {
   RotateCw,
   Search,
   Shuffle,
+  Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { setAppSettings } from '@/lib/app-settings'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import ReciterPickerSheet from '@/components/listen/ReciterPickerSheet'
+import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { getQiraat, getReciterById, RECITERS } from '@/lib/reciters'
 import { filterChapters } from '@/lib/search-chapters'
 import { getChapters } from '@/lib/quran'
@@ -59,6 +61,7 @@ export default function ListenScreen() {
   const [isOffline, setIsOffline] = useState(false)
 
   const currentReciter = getReciterById(settings.listenReciterId)
+  const { favoriteIds, isFavorite, toggle: toggleFavorite } = useReciterFavorites()
 
   const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
     useSurahPlayer(currentReciter.id)
@@ -87,13 +90,21 @@ export default function ListenScreen() {
     [downloadedOnly, downloaded, filtered]
   )
 
-  const quickPicks = useMemo(
+  const favoriteReciters = useMemo(
     () =>
-      QUICK_PICK_IDS.map((id) => RECITERS.find((r) => r.id === id)).filter(
-        (r): r is NonNullable<typeof r> => Boolean(r)
-      ),
-    []
+      favoriteIds
+        .map((id) => RECITERS.find((r) => r.id === id))
+        .filter((r): r is NonNullable<typeof r> => Boolean(r)),
+    [favoriteIds]
   )
+
+  const usingFavorites = favoriteReciters.length > 0
+  const quickPicks = useMemo(() => {
+    if (favoriteReciters.length > 0) return favoriteReciters
+    return QUICK_PICK_IDS.map((id) => RECITERS.find((r) => r.id === id)).filter(
+      (r): r is NonNullable<typeof r> => Boolean(r)
+    )
+  }, [favoriteReciters])
 
   useEffect(() => {
     const next: Record<number, boolean> = {}
@@ -199,9 +210,31 @@ export default function ListenScreen() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--home-muted)]">
               Reciting
             </p>
-            <h1 className="home-serif mt-0.5 text-[1.7rem] font-semibold leading-[1.15] text-[var(--home-heading)]">
-              {currentReciter.name}
-            </h1>
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="home-serif mt-0.5 text-[1.7rem] font-semibold leading-[1.15] text-[var(--home-heading)]">
+                {currentReciter.name}
+              </h1>
+              <button
+                type="button"
+                onClick={() => toggleFavorite(currentReciter.id)}
+                className={cn(
+                  'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
+                  isFavorite(currentReciter.id)
+                    ? 'text-rose-500'
+                    : 'text-[var(--home-muted)] hover:text-rose-400'
+                )}
+                aria-label={
+                  isFavorite(currentReciter.id)
+                    ? `Remove ${currentReciter.name} from favorites`
+                    : `Add ${currentReciter.name} to favorites`
+                }
+                aria-pressed={isFavorite(currentReciter.id)}
+              >
+                <Heart
+                  className={cn('h-5 w-5', isFavorite(currentReciter.id) && 'fill-current')}
+                />
+              </button>
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span
                 className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
@@ -227,31 +260,60 @@ export default function ListenScreen() {
           </p>
         ) : null}
 
-        {/* Quick pick reciters */}
+        {/* Quick pick reciters — your favorites once you have some, else a
+            curated bench of well-known reciters */}
         <section className="reveal mb-5" style={{ animationDelay: '80ms' }}>
-          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
-            Popular reciters
-          </p>
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+              {usingFavorites && <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />}
+              {usingFavorites ? 'Your favorites' : 'Popular reciters'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="text-[11px] font-semibold text-[var(--home-sage-deep)]"
+            >
+              {usingFavorites ? 'Edit' : 'Browse all'}
+            </button>
+          </div>
           <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {quickPicks.map((r) => {
               const active = r.id === currentReciter.id
               return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => selectReciter(r.id)}
-                  className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
-                >
-                  <ReciterAvatar reciter={r} size={56} ring={active} />
-                  <span
-                    className={cn(
-                      'line-clamp-2 text-center text-[10px] font-medium leading-tight',
-                      active ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
-                    )}
+                <div key={r.id} className="relative flex w-[68px] shrink-0 flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => selectReciter(r.id)}
+                    className="flex flex-col items-center gap-1.5"
                   >
-                    {r.name.split(' ').slice(-1)[0]}
-                  </span>
-                </button>
+                    <ReciterAvatar reciter={r} size={56} ring={active} />
+                    <span
+                      className={cn(
+                        'line-clamp-2 text-center text-[10px] font-medium leading-tight',
+                        active ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
+                      )}
+                    >
+                      {r.name.split(' ').slice(-1)[0]}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFavorite(r.id)
+                    }}
+                    className={cn(
+                      'absolute right-1 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--app-bg)] shadow-sm transition-colors active:scale-90',
+                      isFavorite(r.id) ? 'text-rose-500' : 'text-[var(--home-muted)]'
+                    )}
+                    aria-label={
+                      isFavorite(r.id) ? `Remove ${r.name} from favorites` : `Add ${r.name} to favorites`
+                    }
+                    aria-pressed={isFavorite(r.id)}
+                  >
+                    <Heart className={cn('h-3 w-3', isFavorite(r.id) && 'fill-current')} />
+                  </button>
+                </div>
               )
             })}
           </div>
