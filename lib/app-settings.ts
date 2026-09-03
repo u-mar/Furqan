@@ -1,9 +1,9 @@
-export type ThemeMode = 'light' | 'sepia' | 'dark'
+export type ThemeMode = 'light' | 'dark' | 'black'
 
-export const THEME_MODES: ThemeMode[] = ['light', 'sepia', 'dark']
+export const THEME_MODES: ThemeMode[] = ['light', 'dark', 'black']
 
 function isThemeMode(value: unknown): value is ThemeMode {
-  return value === 'light' || value === 'sepia' || value === 'dark'
+  return value === 'light' || value === 'dark' || value === 'black'
 }
 
 /**
@@ -104,17 +104,18 @@ export function setAppSettings(patch: Partial<AppSettings>): AppSettings {
 export function applyThemeToDocument(theme: ThemeMode): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  root.classList.remove('dark', 'sepia')
-  if (theme === 'dark') {
+  root.classList.remove('dark', 'black')
+  if (theme === 'dark' || theme === 'black') {
+    // Black builds on the dark palette, then overrides it to pure black.
     root.classList.add('dark')
+    if (theme === 'black') root.classList.add('black')
     root.style.colorScheme = 'dark'
   } else {
-    if (theme === 'sepia') root.classList.add('sepia')
     root.style.colorScheme = 'light'
   }
 
-  // Sepia only re-skins the mushaf, so the app chrome colour stays the light one.
-  const themeColor = theme === 'dark' ? '#080b18' : '#f4f2fb'
+  const themeColor =
+    theme === 'black' ? '#000000' : theme === 'dark' ? '#080b18' : '#f4f2fb'
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')

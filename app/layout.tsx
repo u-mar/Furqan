@@ -73,7 +73,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='light'||s.theme==='sepia')?s.theme:'dark';var d=document.documentElement;d.classList.remove('dark','sepia');if(t==='dark'){d.classList.add('dark');d.style.colorScheme='dark';}else{if(t==='sepia'){d.classList.add('sepia');}d.style.colorScheme='light';}}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();`,
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='light'||s.theme==='black')?s.theme:'dark';var d=document.documentElement;d.classList.remove('dark','black');if(t==='light'){d.style.colorScheme='light';}else{d.classList.add('dark');if(t==='black'){d.classList.add('black');}d.style.colorScheme='dark';}}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();`,
           }}
         />
       </head>

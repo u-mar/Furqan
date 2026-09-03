@@ -101,9 +101,8 @@ html:not(.dark) {
   --hifdh-muted: #78716c;
 }
 
-/* Sepia is a *reading* theme only — the rest of the app keeps the light
-   palette (html.sepia still matches html:not(.dark)). The warm paper tones
-   are applied to `.mushaf-reader-immersive` further down. */
+/* Themes: light (default, no class), dark (.dark), and pure black
+   (.dark.black — see the AMOLED overrides further down). */
 
 html,
 body {
@@ -272,26 +271,46 @@ html:not(.dark) {
   --mushaf-read-popup-shadow: 0 12px 38px rgba(28, 26, 23, 0.18);
 }
 
-/* ---- Sepia reading theme — warm Madinah paper ---- */
-html.sepia .mushaf-reader-immersive {
-  --mushaf-read-bg: #f4ead0;
-  --mushaf-read-text: #2c2620;
-  --mushaf-read-meta: #8b7e66;
-  --mushaf-read-badge-bg: rgba(74, 58, 30, 0.09);
-  --mushaf-read-badge-text: #6c5f47;
-  --mushaf-read-card-bg: #faf3df;
-  --mushaf-read-card-border: rgba(74, 58, 30, 0.14);
-  --mushaf-read-chrome-bg: rgba(244, 234, 208, 0.94);
-  --mushaf-read-chrome-border: rgba(74, 58, 30, 0.11);
-  --mushaf-read-popup-bg: #f9f1da;
-  --mushaf-read-popup-border: rgba(74, 58, 30, 0.22);
+/* ---- Pure black (AMOLED) — builds on .dark, then flattens to true black ---- */
+html.dark.black {
+  --app-bg: #000000;
+  --app-surface: #0b0b0b;
+  --app-border: rgba(255, 255, 255, 0.1);
+  --home-card-bg: #0d0d0d;
+  --home-card-border: rgba(255, 255, 255, 0.09);
+  --home-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --home-track: #1c1c1c;
+  --home-location-bg: #0b0b0b;
+  --home-glow: none;
+  --hifdh-bg: #000000;
+  --hifdh-surface: #0b0b0b;
 }
 
-html.sepia {
-  --mushaf-read-popup-bg: #f9f1da;
-  --mushaf-read-popup-border: rgba(74, 58, 30, 0.2);
-  --mushaf-read-popup-text: #2c2620;
-  --mushaf-read-popup-shadow: 0 12px 38px rgba(74, 58, 30, 0.2);
+/* .dark.black beats the plain .dark reader rule regardless of source order. */
+html.dark.black .mushaf-reader-immersive {
+  --mushaf-read-bg: #000000;
+  --mushaf-read-text: #f6f6f6;
+  --mushaf-read-meta: #8c8c8c;
+  --mushaf-read-badge-bg: #141414;
+  --mushaf-read-badge-text: #a6a6a6;
+  --mushaf-read-card-bg: rgba(255, 255, 255, 0.05);
+  --mushaf-read-card-border: rgba(255, 255, 255, 0.1);
+  --mushaf-read-chrome-bg: #0b0b0b;
+  --mushaf-read-chrome-border: rgba(255, 255, 255, 0.1);
+  --mushaf-read-popup-bg: #121212;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.16);
+  --mushaf-ornament: rgba(255, 255, 255, 0.3);
+  --mushaf-ornament-soft: rgba(255, 255, 255, 0.16);
+  --mushaf-ornament-fill: rgba(255, 255, 255, 0.05);
+  /* Keep the page perfectly flat — no grain or bloom on true black. */
+  background-image: none;
+}
+
+html.dark.black {
+  --mushaf-read-popup-bg: #121212;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.16);
+  --mushaf-read-popup-text: #f6f6f6;
+  --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
 }
 
 html.dark .mushaf-reader-immersive {
@@ -772,6 +791,11 @@ html.dark .mushaf-reader-immersive {
    centred page pill — otherwise the 15th line sits underneath it. */
 .mushaf-reader-immersive .mushaf-root .mushaf-fit-grid {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2.3rem);
+  /* The grid's column track otherwise grows to the widest (nowrap) line and
+     spills past the container, which pushes every line off-centre. minmax(0,1fr)
+     pins the track to the container so lines stay centred and the fit measures
+     the real width. */
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Page-number pill, centred at the foot of the page (hizb/juz is announced by

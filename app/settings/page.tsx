@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Download, CheckCircle2, Sun, Moon, BookOpen } from 'lucide-react'
+import { ChevronLeft, Download, CheckCircle2, Sun, Moon, Circle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
@@ -341,8 +341,8 @@ export default function SettingsPage() {
             {(
               [
                 { mode: 'light' as ThemeMode, Icon: Sun, label: 'Light' },
-                { mode: 'sepia' as ThemeMode, Icon: BookOpen, label: 'Sepia' },
                 { mode: 'dark' as ThemeMode, Icon: Moon, label: 'Dark' },
+                { mode: 'black' as ThemeMode, Icon: Circle, label: 'Black' },
               ] as const
             ).map(({ mode, Icon, label }) => (
               <button
@@ -363,10 +363,10 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-[var(--home-muted)]">
-            <strong className="text-[var(--home-heading)]">Sepia</strong> only changes the mushaf —
-            a warm Madinah-paper page, while the rest of the app stays light.{' '}
-            <strong className="text-[var(--home-heading)]">Light</strong> gives a clean white page and{' '}
-            <strong className="text-[var(--home-heading)]">Dark</strong> a soft night page.
+            <strong className="text-[var(--home-heading)]">Light</strong> gives a clean white page,{' '}
+            <strong className="text-[var(--home-heading)]">Dark</strong> a soft night page, and{' '}
+            <strong className="text-[var(--home-heading)]">Black</strong> a true black page — easiest
+            on the eyes at night and kinder to OLED battery.
           </p>
         </section>
 
