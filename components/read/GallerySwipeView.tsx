@@ -115,7 +115,10 @@ export default function GallerySwipeView({
       const atStart = dx > 0 && !prev
       const atEnd = dx < 0 && !next
       const effectiveDx = atStart || atEnd ? dx * 0.3 : dx
-      setTransform(effectiveDx, false)
+      // Mirrored for Arabic reading: dragging left still advances to the
+      // next page, but the next page enters from the left (like turning a
+      // physical Arabic book page) rather than from the right.
+      setTransform(-effectiveDx, false)
     },
     [prev, next, onDragStart, setTransform]
   )
@@ -140,7 +143,7 @@ export default function GallerySwipeView({
 
     setSettling(true)
     if (shouldCommit) {
-      setTransform(goingNext ? -g.width : g.width, true)
+      setTransform(goingNext ? g.width : -g.width, true)
       window.setTimeout(() => {
         if (goingNext) onCommitNext()
         else onCommitPrev()
@@ -162,9 +165,10 @@ export default function GallerySwipeView({
         onTouchEnd={finishGesture}
         onTouchCancel={finishGesture}
       >
-        {prev ? <div className="absolute inset-y-0 right-full h-full w-full">{prev}</div> : null}
+        {/* Mirrored slots: next sits physically to the left, prev to the right. */}
+        {next ? <div className="absolute inset-y-0 right-full h-full w-full">{next}</div> : null}
         <div className="absolute inset-0 h-full w-full">{current}</div>
-        {next ? <div className="absolute inset-y-0 left-full h-full w-full">{next}</div> : null}
+        {prev ? <div className="absolute inset-y-0 left-full h-full w-full">{prev}</div> : null}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Download, CheckCircle2, Sun, Moon, Circle } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Download, CheckCircle2, Sun, Moon, Circle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
@@ -116,6 +116,7 @@ export default function SettingsPage() {
   const [translationEditionId, setTranslationEditionId] = useState<string>(
     DEFAULT_TRANSLATION_EDITION.en
   )
+  const [translatorPickerOpen, setTranslatorPickerOpen] = useState(false)
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -187,6 +188,7 @@ export default function SettingsPage() {
     setTranslationLanguage(next)
     setTranslationEditionId(nextEdition)
     setAppSettings({ translationLanguage: next, translationEditionId: nextEdition })
+    setTranslatorPickerOpen(false)
   }
 
   function saveTranslationEdition(next: string) {
@@ -454,26 +456,48 @@ export default function SettingsPage() {
           <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
             Translator
           </p>
-          <div className="space-y-2">
-            {translationsForLanguage(translationLanguage).map((option) => (
-              <SettingsRow
-                key={option.id}
-                title={option.label}
-                description={
-                  option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
-                    ? 'Also available offline'
-                    : 'Online only'
-                }
-                selected={translationEditionId === option.id}
-                onClick={() => saveTranslationEdition(option.id)}
-              />
-            ))}
-          </div>
-          {translationsForLanguage(translationLanguage).length === 1 && (
-            <p className="mt-2 text-xs text-[var(--home-muted)]">
-              Only one {translationLanguageLabel(translationLanguage)} translation is available
-              right now.
-            </p>
+          <button
+            type="button"
+            onClick={() => setTranslatorPickerOpen((v) => !v)}
+            className="flex min-h-[56px] w-full items-center justify-between rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3.5 text-left shadow-[var(--home-card-shadow)] transition-all active:scale-[0.99]"
+            aria-expanded={translatorPickerOpen}
+          >
+            <span>
+              <p className="font-semibold text-[var(--home-heading)]">
+                {getTranslationOption(translationEditionId).label}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">
+                {translationsForLanguage(translationLanguage).length === 1
+                  ? `Only one ${translationLanguageLabel(translationLanguage)} translation is available`
+                  : 'Tap to change translator'}
+              </p>
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform',
+                translatorPickerOpen && 'rotate-180'
+              )}
+            />
+          </button>
+          {translatorPickerOpen && (
+            <div className="mt-2 space-y-2">
+              {translationsForLanguage(translationLanguage).map((option) => (
+                <SettingsRow
+                  key={option.id}
+                  title={option.label}
+                  description={
+                    option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
+                      ? 'Also available offline'
+                      : 'Online only'
+                  }
+                  selected={translationEditionId === option.id}
+                  onClick={() => {
+                    saveTranslationEdition(option.id)
+                    setTranslatorPickerOpen(false)
+                  }}
+                />
+              ))}
+            </div>
           )}
           <p className="mt-3 text-xs text-[var(--home-muted)]">
             Used in Read translation mode and when you long-press an ayah.
