@@ -10,6 +10,7 @@ import {
   applyThemeToDocument,
   getAppSettings,
   setAppSettings,
+  type MushafFrameMode,
   type ThemeMode,
 } from '@/lib/app-settings'
 import {
@@ -107,6 +108,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export default function SettingsPage() {
   const [returnHref, setReturnHref] = useState('/')
   const [theme, setTheme] = useState<ThemeMode>('dark')
+  const [mushafFrame, setMushafFrame] = useState<MushafFrameMode>('framed')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
@@ -136,6 +138,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const s = getAppSettings()
     setTheme(s.theme)
+    setMushafFrame(s.mushafFrame)
     setTranslationLanguage(s.translationLanguage)
     setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
@@ -360,10 +363,52 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-[var(--home-muted)]">
-            <strong className="text-[var(--home-heading)]">Sepia</strong> gives the mushaf a warm
-            Madinah-paper page, <strong className="text-[var(--home-heading)]">Light</strong> a clean
-            white one, and <strong className="text-[var(--home-heading)]">Dark</strong> a soft night
-            page.
+            <strong className="text-[var(--home-heading)]">Sepia</strong> only changes the mushaf —
+            a warm Madinah-paper page, while the rest of the app stays light.{' '}
+            <strong className="text-[var(--home-heading)]">Light</strong> gives a clean white page and{' '}
+            <strong className="text-[var(--home-heading)]">Dark</strong> a soft night page.
+          </p>
+        </section>
+
+        <section className="mb-8">
+          <SectionTitle>Mushaf page</SectionTitle>
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
+            {(
+              [
+                { mode: 'framed' as MushafFrameMode, label: 'Framed', hint: 'Printed page' },
+                { mode: 'edge' as MushafFrameMode, label: 'Full page', hint: 'Edge to edge' },
+              ] as const
+            ).map(({ mode, label, hint }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setMushafFrame(mode)
+                  setAppSettings({ mushafFrame: mode })
+                }}
+                className={cn(
+                  'flex min-h-[64px] flex-col items-center justify-center gap-0.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
+                  mushafFrame === mode
+                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
+                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
+                )}
+                aria-pressed={mushafFrame === mode}
+              >
+                {label}
+                <span
+                  className={cn(
+                    'text-[10px] font-medium',
+                    mushafFrame === mode ? 'text-white/70' : 'text-[var(--home-muted)]'
+                  )}
+                >
+                  {hint}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-[var(--home-muted)]">
+            <strong className="text-[var(--home-heading)]">Framed</strong> borders the page like a
+            printed mushaf, with an ornamental surah band and a centred page plate.
           </p>
         </section>
 

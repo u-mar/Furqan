@@ -105,7 +105,8 @@ function ReadPageContent() {
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { reciterId, translationLanguage } = useAppSettings()
+  const { reciterId, translationLanguage, mushafFrame } = useAppSettings()
+  const framed = mushafFrame === 'framed'
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
   const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
@@ -439,7 +440,15 @@ function ReadPageContent() {
   )
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
-  const juzPart = juzForChapter(currentSurahNum)
+  /**
+   * Juz shown in the page header. Taken from the verses actually on this page
+   * (`juz_number`), not from the surah — a surah can span several juz, so the
+   * per-chapter lookup reported the wrong part on most pages.
+   */
+  const juzPart = useMemo(() => {
+    const fromPage = pageVerses.find((v) => typeof v.juz_number === 'number')?.juz_number
+    return fromPage ?? juzForChapter(currentSurahNum)
+  }, [pageVerses, currentSurahNum])
   const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
   const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying
 
@@ -840,7 +849,10 @@ function ReadPageContent() {
           'relative min-h-0 flex-1',
           showTranslation
             ? 'overflow-y-auto overscroll-contain px-4 pb-36'
-            : 'mushaf-read-scroll-lock overflow-hidden overscroll-none px-1 pb-4 sm:px-2'
+            : cn(
+                'mushaf-read-scroll-lock overflow-hidden overscroll-none pb-4',
+                framed ? 'mushaf-framed px-1.5' : 'px-1 sm:px-2'
+              )
         )}
         onClick={handleContentTap}
         onTouchStart={pageSlide ? undefined : contentSwipe.onTouchStart}
@@ -874,6 +886,26 @@ function ReadPageContent() {
           >
             {renderMushafPage(pageVerses, currentPage)}
           </MushafPageCarousel>
+        ) : framed ? (
+          <div className="mushaf-frame">
+            <div className="mushaf-frame__inner">
+              <QuranPageView
+                verses={pageVerses}
+                chapterNamesById={chapterNamesById}
+                startVerseKey={startVerseKey}
+                revealableVerseKeys={pageVerseKeys}
+                revealedAyahs={pageVerseKeys}
+                onReveal={() => {}}
+                readOnly
+                readMode
+                pageNumber={currentPage}
+                highlightedVerseKey={highlightedVerseKey}
+                selectedVerseKey={mushafSelectedVerseKey}
+                onAyahLongPress={handleAyahLongPress}
+                suppressHighlightScroll
+              />
+            </div>
+          </div>
         ) : (
           <QuranPageView
             verses={pageVerses}
@@ -893,16 +925,25 @@ function ReadPageContent() {
         )}
       </div>
 
-      {/* Page badge — bottom left */}
-      {!showTranslation && (
-        <div
-          className="mushaf-page-badge pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-5 z-10 rounded-md px-2.5 py-1 text-sm font-medium tabular-nums"
-          dir="ltr"
-          aria-hidden
-        >
-          {currentPage}
-        </div>
-      )}
+      {/* Page footer — centered plate when framed, small badge when edge-to-edge */}
+      {!showTranslation &&
+        (framed ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-center"
+            dir="ltr"
+            aria-hidden
+          >
+            <span className="mushaf-page-plate tabular-nums">{currentPage}</span>
+          </div>
+        ) : (
+          <div
+            className="mushaf-page-badge pointer-events-none absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-5 z-10 rounded-md px-2.5 py-1 text-sm font-medium tabular-nums"
+            dir="ltr"
+            aria-hidden
+          >
+            {currentPage}
+          </div>
+        ))}
 
       {/* Expanded chrome (menu, slider) — tap screen to toggle */}
       <header

@@ -101,39 +101,9 @@ html:not(.dark) {
   --hifdh-muted: #78716c;
 }
 
-/* ---- Sepia app theme — warm paper tones with bronze/gold accents ---- */
-html.sepia {
-  color-scheme: light;
-  --app-bg: #f6eed8;
-  --app-surface: #fffaef;
-  --app-border: rgba(74, 58, 30, 0.14);
-  --app-text: #2c2620;
-  --app-muted: #7d7259;
-  --home-glow: radial-gradient(72% 46% at 50% -8%, rgba(154, 112, 36, 0.14), transparent 72%),
-    radial-gradient(42% 30% at 92% 0%, rgba(120, 88, 40, 0.1), transparent 70%);
-  --home-card-bg: #fffaef;
-  --home-card-border: rgba(74, 58, 30, 0.12);
-  --home-card-shadow: 0 16px 38px -18px rgba(74, 58, 30, 0.3);
-  --home-track: #e8dcc0;
-  --home-location-bg: #f2e7cd;
-  --home-heading: #2a241c;
-  --home-muted: #7d7259;
-  --home-sage: #b8892e;
-  --home-sage-deep: #9a7024;
-  --home-sage-dark: #6b4d16;
-  --home-sage-soft: rgba(184, 137, 46, 0.16);
-  --home-sage-gradient: linear-gradient(150deg, #3d2f18 0%, #6b5124 48%, #96702a 100%);
-  --hifdh-bg: #f6eed8;
-  --hifdh-surface: #fffaef;
-  --hifdh-border: rgba(74, 58, 30, 0.14);
-  --hifdh-text: #2c2620;
-  --hifdh-muted: #7d7259;
-}
-
-html.sepia .home-screen {
-  --home-card-shadow: 0 14px 36px -16px rgba(74, 58, 30, 0.3);
-  --home-card-border: rgba(74, 58, 30, 0.12);
-}
+/* Sepia is a *reading* theme only — the rest of the app keeps the light
+   palette (html.sepia still matches html:not(.dark)). The warm paper tones
+   are applied to `.mushaf-reader-immersive` further down. */
 
 html,
 body {
@@ -714,6 +684,93 @@ html:not(.dark) .mushaf-line--selected {
 .mushaf-page-badge {
   background: var(--mushaf-read-badge-bg);
   color: var(--mushaf-read-badge-text);
+}
+
+/* ======================================================================
+   Framed mushaf page — printed-mushaf presentation with a double rule,
+   an ornamental surah band, and a centred hizb/page footer.
+   ====================================================================== */
+.mushaf-reader-immersive {
+  --mushaf-ornament: rgba(120, 92, 44, 0.5);
+  --mushaf-ornament-soft: rgba(120, 92, 44, 0.24);
+  --mushaf-ornament-fill: rgba(180, 145, 80, 0.09);
+}
+
+html.dark .mushaf-reader-immersive {
+  --mushaf-ornament: rgba(255, 240, 214, 0.3);
+  --mushaf-ornament-soft: rgba(255, 240, 214, 0.15);
+  --mushaf-ornament-fill: rgba(255, 240, 214, 0.05);
+}
+
+.mushaf-frame {
+  height: 100%;
+  border: 1px solid var(--mushaf-ornament);
+  border-radius: 0.7rem;
+  padding: 2px;
+}
+
+.mushaf-frame__inner {
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--mushaf-ornament-soft);
+  border-radius: 0.5rem;
+  padding: 2px;
+}
+
+/* The QCF lines are `nowrap` and sized from viewport height, so the frame's
+   chrome would clip them. Give the width back by tightening the page's own
+   padding while framed (net line width ends up slightly wider than edge mode). */
+.mushaf-framed .mushaf-root .mushaf-fit-grid {
+  padding-block: clamp(4px, 1dvh, 12px);
+  padding-left: max(clamp(8px, 2.4vw, 18px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(9px, 2.6vw, 20px), env(safe-area-inset-right, 0px));
+}
+
+/* Ornamental band around the surah name, like the printed mushaf header.
+   Covers both render paths: QCF glyph lines and the plain fallback. */
+.mushaf-framed .mushaf-qcf-line__surah-name,
+.mushaf-framed span.surah-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.02em 0.85em;
+  border: 1px solid var(--mushaf-ornament);
+  border-radius: 0.35rem;
+  background: var(--mushaf-ornament-fill);
+}
+
+.mushaf-framed .mushaf-qcf-line__surah-name::before,
+.mushaf-framed .mushaf-qcf-line__surah-name::after,
+.mushaf-framed span.surah-header::before,
+.mushaf-framed span.surah-header::after {
+  content: '❁';
+  font-family: serif;
+  font-size: 0.42em;
+  line-height: 1;
+  color: var(--mushaf-ornament);
+  opacity: 0.85;
+}
+
+/* Footer page plate (hizb/juz is announced by the boundary toast instead) */
+.mushaf-page-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mushaf-ornament);
+  border-radius: 0.45rem;
+  background: var(--mushaf-ornament-fill);
+  color: var(--mushaf-read-meta);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.32rem 0.7rem;
+  backdrop-filter: blur(2px);
+}
+
+.mushaf-page-plate {
+  min-width: 2.6rem;
+  color: var(--mushaf-read-text);
 }
 
 .mushaf-translation-ayah--reciting,

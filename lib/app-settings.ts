@@ -6,8 +6,17 @@ function isThemeMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'sepia' || value === 'dark'
 }
 
+/** How the mushaf page is presented: edge-to-edge, or inside a printed-style frame. */
+export type MushafFrameMode = 'edge' | 'framed'
+
+function isFrameMode(value: unknown): value is MushafFrameMode {
+  return value === 'edge' || value === 'framed'
+}
+
 export interface AppSettings {
   theme: ThemeMode
+  /** Mushaf page presentation style. */
+  mushafFrame: MushafFrameMode
   offlineDownloaded: boolean
   translationsDownloaded: boolean
   /** Reciter for ayah-by-ayah audio (Read highlighting, Imitate). */
@@ -31,6 +40,7 @@ import {
 
 const defaults: AppSettings = {
   theme: 'dark',
+  mushafFrame: 'framed',
   offlineDownloaded: false,
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
@@ -46,6 +56,7 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
       : DEFAULT_RECITER_ID
   return {
     theme: isThemeMode(parsed.theme) ? parsed.theme : 'dark',
+    mushafFrame: isFrameMode(parsed.mushafFrame) ? parsed.mushafFrame : 'framed',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
     reciterId,
@@ -98,8 +109,8 @@ export function applyThemeToDocument(theme: ThemeMode): void {
     root.style.colorScheme = 'light'
   }
 
-  const themeColor =
-    theme === 'dark' ? '#080b18' : theme === 'sepia' ? '#f4ead0' : '#f7f7fb'
+  // Sepia only re-skins the mushaf, so the app chrome colour stays the light one.
+  const themeColor = theme === 'dark' ? '#080b18' : '#f4f2fb'
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')
