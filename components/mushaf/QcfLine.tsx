@@ -34,6 +34,7 @@ function QcfSegment({
       data-verse-key={segment.verseKey}
       className={cn(
         'mushaf-qcf-segment',
+        segment.isEnd && 'mushaf-qcf-segment--end',
         (onLongPress || onSelect) && 'mushaf-qcf-segment--pressable',
         isReciting && 'mushaf-qcf-segment--reciting',
         isSelected && 'mushaf-qcf-segment--selected'

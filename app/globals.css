@@ -548,6 +548,13 @@ html.dark .mushaf-fit-line {
   vertical-align: -0.1em;
 }
 
+/* Light theme only — a muted antique gold for the verse-number ornament,
+   distinct from the ink but soft enough not to pull focus while reading. */
+html:not(.dark) .mushaf-ayah-end,
+html:not(.dark) .mushaf-qcf-segment--end {
+  color: #9c7a2e;
+}
+
 .mushaf-ayah-stop {
   display: inline;
   margin-inline: 0.12em;

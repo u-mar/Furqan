@@ -8,6 +8,8 @@ const LINES_PER_PAGE = 15
 export interface QcfPageSegment {
   verseKey: string
   text: string
+  /** True when this segment is just the ayah-end ornament glyph. */
+  isEnd?: boolean
 }
 
 export interface QcfPageLine {
@@ -25,10 +27,12 @@ function mergeAdjacentSegments(segments: QcfPageSegment[]): QcfPageSegment[] {
   const merged: QcfPageSegment[] = []
   for (const seg of segments) {
     const last = merged[merged.length - 1]
-    if (last && last.verseKey === seg.verseKey) {
+    // Never merge across an ayah-end glyph — it stays its own segment so the
+    // UI can style the ornament separately from the surrounding ayah text.
+    if (last && last.verseKey === seg.verseKey && !last.isEnd && !seg.isEnd) {
       last.text += seg.text
     } else {
-      merged.push({ verseKey: seg.verseKey, text: seg.text })
+      merged.push({ verseKey: seg.verseKey, text: seg.text, isEnd: seg.isEnd })
     }
   }
   return merged
@@ -76,6 +80,7 @@ export function buildQcfPageLayout(verses: Verse[], pageNumber: number): QcfPage
       line.segments.map((segment) => ({
         verseKey: segment.verseKey,
         text: segment.codeV2,
+        isEnd: segment.isEnd,
       }))
     ),
     verseKeys: line.verseKeys,
