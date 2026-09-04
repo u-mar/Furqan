@@ -492,13 +492,6 @@ export default function SettingsPage() {
               )
             })}
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
-            <strong className="font-semibold text-[var(--home-heading)]">Light</strong> is a paper
-            page, <strong className="font-semibold text-[var(--home-heading)]">Dark</strong> a soft
-            night page, and{' '}
-            <strong className="font-semibold text-[var(--home-heading)]">Black</strong> true black —
-            easiest on the eyes at night and kinder to OLED battery.
-          </p>
         </section>
 
         {/* Mushaf page */}
@@ -561,12 +554,6 @@ export default function SettingsPage() {
               )
             })}
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
-            <strong className="font-semibold text-[var(--home-heading)]">Full width</strong> runs
-            the lines to the edges so the script is larger.{' '}
-            <strong className="font-semibold text-[var(--home-heading)]">Spaced</strong> keeps
-            margins on the sides, which makes it smaller.
-          </p>
         </section>
 
         {/* Translation */}

@@ -5,6 +5,7 @@ import { Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { IconCrescent, IconOrnament } from '@/components/home/TileIcons'
 import { APP_NAME } from '@/lib/app-brand'
+import { formatHijri } from '@/lib/hijri'
 
 function formatGregorian(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -12,23 +13,6 @@ function formatGregorian(date: Date): string {
     day: 'numeric',
     month: 'long',
   }).format(date)
-}
-
-function formatHijri(date: Date): string {
-  try {
-    return new Intl.DateTimeFormat('en-TN-u-ca-islamic-umalqura', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date)
-  } catch {
-    return new Intl.DateTimeFormat('en', {
-      calendar: 'islamic',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date)
-  }
 }
 
 export default function HomeHero({ displayName }: { displayName: string }) {
@@ -63,10 +47,7 @@ export default function HomeHero({ displayName }: { displayName: string }) {
         >
           ٱلسَّلَامُ عَلَيْكُمْ
         </p>
-        <p className="home-serif mt-2 text-[0.95rem] italic text-[var(--home-muted)]">
-          Peace be upon you,
-        </p>
-        <h1 className="home-serif mt-1 truncate text-[2.9rem] font-medium leading-[1.02] tracking-[-0.025em] text-[var(--home-heading)]">
+        <h1 className="home-serif mt-3 truncate text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.025em] text-[var(--home-heading)]">
           {displayName}
         </h1>
       </div>

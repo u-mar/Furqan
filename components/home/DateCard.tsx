@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { IconCrescent } from '@/components/home/TileIcons'
 import { getSavedLocation, requestUserLocation, type UserLocation } from '@/lib/location'
+import { formatHijri } from '@/lib/hijri'
 
 function formatGregorian(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -12,20 +13,6 @@ function formatGregorian(date: Date): string {
     day: 'numeric',
     month: 'long',
   }).format(date)
-}
-
-function formatHijri(date: Date): string {
-  try {
-    return new Intl.DateTimeFormat('en', {
-      calendar: 'islamic-umalqura',
-      day: 'numeric',
-      month: 'long',
-    }).format(date)
-  } catch {
-    return new Intl.DateTimeFormat('en', { calendar: 'islamic', day: 'numeric', month: 'long' }).format(
-      date
-    )
-  }
 }
 
 export default function DateCard({ className }: { className?: string }) {
