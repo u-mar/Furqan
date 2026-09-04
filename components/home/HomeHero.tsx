@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { IconCrescent, IconOrnament } from '@/components/home/TileIcons'
+import { APP_NAME } from '@/lib/app-brand'
 
 function formatGregorian(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -29,37 +31,6 @@ function formatHijri(date: Date): string {
   }
 }
 
-/** Ornamental eight-point-star lattice behind the greeting. */
-function HeroPattern() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.16]"
-      viewBox="0 0 400 240"
-      fill="none"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-    >
-      <defs>
-        <pattern
-          id="hero-stars"
-          width="48"
-          height="48"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(15)"
-        >
-          <path
-            d="M24 4l3 12 12 3-12 3-3 12-3-12-12-3 12-3 3-12z"
-            stroke="#f4d59b"
-            strokeWidth="1"
-            fill="none"
-          />
-        </pattern>
-      </defs>
-      <rect width="400" height="240" fill="url(#hero-stars)" />
-    </svg>
-  )
-}
-
 export default function HomeHero({ displayName }: { displayName: string }) {
   const [hijri, setHijri] = useState('')
   const [gregorian, setGregorian] = useState('')
@@ -71,63 +42,47 @@ export default function HomeHero({ displayName }: { displayName: string }) {
   }, [])
 
   return (
-    <header className="reveal mb-7">
-      <div
-        className="gold-sheen relative overflow-hidden rounded-[1.9rem] px-5 pb-6 pt-5 text-white shadow-[0_26px_60px_-20px_rgba(58,42,128,0.85)] ring-1 ring-white/10"
-        style={{ background: 'var(--home-sage-gradient)' }}
-      >
-        <HeroPattern />
-        {/* light blooms */}
-        <div
-          className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#e2ab53]/25 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-[#6a4bd0]/40 blur-3xl"
-          aria-hidden
-        />
+    <header className="reveal mb-9">
+      {/* Masthead */}
+      <div className="flex items-center justify-between gap-4">
+        <p className="ed-label">{APP_NAME}</p>
+        <Link
+          href="/settings"
+          className="ed-focus flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
+          aria-label="Open settings"
+        >
+          <Settings2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
+        </Link>
+      </div>
 
-        <div className="relative">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="amiri !text-left text-[1.35rem] leading-none text-[#f4d59b]" dir="rtl">
-                ٱلسَّلَامُ عَلَيْكُمْ
-              </p>
-              <p className="mt-2 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-white/55">
-                Peace be upon you
-              </p>
-            </div>
-            <Link
-              href="/settings"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-white/12 text-white ring-1 ring-white/15 backdrop-blur-sm transition-all hover:bg-white/22 active:scale-95"
-              aria-label="Open settings"
-            >
-              <Settings2 className="h-5 w-5" strokeWidth={1.9} />
-            </Link>
-          </div>
+      {/* Greeting */}
+      <div className="mt-7">
+        <p
+          className="amiri !text-left text-[1.6rem] leading-none text-[var(--home-sage-deep)]"
+          dir="rtl"
+        >
+          ٱلسَّلَامُ عَلَيْكُمْ
+        </p>
+        <p className="home-serif mt-2 text-[0.95rem] italic text-[var(--home-muted)]">
+          Peace be upon you,
+        </p>
+        <h1 className="home-serif mt-1 truncate text-[2.9rem] font-medium leading-[1.02] tracking-[-0.025em] text-[var(--home-heading)]">
+          {displayName}
+        </h1>
+      </div>
 
-          <h1 className="home-serif mt-3.5 truncate text-[2.5rem] font-semibold leading-[1.05] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.28)]">
-            {displayName}
-          </h1>
-
-          <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/10 px-3.5 py-3 ring-1 ring-white/12 backdrop-blur-md">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-[#2a2258] shadow-[0_6px_16px_-6px_rgba(226,171,83,0.8)]">
-              {/* crescent moon */}
-              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-                <path
-                  fill="currentColor"
-                  d="M15.5 2a9.5 9.5 0 1 0 6.5 16.4A7.5 7.5 0 0 1 13 6.6 9.5 9.5 0 0 1 15.5 2z"
-                />
-              </svg>
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-white">
-                {hijri || '…'}
-              </span>
-              <span className="block truncate text-xs text-white/65">{gregorian || '…'}</span>
-            </span>
-          </div>
-        </div>
+      {/* Dateline */}
+      <div className="mt-7 flex items-center gap-3">
+        <span className="ed-rule flex-1" />
+        <IconOrnament className="h-3 w-3 text-[var(--home-sage)]" />
+        <span className="ed-rule flex-1" />
+      </div>
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="flex items-center gap-2 text-[var(--home-heading)]">
+          <IconCrescent className="h-3.5 w-3.5 text-[var(--home-sage)]" />
+          <span className="home-serif text-[1.02rem] font-medium">{hijri || '…'}</span>
+        </span>
+        <span className="text-[0.8rem] text-[var(--home-muted)]">{gregorian || '…'}</span>
       </div>
     </header>
   )

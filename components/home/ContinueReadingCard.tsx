@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { getLocalMushafPage, hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
 import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
 import { getChapters, getMushafPage } from '@/lib/quran'
@@ -77,13 +77,11 @@ export default function ContinueReadingCard() {
 
   if (loading) {
     return (
-      <section className="mb-8" aria-label="Continue reading">
+      <section className="mb-9" aria-label="Continue reading">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">
-            Continue Reading
-          </h2>
+          <h2 className="ed-label">Continue reading</h2>
         </div>
-        <div className="h-[88px] animate-pulse rounded-2xl bg-[var(--home-track)]" />
+        <div className="h-[92px] animate-pulse rounded-[1.25rem] bg-[var(--home-track)]" />
       </section>
     )
   }
@@ -91,34 +89,40 @@ export default function ContinueReadingCard() {
   if (!state) return null
 
   return (
-    <section className="mb-8" aria-label="Continue reading">
+    <section className="mb-9" aria-label="Continue reading">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">
-          Continue Reading
-        </h2>
+        <h2 className="ed-label">Continue reading</h2>
       </div>
 
       <Link
         href={`/read?page=${state.page}`}
-        className="flex items-center gap-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.99]"
+        className="ed-card ed-focus group flex items-center gap-4 rounded-[1.25rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.99]"
       >
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-          <IconRead className="h-7 w-7" />
+          <IconRead className="h-6 w-6" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-[var(--home-heading)]">{state.surahName}</span>
-          <span className="mt-0.5 block text-sm text-[var(--home-muted)]">
-            Ayah {state.ayah} · Page {state.page}
+          <span className="home-serif block truncate text-[1.15rem] font-medium leading-tight text-[var(--home-heading)]">
+            {state.surahName}
           </span>
-          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-            <span
-              className="block h-full rounded-full bg-gradient-to-r from-[var(--home-sage)] to-[var(--home-sage-deep)]"
-              style={{ width: `${state.progress}%` }}
-            />
+          <span className="mt-0.5 block text-xs text-[var(--home-muted)]">
+            Ayah <span className="ed-num text-[var(--home-heading)]">{state.ayah}</span> · Page{' '}
+            <span className="ed-num text-[var(--home-heading)]">{state.page}</span> of 604
+          </span>
+          <span className="mt-3 flex items-center gap-2.5">
+            <span className="block h-1 flex-1 overflow-hidden rounded-full bg-[var(--home-track)]">
+              <span
+                className="block h-full rounded-full bg-[var(--home-sage)]"
+                style={{ width: `${state.progress}%` }}
+              />
+            </span>
+            <span className="ed-num text-[0.7rem] font-semibold text-[var(--home-sage-deep)]">
+              {state.progress}%
+            </span>
           </span>
         </span>
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--home-sage-dark)]">
-          <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors group-hover:bg-[var(--home-ink)] group-hover:text-[var(--home-ink-fg)]">
+          <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
         </span>
       </Link>
     </section>

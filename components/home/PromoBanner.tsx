@@ -37,26 +37,28 @@ export default function PromoBanner({ className }: { className?: string }) {
   const slide = slides[active]
 
   const ctaInner = (
-    <span className="shrink-0 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-amber-700 shadow-md shadow-amber-900/10 transition-transform hover:scale-[1.02] active:scale-[0.98] dark:bg-amber-400 dark:text-black">
+    <span className="ed-ink inline-flex h-10 shrink-0 items-center rounded-full px-4 text-sm font-semibold transition-transform hover:scale-[1.03] active:scale-95">
       {slide.cta}
     </span>
   )
 
   return (
     <section className={cn('mb-5 lg:mb-0 lg:flex lg:flex-col', className)}>
-      <div className="relative flex-1 overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-br from-amber-600 via-amber-400 to-yellow-200 px-4 py-4 shadow-lg shadow-amber-200/40 dark:border-white/10 dark:from-emerald-800 dark:via-emerald-600 dark:to-amber-600 dark:shadow-lg lg:min-h-[140px] lg:px-6 lg:py-6">
-        <div
-          className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/25 blur-2xl"
-          aria-hidden
-        />
-        <div className="relative flex items-center gap-3">
-          <IconQuranStand className="h-14 w-14 shrink-0 text-white/90" />
+      <div className="ed-card ed-frame relative flex-1 overflow-hidden rounded-[1.25rem] px-4 py-4 lg:min-h-[140px] lg:px-6 lg:py-6">
+        <div className="relative flex items-center gap-4">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+            <IconQuranStand className="h-9 w-9" />
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-white/80">{slide.title}</p>
-            <p className="text-2xl font-bold text-white lg:text-3xl">{slide.off}</p>
-            <p className="text-sm text-white/90">{slide.price}</p>
+            <p className="ed-label">{slide.title}</p>
+            <p className="home-serif mt-1 text-2xl font-medium leading-tight text-[var(--home-heading)] lg:text-3xl">
+              {slide.off}
+            </p>
+            <p className="mt-0.5 text-sm text-[var(--home-muted)]">{slide.price}</p>
           </div>
-          <Link href={slide.href}>{ctaInner}</Link>
+          <Link href={slide.href} className="ed-focus rounded-full">
+            {ctaInner}
+          </Link>
         </div>
       </div>
       <div className="mt-3 flex justify-center gap-1.5">
@@ -67,10 +69,8 @@ export default function PromoBanner({ className }: { className?: string }) {
             aria-label={`Slide ${i + 1}`}
             onClick={() => setActive(i)}
             className={cn(
-              'h-2 w-2 rounded-full transition-colors',
-              i === active
-                ? 'bg-amber-500 dark:bg-emerald-500'
-                : 'bg-amber-200 hover:bg-amber-300 dark:bg-[var(--app-muted)]/40 dark:hover:bg-[var(--app-muted)]/60'
+              'h-1.5 rounded-full transition-all',
+              i === active ? 'w-5 bg-[var(--home-sage)]' : 'w-1.5 bg-[var(--home-track)] hover:bg-[var(--home-rule-strong)]'
             )}
           />
         ))}

@@ -1,10 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, ChevronDown, Download, CheckCircle2, Sun, Moon, Circle } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  Circle,
+  Download,
+  Moon,
+  Sun,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
+import { IconOrnament } from '@/components/home/TileIcons'
+import { APP_NAME } from '@/lib/app-brand'
 import { clearSignedInUser, getSignedInUser } from '@/lib/auth'
 import {
   applyThemeToDocument,
@@ -33,6 +45,51 @@ import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 
+/* ---------- Shared button recipes ---------- */
+const btnBase =
+  'ed-focus flex min-h-[46px] w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-[transform,background-color,color,opacity] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50'
+const btnInk = cn(btnBase, 'ed-ink hover:opacity-90')
+const btnQuiet = cn(
+  btnBase,
+  'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+)
+const btnAccent = cn(
+  btnBase,
+  'border border-[var(--home-sage)] text-[var(--home-sage-deep)] hover:bg-[var(--home-sage-soft)]'
+)
+
+/* Fixed preview colours: each swatch depicts a theme, so it must not follow
+   the current one. */
+const themeOptions = [
+  {
+    mode: 'light' as ThemeMode,
+    Icon: Sun,
+    label: 'Light',
+    bg: '#f4f1e8',
+    ink: '#1c1a16',
+    line: 'rgba(28, 26, 22, 0.32)',
+    edge: 'rgba(28, 26, 22, 0.14)',
+  },
+  {
+    mode: 'dark' as ThemeMode,
+    Icon: Moon,
+    label: 'Dark',
+    bg: '#0f1513',
+    ink: '#ece7dc',
+    line: 'rgba(236, 231, 220, 0.34)',
+    edge: 'rgba(236, 231, 220, 0.16)',
+  },
+  {
+    mode: 'black' as ThemeMode,
+    Icon: Circle,
+    label: 'Black',
+    bg: '#000000',
+    ink: '#f6f6f6',
+    line: 'rgba(246, 246, 246, 0.34)',
+    edge: 'rgba(246, 246, 246, 0.18)',
+  },
+] as const
+
 function SettingsRow({
   title,
   description,
@@ -49,14 +106,28 @@ function SettingsRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex min-h-[56px] w-full flex-col justify-center rounded-2xl border px-4 py-3.5 text-left transition-all active:scale-[0.99]',
+        'ed-focus flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3.5 text-left transition-colors active:scale-[0.99]',
         selected
-          ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] shadow-sm'
-          : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]'
+          ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
+          : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
       )}
+      aria-pressed={selected}
     >
-      <p className="font-semibold text-[var(--home-heading)]">{title}</p>
-      <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
+      <span className="min-w-0">
+        <p className="font-semibold text-[var(--home-heading)]">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
+      </span>
+      <span
+        className={cn(
+          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+          selected
+            ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-deep)] text-white'
+            : 'border-[var(--home-rule-strong)]'
+        )}
+        aria-hidden
+      >
+        {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+      </span>
     </button>
   )
 }
@@ -78,7 +149,7 @@ function SettingsToggle({
       role="switch"
       aria-checked={enabled}
       onClick={onToggle}
-      className="flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3.5 text-left shadow-[var(--home-card-shadow)] transition-all active:scale-[0.99]"
+      className="ed-card ed-focus flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
     >
       <div className="min-w-0">
         <p className="font-semibold text-[var(--home-heading)]">{title}</p>
@@ -104,7 +175,31 @@ function SettingsToggle({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="home-serif mb-3 text-lg font-semibold text-[var(--home-heading)]">{children}</h2>
+    <div className="mb-3 flex items-center gap-3">
+      <h2 className="ed-label">{children}</h2>
+      <span className="ed-rule flex-1" />
+    </div>
+  )
+}
+
+function SubLabel({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-xs font-semibold text-[var(--home-heading)]">{children}</p>
+}
+
+function ProgressBar({ percent, label }: { percent: number; label: string }) {
+  return (
+    <div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
+        <div
+          className="h-full rounded-full bg-[var(--home-sage)] transition-all duration-300"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <p className="mt-2 text-center text-xs text-[var(--home-muted)]">
+        <span className="ed-num font-semibold text-[var(--home-heading)]">{percent}%</span>
+        {label ? ` · ${label}` : ''}
+      </p>
+    </div>
   )
 }
 
@@ -280,70 +375,66 @@ export default function SettingsPage() {
     }
   }
 
+  const initial = (signedInName || 'A').charAt(0).toUpperCase()
+
   return (
-    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="pointer-events-none absolute inset-0 bg-[var(--home-glow)]" aria-hidden />
-      <div className="relative mx-auto w-full max-w-lg px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <section className="reveal mb-8">
-          <div
-            className="gold-sheen relative overflow-hidden rounded-[1.9rem] px-5 pb-5 pt-4 text-white shadow-[0_26px_60px_-20px_rgba(58,42,128,0.85)] ring-1 ring-white/10"
-            style={{ background: 'var(--home-sage-gradient)' }}
-          >
-            <div
-              className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#e2ab53]/25 blur-3xl"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-[#6a4bd0]/40 blur-3xl"
-              aria-hidden
-            />
-            <div className="relative flex items-center gap-3">
-              <Link
-                href={returnHref}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-white/15 text-white backdrop-blur-sm transition-all hover:bg-white/25 active:scale-95"
-                aria-label="Back to home"
-              >
-                <ChevronLeft className="h-6 w-6" strokeWidth={1.9} />
-              </Link>
-              <h1 className="home-serif text-[1.9rem] font-semibold leading-tight text-white drop-shadow-sm">
+    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] bg-[var(--home-glow)]"
+        aria-hidden
+      />
+      <div className="relative mx-auto w-full max-w-lg px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6">
+        {/* Masthead */}
+        <header className="reveal mb-9">
+          <div className="flex items-center gap-4">
+            <Link
+              href={returnHref}
+              className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
+              aria-label="Back to home"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+            </Link>
+            <div className="min-w-0">
+              <p className="ed-label">{APP_NAME}</p>
+              <h1 className="home-serif mt-1 text-[2.25rem] font-medium leading-none tracking-[-0.025em] text-[var(--home-heading)]">
                 Settings
               </h1>
             </div>
-
-            <div className="relative mt-5 flex items-center justify-between gap-3 rounded-2xl bg-white/12 px-4 py-3.5 backdrop-blur-sm">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-lg font-bold text-[#2a2258] shadow-[0_8px_20px_-8px_rgba(226,171,83,0.85)]">
-                  {(signedInName || 'A').charAt(0).toUpperCase()}
-                </span>
-                <div className="min-w-0">
-                  <p className="home-serif truncate text-lg font-semibold leading-tight text-white">
-                    {signedInName || 'Anonymous'}
-                  </p>
-                  <p className="truncate text-xs text-white/70">
-                    {signedInUsername ? `@${signedInUsername}` : 'Not signed in'}
-                  </p>
-                </div>
-              </div>
-              {signedInName ? (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="shrink-0 rounded-xl bg-white/20 px-3 py-2 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/30"
-                >
-                  Sign out
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAccountOpen(true)}
-                  className="shrink-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-[var(--home-sage-dark)] transition-transform active:scale-95"
-                >
-                  Add account
-                </button>
-              )}
-            </div>
           </div>
-        </section>
+
+          <div className="ed-card mt-7 flex items-center justify-between gap-3 rounded-[1.25rem] p-3.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="ed-ink home-serif flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-medium">
+                {initial}
+              </span>
+              <div className="min-w-0">
+                <p className="home-serif truncate text-[1.1rem] font-medium leading-tight text-[var(--home-heading)]">
+                  {signedInName || 'Anonymous'}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-[var(--home-muted)]">
+                  {signedInUsername ? `@${signedInUsername}` : 'Not signed in'}
+                </p>
+              </div>
+            </div>
+            {signedInName ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="ed-focus shrink-0 rounded-full border border-[var(--home-rule-strong)] px-3.5 py-2 text-xs font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
+              >
+                Sign out
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAccountOpen(true)}
+                className="ed-ink ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-transform active:scale-95"
+              >
+                Add account
+              </button>
+            )}
+          </div>
+        </header>
 
         <AccountSheet
           open={accountOpen}
@@ -351,101 +442,144 @@ export default function SettingsPage() {
           onSuccess={refreshProfile}
         />
 
-        <section className="mb-8">
+        {/* Appearance */}
+        <section className="mb-9">
           <SectionTitle>Appearance</SectionTitle>
-          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
-            {(
-              [
-                { mode: 'light' as ThemeMode, Icon: Sun, label: 'Light' },
-                { mode: 'dark' as ThemeMode, Icon: Moon, label: 'Dark' },
-                { mode: 'black' as ThemeMode, Icon: Circle, label: 'Black' },
-              ] as const
-            ).map(({ mode, Icon, label }) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => saveTheme(mode)}
-                className={cn(
-                  'flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold transition-all active:scale-[0.98]',
-                  theme === mode
-                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-                )}
-                aria-pressed={theme === mode}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-[var(--home-muted)]">
-            <strong className="text-[var(--home-heading)]">Light</strong> gives a clean white page,{' '}
-            <strong className="text-[var(--home-heading)]">Dark</strong> a soft night page, and{' '}
-            <strong className="text-[var(--home-heading)]">Black</strong> a true black page — easiest
-            on the eyes at night and kinder to OLED battery.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <SectionTitle>Mushaf page</SectionTitle>
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
-            {(
-              [
-                { mode: 'full' as MushafWidthMode, label: 'Full width', hint: 'Bigger script' },
-                { mode: 'spaced' as MushafWidthMode, label: 'Spaced', hint: 'Margins on the sides' },
-              ] as const
-            ).map(({ mode, label, hint }) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => {
-                  setMushafWidth(mode)
-                  setAppSettings({ mushafWidth: mode })
-                }}
-                className={cn(
-                  'flex min-h-[64px] flex-col items-center justify-center gap-0.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
-                  mushafWidth === mode
-                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-                )}
-                aria-pressed={mushafWidth === mode}
-              >
-                {label}
-                <span
+          <div className="grid grid-cols-3 gap-2.5">
+            {themeOptions.map(({ mode, Icon, label, bg, ink, line, edge }) => {
+              const selected = theme === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => saveTheme(mode)}
                   className={cn(
-                    'text-[10px] font-medium',
-                    mushafWidth === mode ? 'text-white/70' : 'text-[var(--home-muted)]'
+                    'ed-focus flex flex-col gap-2 rounded-2xl border p-2 text-left transition-colors active:scale-[0.98]',
+                    selected
+                      ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
+                      : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
                   )}
+                  aria-pressed={selected}
                 >
-                  {hint}
-                </span>
-              </button>
-            ))}
+                  <span
+                    className="relative block aspect-[4/3] w-full overflow-hidden rounded-xl"
+                    style={{ background: bg, boxShadow: `inset 0 0 0 1px ${edge}` }}
+                    aria-hidden
+                  >
+                    <span
+                      className="absolute left-3 top-3 h-[3px] w-[45%] rounded-full"
+                      style={{ background: ink }}
+                    />
+                    <span
+                      className="absolute left-3 right-3 top-[1.3rem] h-[2px] rounded-full"
+                      style={{ background: line }}
+                    />
+                    <span
+                      className="absolute left-3 top-[1.8rem] h-[2px] w-[70%] rounded-full"
+                      style={{ background: line }}
+                    />
+                    {selected ? (
+                      <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex items-center justify-between px-1 pb-0.5">
+                    <span className="text-xs font-semibold text-[var(--home-heading)]">{label}</span>
+                    <Icon className="h-3.5 w-3.5 text-[var(--home-muted)]" strokeWidth={1.75} />
+                  </span>
+                </button>
+              )
+            })}
           </div>
-          <p className="mt-2 text-xs text-[var(--home-muted)]">
-            <strong className="text-[var(--home-heading)]">Full width</strong> runs the lines to the
-            edges so the script is larger. <strong className="text-[var(--home-heading)]">Spaced</strong>{' '}
-            keeps margins on the sides, which makes it smaller.
+          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
+            <strong className="font-semibold text-[var(--home-heading)]">Light</strong> is a paper
+            page, <strong className="font-semibold text-[var(--home-heading)]">Dark</strong> a soft
+            night page, and{' '}
+            <strong className="font-semibold text-[var(--home-heading)]">Black</strong> true black —
+            easiest on the eyes at night and kinder to OLED battery.
           </p>
         </section>
 
-        <section className="mb-8">
-          <SectionTitle>Translation</SectionTitle>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
-            Language
+        {/* Mushaf page */}
+        <section className="mb-9">
+          <SectionTitle>Mushaf page</SectionTitle>
+          <div className="grid grid-cols-2 gap-2.5">
+            {(
+              [
+                { mode: 'full' as MushafWidthMode, label: 'Full width', hint: 'Bigger script', inset: '0.5rem' },
+                { mode: 'spaced' as MushafWidthMode, label: 'Spaced', hint: 'Margins on the sides', inset: '1.15rem' },
+              ] as const
+            ).map(({ mode, label, hint, inset }) => {
+              const selected = mushafWidth === mode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setMushafWidth(mode)
+                    setAppSettings({ mushafWidth: mode })
+                  }}
+                  className={cn(
+                    'ed-focus flex flex-col gap-2 rounded-2xl border p-2 text-left transition-colors active:scale-[0.98]',
+                    selected
+                      ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
+                      : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
+                  )}
+                  aria-pressed={selected}
+                >
+                  <span
+                    className="relative block h-16 w-full overflow-hidden rounded-xl bg-[var(--app-bg)]"
+                    style={{ boxShadow: 'inset 0 0 0 1px var(--home-rule)' }}
+                    aria-hidden
+                  >
+                    {[0, 1, 2, 3].map((i) => (
+                      <span
+                        key={i}
+                        className="absolute h-[2px] rounded-full bg-[var(--home-rule-strong)]"
+                        style={{
+                          left: inset,
+                          right: inset,
+                          top: `${0.75 + i * 0.75}rem`,
+                          opacity: i === 3 ? 0.55 : 1,
+                        }}
+                      />
+                    ))}
+                  </span>
+                  <span className="flex items-center justify-between gap-2 px-1 pb-0.5">
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold text-[var(--home-heading)]">{label}</span>
+                      <span className="block text-[0.68rem] text-[var(--home-muted)]">{hint}</span>
+                    </span>
+                    {selected ? (
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
+            <strong className="font-semibold text-[var(--home-heading)]">Full width</strong> runs
+            the lines to the edges so the script is larger.{' '}
+            <strong className="font-semibold text-[var(--home-heading)]">Spaced</strong> keeps
+            margins on the sides, which makes it smaller.
           </p>
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1.5 shadow-[var(--home-card-shadow)]">
+        </section>
+
+        {/* Translation */}
+        <section className="mb-9">
+          <SectionTitle>Translation</SectionTitle>
+          <SubLabel>Language</SubLabel>
+          <div className="ed-seg grid-cols-2">
             {(['en', 'so'] as const).map((lang) => (
               <button
                 key={lang}
                 type="button"
                 onClick={() => saveTranslationLanguage(lang)}
-                className={cn(
-                  'flex min-h-[48px] items-center justify-center rounded-xl text-sm font-semibold transition-all active:scale-[0.98]',
-                  translationLanguage === lang
-                    ? 'bg-[var(--home-sage-deep)] text-white shadow-sm'
-                    : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-                )}
+                className="ed-seg__item ed-focus flex min-h-[44px] items-center justify-center text-sm font-semibold"
                 aria-pressed={translationLanguage === lang}
               >
                 {translationLanguageLabel(lang)}
@@ -453,16 +587,19 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
-            Translator
-          </p>
+          <div className="mt-5">
+            <SubLabel>Translator</SubLabel>
+          </div>
           <button
             type="button"
             onClick={() => setTranslatorPickerOpen((v) => !v)}
-            className="flex min-h-[56px] w-full items-center justify-between rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-3.5 text-left shadow-[var(--home-card-shadow)] transition-all active:scale-[0.99]"
+            className={cn(
+              'ed-card ed-focus flex min-h-[56px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-[border-radius,border-color] active:scale-[0.99]',
+              translatorPickerOpen ? 'rounded-t-2xl rounded-b-none' : 'rounded-2xl'
+            )}
             aria-expanded={translatorPickerOpen}
           >
-            <span>
+            <span className="min-w-0">
               <p className="font-semibold text-[var(--home-heading)]">
                 {getTranslationOption(translationEditionId).label}
               </p>
@@ -474,13 +611,14 @@ export default function SettingsPage() {
             </span>
             <ChevronDown
               className={cn(
-                'h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform',
+                'h-4 w-4 shrink-0 text-[var(--home-muted)] transition-transform',
                 translatorPickerOpen && 'rotate-180'
               )}
+              strokeWidth={2}
             />
           </button>
           {translatorPickerOpen && (
-            <div className="mt-2 space-y-2">
+            <div className="space-y-2 rounded-b-2xl border border-t-0 border-[var(--home-card-border)] bg-[var(--home-location-bg)] p-2">
               {translationsForLanguage(translationLanguage).map((option) => (
                 <SettingsRow
                   key={option.id}
@@ -499,56 +637,66 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
-          <p className="mt-3 text-xs text-[var(--home-muted)]">
+          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
             Used in Read translation mode and when you long-press an ayah.
           </p>
 
-          <p className="mt-3 text-xs text-[var(--home-muted)]">
+          <div className="mt-6">
+            <SubLabel>Offline translations</SubLabel>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-[var(--home-muted)]">
             Download each language separately for offline use (604 pages each). Use Wi‑Fi.
           </p>
 
           {downloadingTranslationLang && (
-            <div className="mt-4">
-              <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-                <div
-                  className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
-                  style={{ width: `${translationProgress}%` }}
-                />
-              </div>
-              <p className="text-center text-xs font-medium text-[var(--home-muted)]">
-                {translationProgress}%
-                {translationProgressLabel ? ` · ${translationProgressLabel}` : ''}
-              </p>
+            <div className="mb-3">
+              <ProgressBar percent={translationProgress} label={translationProgressLabel} />
             </div>
           )}
 
-          <div className="mt-4 space-y-2">
+          <div className="ed-card divide-y divide-[var(--home-rule)] rounded-2xl">
             {(['en', 'so'] as const).map((lang) => {
               const label = translationLanguageLabel(lang)
               const defaultEditionLabel = getTranslationOption(DEFAULT_TRANSLATION_EDITION[lang]).label
+              const cached = translationCached[lang]
               return (
-                <div
-                  key={lang}
-                  className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]"
-                >
-                  {translationCached[lang] ? (
-                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      {label} saved offline
+                <div key={lang} className="flex items-center justify-between gap-3 p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                        cached
+                          ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
+                          : 'border border-[var(--home-rule-strong)] text-[var(--home-muted)]'
+                      )}
+                      aria-hidden
+                    >
+                      {cached ? (
+                        <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
+                      ) : (
+                        <Download className="h-4 w-4" strokeWidth={1.75} />
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--home-heading)]">{label}</p>
+                      <p className="text-xs leading-snug text-[var(--home-muted)]">
+                        {cached ? 'Saved offline' : `${defaultEditionLabel} — not downloaded`}
+                      </p>
                     </div>
-                  ) : (
-                    <p className="mb-3 text-sm text-[var(--home-muted)]">
-                      {defaultEditionLabel} ({label}) — not downloaded yet
-                    </p>
-                  )}
+                  </div>
                   <button
                     type="button"
                     disabled={downloadingTranslationLang !== null || downloading}
                     onClick={() => void handleDownloadTranslation(lang)}
-                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-sm font-bold text-[var(--home-sage-deep)] transition-opacity disabled:opacity-50"
+                    aria-label={cached ? `Re-download ${label}` : `Download ${label}`}
+                    className={cn(
+                      'ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
+                      cached
+                        ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+                        : 'ed-ink hover:opacity-90'
+                    )}
                   >
-                    <Download className="h-4 w-4" />
-                    {translationCached[lang] ? `Re-download ${label}` : `Download ${label}`}
+                    {cached ? 'Re-download' : 'Download'}
                   </button>
                 </div>
               )
@@ -556,13 +704,19 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="mb-8">
+        {/* Offline reader */}
+        <section className="mb-9">
           <SectionTitle>Offline reader</SectionTitle>
-          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+          <div className="ed-card rounded-2xl p-4">
             {offline ? (
-              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[var(--home-sage-deep)]">
-                <CheckCircle2 className="h-5 w-5 shrink-0" />
-                Quran saved — reader works offline
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                  <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--home-heading)]">Quran saved</p>
+                  <p className="text-xs text-[var(--home-muted)]">The reader works offline.</p>
+                </div>
               </div>
             ) : (
               <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
@@ -574,15 +728,7 @@ export default function SettingsPage() {
 
             {downloading && (
               <div className="mb-4">
-                <div className="mb-2 h-2.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-                  <div
-                    className="h-full bg-[var(--home-sage-deep)] transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-center text-xs font-medium text-[var(--home-muted)]">
-                  {progress}%{progressLabel ? ` · ${progressLabel}` : ''}
-                </p>
+                <ProgressBar percent={progress} label={progressLabel} />
               </div>
             )}
 
@@ -597,9 +743,9 @@ export default function SettingsPage() {
                 type="button"
                 disabled={downloading || downloadingTranslationLang !== null}
                 onClick={() => void handleRetryOfflineBootstrap()}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[var(--home-sage-deep)] text-sm font-bold text-white transition-opacity disabled:opacity-50"
+                className={btnInk}
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" strokeWidth={2} />
                 Set up offline reader now
               </button>
             )}
@@ -608,12 +754,7 @@ export default function SettingsPage() {
               type="button"
               disabled={downloading || downloadingTranslationLang !== null}
               onClick={handleDownload}
-              className={cn(
-                'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-50',
-                offline
-                  ? 'mt-3 border border-[var(--home-card-border)] text-[var(--home-muted)]'
-                  : 'mt-3 border border-[var(--home-sage-deep)] text-[var(--home-sage-deep)]'
-              )}
+              className={cn('mt-3', offline ? btnQuiet : btnAccent)}
             >
               {offline ? 'Re-download Quran data' : 'Download manually (browser)'}
             </button>
@@ -623,7 +764,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={downloading || downloadingTranslationLang !== null}
                 onClick={handleUseBundled}
-                className="mt-3 flex min-h-[44px] w-full items-center justify-center text-xs font-medium text-[var(--home-muted)] underline-offset-2 hover:underline disabled:opacity-50"
+                className="ed-focus mt-3 flex min-h-[44px] w-full items-center justify-center rounded-full text-xs font-medium text-[var(--home-muted)] underline-offset-4 hover:underline disabled:opacity-50"
               >
                 Load bundled file from server
               </button>
@@ -631,42 +772,60 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="mb-8">
+        {/* Feedback */}
+        <section className="mb-9">
           <SectionTitle>Feedback</SectionTitle>
-          <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)]">
+          <div className="ed-card overflow-hidden rounded-2xl">
             <textarea
               value={feedbackMessage}
               onChange={(e) => setFeedbackMessage(e.target.value)}
               rows={4}
-              placeholder="Share a bug, idea, or request..."
-              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--app-surface)] px-3 py-2 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/20"
+              placeholder="Share a bug, idea, or request…"
+              className="block w-full resize-none bg-transparent px-4 py-3.5 text-sm leading-relaxed text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none"
             />
-            {feedbackNotice ? (
-              <p className="mt-2 text-xs font-medium text-[var(--home-sage-deep)]">{feedbackNotice}</p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void handleSendFeedback()}
-              disabled={!feedbackMessage.trim()}
-              className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[var(--home-sage-deep)] text-sm font-semibold text-white disabled:opacity-40"
-            >
-              Send feedback
-            </button>
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--home-rule)] px-3 py-2.5">
+              <p
+                className={cn(
+                  'min-w-0 truncate text-xs font-medium text-[var(--home-sage-deep)] transition-opacity',
+                  feedbackNotice ? 'opacity-100' : 'opacity-0'
+                )}
+                aria-live="polite"
+              >
+                {feedbackNotice || ' '}
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleSendFeedback()}
+                disabled={!feedbackMessage.trim()}
+                className="ed-ink ed-focus flex h-9 shrink-0 items-center gap-1.5 rounded-full pl-4 pr-3 text-xs font-semibold transition-opacity disabled:opacity-40"
+              >
+                Send
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </section>
 
         <Link
           href="/read"
-          className="flex min-h-[52px] items-center justify-center rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-sm font-bold text-[var(--home-sage-deep)] shadow-[var(--home-card-shadow)] transition-transform active:scale-[0.99]"
+          className="ed-card ed-focus group flex min-h-[56px] items-center justify-between rounded-2xl px-4 transition-[border-color] hover:border-[var(--home-sage)] active:scale-[0.99]"
         >
-          Open reader
+          <span className="home-serif text-[1.05rem] font-medium text-[var(--home-heading)]">
+            Open the reader
+          </span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors group-hover:bg-[var(--home-ink)] group-hover:text-[var(--home-ink-fg)]">
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+          </span>
         </Link>
 
-        <div className="mt-8 pb-2 text-center">
-          <p className="home-serif mt-2 text-sm leading-relaxed text-[var(--home-muted)]">
-            For Sadaqah Jariyah
-          </p>
-        </div>
+        <footer className="mt-10 flex flex-col items-center gap-3 pb-2 text-center">
+          <div className="flex w-full items-center gap-3">
+            <span className="ed-rule flex-1" />
+            <IconOrnament className="h-3 w-3 text-[var(--home-sage)]" />
+            <span className="ed-rule flex-1" />
+          </div>
+          <p className="home-serif text-sm italic text-[var(--home-muted)]">For Sadaqah Jariyah</p>
+        </footer>
       </div>
     </main>
   )

@@ -1,4 +1,5 @@
-/** Gold-style icons matching the reference home grid. */
+/** Solid glyph icons for the home grid, plus the small ornaments used as
+ *  typographic dividers across the Home and Settings surfaces. */
 
 export function IconRead({ className }: { className?: string }) {
   return (
@@ -43,6 +44,24 @@ export function IconQuranStand({ className }: { className?: string }) {
     <svg viewBox="0 0 56 56" className={className} fill="currentColor" aria-hidden>
       <path d="M28 8c-6 0-11 4-11 9v3h3v-3c0-3 3.6-5 8-5s8 2 8 5v22h-6v6h-4v-6h-6V17c0-5-5-9-11-9z" opacity="0.15" />
       <path d="M12 38h32l-4 8H16l-4-8zm2-28h8l-2 24H14L14 10zm20 0h8l2 24h-6L32 10zM26 12h4v20h-4V12z" />
+    </svg>
+  )
+}
+
+/** Eight-point star (rub el hizb) used as a typographic divider. */
+export function IconOrnament({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M23 12l-6.75 1.76 3.53 6.02-6.02-3.53L12 23l-1.76-6.75-6.02 3.53 3.53-6.02L1 12l6.75-1.76-3.53-6.02 6.02 3.53L12 1l1.76 6.75 6.02-3.53-3.53 6.02z" />
+    </svg>
+  )
+}
+
+/** Crescent for the Hijri dateline. */
+export function IconCrescent({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M15.5 2a9.5 9.5 0 1 0 6.5 16.4A7.5 7.5 0 0 1 13 6.6 9.5 9.5 0 0 1 15.5 2z" />
     </svg>
   )
 }

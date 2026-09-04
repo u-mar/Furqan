@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn'
 import { getDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
 import AyahEndMark from '@/components/read/AyahEndMark'
+import { IconOrnament } from '@/components/home/TileIcons'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
@@ -143,51 +144,47 @@ export default function DailyVerseCard() {
   }
 
   return (
-    <section className="mb-8" aria-label="Daily verse">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="home-serif text-lg font-semibold text-[var(--home-heading)]">Weekly Verse</h2>
+    <section className="mb-9" aria-label="Daily verse">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="ed-label">Weekly verse</h2>
         <button
           type="button"
           onClick={() => void handleShare()}
-          className="flex items-center gap-1.5 text-sm font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
+          className="ed-focus flex items-center gap-1.5 rounded-md text-xs font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
         >
-          <Share2 className="h-4 w-4" strokeWidth={1.75} />
+          <Share2 className="h-3.5 w-3.5" strokeWidth={1.75} />
           Share
         </button>
       </div>
 
       <div
-        className="relative overflow-hidden rounded-[1.6rem] px-5 py-6 text-white shadow-[0_24px_54px_-20px_rgba(58,42,128,0.85)] ring-1 ring-white/10"
-        style={{ background: 'var(--home-sage-gradient)' }}
+        className="ed-card ed-frame relative overflow-hidden rounded-[1.25rem] px-5 pb-5 pt-5 sm:px-7"
+        style={{ ['--ed-radius' as string]: '1.25rem' }}
       >
-        <div
-          className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[#e2ab53]/20 blur-3xl"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute -bottom-14 -left-8 h-36 w-36 rounded-full bg-[#6a4bd0]/35 blur-3xl"
-          aria-hidden
-        />
-        <div className="relative mb-4 flex items-start justify-between gap-3">
-          <span className="rounded-full bg-white/25 px-3 py-1 text-[11px] font-semibold tracking-wide text-white backdrop-blur-sm">
+        <div className="relative flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--home-rule-strong)] py-1 pl-3 pr-2.5 text-[0.7rem] font-semibold tracking-[0.08em] text-[var(--home-heading)]">
             {surahBadge}
+            <span className="ed-num text-[0.78rem] font-normal text-[var(--home-muted)]">
+              {surahNum}:{ayahNum}
+            </span>
           </span>
           <button
             type="button"
             onClick={toggleSave}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15"
+            className={cn(
+              'ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
+              saved
+                ? 'text-[var(--home-sage-deep)]'
+                : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
+            )}
             aria-label={saved ? 'Remove bookmark' : 'Bookmark verse'}
             aria-pressed={saved}
           >
-            <Bookmark className={cn('h-5 w-5', saved && 'fill-current')} strokeWidth={1.75} />
+            <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} strokeWidth={1.75} />
           </button>
         </div>
 
-        <p
-          className="arabic-text mb-4 text-center text-[clamp(1.15rem,4.5vw,1.45rem)] leading-[2.1] text-white"
-          dir="rtl"
-          lang="ar"
-        >
+        <p className="ed-arabic relative mt-6 text-[var(--home-heading)]" dir="rtl" lang="ar">
           {loading ? (
             '…'
           ) : (
@@ -201,7 +198,7 @@ export default function DailyVerseCard() {
                     pageNumber={endMarkPage}
                     codeV2={endWord?.code_v2}
                     fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
-                    className="text-white"
+                    className="text-[var(--home-sage-deep)]"
                   />
                 </>
               ) : null}
@@ -209,22 +206,32 @@ export default function DailyVerseCard() {
           )}
         </p>
 
-        <p className="relative mb-6 text-center text-sm leading-relaxed text-white">
+        <div className="relative my-5 flex items-center justify-center gap-3">
+          <span className="ed-rule w-10" />
+          <IconOrnament className="h-2.5 w-2.5 text-[var(--home-sage)]" />
+          <span className="ed-rule w-10" />
+        </div>
+
+        <p className="home-serif relative mx-auto max-w-[36ch] text-center text-[1.02rem] leading-[1.7] text-[var(--home-heading)]">
           {loading ? 'Loading translation…' : translation}
         </p>
 
-        <div className="relative flex items-center justify-center">
+        <div className="relative mt-6 flex items-center justify-between gap-3 border-t border-[var(--home-rule)] pt-4">
+          <span className="text-xs text-[var(--home-muted)]">
+            Page <span className="ed-num text-[var(--home-heading)]">{page}</span> of the mushaf
+          </span>
           <button
             type="button"
             onClick={handlePlayToggle}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#f4d59b] to-[#e2ab53] text-[#2a2258] shadow-[0_10px_24px_-8px_rgba(226,171,83,0.85)] transition-transform hover:scale-105 active:scale-95"
+            className="ed-ink ed-focus flex h-10 items-center gap-2 rounded-full pl-3.5 pr-4 text-[0.8rem] font-semibold transition-transform hover:scale-[1.03] active:scale-95"
             aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
             {playing ? (
-              <Square className="h-5 w-5 fill-current" />
+              <Square className="h-3.5 w-3.5 fill-current" />
             ) : (
-              <Play className="h-5 w-5 fill-current" />
+              <Play className="h-3.5 w-3.5 fill-current" />
             )}
+            {playing ? 'Stop' : 'Listen'}
           </button>
         </div>
       </div>

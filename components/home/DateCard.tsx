@@ -3,6 +3,7 @@
 import { MapPin, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
+import { IconCrescent } from '@/components/home/TileIcons'
 import { getSavedLocation, requestUserLocation, type UserLocation } from '@/lib/location'
 
 function formatGregorian(date: Date): string {
@@ -57,52 +58,42 @@ export default function DateCard({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        'mb-4 overflow-hidden rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)] lg:mb-0 lg:flex lg:min-h-[140px] lg:flex-col',
+        'ed-card mb-4 overflow-hidden rounded-[1.25rem] lg:mb-0 lg:flex lg:min-h-[140px] lg:flex-col',
         className
       )}
     >
       <div className="relative flex-1 px-4 pb-3 pt-4 lg:px-5 lg:pt-5">
-        <div className="relative z-10">
-          <p className="text-lg font-semibold leading-tight text-[var(--app-text)] lg:text-xl">
+        <div className="relative z-10 pr-14">
+          <p className="home-serif text-lg font-medium leading-tight text-[var(--home-heading)] lg:text-xl">
             {hijri || '…'}
           </p>
-          <p className="mt-0.5 text-sm font-medium text-teal-600 lg:text-base">
-            {gregorian || '…'}
-          </p>
+          <p className="mt-0.5 text-sm text-[var(--home-muted)] lg:text-base">{gregorian || '…'}</p>
         </div>
         <div
-          className="pointer-events-none absolute right-3 top-3 flex h-14 w-14 items-center justify-center rounded-full border border-teal-500/20 bg-teal-500/10"
+          className="pointer-events-none absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]"
           aria-hidden
         >
-          <div className="relative h-8 w-8">
-            <div className="absolute left-1/2 top-1/2 h-3 w-0.5 -translate-x-1/2 -translate-y-full origin-bottom rotate-[30deg] rounded-full bg-teal-500/80" />
-            <div className="absolute left-1/2 top-1/2 h-2 w-0.5 -translate-x-1/2 -translate-y-full rounded-full bg-[var(--app-muted)]/40" />
-            <div className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500" />
-          </div>
+          <IconCrescent className="h-5 w-5" />
         </div>
       </div>
-      <div className="border-t border-[var(--home-card-border)] bg-[var(--home-location-bg)] px-4 py-3">
+      <div className="border-t border-[var(--home-rule)] bg-[var(--home-location-bg)] px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <MapPin className="h-4 w-4 shrink-0 text-teal-500" />
-            <span className="truncate text-xs text-[var(--app-muted)]">
+            <MapPin className="h-4 w-4 shrink-0 text-[var(--home-sage-deep)]" strokeWidth={1.75} />
+            <span className="truncate text-xs text-[var(--home-muted)]">
               {location ? location.label : 'For accurate prayer time'}
             </span>
           </div>
           {location ? (
-            <span className="shrink-0 text-xs font-medium text-teal-600">
-              Enabled
-            </span>
+            <span className="shrink-0 text-xs font-semibold text-[var(--home-sage-deep)]">Enabled</span>
           ) : (
             <button
               type="button"
               onClick={enableLocation}
               disabled={locLoading}
-              className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-teal-600 transition-colors hover:bg-teal-50 active:bg-teal-100 disabled:opacity-60"
+              className="ed-focus flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--home-sage-soft)] disabled:opacity-60"
             >
-              {locLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : null}
+              {locLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               Enable location
             </button>
           )}

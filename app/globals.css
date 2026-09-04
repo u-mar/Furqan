@@ -18,34 +18,40 @@
 }
 
 /* ======================================================================
-   "Midnight & Gold" design language — deep royal night + warm gold.
+   "Ink & Verdigris" design language — printed-mushaf paper, warm ink and
+   a single oxidised-copper accent. Editorial rather than glossy: hierarchy
+   comes from type, hairline rules and ornament, not gradients or glows.
    Default (no class) and .dark both use dark tokens — dark is the default.
    ====================================================================== */
 html,
 html.dark {
   color-scheme: dark;
-  --home-heading: #f7f4ec;
-  --home-muted: #9aa2c4;
-  /* gold accent family (kept under --home-sage-* names so every component
-     that referenced the old sage tokens re-themes automatically) */
-  --home-sage: #ecc079;
-  --home-sage-deep: #e2ab53;
-  --home-sage-dark: #f4d59b;
-  --home-sage-soft: rgba(236, 192, 121, 0.14);
-  --home-sage-gradient: linear-gradient(150deg, #241d4e 0%, #3d2d7d 46%, #6a4bd0 100%);
-  --app-bg: #080b18;
-  --app-surface: #121732;
-  --app-border: rgba(255, 255, 255, 0.09);
-  --app-text: #f7f4ec;
-  --app-muted: #9aa2c4;
-  --home-glow: radial-gradient(58% 40% at 12% -2%, rgba(106, 75, 208, 0.28), transparent 72%),
-    radial-gradient(46% 34% at 100% 4%, rgba(236, 192, 121, 0.14), transparent 70%),
-    radial-gradient(80% 55% at 50% 116%, rgba(61, 45, 125, 0.24), transparent 72%);
-  --home-card-bg: #141a33;
-  --home-card-border: rgba(255, 255, 255, 0.08);
-  --home-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px -18px rgba(0, 0, 0, 0.72);
-  --home-track: #232a47;
-  --home-location-bg: #10152b;
+  --home-heading: #f1ede3;
+  --home-muted: #9c9a8f;
+  /* verdigris accent family (kept under the --home-sage-* names so every
+     component that references those tokens re-themes automatically) */
+  --home-sage: #5cc4ab;
+  --home-sage-deep: #3aa88f;
+  --home-sage-dark: #9be0cd;
+  --home-sage-soft: rgba(92, 196, 171, 0.13);
+  --home-sage-gradient: linear-gradient(160deg, #11302b 0%, #175d51 100%);
+  /* "ink" — the inverted surface used for primary buttons and selected pills */
+  --home-ink: #f1ede3;
+  --home-ink-fg: #0f1513;
+  /* hairline rules */
+  --home-rule: rgba(241, 237, 227, 0.12);
+  --home-rule-strong: rgba(241, 237, 227, 0.24);
+  --app-bg: #0f1513;
+  --app-surface: #161d1a;
+  --app-border: rgba(241, 237, 227, 0.1);
+  --app-text: #ece7dc;
+  --app-muted: #9c9a8f;
+  --home-glow: radial-gradient(70% 38% at 50% -6%, rgba(92, 196, 171, 0.1), transparent 70%);
+  --home-card-bg: #161d1a;
+  --home-card-border: rgba(241, 237, 227, 0.09);
+  --home-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 34px -22px rgba(0, 0, 0, 0.75);
+  --home-track: #232d28;
+  --home-location-bg: #121816;
   --hifdh-bg: #0a0a0a;
   --hifdh-surface: #141414;
   --hifdh-border: rgba(255, 255, 255, 0.09);
@@ -68,32 +74,30 @@ html.dark {
   color-scheme: dark;
 }
 
-html:not(.dark) .home-screen {
-  --home-card-shadow: 0 14px 36px -16px rgba(46, 38, 92, 0.24);
-  --home-card-border: rgba(30, 27, 64, 0.07);
-}
-
 html:not(.dark) {
   color-scheme: light;
-  --app-bg: #f4f2fb;
-  --app-surface: #ffffff;
-  --app-border: rgba(30, 27, 64, 0.1);
-  --app-text: #1a1730;
-  --app-muted: #635e80;
-  --home-glow: radial-gradient(72% 46% at 50% -8%, rgba(106, 75, 208, 0.16), transparent 72%),
-    radial-gradient(42% 30% at 92% 0%, rgba(201, 152, 47, 0.14), transparent 70%);
-  --home-card-bg: #ffffff;
-  --home-card-border: rgba(30, 27, 64, 0.07);
-  --home-card-shadow: 0 16px 40px -18px rgba(46, 38, 92, 0.22);
-  --home-track: #e7e3f4;
-  --home-location-bg: #efecfb;
-  --home-heading: #1a1730;
-  --home-muted: #635e80;
-  --home-sage: #c99a34;
-  --home-sage-deep: #b07d2a;
-  --home-sage-dark: #7c591a;
-  --home-sage-soft: rgba(199, 152, 47, 0.16);
-  --home-sage-gradient: linear-gradient(150deg, #2a2258 0%, #46348c 46%, #6a4bd0 100%);
+  --app-bg: #f4f1e8;
+  --app-surface: #fffdf8;
+  --app-border: rgba(28, 26, 22, 0.1);
+  --app-text: #1c1a16;
+  --app-muted: #6a675e;
+  --home-glow: radial-gradient(70% 38% at 50% -6%, rgba(15, 122, 106, 0.07), transparent 70%);
+  --home-card-bg: #fffdf8;
+  --home-card-border: rgba(28, 26, 22, 0.1);
+  --home-card-shadow: 0 1px 2px rgba(28, 26, 22, 0.04), 0 14px 32px -22px rgba(28, 26, 22, 0.16);
+  --home-track: #e5e0d3;
+  --home-location-bg: #f1ede3;
+  --home-heading: #1c1a16;
+  --home-muted: #6a675e;
+  --home-sage: #0f7a6a;
+  --home-sage-deep: #0b5f54;
+  --home-sage-dark: #08463e;
+  --home-sage-soft: rgba(15, 122, 106, 0.1);
+  --home-sage-gradient: linear-gradient(160deg, #0d3a34 0%, #0f6b5e 100%);
+  --home-ink: #1c1a16;
+  --home-ink-fg: #f7f4ec;
+  --home-rule: rgba(28, 26, 22, 0.12);
+  --home-rule-strong: rgba(28, 26, 22, 0.24);
   --hifdh-bg: #fafaf9;
   --hifdh-surface: #ffffff;
   --hifdh-border: rgba(0, 0, 0, 0.1);
@@ -126,7 +130,92 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* ---- Dynamic motion & surface helpers (Midnight & Gold) ---- */
+/* ---- Editorial helpers (Ink & Verdigris) ----
+   Small, composable pieces shared by the Home and Settings surfaces. */
+
+/* Tracked small-caps label — section headers, metadata, mastheads. */
+.ed-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--home-muted);
+}
+
+/* One-pixel rule. Pair with flex-1 to let it run to the edge. */
+.ed-rule {
+  height: 1px;
+  background: var(--home-rule);
+}
+
+/* Paper card. */
+.ed-card {
+  background: var(--home-card-bg);
+  border: 1px solid var(--home-card-border);
+  box-shadow: var(--home-card-shadow);
+}
+
+/* Inverted "ink" surface — primary buttons, selected segments, avatars. */
+.ed-ink {
+  background: var(--home-ink);
+  color: var(--home-ink-fg);
+}
+
+/* Double rule, like a printed mushaf page frame. Host must be relative. */
+.ed-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem;
+  border: 1px solid var(--home-rule);
+  border-radius: calc(var(--ed-radius, 1.25rem) - 0.45rem);
+  pointer-events: none;
+}
+
+/* Serif numerals that line up. */
+.ed-num {
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Large centred Arabic for the verse card (the reader's own font stack). */
+.ed-arabic {
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic',
+    'Scheherazade New', 'Amiri', serif;
+  direction: rtl;
+  text-align: center;
+  font-size: clamp(1.4rem, 5.2vw, 1.8rem);
+  line-height: 2.05;
+}
+
+/* Segmented control: a paper tray with an ink pill on the selected item. */
+.ed-seg {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 1rem;
+  background: var(--home-track);
+}
+.ed-seg__item {
+  border-radius: 0.8rem;
+  color: var(--home-muted);
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ed-seg__item:hover {
+  color: var(--home-heading);
+}
+.ed-seg__item[aria-pressed='true'] {
+  background: var(--home-ink);
+  color: var(--home-ink-fg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 16px -10px rgba(0, 0, 0, 0.4);
+}
+
+/* Focus ring that reads on paper and on night surfaces alike. */
+.ed-focus:focus-visible {
+  outline: 2px solid var(--home-sage);
+  outline-offset: 2px;
+}
+
+/* ---- Dynamic motion & surface helpers ---- */
 @keyframes reveal-up {
   from {
     opacity: 0;
@@ -553,6 +642,12 @@ html.dark .mushaf-fit-line {
 html:not(.dark) .mushaf-ayah-end,
 html:not(.dark) .mushaf-qcf-segment--end {
   color: #9c7a2e;
+}
+
+/* Outside the reader (the Home verse card) the ornament takes the accent. */
+html:not(.dark) .ed-arabic .mushaf-ayah-end,
+html.dark .ed-arabic .mushaf-ayah-end {
+  color: var(--home-sage-deep);
 }
 
 .mushaf-ayah-stop {

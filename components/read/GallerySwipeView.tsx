@@ -112,8 +112,9 @@ export default function GallerySwipeView({
       g.lastX = touch.clientX
       g.lastT = e.timeStamp
 
-      const atStart = dx > 0 && !prev
-      const atEnd = dx < 0 && !next
+      // Book-flip convention: dragging right advances to the next page.
+      const atEnd = dx > 0 && !next
+      const atStart = dx < 0 && !prev
       const effectiveDx = atStart || atEnd ? dx * 0.3 : dx
       setTransform(effectiveDx, false)
     },
@@ -126,7 +127,8 @@ export default function GallerySwipeView({
     if (!g || g.locked !== 'x') return
 
     const dx = g.lastX - g.startX
-    const goingNext = dx < 0
+    // Book-flip convention: dragging right advances to the next page.
+    const goingNext = dx > 0
     const canCommit = goingNext ? Boolean(next) : Boolean(prev)
     const passedDistance = Math.abs(dx) > g.width * COMMIT_RATIO
     // A minimum real distance guards against misreading jitter as a flick —
@@ -135,12 +137,12 @@ export default function GallerySwipeView({
     const passedVelocity =
       Math.abs(dx) > 15 &&
       Math.abs(g.velocity) > COMMIT_VELOCITY &&
-      (g.velocity < 0) === goingNext
+      (g.velocity > 0) === goingNext
     const shouldCommit = canCommit && (passedDistance || passedVelocity)
 
     setSettling(true)
     if (shouldCommit) {
-      setTransform(goingNext ? -g.width : g.width, true)
+      setTransform(goingNext ? g.width : -g.width, true)
       window.setTimeout(() => {
         if (goingNext) onCommitNext()
         else onCommitPrev()
@@ -162,9 +164,11 @@ export default function GallerySwipeView({
         onTouchEnd={finishGesture}
         onTouchCancel={finishGesture}
       >
-        {prev ? <div className="absolute inset-y-0 right-full h-full w-full">{prev}</div> : null}
+        {/* Book-flip convention: next sits to the left, prev to the right — a
+            rightward drag reveals it, following the finger naturally. */}
+        {next ? <div className="absolute inset-y-0 right-full h-full w-full">{next}</div> : null}
         <div className="absolute inset-0 h-full w-full">{current}</div>
-        {next ? <div className="absolute inset-y-0 left-full h-full w-full">{next}</div> : null}
+        {prev ? <div className="absolute inset-y-0 left-full h-full w-full">{prev}</div> : null}
       </div>
     </div>
   )

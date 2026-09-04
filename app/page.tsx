@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Mic } from 'lucide-react'
+import { Lock, Mic } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
@@ -21,41 +21,42 @@ import { isImitateUnlocked } from '@/lib/imitate-access'
 const exploreTiles = [
   {
     id: 'read',
+    index: '01',
     label: 'Read',
     hint: 'Mushaf & translation',
     href: '/read',
     Icon: IconRead,
-    gradient: 'linear-gradient(150deg, #8163ef 0%, #4b39a2 100%)',
-    glow: 'rgba(122, 92, 240, 0.45)',
   },
   {
     id: 'test',
+    index: '02',
     label: 'Test',
     hint: 'Check your hifdh',
     href: '/test/select',
     Icon: IconTest,
-    gradient: 'linear-gradient(150deg, #f0c877 0%, #d29a3c 100%)',
-    glow: 'rgba(226, 171, 83, 0.45)',
   },
   {
     id: 'imitate',
+    index: '03',
     label: 'Imitate',
     hint: 'Match the reciter',
     href: null,
     Icon: Mic,
-    gradient: 'linear-gradient(150deg, #f27ba4 0%, #c9527e 100%)',
-    glow: 'rgba(224, 114, 150, 0.45)',
   },
   {
     id: 'listen',
+    index: '04',
     label: 'Listen',
     hint: 'Beautiful recitation',
     href: '/listen',
     Icon: IconListen,
-    gradient: 'linear-gradient(150deg, #47c6d4 0%, #2a8fa0 100%)',
-    glow: 'rgba(56, 184, 196, 0.45)',
   },
 ] as const
+
+const tileSurface =
+  'ed-card group relative flex h-full flex-col justify-between gap-7 rounded-[1.25rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.98]'
+
+const tileFocus = 'ed-focus block rounded-[1.25rem] text-left'
 
 export default function Home() {
   useAppSettings()
@@ -98,37 +99,34 @@ export default function Home() {
       </div>
 
       <section aria-label="Explore" className="reveal" style={{ animationDelay: '240ms' }}>
-        <div className="mb-4 flex items-center gap-3">
-          <h2 className="home-serif text-xl font-semibold text-[var(--home-heading)]">Explore</h2>
-          <span className="h-px flex-1 bg-gradient-to-r from-[var(--home-card-border)] to-transparent" />
+        <div className="mb-3 flex items-center gap-3">
+          <h2 className="ed-label">Explore</h2>
+          <span className="ed-rule flex-1" />
         </div>
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-2 gap-3">
           {exploreTiles.map((tile) => {
             const { Icon } = tile
+            const locked = tile.id === 'imitate' && !imitateUnlocked
             const inner = (
-              <div
-                className="group relative flex h-full flex-col gap-3 overflow-hidden rounded-[1.4rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-4 shadow-[var(--home-card-shadow)] transition-all duration-200 active:scale-[0.97]"
-              >
-                <span
-                  className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full opacity-70 blur-2xl transition-opacity group-hover:opacity-100"
-                  style={{ background: tile.glow }}
-                  aria-hidden
-                />
-                <span
-                  className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg"
-                  style={{ background: tile.gradient, boxShadow: `0 10px 22px -8px ${tile.glow}` }}
-                >
-                  <Icon
-                    className="h-8 w-8"
-                    strokeWidth={tile.id === 'imitate' ? 1.9 : undefined}
-                  />
-                </span>
-                <span className="relative">
-                  <span className="block text-[0.95rem] font-semibold text-[var(--home-heading)]">
+              <div className={tileSurface}>
+                <div className="flex items-start justify-between">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                    <Icon
+                      className="h-6 w-6"
+                      strokeWidth={tile.id === 'imitate' ? 1.8 : undefined}
+                    />
+                  </span>
+                  <span className="flex items-center gap-1.5 text-[var(--home-muted)]">
+                    {locked ? <Lock className="h-3 w-3" strokeWidth={2} aria-label="Locked" /> : null}
+                    <span className="ed-num text-[0.8rem]">{tile.index}</span>
+                  </span>
+                </div>
+                <div>
+                  <span className="home-serif block text-[1.2rem] font-medium leading-tight text-[var(--home-heading)]">
                     {tile.label}
                   </span>
-                  <span className="mt-0.5 block text-xs text-[var(--home-muted)]">{tile.hint}</span>
-                </span>
+                  <span className="mt-1 block text-xs text-[var(--home-muted)]">{tile.hint}</span>
+                </div>
               </div>
             )
 
@@ -138,7 +136,7 @@ export default function Home() {
                   key={tile.id}
                   type="button"
                   onClick={handleImitateClick}
-                  className="rounded-[1.4rem] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--home-sage)]/50"
+                  className={tileFocus}
                 >
                   {inner}
                 </button>
@@ -146,11 +144,7 @@ export default function Home() {
             }
 
             return (
-              <Link
-                key={tile.id}
-                href={tile.href!}
-                className="rounded-[1.4rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--home-sage)]/50"
-              >
+              <Link key={tile.id} href={tile.href!} className={tileFocus}>
                 {inner}
               </Link>
             )
