@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Square, Bookmark, Languages, Share2, Loader2, X } from 'lucide-react'
+import { Play, Square, Bookmark, Languages, Share2, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 export interface AyahMenuAnchor {
@@ -22,8 +22,6 @@ interface AyahContextMenuProps {
   isBookmarked: boolean
   somaliVoiceAvailable?: boolean
   isSomaliVoicePlaying?: boolean
-  /** Rendering the shareable verse card. */
-  sharing?: boolean
   onClose: () => void
   onPlay: () => void
   onToggleBookmark: () => void
@@ -89,7 +87,6 @@ export default function AyahContextMenu({
   isBookmarked,
   somaliVoiceAvailable = false,
   isSomaliVoicePlaying = false,
-  sharing = false,
   onClose,
   onPlay,
   onToggleBookmark,
@@ -266,17 +263,8 @@ export default function AyahContextMenu({
         </ActionButton>
 
         {onShare ? (
-          <ActionButton
-            label={sharing ? 'Making…' : 'Share'}
-            active={sharing}
-            disabled={sharing}
-            onClick={onShare}
-          >
-            {sharing ? (
-              <Loader2 className="h-[18px] w-[18px] animate-spin" />
-            ) : (
-              <Share2 className="h-[18px] w-[18px]" />
-            )}
+          <ActionButton label="Share" onClick={onShare}>
+            <Share2 className="h-[18px] w-[18px]" />
           </ActionButton>
         ) : null}
 
