@@ -65,6 +65,8 @@ import {
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { getVerseArabicText } from '@/lib/quran-display'
+import { getTranslationOption } from '@/lib/translations'
+import { shareVerseImage } from '@/lib/verse-image'
 import {
   hasSomaliVoiceForVerse,
   loadSomaliVoiceManifest,
@@ -115,6 +117,8 @@ function ReadPageContent() {
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareNotice, setShareNotice] = useState<string | null>(null)
   const [pageSlide, setPageSlide] = useState<{
     direction: PageSlideDirection
     incomingVerses: Verse[]
@@ -344,6 +348,12 @@ function ReadPageContent() {
     translationLanguage,
     translationEditionId
   )
+
+  /** Latest translations, readable from callbacks that outlive a render. */
+  const translationByKeyRef = useRef(translationByKey)
+  useEffect(() => {
+    translationByKeyRef.current = translationByKey
+  }, [translationByKey])
 
   const navigatePage = useCallback(
     async (page: number, options?: { autoContinue?: boolean }) => {
@@ -640,6 +650,47 @@ function ReadPageContent() {
     })
     setAyahMenuBookmarked(saved)
   }, [ayahMenu, chapters, currentPage, pageVerses])
+
+  const handleShareVerse = useCallback(async () => {
+    if (!ayahMenu || shareBusy) return
+    const verseKey = ayahMenu.verseKey
+    const surahId = Number(verseKey.split(':')[0]) || 1
+    const verse = pageVerses.find((v) => v.verse_key === verseKey)
+
+    setShareBusy(true)
+    setShareNotice(null)
+    try {
+      // Opening the menu kicks off the page's translation fetch; give it a
+      // moment so the card isn't shared with the Arabic alone.
+      let translation = translationByKeyRef.current[verseKey]?.translation ?? null
+      const deadline = Date.now() + 4000
+      while (!translation && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 150))
+        translation = translationByKeyRef.current[verseKey]?.translation ?? null
+      }
+
+      const result = await shareVerseImage({
+        // The end mark is dropped — the reference is printed in the footer.
+        arabic: verse ? getVerseArabicText(verse, { omitEndMark: true }) : ayahMenu.arabic,
+        translation,
+        surahName: chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`,
+        verseKey,
+        translator: translation ? getTranslationOption(translationEditionId).label : null,
+      })
+      if (result === 'downloaded') setShareNotice('Saved the verse image to your downloads.')
+    } catch (err) {
+      console.error('Share verse failed:', err)
+      setShareNotice(err instanceof Error ? err.message : 'Could not create the verse image.')
+    } finally {
+      setShareBusy(false)
+    }
+  }, [ayahMenu, chapters, pageVerses, shareBusy, translationEditionId])
+
+  useEffect(() => {
+    if (!shareNotice) return
+    const timer = window.setTimeout(() => setShareNotice(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [shareNotice])
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? navSelectedVerseKey
 
@@ -1164,6 +1215,14 @@ function ReadPageContent() {
         onGoToPage={handleGoToPageFromDrawer}
       />
 
+      {shareNotice ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[102] flex justify-center px-4">
+          <p className="mushaf-read-chrome-panel max-w-sm rounded-xl px-4 py-2.5 text-center text-xs font-medium shadow-lg">
+            {shareNotice}
+          </p>
+        </div>
+      ) : null}
+
       <AyahContextMenu
         open={Boolean(ayahMenu)}
         verseKey={ayahMenu?.verseKey ?? ''}
@@ -1195,6 +1254,8 @@ function ReadPageContent() {
           playVerse(key, { continueOnPage: true })
         }}
         onToggleBookmark={handleToggleBookmark}
+        sharing={shareBusy}
+        onShare={() => void handleShareVerse()}
         onPlaySomaliVoice={() => {
           if (!ayahMenu) return
           stopRecitation()

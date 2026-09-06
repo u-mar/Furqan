@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Square, Bookmark, Languages, X } from 'lucide-react'
+import { Play, Square, Bookmark, Languages, Share2, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 export interface AyahMenuAnchor {
@@ -22,9 +22,12 @@ interface AyahContextMenuProps {
   isBookmarked: boolean
   somaliVoiceAvailable?: boolean
   isSomaliVoicePlaying?: boolean
+  /** Rendering the shareable verse card. */
+  sharing?: boolean
   onClose: () => void
   onPlay: () => void
   onToggleBookmark: () => void
+  onShare?: () => void
   onPlaySomaliVoice?: () => void
   onStopSomaliVoice?: () => void
   onStopRecitation?: () => void
@@ -37,16 +40,18 @@ interface ActionButtonProps {
   label: string
   active?: boolean
   primary?: boolean
+  disabled?: boolean
   onClick: () => void
   children: React.ReactNode
 }
 
-function ActionButton({ label, active, primary, onClick, children }: ActionButtonProps) {
+function ActionButton({ label, active, primary, disabled, onClick, children }: ActionButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex min-w-[3.4rem] flex-col items-center gap-1 rounded-xl px-1.5 py-1.5 transition-colors"
+      disabled={disabled}
+      className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1.5 transition-colors disabled:opacity-60"
     >
       <span
         className={cn(
@@ -62,7 +67,7 @@ function ActionButton({ label, active, primary, onClick, children }: ActionButto
       </span>
       <span
         className={cn(
-          'text-[10px] font-medium leading-none',
+          'w-full truncate text-center text-[10px] font-medium leading-none',
           active || primary
             ? 'text-[var(--mushaf-read-accent)]'
             : 'text-[var(--mushaf-popup-meta)]'
@@ -84,9 +89,11 @@ export default function AyahContextMenu({
   isBookmarked,
   somaliVoiceAvailable = false,
   isSomaliVoicePlaying = false,
+  sharing = false,
   onClose,
   onPlay,
   onToggleBookmark,
+  onShare,
   onPlaySomaliVoice,
   onStopSomaliVoice,
   onStopRecitation,
@@ -257,6 +264,21 @@ export default function AyahContextMenu({
         >
           <Languages className="h-[18px] w-[18px]" />
         </ActionButton>
+
+        {onShare ? (
+          <ActionButton
+            label={sharing ? 'Making…' : 'Share'}
+            active={sharing}
+            disabled={sharing}
+            onClick={onShare}
+          >
+            {sharing ? (
+              <Loader2 className="h-[18px] w-[18px] animate-spin" />
+            ) : (
+              <Share2 className="h-[18px] w-[18px]" />
+            )}
+          </ActionButton>
+        ) : null}
 
         {somaliVoiceAvailable && onPlaySomaliVoice ? (
           <ActionButton
