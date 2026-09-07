@@ -19,10 +19,6 @@ import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 const W = 1080
 const H = 1350
 
-/** Eight-point star (rub' al-hizb), from IconOrnament — 24x24 viewBox. */
-const ORNAMENT_PATH =
-  'M23 12l-6.75 1.76 3.53 6.02-6.02-3.53L12 23l-1.76-6.75-6.02 3.53 3.53-6.02L1 12l6.75-1.76-3.53-6.02 6.02 3.53L12 1l1.76 6.75 6.02-3.53-3.53 6.02z'
-
 export interface VerseImageBackground {
   id: string
   label: string
@@ -103,7 +99,6 @@ export interface VerseImageInput {
 const INK = '#ffffff'
 const INK_SOFT = 'rgba(255, 255, 255, 0.92)'
 const MUTED = 'rgba(255, 255, 255, 0.72)'
-const RULE = 'rgba(255, 255, 255, 0.32)'
 
 function cssFontStack(varName: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback
@@ -181,43 +176,6 @@ function fitBlock(
   }
 
   return { lines, fontSize, lineHeight, height: lines.length * lineHeight }
-}
-
-function drawOrnament(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  color: string
-): void {
-  const path = new Path2D(ORNAMENT_PATH)
-  const scale = size / 24
-  ctx.save()
-  ctx.translate(cx - size / 2, cy - size / 2)
-  ctx.scale(scale, scale)
-  ctx.fillStyle = color
-  ctx.fill(path)
-  ctx.restore()
-}
-
-/** line — ornament — line */
-function drawOrnamentRule(
-  ctx: CanvasRenderingContext2D,
-  cy: number,
-  halfSpan: number,
-  starSize: number,
-  accent: string
-): void {
-  const gap = starSize * 1.5
-  ctx.strokeStyle = RULE
-  ctx.lineWidth = 1.5
-  ctx.beginPath()
-  ctx.moveTo(W / 2 - halfSpan, cy)
-  ctx.lineTo(W / 2 - gap, cy)
-  ctx.moveTo(W / 2 + gap, cy)
-  ctx.lineTo(W / 2 + halfSpan, cy)
-  ctx.stroke()
-  drawOrnament(ctx, W / 2, cy, starSize, accent)
 }
 
 /** Cover-fit the photo, then lay scrims over it so the type always reads. */
@@ -341,9 +299,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
 
   /* ---- Divider + translation ---- */
   if (translationBlock) {
-    cursorY += dividerSpace / 2
-    drawOrnamentRule(ctx, cursorY, 120, 16, background.accent)
-    cursorY += dividerSpace / 2
+    cursorY += dividerSpace
 
     withShadow(() => {
       ctx.direction = 'ltr'
@@ -370,7 +326,6 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   })
 
   /* ---- Wordmark ---- */
-  drawOrnamentRule(ctx, H - 168, 150, 14, background.accent)
   withShadow(() => {
     ctx.direction = 'ltr'
     ctx.textAlign = 'center'
