@@ -41,6 +41,7 @@ export default function ShareVerseSheet({
   const [mounted, setMounted] = useState(false)
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID)
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
+  const [showTranslation, setShowTranslation] = useState(true)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -92,9 +93,7 @@ export default function ShareVerseSheet({
           words: selection.words,
           page: target.page,
           isQcf: useQcf,
-          // A partial selection with a full-ayah translation would be a
-          // mismatch, so the translation only rides along with the whole ayah.
-          translation: selection.partial ? null : translation,
+          translation: showTranslation ? translation : null,
           surahName: target.surahName,
           verseKey: target.verseKey,
           partial: selection.partial,
@@ -116,7 +115,7 @@ export default function ShareVerseSheet({
     return () => {
       cancelled = true
     }
-  }, [open, target, translation, backgroundId, selection, useQcf])
+  }, [open, target, translation, backgroundId, selection, useQcf, showTranslation])
 
   /* Drop the object URL when the sheet closes. */
   useEffect(() => {
@@ -130,12 +129,37 @@ export default function ShareVerseSheet({
     setNotice(null)
   }, [open])
 
-  const handleWordTap = useCallback((index: number) => {
-    setRange((prev) => {
-      // First tap starts a selection; second tap closes it; third starts over.
-      if (!prev || prev.start !== prev.end) return { start: index, end: index }
-      return { start: prev.start, end: index }
-    })
+  /**
+   * Drag across the words to choose a run — press sets the anchor, moving
+   * extends it, lifting finishes. A plain tap selects the single word.
+   * Touch doesn't fire enter/leave on the elements you drag over, so the
+   * word under the finger is resolved by hit-testing instead.
+   */
+  const draggingRef = useRef(false)
+
+  const wordIndexAtPoint = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y)
+    const holder = el?.closest('[data-word-index]')
+    if (!holder) return null
+    const idx = Number(holder.getAttribute('data-word-index'))
+    return Number.isFinite(idx) ? idx : null
+  }
+
+  const handleWordPointerDown = useCallback((index: number, e: React.PointerEvent) => {
+    e.preventDefault()
+    draggingRef.current = true
+    setRange({ start: index, end: index })
+  }, [])
+
+  const handleWordsPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!draggingRef.current) return
+    const index = wordIndexAtPoint(e.clientX, e.clientY)
+    if (index === null) return
+    setRange((prev) => (prev && prev.end !== index ? { ...prev, end: index } : prev))
+  }, [])
+
+  const endWordDrag = useCallback(() => {
+    draggingRef.current = false
   }, [])
 
   const handleShare = useCallback(async () => {
@@ -174,7 +198,6 @@ export default function ShareVerseSheet({
 
   const selStart = range ? Math.min(range.start, range.end) : 0
   const selEnd = range ? Math.max(range.start, range.end) : pickerWords.length - 1
-  const pickingSecondWord = Boolean(range && range.start === range.end)
 
   const sheet = (
     <div className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center">
@@ -187,7 +210,6 @@ export default function ShareVerseSheet({
 
       <div
         role="dialog"
-        data-share-sheet
         aria-label={`Share ayah ${target.verseKey}`}
         className="relative flex max-h-[94dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-t text-[var(--mushaf-read-popup-text)] sm:rounded-3xl sm:border"
         style={{
@@ -243,15 +265,15 @@ export default function ShareVerseSheet({
           {/* Word range */}
           {pickerWords.length > 1 ? (
             <div className="mb-3">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
-                  {pickingSecondWord ? 'Now tap the last word' : 'Tap to share part of the ayah'}
+                  {range ? `${selEnd - selStart + 1} of ${pickerWords.length} words` : 'Drag across to share part'}
                 </p>
                 {range ? (
                   <button
                     type="button"
                     onClick={() => setRange(null)}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-[var(--mushaf-read-accent)]"
+                    className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[var(--mushaf-read-accent)]"
                   >
                     <RotateCcw className="h-3 w-3" />
                     Whole ayah
@@ -261,37 +283,77 @@ export default function ShareVerseSheet({
               <div
                 dir="rtl"
                 lang="ar"
-                className="flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-xl bg-[var(--mushaf-popup-badge-bg)] p-2"
+                onPointerMove={handleWordsPointerMove}
+                onPointerUp={endWordDrag}
+                onPointerCancel={endWordDrag}
+                onPointerLeave={endWordDrag}
+                className="flex max-h-28 touch-none select-none flex-wrap gap-1 overflow-y-auto rounded-xl bg-[var(--mushaf-popup-badge-bg)] p-2"
               >
                 {pickerWords.map((word, i) => {
                   // Nothing is highlighted until a selection actually starts —
                   // highlighting every word by default just reads as noise.
                   const inRange = Boolean(range) && i >= selStart && i <= selEnd
+                  const isEdge = Boolean(range) && (i === selStart || i === selEnd)
                   return (
-                    <button
+                    <span
                       key={i}
-                      type="button"
-                      onClick={() => handleWordTap(i)}
+                      data-word-index={i}
+                      role="button"
+                      tabIndex={0}
+                      onPointerDown={(e) => handleWordPointerDown(i, e)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setRange({ start: i, end: i })
+                      }}
                       className={cn(
-                        'arabic-text rounded-md px-1.5 py-0.5 text-[15px] leading-relaxed transition-colors',
+                        'arabic-text cursor-pointer rounded-md px-1.5 py-0.5 text-[15px] leading-relaxed transition-colors',
                         inRange
                           ? 'bg-[var(--mushaf-read-accent)] text-white'
                           : range
                             ? 'text-[var(--mushaf-read-popup-text)] opacity-40'
-                            : 'text-[var(--mushaf-read-popup-text)] opacity-80'
+                            : 'text-[var(--mushaf-read-popup-text)] opacity-80',
+                        isEdge && 'ring-1 ring-white/60'
                       )}
                     >
                       {word}
-                    </button>
+                    </span>
                   )
                 })}
               </div>
-              {selection.partial ? (
-                <p className="mt-1.5 text-[10px] text-[var(--mushaf-popup-meta)]">
-                  Translation is left off when sharing part of an ayah.
-                </p>
-              ) : null}
             </div>
+          ) : null}
+
+          {/* Translation toggle */}
+          {translation ? (
+            <button
+              type="button"
+              onClick={() => setShowTranslation((v) => !v)}
+              role="switch"
+              aria-checked={showTranslation}
+              className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3 py-2.5 text-left"
+            >
+              <span>
+                <span className="block text-xs font-semibold">Include translation</span>
+                {selection.partial ? (
+                  <span className="block text-[10px] text-[var(--mushaf-popup-meta)]">
+                    Shows the whole ayah&apos;s translation
+                  </span>
+                ) : null}
+              </span>
+              <span
+                className={cn(
+                  'relative h-6 w-10 shrink-0 rounded-full transition-colors',
+                  showTranslation ? 'bg-[var(--mushaf-read-accent)]' : 'bg-white/20'
+                )}
+                aria-hidden
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                    showTranslation ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
+                  )}
+                />
+              </span>
+            </button>
           ) : null}
 
           {/* Backgrounds */}
@@ -327,7 +389,7 @@ export default function ShareVerseSheet({
             })}
           </div>
 
-          {translationLoading && !translation && !selection.partial ? (
+          {translationLoading && !translation ? (
             <p className="pt-2 text-[11px] text-[var(--mushaf-popup-meta)]">
               Loading the translation…
             </p>

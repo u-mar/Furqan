@@ -44,6 +44,7 @@ import {
 import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
+import { VERSE_IMAGE_BACKGROUNDS } from '@/lib/verse-image'
 
 /* ---------- Shared button recipes ---------- */
 const btnBase =
@@ -212,6 +213,7 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [translatorPickerOpen, setTranslatorPickerOpen] = useState(false)
+  const [verseWallpapers, setVerseWallpapers] = useState(true)
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -243,6 +245,7 @@ export default function SettingsPage() {
     setMushafWidth(s.mushafWidth)
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
+    setVerseWallpapers(s.verseWallpapersEnabled)
     setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
       en: areTranslationsCached('en'),
@@ -554,6 +557,53 @@ export default function SettingsPage() {
               )
             })}
           </div>
+        </section>
+
+        {/* Ayah wallpapers */}
+        <section className="mb-9">
+          <SectionTitle>Ayah wallpapers</SectionTitle>
+          <SettingsToggle
+            title="Share ayah as a wallpaper"
+            description={
+              verseWallpapers
+                ? 'Long-press an ayah in Read and tap Share to make a card.'
+                : 'Turned off — the Share action is hidden in Read.'
+            }
+            enabled={verseWallpapers}
+            onToggle={() => {
+              const next = !verseWallpapers
+              setVerseWallpapers(next)
+              setAppSettings({ verseWallpapersEnabled: next })
+            }}
+          />
+          {verseWallpapers ? (
+            <>
+              <p className="mb-2 mt-4 text-xs font-semibold text-[var(--home-heading)]">
+                {VERSE_IMAGE_BACKGROUNDS.length} backgrounds
+              </p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {VERSE_IMAGE_BACKGROUNDS.map((bg) => (
+                  <div
+                    key={bg.id}
+                    className="relative overflow-hidden rounded-lg"
+                    style={{ aspectRatio: '4 / 5' }}
+                    title={bg.label}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={bg.src}
+                      alt={bg.label}
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-[var(--home-muted)]">
+                You pick the background each time you share.
+              </p>
+            </>
+          ) : null}
         </section>
 
         {/* Translation */}

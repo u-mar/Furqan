@@ -108,7 +108,13 @@ function ReadPageContent() {
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
-  const { reciterId, translationLanguage, translationEditionId, mushafWidth } = useAppSettings()
+  const {
+    reciterId,
+    translationLanguage,
+    translationEditionId,
+    mushafWidth,
+    verseWallpapersEnabled,
+  } = useAppSettings()
   /** Vertical page swipes hidden in Settings for now — always horizontal. */
   const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
@@ -1242,7 +1248,7 @@ function ReadPageContent() {
           playVerse(key, { continueOnPage: true })
         }}
         onToggleBookmark={handleToggleBookmark}
-        onShare={handleShareVerse}
+        onShare={verseWallpapersEnabled ? handleShareVerse : undefined}
         onPlaySomaliVoice={() => {
           if (!ayahMenu) return
           stopRecitation()

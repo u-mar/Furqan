@@ -358,17 +358,18 @@ html.dark .ayah-sheet-arabic {
   color: var(--mushaf-read-text);
 }
 
+/**
+ * Popups and sheets are portaled to <body>, outside `.mushaf-reader-immersive`,
+ * so every token they use has to exist at the html level too — otherwise
+ * `var(--mushaf-read-accent)` resolves to nothing and buttons render bare.
+ * The accent here is the lighter tint: the reader's light-theme accent is a
+ * dark verdigris tuned for paper, which would disappear on the dark popup.
+ */
 html:not(.dark) {
   --mushaf-read-popup-bg: #14322c;
   --mushaf-read-popup-border: rgba(255, 255, 255, 0.13);
   --mushaf-read-popup-text: #f0f5f3;
   --mushaf-read-popup-shadow: 0 20px 48px -12px rgba(14, 46, 40, 0.5);
-}
-
-/* The reader's light-theme accent is a dark verdigris tuned for paper; inside
-   the dark popup it needs the lighter tint so badges and buttons stay legible. */
-html:not(.dark) [data-ayah-menu],
-html:not(.dark) [data-share-sheet] {
   --mushaf-read-accent: #5cc4ab;
   --mushaf-read-accent-soft: rgba(92, 196, 171, 0.18);
 }
@@ -415,6 +416,10 @@ html.dark.black {
   --mushaf-read-popup-border: rgba(255, 255, 255, 0.16);
   --mushaf-read-popup-text: #f6f6f6;
   --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+  --mushaf-read-accent: #57c2a9;
+  --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
+  --mushaf-popup-badge-bg: #141414;
+  --mushaf-popup-meta: #8c8c8c;
 }
 
 html.dark .mushaf-reader-immersive {
@@ -447,6 +452,10 @@ html.dark {
   --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
   --mushaf-read-popup-text: #e7ddc9;
   --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --mushaf-read-accent: #57c2a9;
+  --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
+  --mushaf-popup-badge-bg: #262523;
+  --mushaf-popup-meta: #8d8880;
 }
 
 .mushaf-read-chrome-bar {

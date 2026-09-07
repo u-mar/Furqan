@@ -27,6 +27,8 @@ export interface VerseImageBackground {
   id: string
   label: string
   src: string
+  /** Reference-line colour, picked to sit with this photo rather than one gold for all. */
+  accent: string
 }
 
 /**
@@ -36,47 +38,47 @@ export interface VerseImageBackground {
  */
 export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = [
   // Sacred
-  { id: 'mosque-arches', label: 'Mosque arches', src: '/share-bg/mosque-arches.jpg' },
-  { id: 'mosque-columns', label: 'Mosque columns', src: '/share-bg/mosque-columns.jpg' },
-  { id: 'kiswah-gold', label: 'Gold calligraphy', src: '/share-bg/kiswah-gold.jpg' },
-  { id: 'islamic-pattern', label: 'Pattern', src: '/share-bg/islamic-pattern.jpg' },
-  { id: 'quran-flowers', label: 'Quran & flowers', src: '/share-bg/quran-flowers.jpg' },
-  { id: 'quran-ornate', label: 'Mushaf', src: '/share-bg/quran-ornate.jpg' },
-  { id: 'tasbih', label: 'Tasbih', src: '/share-bg/tasbih.jpg' },
-  { id: 'sujood', label: 'In prayer', src: '/share-bg/sujood.jpg' },
+  { id: 'mosque-arches', label: 'Mosque arches', src: '/share-bg/mosque-arches.jpg', accent: '#e8d3a8' },
+  { id: 'mosque-columns', label: 'Mosque columns', src: '/share-bg/mosque-columns.jpg', accent: '#f0d9a6' },
+  { id: 'kiswah-gold', label: 'Gold calligraphy', src: '/share-bg/kiswah-gold.jpg', accent: '#f3d489' },
+  { id: 'islamic-pattern', label: 'Pattern', src: '/share-bg/islamic-pattern.jpg', accent: '#ffd9a3' },
+  { id: 'quran-flowers', label: 'Quran & flowers', src: '/share-bg/quran-flowers.jpg', accent: '#f6c9cd' },
+  { id: 'quran-ornate', label: 'Mushaf', src: '/share-bg/quran-ornate.jpg', accent: '#eccf9c' },
+  { id: 'tasbih', label: 'Tasbih', src: '/share-bg/tasbih.jpg', accent: '#a8e0d2' },
+  { id: 'sujood', label: 'In prayer', src: '/share-bg/sujood.jpg', accent: '#a9dcc4' },
 
   // Light and sky
-  { id: 'sunrise', label: 'Sunrise', src: '/share-bg/sunrise.jpg' },
-  { id: 'above-clouds', label: 'Above the clouds', src: '/share-bg/above-clouds.jpg' },
-  { id: 'night-sky', label: 'Night sky', src: '/share-bg/night-sky.jpg' },
-  { id: 'milky-way', label: 'Milky way', src: '/share-bg/milky-way.jpg' },
-  { id: 'candle', label: 'Candle', src: '/share-bg/candle.jpg' },
-  { id: 'lantern', label: 'Lantern', src: '/share-bg/lantern.jpg' },
-  { id: 'bokeh-lights', label: 'City lights', src: '/share-bg/bokeh-lights.jpg' },
-  { id: 'silhouette', label: 'Dusk', src: '/share-bg/silhouette.jpg' },
+  { id: 'sunrise', label: 'Sunrise', src: '/share-bg/sunrise.jpg', accent: '#ffd8a0' },
+  { id: 'above-clouds', label: 'Above the clouds', src: '/share-bg/above-clouds.jpg', accent: '#ffc9a8' },
+  { id: 'night-sky', label: 'Night sky', src: '/share-bg/night-sky.jpg', accent: '#d4c2f0' },
+  { id: 'milky-way', label: 'Milky way', src: '/share-bg/milky-way.jpg', accent: '#bcd2f5' },
+  { id: 'candle', label: 'Candle', src: '/share-bg/candle.jpg', accent: '#ffcf94' },
+  { id: 'lantern', label: 'Lantern', src: '/share-bg/lantern.jpg', accent: '#ffd39a' },
+  { id: 'bokeh-lights', label: 'City lights', src: '/share-bg/bokeh-lights.jpg', accent: '#ffc9b0' },
+  { id: 'silhouette', label: 'Dusk', src: '/share-bg/silhouette.jpg', accent: '#e6c6ea' },
 
   // Nature
-  { id: 'still-water', label: 'Still water', src: '/share-bg/still-water.jpg' },
-  { id: 'blue-hills', label: 'Blue hills', src: '/share-bg/blue-hills.jpg' },
-  { id: 'peaks', label: 'Peaks', src: '/share-bg/peaks.jpg' },
-  { id: 'cliffs', label: 'Cliffs', src: '/share-bg/cliffs.jpg' },
-  { id: 'river', label: 'River', src: '/share-bg/river.jpg' },
-  { id: 'forest', label: 'Forest', src: '/share-bg/forest.jpg' },
-  { id: 'woodland', label: 'Woodland', src: '/share-bg/woodland.jpg' },
-  { id: 'old-tree', label: 'Old tree', src: '/share-bg/old-tree.jpg' },
-  { id: 'sunlight', label: 'Sunlight', src: '/share-bg/sunlight.jpg' },
-  { id: 'meadow', label: 'Meadow', src: '/share-bg/meadow.jpg' },
-  { id: 'poppies', label: 'Poppies', src: '/share-bg/poppies.jpg' },
-  { id: 'soft-bloom', label: 'Soft bloom', src: '/share-bg/soft-bloom.jpg' },
+  { id: 'still-water', label: 'Still water', src: '/share-bg/still-water.jpg', accent: '#a9d8e6' },
+  { id: 'blue-hills', label: 'Blue hills', src: '/share-bg/blue-hills.jpg', accent: '#b4d4e8' },
+  { id: 'peaks', label: 'Peaks', src: '/share-bg/peaks.jpg', accent: '#f2c3b4' },
+  { id: 'cliffs', label: 'Cliffs', src: '/share-bg/cliffs.jpg', accent: '#bfe0c4' },
+  { id: 'river', label: 'River', src: '/share-bg/river.jpg', accent: '#b6e2c6' },
+  { id: 'forest', label: 'Forest', src: '/share-bg/forest.jpg', accent: '#c8e4b8' },
+  { id: 'woodland', label: 'Woodland', src: '/share-bg/woodland.jpg', accent: '#c4e2bb' },
+  { id: 'old-tree', label: 'Old tree', src: '/share-bg/old-tree.jpg', accent: '#dbe6b4' },
+  { id: 'sunlight', label: 'Sunlight', src: '/share-bg/sunlight.jpg', accent: '#e4dfa6' },
+  { id: 'meadow', label: 'Meadow', src: '/share-bg/meadow.jpg', accent: '#ffe0a0' },
+  { id: 'poppies', label: 'Poppies', src: '/share-bg/poppies.jpg', accent: '#ffc7bd' },
+  { id: 'soft-bloom', label: 'Soft bloom', src: '/share-bg/soft-bloom.jpg', accent: '#f8cddc' },
 
   // Quiet everyday
-  { id: 'rain-window', label: 'Rain (warm)', src: '/share-bg/rain-window.jpg' },
-  { id: 'rain-cool', label: 'Rain (cool)', src: '/share-bg/rain-cool.jpg' },
-  { id: 'misty-road', label: 'Open road', src: '/share-bg/misty-road.jpg' },
-  { id: 'teacup', label: 'Quiet morning', src: '/share-bg/teacup.jpg' },
-  { id: 'elderly-hands', label: 'Elder hands', src: '/share-bg/elderly-hands.jpg' },
-  { id: 'small-hand', label: 'Small hand', src: '/share-bg/small-hand.jpg' },
-  { id: 'hospital', label: 'Hospital', src: '/share-bg/hospital.jpg' },
+  { id: 'rain-window', label: 'Rain (warm)', src: '/share-bg/rain-window.jpg', accent: '#e8d5a4' },
+  { id: 'rain-cool', label: 'Rain (cool)', src: '/share-bg/rain-cool.jpg', accent: '#aed8de' },
+  { id: 'misty-road', label: 'Open road', src: '/share-bg/misty-road.jpg', accent: '#ecd9a6' },
+  { id: 'teacup', label: 'Quiet morning', src: '/share-bg/teacup.jpg', accent: '#e9cfae' },
+  { id: 'elderly-hands', label: 'Elder hands', src: '/share-bg/elderly-hands.jpg', accent: '#e2cdb2' },
+  { id: 'small-hand', label: 'Small hand', src: '/share-bg/small-hand.jpg', accent: '#dcdcdc' },
+  { id: 'hospital', label: 'Hospital', src: '/share-bg/hospital.jpg', accent: '#a9dde0' },
 ]
 
 export const DEFAULT_BACKGROUND_ID = VERSE_IMAGE_BACKGROUNDS[0].id
@@ -101,9 +103,7 @@ export interface VerseImageInput {
 const INK = '#ffffff'
 const INK_SOFT = 'rgba(255, 255, 255, 0.92)'
 const MUTED = 'rgba(255, 255, 255, 0.72)'
-const ACCENT = '#f2dfae'
 const RULE = 'rgba(255, 255, 255, 0.32)'
-const RULE_SOFT = 'rgba(255, 255, 255, 0.18)'
 
 function cssFontStack(varName: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback
@@ -205,7 +205,8 @@ function drawOrnamentRule(
   ctx: CanvasRenderingContext2D,
   cy: number,
   halfSpan: number,
-  starSize: number
+  starSize: number,
+  accent: string
 ): void {
   const gap = starSize * 1.5
   ctx.strokeStyle = RULE
@@ -216,7 +217,7 @@ function drawOrnamentRule(
   ctx.moveTo(W / 2 + gap, cy)
   ctx.lineTo(W / 2 + halfSpan, cy)
   ctx.stroke()
-  drawOrnament(ctx, W / 2, cy, starSize, ACCENT)
+  drawOrnament(ctx, W / 2, cy, starSize, accent)
 }
 
 /** Cover-fit the photo, then lay scrims over it so the type always reads. */
@@ -245,11 +246,6 @@ function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): 
   vig.addColorStop(1, 'rgba(4, 8, 12, 0.5)')
   ctx.fillStyle = vig
   ctx.fillRect(0, 0, W, H)
-
-  /* Hairline frame */
-  ctx.strokeStyle = RULE_SOFT
-  ctx.lineWidth = 1.5
-  ctx.strokeRect(52, 52, W - 104, H - 104)
 }
 
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
@@ -346,7 +342,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   /* ---- Divider + translation ---- */
   if (translationBlock) {
     cursorY += dividerSpace / 2
-    drawOrnamentRule(ctx, cursorY, 120, 16)
+    drawOrnamentRule(ctx, cursorY, 120, 16, background.accent)
     cursorY += dividerSpace / 2
 
     withShadow(() => {
@@ -368,25 +364,21 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
     ctx.direction = 'ltr'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = ACCENT
-    ctx.font = `600 36px ${fonts.serif}`
-    ctx.fillText(
-      `Surah ${surahName} · ${verseKey}${partial ? ' (part)' : ''}`,
-      W / 2,
-      H - 224
-    )
+    ctx.fillStyle = background.accent
+    ctx.font = `600 27px ${fonts.serif}`
+    ctx.fillText(`Surah ${surahName} · ${verseKey}${partial ? ' (part)' : ''}`, W / 2, H - 218)
   })
 
   /* ---- Wordmark ---- */
-  drawOrnamentRule(ctx, H - 168, 150, 15)
+  drawOrnamentRule(ctx, H - 168, 150, 14, background.accent)
   withShadow(() => {
     ctx.direction = 'ltr'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
     ctx.fillStyle = MUTED
-    ctx.font = `600 40px ${fonts.serif}`
+    ctx.font = `600 34px ${fonts.serif}`
     ctx.letterSpacing = '6px'
-    ctx.fillText(APP_NAME, W / 2, H - 108)
+    ctx.fillText(APP_NAME, W / 2, H - 110)
     ctx.letterSpacing = '0px'
   })
 
