@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Lock, Mic } from 'lucide-react'
+import { ArrowUpRight, Lock, Mic } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
@@ -54,9 +54,9 @@ const exploreTiles = [
 ] as const
 
 const tileSurface =
-  'ed-card group relative flex h-full flex-col justify-between gap-7 rounded-[1.25rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.98]'
+  'ed-card group relative flex h-full flex-col gap-3.5 rounded-[1.5rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.97]'
 
-const tileFocus = 'ed-focus block rounded-[1.25rem] text-left'
+const tileFocus = 'ed-focus block rounded-[1.5rem] text-left'
 
 export default function Home() {
   useAppSettings()
@@ -109,23 +109,31 @@ export default function Home() {
             const locked = tile.id === 'imitate' && !imitateUnlocked
             const inner = (
               <div className={tileSurface}>
-                <div className="flex items-start justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                <div className="flex items-center justify-between">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
                     <Icon
-                      className="h-6 w-6"
+                      className="h-[26px] w-[26px]"
                       strokeWidth={tile.id === 'imitate' ? 1.8 : undefined}
                     />
                   </span>
-                  <span className="flex items-center gap-1.5 text-[var(--home-muted)]">
-                    {locked ? <Lock className="h-3 w-3" strokeWidth={2} aria-label="Locked" /> : null}
-                    <span className="ed-num text-[0.8rem]">{tile.index}</span>
-                  </span>
+                  {locked ? (
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--home-track)] text-[var(--home-muted)]">
+                      <Lock className="h-3 w-3" strokeWidth={2.2} aria-label="Locked" />
+                    </span>
+                  ) : (
+                    <ArrowUpRight
+                      className="h-[18px] w-[18px] text-[var(--home-muted)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                      aria-hidden
+                    />
+                  )}
                 </div>
                 <div>
-                  <span className="home-serif block text-[1.2rem] font-medium leading-tight text-[var(--home-heading)]">
+                  <span className="home-serif block text-[1.25rem] font-semibold leading-tight text-[var(--home-heading)]">
                     {tile.label}
                   </span>
-                  <span className="mt-1 block text-xs text-[var(--home-muted)]">{tile.hint}</span>
+                  <span className="mt-1 block text-[0.8rem] leading-snug text-[var(--home-muted)]">
+                    {tile.hint}
+                  </span>
                 </div>
               </div>
             )

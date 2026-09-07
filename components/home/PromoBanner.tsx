@@ -44,7 +44,7 @@ export default function PromoBanner({ className }: { className?: string }) {
 
   return (
     <section className={cn('mb-5 lg:mb-0 lg:flex lg:flex-col', className)}>
-      <div className="ed-card ed-frame relative flex-1 overflow-hidden rounded-[1.25rem] px-4 py-4 lg:min-h-[140px] lg:px-6 lg:py-6">
+      <div className="ed-card relative flex-1 overflow-hidden rounded-[1.25rem] px-4 py-4 lg:min-h-[140px] lg:px-6 lg:py-6">
         <div className="relative flex items-center gap-4">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
             <IconQuranStand className="h-9 w-9" />

@@ -158,8 +158,8 @@ export default function DailyVerseCard() {
       </div>
 
       <div
-        className="ed-card ed-frame relative overflow-hidden rounded-[1.25rem] px-5 pb-5 pt-5 sm:px-7"
-        style={{ ['--ed-radius' as string]: '1.25rem' }}
+        className="ed-card relative overflow-hidden rounded-[1.5rem] px-4 pb-4 pt-4 sm:px-7 sm:pb-5 sm:pt-5"
+        style={{ ['--ed-radius' as string]: '1.5rem' }}
       >
         <div className="relative flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--home-rule-strong)] py-1 pl-3 pr-2.5 text-[0.7rem] font-semibold tracking-[0.08em] text-[var(--home-heading)]">
@@ -184,7 +184,7 @@ export default function DailyVerseCard() {
           </button>
         </div>
 
-        <p className="ed-arabic relative mt-6 text-[var(--home-heading)]" dir="rtl" lang="ar">
+        <p className="ed-arabic relative mt-5 text-[var(--home-heading)]" dir="rtl" lang="ar">
           {loading ? (
             '…'
           ) : (
@@ -206,24 +206,24 @@ export default function DailyVerseCard() {
           )}
         </p>
 
-        <div className="relative my-5 flex items-center justify-center gap-3">
+        <div className="relative my-4 flex items-center justify-center gap-3">
           <span className="ed-rule w-10" />
           <IconOrnament className="h-2.5 w-2.5 text-[var(--home-sage)]" />
           <span className="ed-rule w-10" />
         </div>
 
-        <p className="home-serif relative mx-auto max-w-[36ch] text-center text-[1.02rem] leading-[1.7] text-[var(--home-heading)]">
+        <p className="home-serif relative mx-auto max-w-[36ch] text-center text-[1.05rem] leading-[1.65] text-[var(--home-heading)]">
           {loading ? 'Loading translation…' : translation}
         </p>
 
-        <div className="relative mt-6 flex items-center justify-between gap-3 border-t border-[var(--home-rule)] pt-4">
+        <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-[var(--home-rule)] pt-3.5">
           <span className="text-xs text-[var(--home-muted)]">
             Page <span className="ed-num text-[var(--home-heading)]">{page}</span> of the mushaf
           </span>
           <button
             type="button"
             onClick={handlePlayToggle}
-            className="ed-ink ed-focus flex h-10 items-center gap-2 rounded-full pl-3.5 pr-4 text-[0.8rem] font-semibold transition-transform hover:scale-[1.03] active:scale-95"
+            className="ed-ink ed-focus flex h-11 items-center gap-2 rounded-full pl-4 pr-[1.15rem] text-[0.85rem] font-semibold transition-transform hover:scale-[1.03] active:scale-95"
             aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
             {playing ? (

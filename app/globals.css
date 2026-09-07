@@ -82,9 +82,12 @@ html:not(.dark) {
   --app-text: #1c1a16;
   --app-muted: #6a675e;
   --home-glow: radial-gradient(70% 38% at 50% -6%, rgba(15, 122, 106, 0.07), transparent 70%);
+  /* Warm paper card. Depth comes from a layered shadow rather than a brighter
+     fill, so cards lift off the page without going stark white. */
   --home-card-bg: #fffdf8;
-  --home-card-border: rgba(28, 26, 22, 0.1);
-  --home-card-shadow: 0 1px 2px rgba(28, 26, 22, 0.04), 0 14px 32px -22px rgba(28, 26, 22, 0.16);
+  --home-card-border: rgba(28, 26, 22, 0.07);
+  --home-card-shadow: 0 1px 2px rgba(38, 34, 26, 0.05), 0 6px 14px -8px rgba(38, 34, 26, 0.1),
+    0 20px 40px -24px rgba(38, 34, 26, 0.18);
   --home-track: #e5e0d3;
   --home-location-bg: #f1ede3;
   --home-heading: #1c1a16;
@@ -159,16 +162,6 @@ body {
 .ed-ink {
   background: var(--home-ink);
   color: var(--home-ink-fg);
-}
-
-/* Double rule, like a printed mushaf page frame. Host must be relative. */
-.ed-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0.45rem;
-  border: 1px solid var(--home-rule);
-  border-radius: calc(var(--ed-radius, 1.25rem) - 0.45rem);
-  pointer-events: none;
 }
 
 /* Serif numerals that line up. */

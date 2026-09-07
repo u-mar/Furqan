@@ -299,12 +299,12 @@ export default function ShareVerseSheet({
                   src={previewUrl}
                   alt={`Verse card for ${target.verseKey}`}
                   className={cn(
-                    'max-h-[38dvh] w-auto rounded-xl shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-opacity duration-200',
+                    'max-h-[34dvh] w-auto rounded-xl shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-opacity duration-200',
                     rendering && 'opacity-60'
                   )}
                 />
               ) : (
-                <div className="flex h-[38dvh] w-[calc(38dvh*0.8)] items-center justify-center rounded-xl bg-[var(--mushaf-popup-badge-bg)]">
+                <div className="flex h-[34dvh] w-[calc(34dvh*0.8)] items-center justify-center rounded-xl bg-[var(--mushaf-popup-badge-bg)]">
                   <Loader2 className="h-5 w-5 animate-spin text-[var(--mushaf-popup-meta)]" />
                 </div>
               )}
@@ -341,7 +341,7 @@ export default function ShareVerseSheet({
                 onPointerUp={endWordDrag}
                 onPointerCancel={endWordDrag}
                 onPointerLeave={endWordDrag}
-                className="flex max-h-28 touch-none select-none flex-wrap gap-1 overflow-y-auto rounded-xl bg-[var(--mushaf-popup-badge-bg)] p-2"
+                className="flex max-h-[9.5rem] touch-none select-none flex-wrap gap-1 overflow-y-auto overscroll-contain rounded-xl bg-[var(--mushaf-popup-badge-bg)] p-2"
               >
                 {pickerWords.map((word, i) => {
                   // Nothing is highlighted until a selection actually starts —

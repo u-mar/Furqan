@@ -214,6 +214,7 @@ export default function SettingsPage() {
   )
   const [translatorPickerOpen, setTranslatorPickerOpen] = useState(false)
   const [verseWallpapers, setVerseWallpapers] = useState(true)
+  const [galleryOpen, setGalleryOpen] = useState(false)
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -405,13 +406,15 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="ed-card mt-7 flex items-center justify-between gap-3 rounded-[1.25rem] p-3.5">
+          {/* Identity on its own line, action beneath — a long name and the
+              button fighting for the same row left both cramped. */}
+          <div className="ed-card mt-7 rounded-[1.25rem] p-3.5">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="ed-ink home-serif flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-medium">
+              <span className="ed-ink home-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-medium">
                 {initial}
               </span>
-              <div className="min-w-0">
-                <p className="home-serif truncate text-[1.1rem] font-medium leading-tight text-[var(--home-heading)]">
+              <div className="min-w-0 flex-1">
+                <p className="home-serif truncate text-[1.15rem] font-medium leading-tight text-[var(--home-heading)]">
                   {signedInName || 'Anonymous'}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-[var(--home-muted)]">
@@ -423,7 +426,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="ed-focus shrink-0 rounded-full border border-[var(--home-rule-strong)] px-3.5 py-2 text-xs font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
+                className={cn(btnQuiet, 'mt-3.5')}
               >
                 Sign out
               </button>
@@ -431,7 +434,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setAccountOpen(true)}
-                className="ed-ink ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-transform active:scale-95"
+                className={cn(btnInk, 'mt-3.5')}
               >
                 Add account
               </button>
@@ -469,18 +472,16 @@ export default function SettingsPage() {
                     style={{ background: bg, boxShadow: `inset 0 0 0 1px ${edge}` }}
                     aria-hidden
                   >
+                    {/* Real script rather than placeholder bars — the swatch
+                        should look like the page it represents. */}
                     <span
-                      className="absolute left-3 top-3 h-[3px] w-[45%] rounded-full"
-                      style={{ background: ink }}
-                    />
-                    <span
-                      className="absolute left-3 right-3 top-[1.3rem] h-[2px] rounded-full"
-                      style={{ background: line }}
-                    />
-                    <span
-                      className="absolute left-3 top-[1.8rem] h-[2px] w-[70%] rounded-full"
-                      style={{ background: line }}
-                    />
+                      className="amiri absolute inset-0 flex items-center justify-center px-1.5 text-center text-[0.62rem] leading-[1.85]"
+                      style={{ color: ink }}
+                      dir="rtl"
+                      lang="ar"
+                    >
+                      بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ
+                    </span>
                     {selected ? (
                       <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
                         <Check className="h-3 w-3" strokeWidth={3} />
@@ -529,18 +530,18 @@ export default function SettingsPage() {
                     style={{ boxShadow: 'inset 0 0 0 1px var(--home-rule)' }}
                     aria-hidden
                   >
-                    {[0, 1, 2, 3].map((i) => (
-                      <span
-                        key={i}
-                        className="absolute h-[2px] rounded-full bg-[var(--home-rule-strong)]"
-                        style={{
-                          left: inset,
-                          right: inset,
-                          top: `${0.75 + i * 0.75}rem`,
-                          opacity: i === 3 ? 0.55 : 1,
-                        }}
-                      />
-                    ))}
+                    {/* Actual script at each width, so the difference is visible
+                        rather than implied by grey bars. */}
+                    <span
+                      className="amiri absolute inset-y-0 flex flex-col justify-center gap-0.5 text-center leading-tight text-[var(--home-heading)]"
+                      style={{ left: inset, right: inset, fontSize: mode === 'full' ? '0.6rem' : '0.5rem' }}
+                      dir="rtl"
+                      lang="ar"
+                    >
+                      <span>ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ</span>
+                      <span>ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
+                      <span className="opacity-70">مَٰلِكِ يَوْمِ ٱلدِّينِ</span>
+                    </span>
                   </span>
                   <span className="flex items-center justify-between gap-2 px-1 pb-0.5">
                     <span className="min-w-0">
@@ -578,30 +579,62 @@ export default function SettingsPage() {
           />
           {verseWallpapers ? (
             <>
-              <p className="mb-2 mt-4 text-xs font-semibold text-[var(--home-heading)]">
-                {VERSE_IMAGE_BACKGROUNDS.length} backgrounds
-              </p>
-              <div className="grid grid-cols-4 gap-1.5">
-                {VERSE_IMAGE_BACKGROUNDS.map((bg) => (
-                  <div
-                    key={bg.id}
-                    className="relative overflow-hidden rounded-lg"
-                    style={{ aspectRatio: '4 / 5' }}
-                    title={bg.label}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={bg.src}
-                      alt={bg.label}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-[var(--home-muted)]">
-                You pick the background each time you share.
-              </p>
+              <button
+                type="button"
+                onClick={() => setGalleryOpen((v) => !v)}
+                aria-expanded={galleryOpen}
+                className="ed-card ed-focus mt-2.5 flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-transform active:scale-[0.99]"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="flex -space-x-2">
+                    {VERSE_IMAGE_BACKGROUNDS.slice(0, 3).map((bg) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={bg.id}
+                        src={bg.src}
+                        alt=""
+                        loading="lazy"
+                        className="h-8 w-8 rounded-full object-cover ring-2 ring-[var(--home-card-bg)]"
+                      />
+                    ))}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-[var(--home-heading)]">
+                      Backgrounds
+                    </span>
+                    <span className="block text-xs text-[var(--home-muted)]">
+                      {VERSE_IMAGE_BACKGROUNDS.length} to choose from
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform',
+                    galleryOpen && 'rotate-180'
+                  )}
+                />
+              </button>
+
+              {galleryOpen ? (
+                <div className="mt-2 grid grid-cols-4 gap-1.5">
+                  {VERSE_IMAGE_BACKGROUNDS.map((bg) => (
+                    <div
+                      key={bg.id}
+                      className="relative overflow-hidden rounded-lg"
+                      style={{ aspectRatio: '4 / 5' }}
+                      title={bg.label}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={bg.src}
+                        alt={bg.label}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </>
           ) : null}
         </section>
