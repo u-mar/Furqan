@@ -1,27 +1,20 @@
 /**
- * Renders a shareable verse card as a PNG.
+ * Renders a shareable verse card as a PNG over a calm photographic
+ * background.
  *
- * Backgrounds are drawn procedurally (gradient grounds, an eight-point
- * ornament medallion, vignette and grain) rather than bundled photography —
- * no licensing to worry about, nothing to download, works offline, and every
- * share can come out looking different.
+ * Photos live in /public/share-bg and ship with the app, so sharing works
+ * offline and never depends on a third-party image host at the moment
+ * someone taps Share.
+ *
+ * The Arabic is drawn with the mushaf's own QCF glyph font — the same script
+ * the reader uses — falling back to Amiri only when the page font can't load.
  *
  * 1080x1350 (4:5) — the aspect that survives WhatsApp status, Instagram
  * feed/story crops and Twitter previews without cutting the text.
  */
 
 import { APP_NAME } from '@/lib/app-brand'
-
-export interface VerseImageInput {
-  arabic: string
-  translation?: string | null
-  /** e.g. "Al-Baqarah" */
-  surahName: string
-  /** e.g. "2:255" */
-  verseKey: string
-  /** Pick a specific background; omit for a random one. */
-  themeId?: VerseImageThemeId
-}
+import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 
 const W = 1080
 const H = 1350
@@ -30,102 +23,87 @@ const H = 1350
 const ORNAMENT_PATH =
   'M23 12l-6.75 1.76 3.53 6.02-6.02-3.53L12 23l-1.76-6.75-6.02 3.53 3.53-6.02L1 12l6.75-1.76-3.53-6.02 6.02 3.53L12 1l1.76 6.75 6.02-3.53-3.53 6.02z'
 
-export type VerseImageThemeId = 'paper' | 'midnight' | 'emerald' | 'dawn' | 'sand'
-
-interface VerseImageTheme {
-  id: VerseImageThemeId
+export interface VerseImageBackground {
+  id: string
   label: string
-  /** Vertical gradient stops, top to bottom. */
-  gradient: string[]
-  ink: string
-  inkSoft: string
-  muted: string
-  accent: string
-  rule: string
-  ruleSoft: string
-  /** Faint medallion behind the verse. */
-  medallion: string
-  /** Scatter faint stars (night skies). */
-  stars?: boolean
-  /** Darken the edges so the type holds. */
-  vignette?: string
+  src: string
 }
 
-export const VERSE_IMAGE_THEMES: VerseImageTheme[] = [
-  {
-    id: 'paper',
-    label: 'Paper',
-    gradient: ['#f6f3ea', '#efeadd'],
-    ink: '#1c1a16',
-    inkSoft: '#413e37',
-    muted: '#6a675e',
-    accent: '#0f7a6a',
-    rule: 'rgba(28, 26, 22, 0.16)',
-    ruleSoft: 'rgba(28, 26, 22, 0.10)',
-    medallion: 'rgba(28, 26, 22, 0.035)',
-  },
-  {
-    id: 'midnight',
-    label: 'Midnight',
-    gradient: ['#070d20', '#101a3d', '#1d2b57'],
-    ink: '#f4f1e8',
-    inkSoft: '#dcd7c9',
-    muted: '#9aa3c0',
-    accent: '#e3bd7a',
-    rule: 'rgba(244, 241, 232, 0.22)',
-    ruleSoft: 'rgba(244, 241, 232, 0.12)',
-    medallion: 'rgba(227, 189, 122, 0.06)',
-    stars: true,
-    vignette: 'rgba(3, 6, 16, 0.55)',
-  },
-  {
-    id: 'emerald',
-    label: 'Emerald',
-    gradient: ['#05130e', '#0b2a22', '#124036'],
-    ink: '#f1ede3',
-    inkSoft: '#d8d3c6',
-    muted: '#8fb3a8',
-    accent: '#5cc4ab',
-    rule: 'rgba(241, 237, 227, 0.2)',
-    ruleSoft: 'rgba(241, 237, 227, 0.11)',
-    medallion: 'rgba(92, 196, 171, 0.06)',
-    vignette: 'rgba(2, 10, 7, 0.5)',
-  },
-  {
-    id: 'dawn',
-    label: 'Dawn',
-    gradient: ['#2b1630', '#6d2f45', '#c9714b'],
-    ink: '#fdf6ec',
-    inkSoft: '#f0e0d0',
-    muted: '#e8c3ab',
-    accent: '#ffd9a0',
-    rule: 'rgba(253, 246, 236, 0.24)',
-    ruleSoft: 'rgba(253, 246, 236, 0.13)',
-    medallion: 'rgba(255, 217, 160, 0.07)',
-    vignette: 'rgba(30, 10, 25, 0.45)',
-  },
-  {
-    id: 'sand',
-    label: 'Sand',
-    gradient: ['#2a2118', '#4a3a27', '#6d543a'],
-    ink: '#f7efe1',
-    inkSoft: '#e4d8c4',
-    muted: '#c3ab8c',
-    accent: '#e8c88f',
-    rule: 'rgba(247, 239, 225, 0.22)',
-    ruleSoft: 'rgba(247, 239, 225, 0.12)',
-    medallion: 'rgba(232, 200, 143, 0.07)',
-    vignette: 'rgba(20, 14, 8, 0.45)',
-  },
+/**
+ * Bundled with the app (Unsplash licence), grouped so the picker reads in a
+ * sensible order: sacred first, then calm light, nature, and the quieter
+ * everyday scenes that suit verses about hardship, mercy and gratitude.
+ */
+export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = [
+  // Sacred
+  { id: 'mosque-arches', label: 'Mosque arches', src: '/share-bg/mosque-arches.jpg' },
+  { id: 'mosque-columns', label: 'Mosque columns', src: '/share-bg/mosque-columns.jpg' },
+  { id: 'kiswah-gold', label: 'Gold calligraphy', src: '/share-bg/kiswah-gold.jpg' },
+  { id: 'islamic-pattern', label: 'Pattern', src: '/share-bg/islamic-pattern.jpg' },
+  { id: 'quran-flowers', label: 'Quran & flowers', src: '/share-bg/quran-flowers.jpg' },
+  { id: 'quran-ornate', label: 'Mushaf', src: '/share-bg/quran-ornate.jpg' },
+  { id: 'tasbih', label: 'Tasbih', src: '/share-bg/tasbih.jpg' },
+  { id: 'sujood', label: 'In prayer', src: '/share-bg/sujood.jpg' },
+
+  // Light and sky
+  { id: 'sunrise', label: 'Sunrise', src: '/share-bg/sunrise.jpg' },
+  { id: 'above-clouds', label: 'Above the clouds', src: '/share-bg/above-clouds.jpg' },
+  { id: 'night-sky', label: 'Night sky', src: '/share-bg/night-sky.jpg' },
+  { id: 'milky-way', label: 'Milky way', src: '/share-bg/milky-way.jpg' },
+  { id: 'candle', label: 'Candle', src: '/share-bg/candle.jpg' },
+  { id: 'lantern', label: 'Lantern', src: '/share-bg/lantern.jpg' },
+  { id: 'bokeh-lights', label: 'City lights', src: '/share-bg/bokeh-lights.jpg' },
+  { id: 'silhouette', label: 'Dusk', src: '/share-bg/silhouette.jpg' },
+
+  // Nature
+  { id: 'still-water', label: 'Still water', src: '/share-bg/still-water.jpg' },
+  { id: 'blue-hills', label: 'Blue hills', src: '/share-bg/blue-hills.jpg' },
+  { id: 'peaks', label: 'Peaks', src: '/share-bg/peaks.jpg' },
+  { id: 'cliffs', label: 'Cliffs', src: '/share-bg/cliffs.jpg' },
+  { id: 'river', label: 'River', src: '/share-bg/river.jpg' },
+  { id: 'forest', label: 'Forest', src: '/share-bg/forest.jpg' },
+  { id: 'woodland', label: 'Woodland', src: '/share-bg/woodland.jpg' },
+  { id: 'old-tree', label: 'Old tree', src: '/share-bg/old-tree.jpg' },
+  { id: 'sunlight', label: 'Sunlight', src: '/share-bg/sunlight.jpg' },
+  { id: 'meadow', label: 'Meadow', src: '/share-bg/meadow.jpg' },
+  { id: 'poppies', label: 'Poppies', src: '/share-bg/poppies.jpg' },
+  { id: 'soft-bloom', label: 'Soft bloom', src: '/share-bg/soft-bloom.jpg' },
+
+  // Quiet everyday
+  { id: 'rain-window', label: 'Rain (warm)', src: '/share-bg/rain-window.jpg' },
+  { id: 'rain-cool', label: 'Rain (cool)', src: '/share-bg/rain-cool.jpg' },
+  { id: 'misty-road', label: 'Open road', src: '/share-bg/misty-road.jpg' },
+  { id: 'teacup', label: 'Quiet morning', src: '/share-bg/teacup.jpg' },
+  { id: 'elderly-hands', label: 'Elder hands', src: '/share-bg/elderly-hands.jpg' },
+  { id: 'small-hand', label: 'Small hand', src: '/share-bg/small-hand.jpg' },
+  { id: 'hospital', label: 'Hospital', src: '/share-bg/hospital.jpg' },
 ]
 
-function pickTheme(themeId?: VerseImageThemeId): VerseImageTheme {
-  if (themeId) {
-    const found = VERSE_IMAGE_THEMES.find((t) => t.id === themeId)
-    if (found) return found
-  }
-  return VERSE_IMAGE_THEMES[Math.floor(Math.random() * VERSE_IMAGE_THEMES.length)]
+export const DEFAULT_BACKGROUND_ID = VERSE_IMAGE_BACKGROUNDS[0].id
+
+export interface VerseImageInput {
+  /** Arabic words in reading order — sliced already if sharing part of an ayah. */
+  words: string[]
+  /** Mushaf page, used to pick the QCF glyph font. 0 to force the fallback. */
+  page: number
+  /** True when `words` are QCF glyph codes rather than plain Uthmani text. */
+  isQcf: boolean
+  translation?: string | null
+  /** e.g. "Al-Baqarah" */
+  surahName: string
+  /** e.g. "2:255" */
+  verseKey: string
+  /** Marks the card as a portion of the ayah rather than the whole. */
+  partial?: boolean
+  backgroundId?: string
 }
+
+const INK = '#ffffff'
+const INK_SOFT = 'rgba(255, 255, 255, 0.92)'
+const MUTED = 'rgba(255, 255, 255, 0.72)'
+const ACCENT = '#f2dfae'
+const RULE = 'rgba(255, 255, 255, 0.32)'
+const RULE_SOFT = 'rgba(255, 255, 255, 0.18)'
 
 function cssFontStack(varName: string, fallback: string): string {
   if (typeof document === 'undefined') return fallback
@@ -133,7 +111,6 @@ function cssFontStack(varName: string, fallback: string): string {
   return value ? `${value}, ${fallback}` : fallback
 }
 
-/** next/font generates hashed family names — pull them off the CSS variables. */
 function fontStacks() {
   return {
     arabic: cssFontStack('--font-amiri', "'Amiri', serif"),
@@ -142,23 +119,16 @@ function fontStacks() {
   }
 }
 
-async function ensureFontsReady(arabicSample: string): Promise<void> {
-  if (typeof document === 'undefined' || !document.fonts) return
-  const { arabic, serif, sans } = fontStacks()
-  try {
-    await Promise.all([
-      document.fonts.load(`76px ${arabic}`, arabicSample.slice(0, 120)),
-      document.fonts.load(`600 34px ${serif}`, 'Sample'),
-      document.fonts.load(`500 24px ${sans}`, 'Sample'),
-      document.fonts.ready,
-    ])
-  } catch {
-    /* fall back to whatever is available */
-  }
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Could not load the background image'))
+    img.src = src
+  })
 }
 
-function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean)
+function wrapLines(ctx: CanvasRenderingContext2D, words: string[], maxWidth: number): string[] {
   const lines: string[] = []
   let line = ''
 
@@ -185,7 +155,7 @@ interface FittedBlock {
 /** Shrink the type until the wrapped block fits the space it's given. */
 function fitBlock(
   ctx: CanvasRenderingContext2D,
-  text: string,
+  words: string[],
   opts: {
     fontStack: string
     weight?: string
@@ -204,7 +174,7 @@ function fitBlock(
 
   while (fontSize >= minSize) {
     ctx.font = `${weight} ${fontSize}px ${fontStack}`.trim()
-    lines = wrapLines(ctx, text, maxWidth)
+    lines = wrapLines(ctx, words, maxWidth)
     lineHeight = fontSize * lineHeightRatio
     if (lines.length * lineHeight <= maxHeight) break
     fontSize -= 2
@@ -235,11 +205,10 @@ function drawOrnamentRule(
   ctx: CanvasRenderingContext2D,
   cy: number,
   halfSpan: number,
-  starSize: number,
-  theme: VerseImageTheme
+  starSize: number
 ): void {
   const gap = starSize * 1.5
-  ctx.strokeStyle = theme.rule
+  ctx.strokeStyle = RULE
   ctx.lineWidth = 1.5
   ctx.beginPath()
   ctx.moveTo(W / 2 - halfSpan, cy)
@@ -247,81 +216,69 @@ function drawOrnamentRule(
   ctx.moveTo(W / 2 + gap, cy)
   ctx.lineTo(W / 2 + halfSpan, cy)
   ctx.stroke()
-  drawOrnament(ctx, W / 2, cy, starSize, theme.accent)
+  drawOrnament(ctx, W / 2, cy, starSize, ACCENT)
 }
 
-function paintBackground(ctx: CanvasRenderingContext2D, theme: VerseImageTheme): void {
-  /* Gradient ground */
-  const grad = ctx.createLinearGradient(0, 0, W * 0.25, H)
-  theme.gradient.forEach((stop, i) => {
-    grad.addColorStop(i / Math.max(1, theme.gradient.length - 1), stop)
-  })
-  ctx.fillStyle = grad
+/** Cover-fit the photo, then lay scrims over it so the type always reads. */
+function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): void {
+  const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight)
+  const dw = img.naturalWidth * scale
+  const dh = img.naturalHeight * scale
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh)
+
+  /* Overall darkening — photos vary wildly in brightness, this evens them out */
+  ctx.fillStyle = 'rgba(10, 14, 18, 0.46)'
   ctx.fillRect(0, 0, W, H)
 
-  /* Star field for the night skies */
-  if (theme.stars) {
-    for (let i = 0; i < 160; i += 1) {
-      const x = Math.random() * W
-      const y = Math.random() * H * 0.72
-      const r = Math.random() * 1.7 + 0.35
-      ctx.globalAlpha = Math.random() * 0.5 + 0.12
-      ctx.fillStyle = '#ffffff'
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.globalAlpha = 1
-  }
+  /* Heavier at top and bottom, where the type sits */
+  const scrim = ctx.createLinearGradient(0, 0, 0, H)
+  scrim.addColorStop(0, 'rgba(6, 10, 14, 0.55)')
+  scrim.addColorStop(0.35, 'rgba(6, 10, 14, 0.12)')
+  scrim.addColorStop(0.68, 'rgba(6, 10, 14, 0.28)')
+  scrim.addColorStop(1, 'rgba(6, 10, 14, 0.72)')
+  ctx.fillStyle = scrim
+  ctx.fillRect(0, 0, W, H)
 
-  /* Faint ornament medallion behind the verse */
-  drawOrnament(ctx, W / 2, H * 0.44, 700, theme.medallion)
+  /* Vignette */
+  const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8)
+  vig.addColorStop(0, 'rgba(0,0,0,0)')
+  vig.addColorStop(1, 'rgba(4, 8, 12, 0.5)')
+  ctx.fillStyle = vig
+  ctx.fillRect(0, 0, W, H)
 
-  /* Corner ornaments */
-  const corner = 34
-  for (const [cx, cy] of [
-    [110, 118],
-    [W - 110, 118],
-    [110, H - 118],
-    [W - 110, H - 118],
-  ] as const) {
-    drawOrnament(ctx, cx, cy, corner, theme.ruleSoft)
-  }
-
-  /* Vignette so type stays legible over the brighter gradient stops */
-  if (theme.vignette) {
-    const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.28, W / 2, H / 2, H * 0.78)
-    vig.addColorStop(0, 'rgba(0,0,0,0)')
-    vig.addColorStop(1, theme.vignette)
-    ctx.fillStyle = vig
-    ctx.fillRect(0, 0, W, H)
-  }
-
-  /* Fine grain — keeps large flat gradients from looking plastic */
-  ctx.save()
-  for (let i = 0; i < 1400; i += 1) {
-    ctx.globalAlpha = Math.random() * 0.035
-    ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000'
-    ctx.fillRect(Math.random() * W, Math.random() * H, 1.4, 1.4)
-  }
-  ctx.restore()
-  ctx.globalAlpha = 1
-
-  /* Double-rule frame */
-  ctx.strokeStyle = theme.rule
-  ctx.lineWidth = 2
-  ctx.strokeRect(46, 46, W - 92, H - 92)
-  ctx.strokeStyle = theme.ruleSoft
-  ctx.lineWidth = 1
-  ctx.strokeRect(60, 60, W - 120, H - 120)
+  /* Hairline frame */
+  ctx.strokeStyle = RULE_SOFT
+  ctx.lineWidth = 1.5
+  ctx.strokeRect(52, 52, W - 104, H - 104)
 }
 
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
-  const { arabic, translation, surahName, verseKey } = input
-  const theme = pickTheme(input.themeId)
+  const { words, page, isQcf, translation, surahName, verseKey, partial } = input
 
-  await ensureFontsReady(arabic)
+  const background =
+    VERSE_IMAGE_BACKGROUNDS.find((b) => b.id === input.backgroundId) ?? VERSE_IMAGE_BACKGROUNDS[0]
+
   const fonts = fontStacks()
+
+  /* Prefer the mushaf's own script; fall back to Amiri if it won't load. */
+  let arabicFont = fonts.arabic
+  let arabicWords = words
+  if (isQcf && page > 0) {
+    const ok = await loadPageFont(page, words.join('').slice(0, 12)).catch(() => false)
+    if (ok) arabicFont = `"${qcfFontFamily(page)}", ${fonts.arabic}`
+    else arabicWords = words
+  }
+
+  const [bgImage] = await Promise.all([
+    loadImage(background.src),
+    typeof document !== 'undefined' && document.fonts
+      ? Promise.all([
+          document.fonts.load(`600 34px ${fonts.serif}`, 'Sample'),
+          document.fonts.load(`500 24px ${fonts.sans}`, 'Sample'),
+          document.fonts.ready,
+        ]).catch(() => null)
+      : null,
+  ])
 
   const canvas = document.createElement('canvas')
   canvas.width = W
@@ -329,58 +286,55 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas is not available on this device')
 
-  paintBackground(ctx, theme)
+  paintBackground(ctx, bgImage)
 
-  /* Soft shadow keeps Arabic readable over the livelier grounds */
-  const withTextShadow = (draw: () => void) => {
+  const withShadow = (draw: () => void) => {
     ctx.save()
-    if (theme.vignette) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
-      ctx.shadowBlur = 18
-      ctx.shadowOffsetY = 2
-    }
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+    ctx.shadowBlur = 22
+    ctx.shadowOffsetY = 2
     draw()
     ctx.restore()
   }
 
   /* ---- Measure both blocks, then centre the pair in the open space ---- */
-  const contentTop = 250
+  const contentTop = 240
   const contentBottom = H - 300
   const available = contentBottom - contentTop
 
-  const arabicBlock = fitBlock(ctx, arabic, {
-    fontStack: fonts.arabic,
-    maxWidth: W - 240,
-    maxHeight: available * (translation ? 0.62 : 0.92),
-    startSize: 84,
-    minSize: 38,
-    lineHeightRatio: 1.95,
+  const arabicBlock = fitBlock(ctx, arabicWords, {
+    fontStack: arabicFont,
+    maxWidth: W - 210,
+    maxHeight: available * (translation ? 0.6 : 0.92),
+    startSize: 92,
+    minSize: 40,
+    lineHeightRatio: 1.85,
   })
 
   const trimmedTranslation = (translation || '').replace(/\s+/g, ' ').trim()
   const translationBlock = trimmedTranslation
-    ? fitBlock(ctx, trimmedTranslation, {
+    ? fitBlock(ctx, trimmedTranslation.split(/\s+/), {
         fontStack: fonts.serif,
         weight: '500',
-        maxWidth: W - 320,
-        maxHeight: available * 0.34,
+        maxWidth: W - 300,
+        maxHeight: available * 0.36,
         startSize: 38,
         minSize: 22,
         lineHeightRatio: 1.55,
       })
     : null
 
-  const dividerSpace = translationBlock ? 96 : 0
+  const dividerSpace = translationBlock ? 92 : 0
   const groupHeight = arabicBlock.height + dividerSpace + (translationBlock?.height ?? 0)
   let cursorY = contentTop + (available - groupHeight) / 2
 
   /* ---- Arabic ---- */
-  withTextShadow(() => {
+  withShadow(() => {
     ctx.direction = 'rtl'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = theme.ink
-    ctx.font = `${arabicBlock.fontSize}px ${fonts.arabic}`
+    ctx.fillStyle = INK
+    ctx.font = `${arabicBlock.fontSize}px ${arabicFont}`
     let y = cursorY
     for (const line of arabicBlock.lines) {
       y += arabicBlock.lineHeight
@@ -392,14 +346,14 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   /* ---- Divider + translation ---- */
   if (translationBlock) {
     cursorY += dividerSpace / 2
-    drawOrnamentRule(ctx, cursorY, 120, 16, theme)
+    drawOrnamentRule(ctx, cursorY, 120, 16)
     cursorY += dividerSpace / 2
 
-    withTextShadow(() => {
+    withShadow(() => {
       ctx.direction = 'ltr'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
-      ctx.fillStyle = theme.inkSoft
+      ctx.fillStyle = INK_SOFT
       ctx.font = `500 ${translationBlock.fontSize}px ${fonts.serif}`
       let y = cursorY
       for (const line of translationBlock.lines) {
@@ -410,33 +364,37 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   }
 
   /* ---- Reference ---- */
-  ctx.save()
-  ctx.direction = 'ltr'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = theme.accent
-  ctx.font = `600 36px ${fonts.serif}`
-  ctx.fillText(`Surah ${surahName} · ${verseKey}`, W / 2, H - 224)
-  ctx.restore()
+  withShadow(() => {
+    ctx.direction = 'ltr'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = ACCENT
+    ctx.font = `600 36px ${fonts.serif}`
+    ctx.fillText(
+      `Surah ${surahName} · ${verseKey}${partial ? ' (part)' : ''}`,
+      W / 2,
+      H - 224
+    )
+  })
 
-  /* ---- Wordmark: ornament rule, then the app name as the signature ---- */
-  drawOrnamentRule(ctx, H - 168, 150, 15, theme)
-
-  ctx.save()
-  ctx.direction = 'ltr'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = theme.ink
-  ctx.font = `600 44px ${fonts.serif}`
-  ctx.letterSpacing = '6px'
-  ctx.fillText(APP_NAME, W / 2, H - 108)
-  ctx.letterSpacing = '0px'
-  ctx.restore()
+  /* ---- Wordmark ---- */
+  drawOrnamentRule(ctx, H - 168, 150, 15)
+  withShadow(() => {
+    ctx.direction = 'ltr'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = MUTED
+    ctx.font = `600 40px ${fonts.serif}`
+    ctx.letterSpacing = '6px'
+    ctx.fillText(APP_NAME, W / 2, H - 108)
+    ctx.letterSpacing = '0px'
+  })
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('Could not render the verse image'))),
-      'image/png'
+      'image/jpeg',
+      0.92
     )
   })
 }
@@ -447,14 +405,14 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
  *
  * Takes a rendered blob rather than rendering here on purpose: iOS Safari only
  * honours `navigator.share` inside a user gesture, and awaiting a render first
- * breaks that chain. Render on theme selection, share on tap.
+ * breaks that chain. Render on selection, share on tap.
  */
 export async function shareVerseBlob(
   blob: Blob,
   meta: { verseKey: string; surahName: string }
 ): Promise<'shared' | 'downloaded'> {
-  const fileName = `${APP_NAME.replace(/\s+/g, '-')}-${meta.verseKey.replace(':', '-')}.png`
-  const file = new File([blob], fileName, { type: 'image/png' })
+  const fileName = `${APP_NAME.replace(/\s+/g, '-')}-${meta.verseKey.replace(':', '-')}.jpg`
+  const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' })
 
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean }
   if (nav.canShare?.({ files: [file] })) {

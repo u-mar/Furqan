@@ -66,6 +66,7 @@ import {
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
+import { getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
 import {
   hasSomaliVoiceForVerse,
   loadSomaliVoiceManifest,
@@ -308,6 +309,8 @@ function ReadPageContent() {
   const {
     state: somaliVoiceState,
     playVerse: playSomaliVoice,
+    pause: pauseSomaliVoice,
+    resume: resumeSomaliVoice,
     stop: stopSomaliVoice,
     isActive: isSomaliVoiceActive,
   } = useSomaliVoicePlayback({ onSegmentEnd: handleSomaliSegmentEnd })
@@ -498,10 +501,19 @@ function ReadPageContent() {
   }
 
   const handleSomaliPageToggle = async () => {
+    // Held mid-ayah — carry on from the same spot instead of starting over.
+    if (somaliVoiceState.paused) {
+      somaliAutoRef.current = true
+      setSomaliAutoPlaying(true)
+      await resumeSomaliVoice()
+      return
+    }
+
     if (somaliAutoPlaying || isSomaliVoiceActive) {
+      // Pause rather than stop, so tapping play again resumes.
       somaliAutoRef.current = false
       setSomaliAutoPlaying(false)
-      stopSomaliVoice()
+      pauseSomaliVoice()
       return
     }
 
@@ -649,14 +661,24 @@ function ReadPageContent() {
     const verseKey = ayahMenu.verseKey
     const surahId = Number(verseKey.split(':')[0]) || 1
     const verse = pageVerses.find((v) => v.verse_key === verseKey)
+    const page = verse ? versePageNumber(verse) : currentPage
+
+    // The ayah end mark is dropped either way — the reference is on the card.
+    const plainWords = verse
+      ? (verse.words || [])
+          .filter((w) => w.char_type_name === 'word')
+          .map((w) => (w.text_uthmani || w.text_qpc_hafs || '').trim())
+          .filter(Boolean)
+      : ayahMenu.arabic.split(/\s+/).filter(Boolean)
 
     setShareTarget({
-      // The end mark is dropped — the reference is printed on the card.
-      arabic: verse ? getVerseArabicText(verse, { omitEndMark: true }) : ayahMenu.arabic,
-      surahName: chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`,
       verseKey,
+      surahName: chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`,
+      page,
+      qcfWords: verse ? getVerseQcfGlyphWords(verse, page).slice(0, plainWords.length) : [],
+      plainWords,
     })
-  }, [ayahMenu, chapters, pageVerses])
+  }, [ayahMenu, chapters, currentPage, pageVerses])
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? navSelectedVerseKey
 
@@ -1230,12 +1252,17 @@ function ReadPageContent() {
           setSomaliAutoPlaying(true)
           setUiVisible(false)
           setAyahMenu(null)
+          // Same ayah held mid-play — pick up where it stopped.
+          if (somaliVoiceState.paused && somaliVoiceState.verseKey === key) {
+            void resumeSomaliVoice()
+            return
+          }
           void playSomaliVoice(key)
         }}
         onStopSomaliVoice={() => {
           somaliAutoRef.current = false
           setSomaliAutoPlaying(false)
-          stopSomaliVoice()
+          pauseSomaliVoice()
         }}
         onStopRecitation={stopRecitation}
       />

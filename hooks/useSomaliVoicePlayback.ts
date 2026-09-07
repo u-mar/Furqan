@@ -10,6 +10,8 @@ import {
 export interface SomaliVoicePlaybackState {
   playing: boolean
   loading: boolean
+  /** Held mid-segment — `resume` picks up from the same spot. */
+  paused: boolean
   verseKey: string | null
   error: string | null
 }
@@ -17,6 +19,7 @@ export interface SomaliVoicePlaybackState {
 const idleState: SomaliVoicePlaybackState = {
   playing: false,
   loading: false,
+  paused: false,
   verseKey: null,
   error: null,
 }
@@ -113,10 +116,39 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     setState({
       playing: false,
       loading: false,
+      paused: false,
       verseKey: null,
       error: message,
     })
   }, [])
+
+  /**
+   * Hold the current segment without tearing the audio down, so playing again
+   * carries on from the same spot rather than restarting the ayah.
+   */
+  const pause = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio || !segmentRef.current) return
+    audio.pause()
+    setState((s) =>
+      s.playing || s.loading ? { ...s, playing: false, loading: false, paused: true } : s
+    )
+  }, [])
+
+  const resume = useCallback(async () => {
+    const audio = audioRef.current
+    if (!audio || !segmentRef.current) return false
+    const session = sessionRef.current
+    try {
+      await audio.play()
+      if (session !== sessionRef.current) return false
+      setState((s) => ({ ...s, playing: true, loading: false, paused: false, error: null }))
+      return true
+    } catch {
+      fail(session, 'Could not resume Somali voice.')
+      return false
+    }
+  }, [fail])
 
   const playVerse = useCallback(
     async (verseKey: string) => {
@@ -125,6 +157,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
         setState({
           playing: false,
           loading: false,
+          paused: false,
           verseKey: null,
           error: TAFSIR_UNAVAILABLE_MESSAGE,
         })
@@ -144,6 +177,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
       setState({
         playing: seamlessSameFile,
         loading: !seamlessSameFile,
+        paused: false,
         verseKey,
         error: null,
       })
@@ -158,7 +192,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
 
           await audio.play()
           if (session !== sessionRef.current) return
-          setState({ playing: true, loading: false, verseKey, error: null })
+          setState({ playing: true, loading: false, paused: false, verseKey, error: null })
         } catch {
           fail(session, 'Could not play Somali voice.')
         }
@@ -222,6 +256,8 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
   return {
     state,
     playVerse,
+    pause,
+    resume,
     stop,
     isActive: state.playing || state.loading,
   }

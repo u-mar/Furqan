@@ -338,13 +338,13 @@ html.dark .ayah-sheet-arabic {
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.32);
-  /* Solid brand-indigo card — a plain white/near-white popup used to blend
-     straight into this near-white page. Badge/meta tokens are re-tinted for
-     legibility against the darker card. */
-  --mushaf-read-popup-bg: #2a2258;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
-  --mushaf-popup-badge-bg: rgba(255, 255, 255, 0.12);
-  --mushaf-popup-meta: rgba(238, 234, 255, 0.68);
+  /* Deep verdigris ink card — a near-white popup would dissolve into this
+     near-white page, so the popup goes dark and reads as ink on paper.
+     Badge/meta tokens are re-tinted for legibility against it. */
+  --mushaf-read-popup-bg: #14322c;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.13);
+  --mushaf-popup-badge-bg: rgba(255, 255, 255, 0.11);
+  --mushaf-popup-meta: rgba(223, 238, 233, 0.7);
   --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   /* The mushaf page is a fixed layout — allow panning but never pinch-zoom,
      so the page stays exactly as typeset (like the Ayah app). */
@@ -359,10 +359,18 @@ html.dark .ayah-sheet-arabic {
 }
 
 html:not(.dark) {
-  --mushaf-read-popup-bg: #2a2258;
-  --mushaf-read-popup-border: rgba(255, 255, 255, 0.14);
-  --mushaf-read-popup-text: #f4f2ff;
-  --mushaf-read-popup-shadow: 0 20px 48px -12px rgba(36, 29, 78, 0.55);
+  --mushaf-read-popup-bg: #14322c;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.13);
+  --mushaf-read-popup-text: #f0f5f3;
+  --mushaf-read-popup-shadow: 0 20px 48px -12px rgba(14, 46, 40, 0.5);
+}
+
+/* The reader's light-theme accent is a dark verdigris tuned for paper; inside
+   the dark popup it needs the lighter tint so badges and buttons stay legible. */
+html:not(.dark) [data-ayah-menu],
+html:not(.dark) [data-share-sheet] {
+  --mushaf-read-accent: #5cc4ab;
+  --mushaf-read-accent-soft: rgba(92, 196, 171, 0.18);
 }
 
 /* ---- Pure black (AMOLED) — builds on .dark, then flattens to true black ---- */
