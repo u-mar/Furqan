@@ -10,6 +10,7 @@ import {
   renderVerseImage,
   shareVerseBlob,
 } from '@/lib/verse-image'
+import { getWordTranslations } from '@/lib/word-translations'
 
 export interface ShareVerseTarget {
   verseKey: string
@@ -28,6 +29,8 @@ interface ShareVerseSheetProps {
   /** Arrives asynchronously — the preview re-renders once it lands. */
   translation: string | null
   translationLoading: boolean
+  /** Language for the word-by-word glosses used on partial shares. */
+  translationLanguage: string
   onClose: () => void
 }
 
@@ -36,12 +39,16 @@ export default function ShareVerseSheet({
   target,
   translation,
   translationLoading,
+  translationLanguage,
   onClose,
 }: ShareVerseSheetProps) {
   const [mounted, setMounted] = useState(false)
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID)
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
   const [showTranslation, setShowTranslation] = useState(true)
+  const [glosses, setGlosses] = useState<string[] | null>(null)
+  const [glossesLoading, setGlossesLoading] = useState(false)
+  const [glossesMissing, setGlossesMissing] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -60,9 +67,11 @@ export default function ShareVerseSheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  /* A new ayah resets the selection. */
+  /* A new ayah resets the selection and its glosses. */
   useEffect(() => {
     setRange(null)
+    setGlosses(null)
+    setGlossesMissing(false)
   }, [target?.verseKey])
 
   const useQcf = Boolean(target?.qcfWords.length)
@@ -72,14 +81,59 @@ export default function ShareVerseSheet({
 
   const selection = useMemo(() => {
     const total = sourceWords.length
-    if (!total) return { words: [] as string[], partial: false }
+    if (!total) return { words: [] as string[], partial: false, start: 0, end: 0 }
     const start = range ? Math.min(range.start, range.end) : 0
     const end = range ? Math.max(range.start, range.end) : total - 1
     return {
       words: sourceWords.slice(start, end + 1),
       partial: start > 0 || end < total - 1,
+      start,
+      end,
     }
   }, [range, sourceWords])
+
+  /* Word-by-word glosses, fetched only once a partial share needs them. */
+  useEffect(() => {
+    if (!open || !target || !selection.partial || !showTranslation) return
+    if (glosses || glossesMissing) return
+    let cancelled = false
+    setGlossesLoading(true)
+    void getWordTranslations(target.verseKey, translationLanguage)
+      .then((result) => {
+        if (cancelled) return
+        if (result) setGlosses(result)
+        else setGlossesMissing(true)
+      })
+      .finally(() => {
+        if (!cancelled) setGlossesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    open,
+    target,
+    selection.partial,
+    showTranslation,
+    glosses,
+    glossesMissing,
+    translationLanguage,
+  ])
+
+  /**
+   * A whole ayah gets its proper translation; a picked run gets the
+   * word-by-word glosses for exactly those words, so the English never claims
+   * more than the Arabic on the card actually says.
+   */
+  const cardTranslation = useMemo(() => {
+    if (!showTranslation) return null
+    if (!selection.partial) return translation
+    if (!glosses) return null
+    return glosses
+      .slice(selection.start, selection.end + 1)
+      .filter(Boolean)
+      .join(' ')
+  }, [showTranslation, selection, translation, glosses])
 
   /* Render (and re-render) the card as background, range or translation change. */
   useEffect(() => {
@@ -93,7 +147,7 @@ export default function ShareVerseSheet({
           words: selection.words,
           page: target.page,
           isQcf: useQcf,
-          translation: showTranslation ? translation : null,
+          translation: cardTranslation,
           surahName: target.surahName,
           verseKey: target.verseKey,
           partial: selection.partial,
@@ -115,7 +169,7 @@ export default function ShareVerseSheet({
     return () => {
       cancelled = true
     }
-  }, [open, target, translation, backgroundId, selection, useQcf, showTranslation])
+  }, [open, target, backgroundId, selection, useQcf, cardTranslation])
 
   /* Drop the object URL when the sheet closes. */
   useEffect(() => {
@@ -335,7 +389,11 @@ export default function ShareVerseSheet({
                 <span className="block text-xs font-semibold">Include translation</span>
                 {selection.partial ? (
                   <span className="block text-[10px] text-[var(--mushaf-popup-meta)]">
-                    Shows the whole ayah&apos;s translation
+                    {glossesLoading
+                      ? 'Loading word meanings…'
+                      : glossesMissing
+                        ? 'Word meanings unavailable offline'
+                        : 'Word-by-word, for the selected words only'}
                   </span>
                 ) : null}
               </span>

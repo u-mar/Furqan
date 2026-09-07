@@ -1214,6 +1214,7 @@ function ReadPageContent() {
         target={shareTarget}
         translation={shareTarget ? translationByKey[shareTarget.verseKey]?.translation ?? null : null}
         translationLoading={ayahTranslationLoading}
+        translationLanguage={translationLanguage}
         onClose={() => setShareTarget(null)}
       />
 
