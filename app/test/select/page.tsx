@@ -1,99 +1,79 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, Dices, MicVocal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dices, Users } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
-import { cn } from '@/lib/cn'
 
 const modes = [
   {
     id: 'random',
-    label: 'Randomize',
-    description: 'Random ayah within a juz or surah range',
+    label: 'Random ayah',
+    description: 'Practise on your own — a random ayah from a juz or surah range.',
+    meta: 'Solo',
     href: '/test/select/random',
     Icon: Dices,
-    enabled: true,
   },
   {
-    id: 'tajweed',
-    label: 'Tajweed',
-    description: 'Tajweed rules & pronunciation',
-    href: null,
-    Icon: MicVocal,
-    enabled: false,
+    id: 'subac',
+    label: 'Group round',
+    description: 'Everyone takes a turn — each person is given their own ayah to continue.',
+    meta: '2+ people',
+    href: '/test/select/subac',
+    Icon: Users,
   },
 ] as const
 
 export default function TestSelectPage() {
   return (
-    <HomeScreen>
-      <header className="mb-5 flex items-center gap-3 border-b border-[var(--home-card-border)] pb-4 lg:mb-7">
+    <HomeScreen className="mx-auto max-w-lg">
+      <header className="mb-6 flex items-center gap-3">
         <Link
           href="/"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--app-surface)] hover:text-[var(--home-heading)]"
+          className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
           aria-label="Back to home"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
         </Link>
-        <div>
-          <h1 className="home-serif text-xl font-semibold tracking-tight text-[var(--home-heading)] lg:text-2xl">
-            Test
+        <div className="min-w-0">
+          <p className="ed-label">Test</p>
+          <h1 className="home-serif mt-1 text-[2rem] font-medium leading-none tracking-[-0.025em] text-[var(--home-heading)]">
+            How to practise
           </h1>
-          <p className="text-sm text-[var(--home-muted)]">Choose how you want to practice</p>
         </div>
       </header>
 
-      <section
-        aria-label="Test modes"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4"
-      >
-        {modes.map((mode) => {
-          const { Icon } = mode
-          const inner = (
-            <div
-              className={cn(
-                'relative flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 text-center shadow-[var(--home-card-shadow)] transition-all duration-200',
-                mode.enabled &&
-                  'hover:border-[var(--home-sage-deep)]/45 active:scale-[0.97] lg:hover:scale-[1.01]',
-                !mode.enabled && 'opacity-65'
-              )}
-            >
-              {!mode.enabled && (
-                <span className="absolute right-3 top-3 rounded-full bg-[var(--app-surface)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">
-                  Soon
+      <section aria-label="Test modes" className="space-y-3">
+        {modes.map(({ id, label, description, meta, href, Icon }) => (
+          <Link key={id} href={href} className="ed-focus block rounded-[1.5rem]">
+            <div className="ed-card group flex items-start gap-4 rounded-[1.5rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.98]">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                <Icon className="h-[26px] w-[26px]" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="home-serif whitespace-nowrap text-[1.25rem] font-semibold leading-tight text-[var(--home-heading)]">
+                    {label}
+                  </span>
+                  <span className="whitespace-nowrap rounded-full bg-[var(--home-track)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--home-muted)]">
+                    {meta}
+                  </span>
                 </span>
-              )}
-              <Icon
-                className={cn(
-                  'h-12 w-12',
-                  mode.enabled ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-muted)]'
-                )}
-                strokeWidth={1.75}
+                <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--home-muted)]">
+                  {description}
+                </span>
+              </span>
+              <ChevronRight
+                className="mt-1 h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform duration-200 group-hover:translate-x-0.5"
+                aria-hidden
               />
-              <span className="block text-base font-semibold text-[var(--home-heading)]">{mode.label}</span>
-              <span className="block text-xs leading-snug text-[var(--home-muted)]">{mode.description}</span>
             </div>
-          )
-
-          if (mode.enabled && mode.href) {
-            return (
-              <Link
-                key={mode.id}
-                href={mode.href}
-                className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--home-sage-deep)]/60"
-              >
-                {inner}
-              </Link>
-            )
-          }
-
-          return (
-            <div key={mode.id} className="cursor-default" aria-disabled>
-              {inner}
-            </div>
-          )
-        })}
+          </Link>
+        ))}
       </section>
+
+      <p className="mt-5 text-xs leading-relaxed text-[var(--home-muted)]">
+        The page is hidden — read from memory, then tap to reveal and check yourself.
+      </p>
     </HomeScreen>
   )
 }
