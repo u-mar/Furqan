@@ -1306,17 +1306,6 @@ html.dark .mushaf-reader {
   color: var(--home-heading);
 }
 
-/* The avatar is dimmed until it is the page you are on. */
-.qari-tabbar__avatar {
-  opacity: 0.55;
-  transition: opacity 0.16s ease, box-shadow 0.16s ease;
-}
-
-.qari-tabbar__avatar.is-active {
-  opacity: 1;
-  box-shadow: 0 0 0 2px var(--home-heading);
-}
-
 /* Wider than it is tall, so it reads as the one thing that makes something
    rather than another place to go. */
 .qari-tabbar__add {

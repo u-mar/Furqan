@@ -159,12 +159,71 @@ export async function renameQari(user: {
   return data.name
 }
 
-/** Share a recitation — native sheet where available, clipboard otherwise. */
+/**
+ * The downloaded recording, kept so a share never fetches it twice.
+ *
+ * Started early — on the press, before the tap completes — because iOS only
+ * honours navigator.share while it still considers itself inside the gesture,
+ * and a cold download is far too slow for that.
+ */
+const audioBlobs = new Map<string, Promise<Blob | null>>()
+
+export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
+  let pending = audioBlobs.get(id)
+  if (!pending) {
+    pending = fetch(recitationAudioUrl(id))
+      .then((res) => (res.ok ? res.blob() : null))
+      .catch(() => null)
+    audioBlobs.set(id, pending)
+  }
+  return pending
+}
+
+/** Share targets read the extension, so it has to match the actual bytes. */
+const AUDIO_EXTENSIONS: Array<[string, string]> = [
+  ['mp4', 'm4a'],
+  ['m4a', 'm4a'],
+  ['mpeg', 'mp3'],
+  ['mp3', 'mp3'],
+  ['ogg', 'ogg'],
+  ['wav', 'wav'],
+  ['webm', 'webm'],
+]
+
+function audioFileName(r: Pick<Recitation, 'title' | 'userName'>, mimeType: string): string {
+  const ext = AUDIO_EXTENSIONS.find(([needle]) => mimeType.includes(needle))?.[1] ?? 'webm'
+  const stem = `${r.userName} - ${r.title}`.replace(/[^\w\s-]/g, '').trim() || 'recitation'
+  return `${stem}.${ext}`
+}
+
+/**
+ * Share a recitation as the recording itself wherever the platform allows,
+ * so it arrives as something you can play rather than a link to tap.
+ */
 export async function shareRecitation(r: Recitation): Promise<'shared' | 'copied'> {
   const url = `${window.location.origin}/qari/${encodeURIComponent(r.userUsername)}?r=${r.id}`
   const text = `${r.userName} — ${r.title}`
 
   if (navigator.share) {
+    try {
+      const blob = await prefetchRecitationAudio(r.id)
+      if (blob && blob.size > 0) {
+        const type = blob.type || 'audio/webm'
+        const file = new File([blob], audioFileName(r, type), { type })
+        // Several targets refuse a file and a url together, so the link rides
+        // along inside the text instead.
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: text, text: `${text}
+${url}` })
+          return 'shared'
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
+      // Anything else — the platform refused the file, or the gesture lapsed
+      // while it downloaded — falls through to sharing the link.
+    }
+
     try {
       await navigator.share({ title: text, text, url })
       return 'shared'
@@ -173,6 +232,7 @@ export async function shareRecitation(r: Recitation): Promise<'shared' | 'copied
     }
   }
 
-  await navigator.clipboard.writeText(`${text}\n${url}`)
+  await navigator.clipboard.writeText(`${text}
+${url}`)
   return 'copied'
 }

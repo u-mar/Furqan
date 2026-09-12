@@ -46,9 +46,9 @@ const exploreTiles = [
 ] as const
 
 const tileSurface =
-  'ed-card group relative flex h-full flex-col gap-3.5 rounded-[1.5rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.97]'
+  'ed-card group relative flex h-full flex-col items-center gap-3 rounded-[1.5rem] p-5 text-center transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.97]'
 
-const tileFocus = 'ed-focus block rounded-[1.5rem] text-left'
+const tileFocus = 'ed-focus block rounded-[1.5rem]'
 
 export default function Home() {
   useAppSettings()

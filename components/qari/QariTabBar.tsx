@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { House, Plus, UserRound } from 'lucide-react'
-import QariAvatar from '@/components/qari/QariAvatar'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useViewer } from '@/hooks/useViewer'
 import { cn } from '@/lib/cn'
@@ -55,11 +54,9 @@ export default function QariTabBar() {
               aria-label="Your profile"
               className={cn('qari-tabbar__item ed-focus', onMyProfile && 'is-active')}
             >
-              <QariAvatar
-                username={viewer.username}
-                name={viewer.name}
-                size={26}
-                className={cn('qari-tabbar__avatar', onMyProfile && 'is-active')}
+              <UserRound
+                className="h-[23px] w-[23px]"
+                strokeWidth={onMyProfile ? 2.3 : 1.9}
               />
             </Link>
           ) : (

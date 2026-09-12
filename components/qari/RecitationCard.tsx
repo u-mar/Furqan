@@ -9,6 +9,7 @@ import {
   countPlay,
   deleteRecitation,
   formatDuration,
+  prefetchRecitationAudio,
   recitationAudioUrl,
   reportRecitation,
   shareRecitation,
@@ -41,6 +42,7 @@ export default function RecitationCard({
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const countedRef = useRef(false)
 
@@ -127,11 +129,16 @@ export default function RecitationCard({
   }, [liked, onNotice, recitation.id, recitation.likeCount, viewerId])
 
   const handleShare = useCallback(async () => {
+    // The recording has to be downloaded before it can be handed over, and
+    // that is not instant — say so rather than looking dead.
+    setSharing(true)
     try {
       const result = await shareRecitation(recitation)
       if (result === 'copied') onNotice?.('Link copied.')
     } catch {
       onNotice?.('Could not share that one.')
+    } finally {
+      setSharing(false)
     }
   }, [recitation, onNotice])
 
@@ -289,10 +296,18 @@ export default function RecitationCard({
           <button
             type="button"
             onClick={() => void handleShare()}
-            aria-label="Share"
-            className="ed-focus flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[0.78rem] font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
+            // Start the download on the press so the recording is usually in
+            // hand by the time the tap completes.
+            onPointerDown={() => void prefetchRecitationAudio(recitation.id)}
+            disabled={sharing}
+            aria-label={sharing ? 'Preparing the recording' : 'Share'}
+            className="ed-focus flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[0.78rem] font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)] disabled:opacity-70"
           >
-            <Share2 className="h-[17px] w-[17px]" strokeWidth={2} />
+            {sharing ? (
+              <span className="h-[15px] w-[15px] animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Share2 className="h-[17px] w-[17px]" strokeWidth={2} />
+            )}
           </button>
         </div>
 
