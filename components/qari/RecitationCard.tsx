@@ -49,6 +49,14 @@ export default function RecitationCard({
     viewerId && viewerUsername && viewerUsername === recitation.userUsername
   )
 
+  // The feed loads once before the signed-in viewer resolves, so a card can
+  // be told it is liked only on the second pass — after useState has already
+  // captured `false`. Follow the prop when the server's answer changes.
+  useEffect(() => {
+    setLiked(recitation.liked)
+    setLikeCount(recitation.likeCount)
+  }, [recitation.liked, recitation.likeCount])
+
   useEffect(() => {
     return () => {
       audioRef.current?.pause()
@@ -152,7 +160,12 @@ export default function RecitationCard({
   }, [onNotice, recitation.id, viewerId])
 
   return (
-    <article className="ed-card rounded-[1.5rem] p-4">
+    <article
+      className={cn(
+        'ed-card rounded-[1.5rem] p-4 transition-shadow',
+        playing && 'qari-card-playing'
+      )}
+    >
       <div className="flex items-start gap-3.5">
         {/* The reciter's picture is the play button. */}
         <button

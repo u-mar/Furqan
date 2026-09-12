@@ -1,27 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { ownsUsername } from '@/lib/qari-owner'
 import { MAX_AVATAR_BYTES, putFile, removeFile } from '@/lib/qari-storage'
 
 export const runtime = 'nodejs'
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp']
-
-/**
- * Confirm the caller owns the username they are writing to.
- *
- * Accounts come in two shapes: database-backed (the id is the User row's id)
- * and local-only (`local_<username>`, never stored server-side). Both are
- * accepted, but neither lets one qari replace another's picture.
- */
-async function ownsUsername(username: string, userId: string): Promise<boolean> {
-  if (userId === `local_${username}`) return true
-  try {
-    const user = await prisma.user.findUnique({ where: { username } })
-    return Boolean(user && user.id === userId)
-  } catch {
-    return false
-  }
-}
 
 /** POST /api/qari/avatar — set the signed-in user's profile picture. */
 export async function POST(request: NextRequest) {

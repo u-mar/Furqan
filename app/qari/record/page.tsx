@@ -9,6 +9,9 @@ import { useQariRecorder } from '@/hooks/useQariRecorder'
 import { formatDuration, publishRecitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 
+/** Centre-heavy weights, so the meter moves like a voice rather than a wall. */
+const LEVEL_BARS = [0.45, 0.7, 0.95, 1, 0.95, 0.7, 0.45]
+
 export default function QariRecordPage() {
   const router = useRouter()
   const viewer = useViewer()
@@ -107,14 +110,29 @@ export default function QariRecordPage() {
       ) : (
         <>
           {/* Recorder */}
-          <section className="ed-card rounded-[1.5rem] p-6 text-center">
-            <div className="relative mx-auto flex h-36 w-36 items-center justify-center">
-              {/* Level ring — scales with your voice while recording */}
+          <section className="ed-card rounded-[1.75rem] px-5 pb-6 pt-7 text-center">
+            <div className="relative mx-auto flex h-40 w-40 items-center justify-center">
+              {/* Two rings that swell with your voice. Inline transforms so
+                  the level reads the same in every theme. */}
               <span
-                className="absolute inset-0 rounded-full bg-[var(--home-sage-soft)] transition-transform duration-75"
-                style={{ transform: `scale(${state.recording ? 1 + state.level * 0.35 : 0.82})` }}
+                className="absolute rounded-full bg-[var(--home-sage-soft)] transition-transform duration-75"
+                style={{
+                  inset: 0,
+                  transform: `scale(${state.recording ? 0.88 + state.level * 0.42 : 0.78})`,
+                  opacity: state.recording ? 1 : 0.65,
+                }}
                 aria-hidden
               />
+              <span
+                className="absolute rounded-full border border-[var(--home-sage-deep)] transition-transform duration-100"
+                style={{
+                  inset: 0,
+                  transform: `scale(${state.recording ? 0.96 + state.level * 0.26 : 0.8})`,
+                  opacity: state.recording ? 0.5 : 0,
+                }}
+                aria-hidden
+              />
+
               <button
                 type="button"
                 onClick={state.recording ? stop : () => void start()}
@@ -133,12 +151,28 @@ export default function QariRecordPage() {
               </button>
             </div>
 
-            <p className="ed-num mt-4 text-[1.75rem] font-semibold leading-none text-[var(--home-heading)]">
+            <p className="ed-num mt-5 text-[2rem] font-semibold leading-none text-[var(--home-heading)]">
               {formatDuration(hasTake ? state.durationSec : state.elapsed)}
             </p>
-            <p className="mt-1.5 text-xs text-[var(--home-muted)]">
+
+            {/* Live level meter — proof the microphone is hearing you. */}
+            {state.recording ? (
+              <span className="mx-auto mt-3 flex h-5 items-end justify-center gap-[3px]" aria-hidden>
+                {LEVEL_BARS.map((weight, i) => (
+                  <span
+                    key={i}
+                    className="w-[3px] rounded-full bg-[var(--home-sage-deep)] transition-[height] duration-75"
+                    style={{
+                      height: `${Math.max(4, Math.min(20, 4 + state.level * 48 * weight))}px`,
+                    }}
+                  />
+                ))}
+              </span>
+            ) : null}
+
+            <p className="mt-3 text-xs text-[var(--home-muted)]">
               {state.recording
-                ? 'Recording — tap the square when you finish'
+                ? 'Listening — tap the square when you finish'
                 : hasTake
                   ? 'Listen back, then publish it'
                   : 'Tap the microphone and begin reciting'}
@@ -149,7 +183,7 @@ export default function QariRecordPage() {
             ) : null}
 
             {hasTake ? (
-              <div className="mt-4 flex items-center justify-center gap-2">
+              <div className="mt-5 flex items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={togglePreview}

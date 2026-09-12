@@ -53,6 +53,15 @@ function writeLocalUsers(users: LocalAuthUser[]): void {
   localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users))
 }
 
+/** Rename a local-only account. Database accounts are renamed server-side. */
+export function renameLocalUser(username: string, name: string): void {
+  const users = readLocalUsers()
+  const match = users.find((u) => u.username === username)
+  if (!match) return
+  match.name = name
+  writeLocalUsers(users)
+}
+
 export function signupLocalUser(username: string, name: string, pin: string): AppUser {
   const cleanUsername = username.trim().toLowerCase()
   const cleanName = name.trim()

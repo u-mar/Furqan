@@ -11,16 +11,31 @@ function clean(value: FormDataEntryValue | null, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
 }
 
-/** GET /api/qari?sort=recent|top&cursor=&user=username */
+/** GET /api/qari?sort=recent|top&user=username&likedBy=userId&q=&skip= */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const sort = searchParams.get('sort') === 'top' ? 'top' : 'recent'
   const username = searchParams.get('user')?.trim()
   const viewerId = searchParams.get('viewerId')?.trim()
+  const likedBy = searchParams.get('likedBy')?.trim()
   const query = searchParams.get('q')?.trim().slice(0, 60)
   const skip = Math.max(0, Number(searchParams.get('skip') || '0'))
 
   try {
+    // The favourites tab: the ids this user has hearted. Collected first so
+    // the recitations themselves are still one findMany.
+    let likedFilter: { id: { in: string[] } } | null = null
+    if (likedBy) {
+      const likes = await prisma.recitationLike.findMany({
+        where: { userId: likedBy },
+        select: { recitationId: true },
+      })
+      if (likes.length === 0) {
+        return NextResponse.json({ items: [], hasMore: false })
+      }
+      likedFilter = { id: { in: likes.map((l) => l.recitationId) } }
+    }
+
     // Matches a reciter's name or handle, or what they called the recording.
     const search = query
       ? {
@@ -35,6 +50,7 @@ export async function GET(request: NextRequest) {
     const where = {
       hidden: false,
       ...(username ? { userUsername: username } : {}),
+      ...(likedFilter ?? {}),
       ...search,
     }
 

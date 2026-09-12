@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { Clock, Mic, Search, Sparkles, UserRound, X } from 'lucide-react'
+import { ChevronLeft, Clock, Mic, Search, Sparkles, UserRound, X } from 'lucide-react'
 import RecitationCard from '@/components/qari/RecitationCard'
 import QariAvatar from '@/components/qari/QariAvatar'
-import { Notice, QariHeader, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
+import { Notice, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { fetchFeed, type FeedSort, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
@@ -73,68 +73,62 @@ export default function QariFeedPage() {
 
   return (
     <QariScreen>
-      <QariHeader
-        eyebrow="Qari"
-        title="Recitations"
-        action={
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/qari/record"
-              aria-label="Record a recitation"
-              className="ed-focus flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-95"
+      {/* Search leads — it is what this screen is for. Back and your own
+          profile flank it so the row costs no extra height. */}
+      <header className="mb-3 flex items-center gap-2">
+        <Link
+          href="/"
+          aria-label="Back"
+          className="ed-focus flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
+        >
+          <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+        </Link>
+
+        <div className="relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--home-muted)]"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search a qari or a recitation"
+            aria-label="Search recitations"
+            className="ed-focus ed-card h-12 w-full rounded-full pl-11 pr-10 text-sm text-[var(--home-heading)] placeholder:text-[var(--home-muted)]"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="ed-focus absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
             >
-              <Mic className="h-[18px] w-[18px]" strokeWidth={2} />
-            </Link>
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          ) : null}
+        </div>
 
-            {viewer ? (
-              <Link
-                href={`/qari/${encodeURIComponent(viewer.username)}`}
-                aria-label="Your profile"
-                title={`@${viewer.username}`}
-                className="ed-focus flex h-11 w-11 items-center justify-center rounded-full transition-transform active:scale-95"
-              >
-                <QariAvatar username={viewer.username} name={viewer.name} size={44} />
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAccountOpen(true)}
-                aria-label="Sign in"
-                className="ed-focus flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[0.78rem] font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] sm:w-auto sm:px-3.5"
-              >
-                <UserRound className="h-[18px] w-[18px] sm:hidden" strokeWidth={2} />
-                <span className="hidden sm:inline">Sign in</span>
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      {/* Search */}
-      <div className="relative mb-3">
-        <Search
-          className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--home-muted)]"
-          aria-hidden
-        />
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search a qari or a recitation"
-          aria-label="Search recitations"
-          className="ed-focus h-12 w-full rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] pl-11 pr-10 text-sm text-[var(--home-heading)] shadow-[var(--home-card-shadow)] placeholder:text-[var(--home-muted)]"
-        />
-        {search ? (
+        {viewer ? (
+          <Link
+            href={`/qari/${encodeURIComponent(viewer.username)}`}
+            aria-label="Your profile"
+            title={`@${viewer.username}`}
+            className="ed-focus flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
+          >
+            <QariAvatar username={viewer.username} name={viewer.name} size={48} />
+          </Link>
+        ) : (
           <button
             type="button"
-            onClick={() => setSearch('')}
-            aria-label="Clear search"
-            className="ed-focus absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
+            onClick={() => setAccountOpen(true)}
+            aria-label="Sign in"
+            className="ed-focus flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
           >
-            <X className="h-4 w-4" strokeWidth={2} />
+            <UserRound className="h-[18px] w-[18px]" strokeWidth={2} />
           </button>
-        ) : null}
-      </div>
+        )}
+      </header>
 
       {/* Sort — irrelevant while searching, so it steps aside */}
       {!searching ? (
@@ -242,6 +236,17 @@ export default function QariFeedPage() {
           ) : null}
         </>
       )}
+
+      {/* Recording is the point of the place, so it stays within thumb reach. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 mx-auto flex max-w-lg justify-end px-4">
+        <Link
+          href="/qari/record"
+          aria-label="Record a recitation"
+          className="ed-ink ed-focus qari-fab pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full transition-transform active:scale-95"
+        >
+          <Mic className="h-[21px] w-[21px]" strokeWidth={2} />
+        </Link>
+      </div>
 
       <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} onSuccess={() => {}} />
       <Notice message={notice} />

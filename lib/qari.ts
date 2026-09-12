@@ -50,6 +50,8 @@ export async function fetchFeed(options: {
   sort?: FeedSort
   user?: string
   viewerId?: string | null
+  /** Only recitations this user has hearted — the favourites tab. */
+  likedBy?: string | null
   /** Matches reciter name, handle, or recitation title. */
   query?: string
   skip?: number
@@ -58,6 +60,7 @@ export async function fetchFeed(options: {
   if (options.sort) params.set('sort', options.sort)
   if (options.user) params.set('user', options.user)
   if (options.viewerId) params.set('viewerId', options.viewerId)
+  if (options.likedBy) params.set('likedBy', options.likedBy)
   if (options.query) params.set('q', options.query)
   if (options.skip) params.set('skip', String(options.skip))
 
@@ -124,6 +127,26 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string }
   if (!res.ok || !data.id) throw new Error(data.error || 'Could not publish.')
   return data.id
+}
+
+/**
+ * Change the display name on a profile, everywhere it appears.
+ *
+ * Returns the stored name so the caller can write it back to the signed-in
+ * user without guessing how the server trimmed it.
+ */
+export async function renameQari(user: {
+  id: string
+  username: string
+}, name: string): Promise<string> {
+  const res = await fetch('/api/qari/profile', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, userId: user.id, name }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { name?: string; error?: string }
+  if (!res.ok || !data.name) throw new Error(data.error || 'Could not save that name.')
+  return data.name
 }
 
 /** Share a recitation — native sheet where available, clipboard otherwise. */
