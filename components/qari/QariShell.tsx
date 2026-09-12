@@ -4,21 +4,10 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import HomeScreen from '@/components/home/HomeScreen'
-import { getSignedInUser, type AppUser } from '@/lib/auth'
+import QariTabBar from '@/components/qari/QariTabBar'
 
-/** Shared chrome + the signed-in viewer, which every Qari screen needs. */
-export function useViewer(): AppUser | null {
-  const [viewer, setViewer] = useState<AppUser | null>(null)
-
-  useEffect(() => {
-    const sync = () => setViewer(getSignedInUser())
-    sync()
-    window.addEventListener('auth-user-changed', sync)
-    return () => window.removeEventListener('auth-user-changed', sync)
-  }, [])
-
-  return viewer
-}
+/** Re-exported so the Qari screens keep one import for their shared chrome. */
+export { useViewer } from '@/hooks/useViewer'
 
 export function QariHeader({
   eyebrow,
@@ -54,7 +43,13 @@ export function QariHeader({
 }
 
 export function QariScreen({ children }: { children: React.ReactNode }) {
-  return <HomeScreen className="mx-auto max-w-lg pb-24">{children}</HomeScreen>
+  // pb-28 keeps the last card clear of the fixed bar along the bottom.
+  return (
+    <HomeScreen className="mx-auto max-w-lg pb-28">
+      {children}
+      <QariTabBar />
+    </HomeScreen>
+  )
 }
 
 export function Notice({ message }: { message: string | null }) {

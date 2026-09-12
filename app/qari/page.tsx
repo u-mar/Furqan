@@ -2,11 +2,10 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, Clock, Mic, Search, Sparkles, UserRound, X } from 'lucide-react'
+import { ChevronLeft, Clock, Mic, Search, Sparkles, X } from 'lucide-react'
+import FilterMenu from '@/components/qari/FilterMenu'
 import RecitationCard from '@/components/qari/RecitationCard'
-import QariAvatar from '@/components/qari/QariAvatar'
 import { Notice, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
-import AccountSheet from '@/components/settings/AccountSheet'
 import { fetchFeed, type FeedSort, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 
@@ -21,7 +20,6 @@ export default function QariFeedPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
 
   /* Debounce so a query fires once the typing settles, not per keystroke. */
   useEffect(() => {
@@ -73,8 +71,7 @@ export default function QariFeedPage() {
 
   return (
     <QariScreen>
-      {/* Search leads — it is what this screen is for. Back and your own
-          profile flank it so the row costs no extra height. */}
+      {/* Search leads — it is what this screen is for. */}
       <header className="mb-3 flex items-center gap-2">
         <Link
           href="/"
@@ -109,55 +106,34 @@ export default function QariFeedPage() {
           ) : null}
         </div>
 
-        {viewer ? (
-          <Link
-            href={`/qari/${encodeURIComponent(viewer.username)}`}
-            aria-label="Your profile"
-            title={`@${viewer.username}`}
-            className="ed-focus flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
-          >
-            <QariAvatar username={viewer.username} name={viewer.name} size={48} />
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAccountOpen(true)}
-            aria-label="Sign in"
-            className="ed-focus flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
-          >
-            <UserRound className="h-[18px] w-[18px]" strokeWidth={2} />
-          </button>
-        )}
       </header>
 
-      {/* Sort — irrelevant while searching, so it steps aside */}
-      {!searching ? (
-        <div className="ed-seg mb-4 grid-cols-2">
-          {(
-            [
+      {/* Sort lives in a chooser so it costs a pill, not a whole row. */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {!searching ? (
+          <FilterMenu
+            label="Sort"
+            value={sort}
+            onChange={setSort}
+            options={[
               { id: 'recent' as const, label: 'Latest', Icon: Clock },
               { id: 'top' as const, label: 'Most loved', Icon: Sparkles },
-            ]
-          ).map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSort(id)}
-              aria-pressed={sort === id}
-              className="ed-seg__item ed-focus flex min-h-[44px] items-center justify-center gap-1.5 text-sm font-semibold"
-            >
-              <Icon className="h-4 w-4" strokeWidth={2} />
-              {label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="mb-3 px-1 text-xs text-[var(--home-muted)]">
-          {loading
-            ? 'Searching…'
-            : `${items.length} result${items.length === 1 ? '' : 's'} for “${query}”`}
-        </p>
-      )}
+            ]}
+          />
+        ) : (
+          <span className="text-xs text-[var(--home-muted)]">
+            {loading
+              ? 'Searching…'
+              : `${items.length} result${items.length === 1 ? '' : 's'} for “${query}”`}
+          </span>
+        )}
+        {!searching && items.length > 0 ? (
+          <span className="ed-num text-[11px] text-[var(--home-muted)]">
+            {items.length}
+            {hasMore ? '+' : ''} recitations
+          </span>
+        ) : null}
+      </div>
 
       {loading ? (
         <div className="space-y-3">
@@ -237,18 +213,6 @@ export default function QariFeedPage() {
         </>
       )}
 
-      {/* Recording is the point of the place, so it stays within thumb reach. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 mx-auto flex max-w-lg justify-end px-4">
-        <Link
-          href="/qari/record"
-          aria-label="Record a recitation"
-          className="ed-ink ed-focus qari-fab pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full transition-transform active:scale-95"
-        >
-          <Mic className="h-[21px] w-[21px]" strokeWidth={2} />
-        </Link>
-      </div>
-
-      <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} onSuccess={() => {}} />
       <Notice message={notice} />
     </QariScreen>
   )

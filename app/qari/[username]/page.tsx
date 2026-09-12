@@ -9,7 +9,6 @@ import QariAvatar from '@/components/qari/QariAvatar'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import { Notice, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import { fetchFeed, type Recitation } from '@/lib/qari'
-import { cn } from '@/lib/cn'
 
 type Tab = 'audios' | 'favourites'
 
@@ -150,14 +149,7 @@ export default function QariProfilePage() {
         <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-[var(--home-heading)]">
           @{username}
         </p>
-        <button
-          type="button"
-          onClick={() => void handleShare()}
-          aria-label="Share this profile"
-          className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-95"
-        >
-          <Share2 className="h-[18px] w-[18px]" strokeWidth={2} />
-        </button>
+        <span className="h-11 w-11 shrink-0" aria-hidden />
       </header>
 
       {/* Identity */}
@@ -215,24 +207,11 @@ export default function QariProfilePage() {
           <button
             type="button"
             onClick={() => void handleShare()}
-            aria-label={isMe ? 'Share this profile' : undefined}
-            className={cn(
-              'ed-focus flex h-11 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-[0.98]',
-              isMe ? 'w-11 shrink-0' : 'flex-1'
-            )}
+            className="ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-[0.98]"
           >
             <Share2 className="h-4 w-4" strokeWidth={2} />
-            {isMe ? null : 'Share profile'}
+            Share profile
           </button>
-          {isMe ? (
-            <Link
-              href="/qari/record"
-              aria-label="Record a recitation"
-              className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-[0.98]"
-            >
-              <Mic className="h-4 w-4" strokeWidth={2} />
-            </Link>
-          ) : null}
         </div>
       </section>
 

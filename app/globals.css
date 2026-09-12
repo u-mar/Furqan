@@ -1215,6 +1215,87 @@ html.dark .mushaf-reader {
   animation: hifdh-wave 0.45s ease-in-out infinite alternate;
 }
 
+/* --- Qari: the bar along the bottom --- */
+
+.qari-tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  background: var(--app-bg);
+  border-top: 1px solid var(--home-rule);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Matches the max-w-lg column the Qari screens are laid out in. */
+.qari-tabbar__inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline: auto;
+  max-width: 32rem;
+  padding: 0.4rem 1.25rem 0.5rem;
+}
+
+.qari-tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 52px;
+  border-radius: 0.9rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--home-muted);
+  transition: color 0.16s ease;
+}
+
+.qari-tabbar__item.is-active {
+  color: var(--home-heading);
+}
+
+/* The avatar is dimmed until it is the page you are on. */
+.qari-tabbar__avatar {
+  opacity: 0.55;
+  transition: opacity 0.16s ease, box-shadow 0.16s ease;
+}
+
+.qari-tabbar__avatar.is-active {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--home-heading);
+}
+
+/* Wider than it is tall, so it reads as the one thing that makes something
+   rather than another place to go. */
+.qari-tabbar__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.75rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: var(--home-ink);
+  color: var(--home-ink-fg);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.16),
+    0 8px 20px -12px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s ease;
+}
+
+.qari-tabbar__add:active {
+  transform: scale(0.94);
+}
+
+/* Pop-over list — lifted off the feed so it reads as a layer above it. */
+.qari-menu {
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.1),
+    0 18px 40px -18px rgba(0, 0, 0, 0.55);
+}
+
 /* Floating record button — lifted off the feed so it reads above the cards. */
 .qari-fab {
   box-shadow:

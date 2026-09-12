@@ -41,7 +41,6 @@ export default function RecitationCard({
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [hasPicture, setHasPicture] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const countedRef = useRef(false)
 
@@ -162,67 +161,33 @@ export default function RecitationCard({
   return (
     <article
       className={cn(
-        'ed-card rounded-[1.5rem] p-4 transition-shadow',
+        'ed-card rounded-[1.35rem] p-3.5 transition-shadow',
         playing && 'qari-card-playing'
       )}
     >
-      <div className="flex items-start gap-3.5">
-        {/* The reciter's picture is the play button. */}
-        <button
-          type="button"
-          onClick={togglePlay}
-          aria-label={playing ? 'Pause' : 'Play'}
-          className="ed-focus relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
-        >
-          {playing ? (
-            <>
-              <span className="qari-ring" aria-hidden />
-              <span className="qari-ring qari-ring-late" aria-hidden />
-            </>
-          ) : null}
-
-          <QariAvatar
-            username={recitation.userUsername}
-            name={recitation.userName}
-            size={64}
-            className="absolute inset-0"
-            showInitial={false}
-            onPictureChange={setHasPicture}
-          />
-
-          {/* Only a real photo needs darkening for the icon to read on top of
-              it; without one the plain ink circle is clearer as it is. */}
-          {hasPicture ? (
-            <span
-              className={cn(
-                'absolute inset-0 rounded-full transition-colors',
-                playing ? 'bg-black/55' : 'bg-black/35'
-              )}
-              aria-hidden
-            />
-          ) : null}
-
-          <span
-            className={cn(
-              'relative',
-              hasPicture ? 'text-white drop-shadow-sm' : 'text-[var(--home-ink-fg)]'
-            )}
+      <div className="flex items-center gap-3">
+        {/* Who — a way to their profile, not a control. Left out on a
+            profile page, where it would be the same face on every row. */}
+        {!hideAuthor ? (
+          <Link
+            href={`/qari/${encodeURIComponent(recitation.userUsername)}`}
+            aria-label={`${recitation.userName}’s profile`}
+            className="ed-focus shrink-0 rounded-full transition-transform active:scale-95"
           >
-            {loading ? (
-              <span className="block h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : playing ? (
-              <Pause className="h-6 w-6 fill-current" />
-            ) : (
-              <Play className="ml-0.5 h-6 w-6 fill-current" />
-            )}
-          </span>
-        </button>
+            <QariAvatar
+              username={recitation.userUsername}
+              name={recitation.userName}
+              size={48}
+            />
+          </Link>
+        ) : null}
 
+        {/* What */}
         <div className="min-w-0 flex-1">
           {!hideAuthor ? (
             <Link
               href={`/qari/${encodeURIComponent(recitation.userUsername)}`}
-              className="ed-focus home-serif block truncate text-[1.05rem] font-semibold leading-tight text-[var(--home-heading)] hover:underline"
+              className="ed-focus home-serif block truncate text-[1rem] font-semibold leading-tight text-[var(--home-heading)] hover:underline"
             >
               {recitation.userName}
             </Link>
@@ -231,45 +196,67 @@ export default function RecitationCard({
             className={cn(
               'truncate',
               hideAuthor
-                ? 'home-serif text-[1.05rem] font-semibold leading-tight text-[var(--home-heading)]'
-                : 'mt-0.5 text-[0.86rem] text-[var(--home-heading)]'
+                ? 'home-serif text-[1rem] font-semibold leading-tight text-[var(--home-heading)]'
+                : 'mt-0.5 text-[0.84rem] leading-snug text-[var(--home-muted)]'
             )}
           >
             {recitation.title}
           </p>
-          {recitation.caption ? (
-            <p className="mt-1 line-clamp-2 text-[0.8rem] leading-snug text-[var(--home-muted)]">
-              {recitation.caption}
-            </p>
-          ) : null}
-
-          {/* Progress */}
-          <div className="mt-2.5 flex items-center gap-2">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--home-track)]">
-              <div
-                className="h-full rounded-full bg-[var(--home-sage-deep)] transition-[width] duration-150"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-            {playing ? (
-              <span className="flex h-3 shrink-0 items-end gap-[2px]" aria-hidden>
-                {[0, 0.18, 0.09, 0.26].map((delay, i) => (
-                  <span
-                    key={i}
-                    className="qari-eq-bar"
-                    style={{ animationDelay: `${delay}s` }}
-                  />
-                ))}
-              </span>
-            ) : null}
-            <span className="ed-num shrink-0 text-[11px] text-[var(--home-muted)]">
-              {formatDuration(recitation.durationSec)}
-            </span>
-          </div>
         </div>
+
+        {/* Play, where a thumb lands. */}
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? 'Pause' : 'Play'}
+          className={cn(
+            'ed-focus relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95',
+            playing ? 'bg-[var(--home-sage-deep)] text-white' : 'ed-ink'
+          )}
+        >
+          {playing ? (
+            <>
+              <span className="qari-ring" aria-hidden />
+              <span className="qari-ring qari-ring-late" aria-hidden />
+            </>
+          ) : null}
+          {loading ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : playing ? (
+            <Pause className="h-5 w-5 fill-current" />
+          ) : (
+            <Play className="ml-0.5 h-5 w-5 fill-current" />
+          )}
+        </button>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--home-rule)] pt-2.5">
+      {recitation.caption ? (
+        <p className="mt-2.5 line-clamp-2 text-[0.82rem] leading-snug text-[var(--home-muted)]">
+          {recitation.caption}
+        </p>
+      ) : null}
+
+      {/* Progress */}
+      <div className="mt-3 flex items-center gap-2">
+        <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-[var(--home-track)]">
+          <div
+            className="h-full rounded-full bg-[var(--home-sage-deep)] transition-[width] duration-150"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+        {playing ? (
+          <span className="flex h-3 shrink-0 items-end gap-[2px]" aria-hidden>
+            {[0, 0.18, 0.09, 0.26].map((delay, i) => (
+              <span key={i} className="qari-eq-bar" style={{ animationDelay: `${delay}s` }} />
+            ))}
+          </span>
+        ) : null}
+        <span className="ed-num shrink-0 text-[11px] text-[var(--home-muted)]">
+          {formatDuration(recitation.durationSec)}
+        </span>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[var(--home-rule)] pt-2">
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -278,9 +265,7 @@ export default function RecitationCard({
             aria-label={liked ? 'Remove from favourites' : 'Add to favourites'}
             className={cn(
               'ed-focus flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[0.78rem] font-semibold transition-colors',
-              liked
-                ? 'text-rose-500'
-                : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
+              liked ? 'text-rose-500' : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
             )}
           >
             <Heart className={cn('h-[17px] w-[17px]', liked && 'fill-current')} strokeWidth={2} />
