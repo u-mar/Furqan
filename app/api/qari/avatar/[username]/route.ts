@@ -4,6 +4,8 @@ import { openFile } from '@/lib/qari-storage'
 
 export const runtime = 'nodejs'
 
+const NO_CACHE = { 'Cache-Control': 'no-store' }
+
 /**
  * GET /api/qari/avatar/[username] — stream a profile picture.
  *
@@ -20,10 +22,12 @@ export async function GET(
     const record = await prisma.qariAvatar.findUnique({
       where: { username: decodeURIComponent(username).toLowerCase() },
     })
-    if (!record) return new NextResponse(null, { status: 404 })
+    // Never cached: a picture set moments ago must appear on every screen
+    // that already asked and was told there wasn't one.
+    if (!record) return new NextResponse(null, { status: 404, headers: NO_CACHE })
 
     const image = await openFile(record.imageId, 'qari_avatars')
-    if (!image) return new NextResponse(null, { status: 404 })
+    if (!image) return new NextResponse(null, { status: 404, headers: NO_CACHE })
 
     return new NextResponse(image.stream as unknown as ReadableStream, {
       headers: {
@@ -35,6 +39,6 @@ export async function GET(
     })
   } catch (err) {
     console.error('[qari] avatar fetch failed:', err)
-    return new NextResponse(null, { status: 404 })
+    return new NextResponse(null, { status: 404, headers: NO_CACHE })
   }
 }

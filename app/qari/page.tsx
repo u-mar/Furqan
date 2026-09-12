@@ -120,7 +120,7 @@ export default function QariFeedPage() {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search a qari or surah"
+          placeholder="Search a qari or a recitation"
           aria-label="Search recitations"
           className="ed-focus h-12 w-full rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] pl-11 pr-10 text-sm text-[var(--home-heading)] shadow-[var(--home-card-shadow)] placeholder:text-[var(--home-muted)]"
         />
@@ -189,7 +189,7 @@ export default function QariFeedPage() {
               Nothing found
             </p>
             <p className="mx-auto mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">
-              No qari or surah matches “{query}”.
+              Nothing matches “{query}”.
             </p>
           </div>
         ) : (

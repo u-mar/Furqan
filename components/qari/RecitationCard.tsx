@@ -10,7 +10,6 @@ import {
   deleteRecitation,
   formatDuration,
   recitationAudioUrl,
-  recitationRangeLabel,
   reportRecitation,
   shareRecitation,
   timeAgo,
@@ -42,6 +41,7 @@ export default function RecitationCard({
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [hasPicture, setHasPicture] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const countedRef = useRef(false)
 
@@ -153,53 +153,79 @@ export default function RecitationCard({
 
   return (
     <article className="ed-card rounded-[1.5rem] p-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3.5">
+        {/* The reciter's picture is the play button. */}
         <button
           type="button"
           onClick={togglePlay}
           aria-label={playing ? 'Pause' : 'Play'}
-          className={cn(
-            'ed-focus relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95',
-            playing
-              ? 'bg-[var(--home-sage-deep)] text-white'
-              : 'ed-ink hover:opacity-90'
-          )}
+          className="ed-focus relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95"
         >
-          {loading ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : playing ? (
-            <Pause className="h-5 w-5 fill-current" />
-          ) : (
-            <Play className="ml-0.5 h-5 w-5 fill-current" />
-          )}
+          {playing ? (
+            <>
+              <span className="qari-ring" aria-hidden />
+              <span className="qari-ring qari-ring-late" aria-hidden />
+            </>
+          ) : null}
+
+          <QariAvatar
+            username={recitation.userUsername}
+            name={recitation.userName}
+            size={64}
+            className="absolute inset-0"
+            showInitial={false}
+            onPictureChange={setHasPicture}
+          />
+
+          {/* Only a real photo needs darkening for the icon to read on top of
+              it; without one the plain ink circle is clearer as it is. */}
+          {hasPicture ? (
+            <span
+              className={cn(
+                'absolute inset-0 rounded-full transition-colors',
+                playing ? 'bg-black/55' : 'bg-black/35'
+              )}
+              aria-hidden
+            />
+          ) : null}
+
+          <span
+            className={cn(
+              'relative',
+              hasPicture ? 'text-white drop-shadow-sm' : 'text-[var(--home-ink-fg)]'
+            )}
+          >
+            {loading ? (
+              <span className="block h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : playing ? (
+              <Pause className="h-6 w-6 fill-current" />
+            ) : (
+              <Play className="ml-0.5 h-6 w-6 fill-current" />
+            )}
+          </span>
         </button>
 
         <div className="min-w-0 flex-1">
           {!hideAuthor ? (
             <Link
               href={`/qari/${encodeURIComponent(recitation.userUsername)}`}
-              className="ed-focus flex items-center gap-2 hover:underline"
+              className="ed-focus home-serif block truncate text-[1.05rem] font-semibold leading-tight text-[var(--home-heading)] hover:underline"
             >
-              <QariAvatar
-                username={recitation.userUsername}
-                name={recitation.userName}
-                size={22}
-              />
-              <span className="home-serif truncate text-[1.05rem] font-semibold leading-tight text-[var(--home-heading)]">
-                {recitation.userName}
-              </span>
+              {recitation.userName}
             </Link>
           ) : null}
           <p
             className={cn(
-              'truncate text-[0.82rem] text-[var(--home-muted)]',
-              hideAuthor ? 'text-[0.95rem] text-[var(--home-heading)]' : 'mt-0.5'
+              'truncate',
+              hideAuthor
+                ? 'home-serif text-[1.05rem] font-semibold leading-tight text-[var(--home-heading)]'
+                : 'mt-0.5 text-[0.86rem] text-[var(--home-heading)]'
             )}
           >
-            {recitationRangeLabel(recitation)}
+            {recitation.title}
           </p>
           {recitation.caption ? (
-            <p className="mt-1.5 line-clamp-2 text-[0.82rem] leading-snug text-[var(--home-muted)]">
+            <p className="mt-1 line-clamp-2 text-[0.8rem] leading-snug text-[var(--home-muted)]">
               {recitation.caption}
             </p>
           ) : null}
@@ -212,6 +238,17 @@ export default function RecitationCard({
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
+            {playing ? (
+              <span className="flex h-3 shrink-0 items-end gap-[2px]" aria-hidden>
+                {[0, 0.18, 0.09, 0.26].map((delay, i) => (
+                  <span
+                    key={i}
+                    className="qari-eq-bar"
+                    style={{ animationDelay: `${delay}s` }}
+                  />
+                ))}
+              </span>
+            ) : null}
             <span className="ed-num shrink-0 text-[11px] text-[var(--home-muted)]">
               {formatDuration(recitation.durationSec)}
             </span>

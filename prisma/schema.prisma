@@ -60,11 +60,9 @@ model Recitation {
   mimeType    String
   durationSec Int
   sizeBytes   Int
-  /// What was recited, e.g. "2:255" or "36:1-12".
-  surahId     Int
-  surahName   String
-  fromAyah    Int
-  toAyah      Int
+  /// Whatever the reciter called this recording. Optional because the first
+  /// recordings were saved with a surah and ayah range instead.
+  title       String?
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)

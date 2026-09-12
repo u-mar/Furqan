@@ -23,6 +23,8 @@ export default function QariAvatar({
   size = 44,
   version,
   className,
+  showInitial = true,
+  onPictureChange,
 }: {
   username: string
   name: string
@@ -30,11 +32,26 @@ export default function QariAvatar({
   /** Bump to bypass the cache after uploading a new picture. */
   version?: number
   className?: string
+  /** Off when something is drawn on top of the avatar, such as a play button. */
+  showInitial?: boolean
+  /** Told whether a real picture is showing, so callers can adapt around it. */
+  onPictureChange?: (hasPicture: boolean) => void
 }) {
   const src = avatarUrl(username, version)
   const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
   const initial = (name || username || '?').trim().charAt(0).toUpperCase()
+
+  const hasPicture = loadedSrc === src
+
+  // Held in a ref so an inline callback does not re-fire the effect each render.
+  const notify = useRef(onPictureChange)
+  useEffect(() => {
+    notify.current = onPictureChange
+  })
+  useEffect(() => {
+    notify.current?.(hasPicture)
+  }, [hasPicture])
 
   useEffect(() => {
     const img = imgRef.current
@@ -61,7 +78,7 @@ export default function QariAvatar({
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
     >
-      {initial}
+      {showInitial ? initial : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         key={src}
@@ -72,7 +89,7 @@ export default function QariAvatar({
         className="absolute inset-0 h-full w-full object-cover"
         // Inline so the fade cannot depend on a utility class surviving the build.
         style={{
-          opacity: loadedSrc === src ? 1 : 0,
+          opacity: hasPicture ? 1 : 0,
           transition: 'opacity 200ms ease',
         }}
       />

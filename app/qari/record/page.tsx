@@ -1,15 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mic, Pause, Play, RotateCcw, Send, Square } from 'lucide-react'
 import { Notice, QariHeader, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useQariRecorder } from '@/hooks/useQariRecorder'
-import { getChapters } from '@/lib/quran'
 import { formatDuration, publishRecitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
-import type { Chapter } from '@/types'
 
 export default function QariRecordPage() {
   const router = useRouter()
@@ -17,10 +15,7 @@ export default function QariRecordPage() {
   const { notice, setNotice } = useNotice()
   const { state, start, stop, reset, supported } = useQariRecorder()
 
-  const [chapters, setChapters] = useState<Chapter[]>([])
-  const [surahId, setSurahId] = useState(1)
-  const [fromAyah, setFromAyah] = useState(1)
-  const [toAyah, setToAyah] = useState(1)
+  const [title, setTitle] = useState('')
   const [caption, setCaption] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -29,26 +24,12 @@ export default function QariRecordPage() {
   const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
-    getChapters()
-      .then(setChapters)
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
     return () => {
       previewRef.current?.pause()
       if (previewRef.current?.src) URL.revokeObjectURL(previewRef.current.src)
       previewRef.current = null
     }
   }, [])
-
-  const chapter = useMemo(() => chapters.find((c) => c.id === surahId), [chapters, surahId])
-  const maxAyah = chapter?.versesCount ?? 286
-
-  useEffect(() => {
-    setFromAyah((v) => Math.min(Math.max(1, v), maxAyah))
-    setToAyah((v) => Math.min(Math.max(1, v), maxAyah))
-  }, [maxAyah])
 
   const togglePreview = useCallback(() => {
     if (!state.blob) return
@@ -80,8 +61,8 @@ export default function QariRecordPage() {
       setAccountOpen(true)
       return
     }
-    if (toAyah < fromAyah) {
-      setNotice('The last ayah comes before the first.')
+    if (!title.trim()) {
+      setNotice('Give your recitation a title.')
       return
     }
 
@@ -91,10 +72,7 @@ export default function QariRecordPage() {
         blob: state.blob,
         mimeType: state.mimeType,
         durationSec: state.durationSec,
-        surahId,
-        surahName: chapter?.englishName || `Surah ${surahId}`,
-        fromAyah,
-        toAyah,
+        title: title.trim(),
         caption: caption.trim(),
         userId: viewer.id,
         userName: viewer.name,
@@ -107,15 +85,12 @@ export default function QariRecordPage() {
     }
   }, [
     caption,
-    chapter,
-    fromAyah,
     router,
     setNotice,
     state.blob,
     state.durationSec,
     state.mimeType,
-    surahId,
-    toAyah,
+    title,
     viewer,
   ])
 
@@ -199,64 +174,23 @@ export default function QariRecordPage() {
             ) : null}
           </section>
 
-          {/* What was recited */}
+          {/* Title and note */}
           <section className={cn('mt-4 space-y-3', !hasTake && 'pointer-events-none opacity-45')}>
             <div className="ed-card rounded-[1.5rem] p-4">
               <label
-                htmlFor="qari-surah"
+                htmlFor="qari-title"
                 className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
               >
-                Surah
+                Title
               </label>
-              <select
-                id="qari-surah"
-                value={surahId}
-                onChange={(e) => setSurahId(Number(e.target.value))}
-                className="ed-focus h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)]"
-              >
-                {chapters.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.id}. {c.englishName}
-                  </option>
-                ))}
-              </select>
-
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    htmlFor="qari-from"
-                    className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
-                  >
-                    From ayah
-                  </label>
-                  <input
-                    id="qari-from"
-                    type="number"
-                    min={1}
-                    max={maxAyah}
-                    value={fromAyah}
-                    onChange={(e) => setFromAyah(Number(e.target.value))}
-                    className="ed-focus ed-num h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)]"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="qari-to"
-                    className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
-                  >
-                    To ayah
-                  </label>
-                  <input
-                    id="qari-to"
-                    type="number"
-                    min={1}
-                    max={maxAyah}
-                    value={toAyah}
-                    onChange={(e) => setToAyah(Number(e.target.value))}
-                    className="ed-focus ed-num h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)]"
-                  />
-                </div>
-              </div>
+              <input
+                id="qari-title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+                placeholder="Al-Mulk, first ten ayat"
+                className="ed-focus h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)] placeholder:font-normal placeholder:text-[var(--home-muted)]"
+              />
 
               <label
                 htmlFor="qari-caption"
