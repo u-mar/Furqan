@@ -23,7 +23,7 @@ export interface AppSettings {
   mushafWidth: MushafWidthMode
   offlineDownloaded: boolean
   translationsDownloaded: boolean
-  /** Reciter for ayah-by-ayah audio (Read highlighting, Imitate). */
+  /** Reciter for ayah-by-ayah audio (Read highlighting). */
   reciterId: string
   /** Reciter for full-surah playback in Listen — may be surah-only. */
   listenReciterId: string

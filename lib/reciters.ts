@@ -79,7 +79,7 @@ const A = {
 }
 
 export const RECITERS: Reciter[] = [
-  // ---- Ayah-by-ayah capable (EveryAyah) — usable in Read, Imitate and Listen ----
+  // ---- Ayah-by-ayah capable (EveryAyah) — usable in Read and Listen ----
   {
     id: 'alafasy',
     top: true,
@@ -985,7 +985,7 @@ export function isSurahOnlyReciter(reciter: Reciter): boolean {
   return reciter.source === 'mp3quran'
 }
 
-/** Reciters that support ayah-by-ayah audio (Read highlighting, Imitate). */
+/** Reciters that support ayah-by-ayah audio (Read highlighting). */
 export function ayahCapableReciters(): Reciter[] {
   return RECITERS.filter((r) => !isSurahOnlyReciter(r))
 }

@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 /**
  * Recorder for Qari uploads.
  *
- * Unlike the Imitate recorder, this keeps MediaRecorder's own compressed
- * output instead of converting to WAV — a minute of WAV is several megabytes,
- * while Opus is well under one, which matters when every recording is uploaded.
+ * Keeps MediaRecorder's own compressed output rather than converting to WAV —
+ * a minute of WAV is several megabytes, while Opus is well under one, which
+ * matters when every recording is uploaded.
  */
 
 /** In preference order; the first the browser supports wins. */
