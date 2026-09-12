@@ -23,12 +23,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (!recitation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     if (action === 'play') {
+      // Listening back to your own recitation is not an audience of one.
+      if (userId && userId === recitation.userId) {
+        return NextResponse.json({ playCount: recitation.playCount, counted: false })
+      }
       const updated = await prisma.recitation.update({
         where: { id },
         data: { playCount: { increment: 1 } },
         select: { playCount: true },
       })
-      return NextResponse.json({ playCount: updated.playCount })
+      return NextResponse.json({ playCount: updated.playCount, counted: true })
     }
 
     if (!userId) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })

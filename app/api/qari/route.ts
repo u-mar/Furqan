@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { ownsUsername } from '@/lib/qari-owner'
 import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, putAudio } from '@/lib/qari-storage'
 
 export const runtime = 'nodejs'
@@ -7,8 +8,29 @@ export const runtime = 'nodejs'
 const FEED_PAGE_SIZE = 20
 const ALLOWED_MIME = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav']
 
+const MAX_TAGS = 6
+const MAX_TAG_LEN = 24
+
 function clean(value: FormDataEntryValue | null, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
+}
+
+/**
+ * Accepts whatever shape the reciter typed — "#tajweed, baqarah  #night" —
+ * and returns a tidy, de-duplicated list with no '#' and no empties.
+ */
+function parseHashtags(raw: string): string[] {
+  const seen = new Set<string>()
+  for (const piece of raw.split(/[\s,]+/)) {
+    const tag = piece
+      .replace(/^#+/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_؀-ۿ]/g, '')
+      .slice(0, MAX_TAG_LEN)
+    if (tag) seen.add(tag)
+    if (seen.size >= MAX_TAGS) break
+  }
+  return [...seen]
 }
 
 /** GET /api/qari?sort=recent|top&user=username&likedBy=userId&q=&skip= */
@@ -20,6 +42,8 @@ export async function GET(request: NextRequest) {
   const likedBy = searchParams.get('likedBy')?.trim()
   const query = searchParams.get('q')?.trim().slice(0, 60)
   const skip = Math.max(0, Number(searchParams.get('skip') || '0'))
+  // A search for "#tajweed" should find the tag, not the literal text.
+  const tagQuery = query?.startsWith('#') ? query.slice(1).toLowerCase() : null
 
   try {
     // The favourites tab: the ids this user has hearted. Collected first so
@@ -36,19 +60,33 @@ export async function GET(request: NextRequest) {
       likedFilter = { id: { in: likes.map((l) => l.recitationId) } }
     }
 
-    // Matches a reciter's name or handle, or what they called the recording.
-    const search = query
-      ? {
-          OR: [
-            { userName: { contains: query, mode: 'insensitive' as const } },
-            { userUsername: { contains: query, mode: 'insensitive' as const } },
-            { title: { contains: query, mode: 'insensitive' as const } },
-          ],
-        }
-      : {}
+    // Matches a reciter's name or handle, what they called the recording, or
+    // one of its hashtags.
+    const search = tagQuery
+      ? { hashtags: { has: tagQuery } }
+      : query
+        ? {
+            OR: [
+              { userName: { contains: query, mode: 'insensitive' as const } },
+              { userUsername: { contains: query, mode: 'insensitive' as const } },
+              { title: { contains: query, mode: 'insensitive' as const } },
+              { hashtags: { has: query.toLowerCase() } },
+            ],
+          }
+        : {}
+
+    // Private recordings belong to their reciter alone. They surface only on
+    // that person's own profile, and only once the server has confirmed the
+    // caller really is them.
+    const ownProfile =
+      Boolean(username) && Boolean(viewerId) && (await ownsUsername(username!, viewerId!))
 
     const where = {
       hidden: false,
+      // Every row carries `isPrivate` — the ones made before it existed were
+      // backfilled to false. Prisma on MongoDB cannot match an absent field,
+      // so this has to stay true of anything written here.
+      ...(ownProfile ? {} : { isPrivate: false }),
       ...(username ? { userUsername: username } : {}),
       ...(likedFilter ?? {}),
       ...search,
@@ -77,6 +115,8 @@ export async function GET(request: NextRequest) {
         userName: r.userName,
         userUsername: r.userUsername,
         title: r.title || 'Recitation',
+        hashtags: r.hashtags ?? [],
+        isPrivate: r.isPrivate === true,
         caption: r.caption,
         durationSec: r.durationSec,
         likeCount: r.likeCount,
@@ -121,6 +161,8 @@ export async function POST(request: NextRequest) {
     }
 
     const title = clean(form.get('title'), 80)
+    const hashtags = parseHashtags(clean(form.get('hashtags'), 200))
+    const isPrivate = clean(form.get('isPrivate'), 5) === 'true'
     const durationSec = Math.round(Number(form.get('durationSec') || 0))
     if (!title) {
       return NextResponse.json({ error: 'Give your recitation a title.' }, { status: 400 })
@@ -145,6 +187,8 @@ export async function POST(request: NextRequest) {
         durationSec,
         sizeBytes: buffer.length,
         title,
+        hashtags,
+        isPrivate,
         caption: clean(form.get('caption'), 280),
       },
     })

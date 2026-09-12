@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, Clock, Mic, Search, Sparkles, X } from 'lucide-react'
 import FilterMenu from '@/components/qari/FilterMenu'
 import RecitationCard from '@/components/qari/RecitationCard'
@@ -9,12 +10,14 @@ import { Notice, QariScreen, useNotice, useViewer } from '@/components/qari/Qari
 import { fetchFeed, type FeedSort, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 
-export default function QariFeedPage() {
+function QariFeedContent() {
   const viewer = useViewer()
   const { notice, setNotice } = useNotice()
+  // Tapping a hashtag anywhere in the app arrives here as ?q=%23tag.
+  const initialQuery = useSearchParams().get('q') ?? ''
   const [sort, setSort] = useState<FeedSort>('recent')
-  const [search, setSearch] = useState('')
-  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState(initialQuery)
+  const [query, setQuery] = useState(initialQuery)
   const [items, setItems] = useState<Recitation[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -215,5 +218,13 @@ export default function QariFeedPage() {
 
       <Notice message={notice} />
     </QariScreen>
+  )
+}
+
+export default function QariFeedPage() {
+  return (
+    <Suspense fallback={<QariScreen>{null}</QariScreen>}>
+      <QariFeedContent />
+    </Suspense>
   )
 }

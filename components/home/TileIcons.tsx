@@ -1,20 +1,60 @@
 /** Solid glyph icons for the home grid, plus the small ornaments used as
  *  typographic dividers across the Home and Settings surfaces. */
 
+/** An open mushaf, seen from above, its two leaves lifting from the spine. */
 export function IconRead({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
-      <path d="M8 6c0-1.1.9-2 2-2h12v38H10c-1.1 0-2-.9-2-2V6zm20 0h12c1.1 0 2 .9 2 2v28c0 1.1-.9 2-2 2H28V6zM12 10v24h8V10h-8zm20 0v24h8V10h-8z" opacity="0.95" />
-      <path d="M22 8h4v32h-4V8z" opacity="0.35" />
+      <path
+        d="M23 13.4C18.3 10.8 12.8 9.6 6.6 9.9A2.6 2.6 0 0 0 4 12.5v22.3c0 1.5 1.2 2.7 2.7 2.6 5.7-.2 10.9.9 16.3 3.5V13.4z"
+        opacity="0.3"
+      />
+      <path
+        d="M25 13.4c4.7-2.6 10.2-3.8 16.4-3.5A2.6 2.6 0 0 1 44 12.5v22.3c0 1.5-1.2 2.7-2.7 2.6-5.7-.2-10.9.9-16.3 3.5V13.4z"
+        opacity="0.3"
+      />
+      <rect x="8.5" y="16.5" width="11" height="2.1" rx="1.05" />
+      <rect x="8.5" y="21.6" width="11" height="2.1" rx="1.05" />
+      <rect x="8.5" y="26.7" width="8" height="2.1" rx="1.05" />
+      <rect x="28.5" y="16.5" width="11" height="2.1" rx="1.05" />
+      <rect x="28.5" y="21.6" width="11" height="2.1" rx="1.05" />
+      <rect x="31.5" y="26.7" width="8" height="2.1" rx="1.05" />
+      <rect x="23" y="12.6" width="2" height="27.5" rx="1" />
     </svg>
   )
 }
 
+/** A card checked off — one page of your hifdh confirmed. */
 export function IconTest({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
-      <path d="M24 4c-8 0-14 5-14 12v4h4v-4c0-5 4.5-8 10-8s10 3 10 8v2h-6v14h-4V22h-4v-2c0-7-6-12-14-12z" opacity="0.2" />
-      <path d="M10 8h28c2.2 0 4 1.8 4 4v26c0 2.2-1.8 4-4 4H10c-2.2 0-4-1.8-4-4V12c0-2.2 1.8-4 4-4zm0 4v26h28V12H10zm14 6c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6 2.7-6 6-6zm0 4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+      <rect
+        x="4"
+        y="13"
+        width="22"
+        height="27"
+        rx="5"
+        opacity="0.4"
+        transform="rotate(-11 15 26.5)"
+      />
+      <rect
+        x="16"
+        y="8"
+        width="26"
+        height="31"
+        rx="5.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+      />
+      <path
+        d="M22.6 23.6l4.5 4.5 8.6-8.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -29,12 +69,31 @@ export function IconMemorize({ className }: { className?: string }) {
   )
 }
 
+/** Headphones — someone else's voice, carrying the recitation. */
 export function IconListen({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
-      <path d="M24 6a12 12 0 0 0-12 12v8a12 12 0 0 0 24 0V18A12 12 0 0 0 24 6zm-8 12a8 8 0 0 1 16 0v8a8 8 0 0 1-16 0v-8z" opacity="0.35" />
-      <path d="M24 4c-9.9 0-18 8.1-18 18v6c0 2.2 1.8 4 4 4h2v-6h-2v-6c0-7.7 6.3-14 14-14s14 6.3 14 14v6h-2v6h2c2.2 0 4-1.8 4-4v-6c0-9.9-8.1-18-18-18z" />
-      <path d="M12 36h4v6h-4v-6zm20 0h4v6h-4v-6z" />
+      <path d="M24 6C14.1 6 6 14.1 6 24v4.5h4.4V24c0-7.5 6.1-13.6 13.6-13.6S37.6 16.5 37.6 24v4.5H42V24c0-9.9-8.1-18-18-18z" />
+      <rect x="4" y="26.5" width="9" height="15.5" rx="4.5" />
+      <rect x="35" y="26.5" width="9" height="15.5" rx="4.5" />
+      <rect x="6.6" y="29.6" width="3.8" height="9.3" rx="1.9" opacity="0.35" />
+      <rect x="37.6" y="29.6" width="3.8" height="9.3" rx="1.9" opacity="0.35" />
+    </svg>
+  )
+}
+
+/** A microphone between two level bars — your own voice, recorded. */
+export function IconQari({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
+      <rect x="5" y="17.5" width="3.2" height="11" rx="1.6" opacity="0.32" />
+      <rect x="9.8" y="20.5" width="3.2" height="5" rx="1.6" opacity="0.32" />
+      <rect x="39.8" y="17.5" width="3.2" height="11" rx="1.6" opacity="0.32" />
+      <rect x="35" y="20.5" width="3.2" height="5" rx="1.6" opacity="0.32" />
+      <rect x="19.4" y="5" width="9.2" height="19.5" rx="4.6" />
+      <path d="M15 20.8v3a9 9 0 0 0 18 0v-3h-3.5v3a5.5 5.5 0 1 1-11 0v-3H15z" />
+      <rect x="22.3" y="33" width="3.4" height="6.4" rx="1.7" />
+      <rect x="16.8" y="38.6" width="14.4" height="3.4" rx="1.7" />
     </svg>
   )
 }

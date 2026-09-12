@@ -6,6 +6,10 @@ export interface Recitation {
   userUsername: string
   /** What the reciter called this recording. */
   title: string
+  /** Lower-case, no leading '#'. */
+  hashtags: string[]
+  /** Visible only to the reciter. */
+  isPrivate: boolean
   caption: string
   durationSec: number
   likeCount: number
@@ -86,8 +90,9 @@ export function toggleLike(id: string, userId: string, liked: boolean) {
   }>
 }
 
-export function countPlay(id: string) {
-  return post(id, { action: 'play' }).catch(() => null)
+/** The reciter's own listens don't count, so the id has to travel with it. */
+export function countPlay(id: string, userId: string | null) {
+  return post(id, { action: 'play', userId: userId ?? undefined }).catch(() => null)
 }
 
 export function reportRecitation(id: string, userId: string, reason: string) {
@@ -106,6 +111,9 @@ export interface PublishInput {
   mimeType: string
   durationSec: number
   title: string
+  /** Free text — the server tidies it into a list. */
+  hashtags: string
+  isPrivate: boolean
   caption: string
   userId: string
   userName: string
@@ -118,6 +126,8 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   form.append('audio', input.blob, `recitation.${ext}`)
   form.append('durationSec', String(input.durationSec))
   form.append('title', input.title)
+  form.append('hashtags', input.hashtags)
+  form.append('isPrivate', String(input.isPrivate))
   form.append('caption', input.caption)
   form.append('userId', input.userId)
   form.append('userName', input.userName)

@@ -1,17 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, Mic } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
 import HomeHero from '@/components/home/HomeHero'
 import HomeScreen from '@/components/home/HomeScreen'
-import {
-  IconListen,
-  IconRead,
-  IconTest,
-} from '@/components/home/TileIcons'
+import { IconListen, IconQari, IconRead, IconTest } from '@/components/home/TileIcons'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getSignedInUser } from '@/lib/auth'
 
@@ -38,7 +33,7 @@ const exploreTiles = [
     label: 'Qari',
     hint: 'Share your recitation',
     href: '/qari',
-    Icon: Mic,
+    Icon: IconQari,
   },
   {
     id: 'listen',
@@ -87,18 +82,9 @@ export default function Home() {
             const { Icon } = tile
             const inner = (
               <div className={tileSurface}>
-                <div className="flex items-center justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-                    <Icon
-                      className="h-[26px] w-[26px]"
-                      strokeWidth={tile.id === 'qari' ? 1.8 : undefined}
-                    />
-                  </span>
-                  <ArrowUpRight
-                    className="h-[18px] w-[18px] text-[var(--home-muted)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                    aria-hidden
-                  />
-                </div>
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                  <Icon className="h-[30px] w-[30px]" />
+                </span>
                 <div>
                   <span className="home-serif block text-[1.25rem] font-semibold leading-tight text-[var(--home-heading)]">
                     {tile.label}

@@ -63,6 +63,11 @@ model Recitation {
   /// Whatever the reciter called this recording. Optional because the first
   /// recordings were saved with a surah and ayah range instead.
   title       String?
+  /// Lower-case, no leading '#'. Searchable and tappable in the feed.
+  hashtags    String[]
+  /// Private recordings are visible only to the reciter. Optional so the
+  /// recordings made before this existed still read back as public.
+  isPrivate   Boolean?
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)

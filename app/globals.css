@@ -1215,6 +1215,60 @@ html.dark .mushaf-reader {
   animation: hifdh-wave 0.45s ease-in-out infinite alternate;
 }
 
+/* --- Qari: form fields on the record screen --- */
+
+.qari-field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--home-muted);
+}
+
+.qari-field {
+  width: 100%;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--home-rule-strong);
+  background: var(--app-surface);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--home-heading);
+}
+
+/* Leaves room for a leading icon. A Tailwind pl-* would lose to the
+   padding-inline above, since this file sits outside the utility layer. */
+.qari-field--icon {
+  padding-left: 2.25rem;
+}
+
+.qari-field::placeholder {
+  font-weight: 400;
+  color: var(--home-muted);
+}
+
+/* A hashtag on a recitation — a quiet chip that runs a search when tapped. */
+.qari-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.55rem;
+  padding-inline: 0.55rem;
+  border-radius: 999px;
+  background: var(--home-track);
+  color: var(--home-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.qari-tag:hover {
+  color: var(--home-heading);
+  background: var(--home-sage-soft);
+}
+
 /* --- Qari: the bar along the bottom --- */
 
 .qari-tabbar {
@@ -1240,15 +1294,10 @@ html.dark .mushaf-reader {
 
 .qari-tabbar__item {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
-  min-height: 52px;
+  min-height: 48px;
   border-radius: 0.9rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
   color: var(--home-muted);
   transition: color 0.16s ease;
 }

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Mic, Pause, Play, RotateCcw, Send, Square } from 'lucide-react'
+import { Globe, Hash, Lock, Mic, Pause, Play, RotateCcw, Send, Square } from 'lucide-react'
 import { Notice, QariHeader, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useQariRecorder } from '@/hooks/useQariRecorder'
@@ -19,7 +19,9 @@ export default function QariRecordPage() {
   const { state, start, stop, reset, supported } = useQariRecorder()
 
   const [title, setTitle] = useState('')
+  const [hashtags, setHashtags] = useState('')
   const [caption, setCaption] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
 
@@ -76,6 +78,8 @@ export default function QariRecordPage() {
         mimeType: state.mimeType,
         durationSec: state.durationSec,
         title: title.trim(),
+        hashtags: hashtags.trim(),
+        isPrivate,
         caption: caption.trim(),
         userId: viewer.id,
         userName: viewer.name,
@@ -88,6 +92,8 @@ export default function QariRecordPage() {
     }
   }, [
     caption,
+    hashtags,
+    isPrivate,
     router,
     setNotice,
     state.blob,
@@ -208,13 +214,10 @@ export default function QariRecordPage() {
             ) : null}
           </section>
 
-          {/* Title and note */}
+          {/* Details */}
           <section className={cn('mt-4 space-y-3', !hasTake && 'pointer-events-none opacity-45')}>
             <div className="ed-card rounded-[1.5rem] p-4">
-              <label
-                htmlFor="qari-title"
-                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
-              >
+              <label htmlFor="qari-title" className="qari-field-label">
                 Title
               </label>
               <input
@@ -223,13 +226,34 @@ export default function QariRecordPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value.slice(0, 80))}
                 placeholder="Al-Mulk, first ten ayat"
-                className="ed-focus h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)] placeholder:font-normal placeholder:text-[var(--home-muted)]"
+                className="qari-field"
               />
 
-              <label
-                htmlFor="qari-caption"
-                className="mb-1.5 mt-3 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
-              >
+              <label htmlFor="qari-tags" className="qari-field-label mt-4">
+                Hashtags <span className="font-normal normal-case">(optional)</span>
+              </label>
+              <div className="relative">
+                <Hash
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--home-muted)]"
+                  aria-hidden
+                />
+                <input
+                  id="qari-tags"
+                  type="text"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value.slice(0, 200))}
+                  placeholder="tajweed  hifdh  fajr"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="qari-field qari-field--icon"
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--home-muted)]">
+                Up to six, separated by spaces. People can tap one to find more like it.
+              </p>
+
+              <label htmlFor="qari-caption" className="qari-field-label mt-4">
                 Note <span className="font-normal normal-case">(optional)</span>
               </label>
               <textarea
@@ -238,8 +262,60 @@ export default function QariRecordPage() {
                 onChange={(e) => setCaption(e.target.value.slice(0, 280))}
                 rows={2}
                 placeholder="Anything you'd like to say about this recitation"
-                className="ed-focus w-full resize-none rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--home-heading)] placeholder:text-[var(--home-muted)]"
+                className="qari-field resize-none py-2.5 leading-snug"
               />
+            </div>
+
+            {/* Who can hear it */}
+            <div className="ed-card rounded-[1.5rem] p-4">
+              <p className="qari-field-label">Who can hear it</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    {
+                      value: false,
+                      Icon: Globe,
+                      label: 'Everyone',
+                      hint: 'Appears in the feed',
+                    },
+                    {
+                      value: true,
+                      Icon: Lock,
+                      label: 'Only me',
+                      hint: 'Kept on your profile',
+                    },
+                  ] as const
+                ).map(({ value, Icon, label, hint }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setIsPrivate(value)}
+                    aria-pressed={isPrivate === value}
+                    className={cn(
+                      'ed-focus rounded-2xl border p-3 text-left transition-colors',
+                      isPrivate === value
+                        ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)]'
+                        : 'border-[var(--home-rule-strong)] hover:bg-[var(--home-track)]'
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-[18px] w-[18px]',
+                        isPrivate === value
+                          ? 'text-[var(--home-sage-deep)]'
+                          : 'text-[var(--home-muted)]'
+                      )}
+                      strokeWidth={2}
+                    />
+                    <span className="mt-1.5 block text-[0.85rem] font-semibold text-[var(--home-heading)]">
+                      {label}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-[var(--home-muted)]">
+                      {hint}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
@@ -253,12 +329,19 @@ export default function QariRecordPage() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {publishing ? 'Publishing…' : viewer ? 'Publish recitation' : 'Sign in to publish'}
+              {publishing
+                ? 'Publishing…'
+                : !viewer
+                  ? 'Sign in to publish'
+                  : isPrivate
+                    ? 'Save to my profile'
+                    : 'Publish recitation'}
             </button>
 
             <p className="px-2 text-center text-[11px] leading-relaxed text-[var(--home-muted)]">
-              Everyone can hear what you publish. Recite carefully — and you can delete it at any
-              time from your profile.
+              {isPrivate
+                ? 'Only you will be able to hear this. You can delete it at any time from your profile.'
+                : 'Everyone can hear what you publish. Recite carefully — and you can delete it at any time from your profile.'}
             </p>
           </section>
         </>

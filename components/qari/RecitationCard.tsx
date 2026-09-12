@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Flag, Heart, Pause, Play, Share2, Trash2 } from 'lucide-react'
+import { Flag, Heart, Lock, Pause, Play, Share2, Trash2 } from 'lucide-react'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { cn } from '@/lib/cn'
 import {
@@ -98,14 +98,14 @@ export default function RecitationCard({
         setLoading(false)
         if (!countedRef.current) {
           countedRef.current = true
-          void countPlay(recitation.id)
+          void countPlay(recitation.id, viewerId)
         }
       })
       .catch(() => {
         setLoading(false)
         onNotice?.('That recitation could not be played.')
       })
-  }, [playing, recitation.id, recitation.durationSec, onNotice])
+  }, [playing, recitation.id, recitation.durationSec, onNotice, viewerId])
 
   const handleLike = useCallback(async () => {
     if (!viewerId) {
@@ -184,24 +184,24 @@ export default function RecitationCard({
 
         {/* What */}
         <div className="min-w-0 flex-1">
+          <p className="home-serif flex items-center gap-1.5 truncate text-[1rem] font-semibold leading-tight text-[var(--home-heading)]">
+            {recitation.isPrivate ? (
+              <Lock
+                className="h-[13px] w-[13px] shrink-0 text-[var(--home-muted)]"
+                strokeWidth={2.4}
+                aria-label="Private"
+              />
+            ) : null}
+            <span className="truncate">{recitation.title}</span>
+          </p>
           {!hideAuthor ? (
             <Link
               href={`/qari/${encodeURIComponent(recitation.userUsername)}`}
-              className="ed-focus home-serif block truncate text-[1rem] font-semibold leading-tight text-[var(--home-heading)] hover:underline"
+              className="ed-focus mt-0.5 block truncate text-[0.84rem] leading-snug text-[var(--home-muted)] hover:text-[var(--home-heading)] hover:underline"
             >
               {recitation.userName}
             </Link>
           ) : null}
-          <p
-            className={cn(
-              'truncate',
-              hideAuthor
-                ? 'home-serif text-[1rem] font-semibold leading-tight text-[var(--home-heading)]'
-                : 'mt-0.5 text-[0.84rem] leading-snug text-[var(--home-muted)]'
-            )}
-          >
-            {recitation.title}
-          </p>
         </div>
 
         {/* Play, where a thumb lands. */}
@@ -234,6 +234,20 @@ export default function RecitationCard({
         <p className="mt-2.5 line-clamp-2 text-[0.82rem] leading-snug text-[var(--home-muted)]">
           {recitation.caption}
         </p>
+      ) : null}
+
+      {recitation.hashtags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {recitation.hashtags.map((tag) => (
+            <Link
+              key={tag}
+              href={`/qari?q=${encodeURIComponent(`#${tag}`)}`}
+              className="qari-tag ed-focus"
+            >
+              #{tag}
+            </Link>
+          ))}
+        </div>
       ) : null}
 
       {/* Progress */}

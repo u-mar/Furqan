@@ -34,10 +34,10 @@ export default function QariTabBar() {
           <Link
             href="/qari"
             aria-current={onFeed ? 'page' : undefined}
+            aria-label="Home"
             className={cn('qari-tabbar__item ed-focus', onFeed && 'is-active')}
           >
-            <House className="h-[22px] w-[22px]" strokeWidth={onFeed ? 2.2 : 1.9} />
-            Home
+            <House className="h-[23px] w-[23px]" strokeWidth={onFeed ? 2.3 : 1.9} />
           </Link>
 
           <Link
@@ -52,24 +52,24 @@ export default function QariTabBar() {
             <Link
               href={myProfile}
               aria-current={onMyProfile ? 'page' : undefined}
+              aria-label="Your profile"
               className={cn('qari-tabbar__item ed-focus', onMyProfile && 'is-active')}
             >
               <QariAvatar
                 username={viewer.username}
                 name={viewer.name}
-                size={22}
+                size={26}
                 className={cn('qari-tabbar__avatar', onMyProfile && 'is-active')}
               />
-              Profile
             </Link>
           ) : (
             <button
               type="button"
               onClick={() => setAccountOpen(true)}
+              aria-label="Sign in"
               className="qari-tabbar__item ed-focus"
             >
-              <UserRound className="h-[22px] w-[22px]" strokeWidth={1.9} />
-              Profile
+              <UserRound className="h-[23px] w-[23px]" strokeWidth={1.9} />
             </button>
           )}
         </div>

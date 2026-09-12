@@ -220,7 +220,7 @@ export default function QariProfilePage() {
         <div className="qari-tabs mt-6" role="tablist" aria-label="Profile sections">
           {(
             [
-              { id: 'audios' as const, label: 'Audios', Icon: Mic },
+              { id: 'audios' as const, label: 'Recitations', Icon: Mic },
               { id: 'favourites' as const, label: 'Favourites', Icon: Heart },
             ] as const
           ).map(({ id, label, Icon }) => (
