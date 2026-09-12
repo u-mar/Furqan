@@ -48,6 +48,65 @@ model UserUsage {
   updatedAt     DateTime  @updatedAt
 }
 
+/// A published recitation. The audio itself lives in GridFS; `audioId` is the
+/// file handle, so documents stay small and streamable.
+model Recitation {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String
+  userName    String
+  userUsername String
+  /// GridFS file id for the audio.
+  audioId     String
+  mimeType    String
+  durationSec Int
+  sizeBytes   Int
+  /// What was recited, e.g. "2:255" or "36:1-12".
+  surahId     Int
+  surahName   String
+  fromAyah    Int
+  toAyah      Int
+  caption     String   @default("")
+  likeCount   Int      @default(0)
+  playCount   Int      @default(0)
+  /// Hidden by an admin after a report.
+  hidden      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userUsername])
+  @@index([likeCount])
+}
+
+/// Profile picture for a qari. Keyed by username because accounts can be
+/// local-only (`local_<username>` ids) as well as database-backed.
+model QariAvatar {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String   @unique
+  imageId   String
+  mimeType  String
+  updatedAt DateTime @updatedAt
+}
+
+model RecitationLike {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  recitationId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  @@unique([recitationId, userId])
+  @@index([userId])
+}
+
+model RecitationReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  recitationId String
+  userId       String
+  reason       String
+  createdAt    DateTime @default(now())
+
+  @@index([recitationId])
+}
+
 model PopupMessage {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   title        String
