@@ -17,6 +17,17 @@ async function loadVerses(): Promise<Verse[]> {
   return cachedVerses
 }
 
+let verseIndex: Map<string, Verse> | null = null
+
+/** One verse, looked up in a map built once rather than scanned each time. */
+export async function getVerseByKeyServer(verseKey: string): Promise<Verse | null> {
+  if (!verseIndex) {
+    const verses = await loadVerses()
+    verseIndex = new Map(verses.map((v) => [v.verse_key, v]))
+  }
+  return verseIndex.get(verseKey) ?? null
+}
+
 export async function getVersesByPageServer(pageNumber: number): Promise<Verse[]> {
   const verses = await loadVerses()
   return verses.filter((v) => v.page_number === pageNumber)

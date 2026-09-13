@@ -53,6 +53,11 @@ function writeLocalUsers(users: LocalAuthUser[]): void {
   localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users))
 }
 
+/** Forget a local-only account on this device. */
+export function deleteLocalUser(username: string): void {
+  writeLocalUsers(readLocalUsers().filter((u) => u.username !== username))
+}
+
 /** Rename a local-only account. Database accounts are renamed server-side. */
 export function renameLocalUser(username: string, name: string): void {
   const users = readLocalUsers()

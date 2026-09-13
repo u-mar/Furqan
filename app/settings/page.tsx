@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
+import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import { IconOrnament } from '@/components/home/TileIcons'
 import { APP_NAME } from '@/lib/app-brand'
 import { clearSignedInUser, getSignedInUser } from '@/lib/auth'
@@ -231,6 +232,8 @@ export default function SettingsPage() {
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackNotice, setFeedbackNotice] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [accountNotice, setAccountNotice] = useState('')
   const [signedInName, setSignedInName] = useState('')
   const [signedInUsername, setSignedInUsername] = useState('')
 
@@ -423,13 +426,22 @@ export default function SettingsPage() {
               </div>
             </div>
             {signedInName ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={cn(btnQuiet, 'mt-3.5')}
-              >
-                Sign out
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className={cn(btnQuiet, 'mt-3.5')}
+                >
+                  Sign out
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(true)}
+                  className="ed-focus mt-2 w-full py-2 text-center text-[0.8rem] font-medium text-[var(--home-muted)] transition-colors hover:text-rose-500"
+                >
+                  Delete account
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -447,6 +459,28 @@ export default function SettingsPage() {
           onClose={() => setAccountOpen(false)}
           onSuccess={refreshProfile}
         />
+
+        {(() => {
+          const current = getSignedInUser()
+          return current ? (
+            <DeleteAccountSheet
+              open={deleteOpen}
+              user={current}
+              onClose={() => setDeleteOpen(false)}
+              onDeleted={() => {
+                setDeleteOpen(false)
+                refreshProfile()
+                setAccountNotice('Your account has been deleted.')
+              }}
+            />
+          ) : null
+        })()}
+
+        {accountNotice ? (
+          <p className="ed-card mb-6 rounded-[1.25rem] px-4 py-3 text-center text-sm text-[var(--home-heading)]" role="status">
+            {accountNotice}
+          </p>
+        ) : null}
 
         {/* Appearance */}
         <section className="mb-9">

@@ -277,7 +277,7 @@ async function writeManifest(publicDir, stats) {
     version: BUNDLE_VERSION,
     generatedAt: new Date().toISOString(),
     quranData: fs.existsSync(path.join(publicDir, 'quran-data.json')),
-    fonts: fs.existsSync(path.join(publicDir, 'fonts', 'qcf', 'p1.woff2')),
+    fonts: fs.existsSync(path.join(publicDir, 'qcf', 'p1.woff2')),
     surahNameFont: fs.existsSync(path.join(publicDir, 'fonts', 'surah-name-v2.ttf')),
     ...stats,
   }

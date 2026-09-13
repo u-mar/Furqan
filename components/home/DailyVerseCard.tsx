@@ -26,6 +26,27 @@ const DEFAULT_SURAH = 'Al-Baqarah'
 const FALLBACK_TRANSLATION =
   'So remember Me; I will remember you. And be grateful to Me and do not deny Me.'
 
+/**
+ * The one verse this card needs.
+ *
+ * Asked of the server first: that is about a kilobyte. The alternative,
+ * getVerseByKey, reads the whole 16MB Quran file and parses it on the main
+ * thread — on a first open that was the slowest thing on the home screen, all
+ * to show a single ayah. It remains the fallback for when there is no
+ * connection, since it can read the copy saved for offline use.
+ */
+async function loadDailyVerse(verseKey: string): Promise<Verse> {
+  if (typeof navigator === 'undefined' || navigator.onLine) {
+    try {
+      const res = await fetch(`/api/ayah?type=verse&verseKey=${encodeURIComponent(verseKey)}`)
+      if (res.ok) return (await res.json()) as Verse
+    } catch {
+      // Fall through to the local copy.
+    }
+  }
+  return getVerseByKey(verseKey)
+}
+
 export default function DailyVerseCard() {
   const { translationLanguage, translationEditionId } = useAppSettings()
   const [arabic, setArabic] = useState('')
@@ -74,7 +95,7 @@ export default function DailyVerseCard() {
 
     void (async () => {
       try {
-        const verse = await getVerseByKey(dailyVerseKey)
+        const verse = await loadDailyVerse(dailyVerseKey)
         if (cancelled) return
         setDailyVerse(verse)
         setArabic(getVerseArabicText(verse, { omitEndMark: true }))

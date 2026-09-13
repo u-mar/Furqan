@@ -8,12 +8,18 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  username  String   @unique
-  name      String
-  pinHash   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  username    String    @unique
+  name        String
+  /// `scrypt$<salt>$<hash>`. Older rows hold a bare SHA-256 hex digest and
+  /// are upgraded the next time that PIN is entered correctly.
+  pinHash     String
+  /// Wrong PINs in a row. A 4-digit PIN has only 10,000 values, so without
+  /// a limit any account falls to a script in minutes.
+  failedPins  Int?
+  lockedUntil DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model AdminConfig {

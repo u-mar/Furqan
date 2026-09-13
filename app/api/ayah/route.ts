@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  getChapters,
-  getVerseByKey,
-  getVersesByChapter,
-  getVersesByJuz,
-} from '@/lib/quran'
-import { getTranslationsByPageServer, getVersesByPageServer } from '@/lib/quran-server'
+  getTranslationsByPageServer,
+  getVerseByKeyServer,
+  getVersesByPageServer,
+} from '@/lib/quran-server'
 import { DEFAULT_TRANSLATION_EDITION, isTranslationEditionId } from '@/lib/translations'
 import type { Verse } from '@/types'
 
@@ -151,36 +149,22 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const type = searchParams.get('type')
 
-    if (type === 'chapters') {
-      const chapters = await getChapters()
-      return NextResponse.json(chapters)
-    }
-
     if (type === 'verse') {
       const verseKey = searchParams.get('verseKey')
       if (!verseKey) {
         return NextResponse.json({ error: 'verseKey parameter required' }, { status: 400 })
       }
-      const verse = await getVerseByKey(verseKey)
-      return NextResponse.json(verse)
-    }
-
-    if (type === 'chapter-verses') {
-      const chapter = Number(searchParams.get('chapter'))
-      if (!chapter || chapter < 1) {
-        return NextResponse.json({ error: 'chapter parameter required' }, { status: 400 })
+      // The server reader, not the browser one: that version waits on
+      // IndexedDB and a relative fetch, neither of which exists here, and hung
+      // until the request timed out.
+      const verse = await getVerseByKeyServer(verseKey)
+      if (!verse) {
+        return NextResponse.json({ error: 'Verse not found' }, { status: 404 })
       }
-      const verses = await getVersesByChapter(chapter)
-      return NextResponse.json(verses)
-    }
-
-    if (type === 'juz-verses') {
-      const juz = Number(searchParams.get('juz'))
-      if (!juz || juz < 1 || juz > 30) {
-        return NextResponse.json({ error: 'valid juz parameter (1-30) required' }, { status: 400 })
-      }
-      const verses = await getVersesByJuz(juz)
-      return NextResponse.json(verses)
+      // Quran text does not change, so a verse can be kept indefinitely.
+      return NextResponse.json(verse, {
+        headers: { 'Cache-Control': 'public, max-age=31536000, immutable' },
+      })
     }
 
     if (type === 'page') {
@@ -225,12 +209,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'verseKey parameter required' }, { status: 400 })
       }
 
-      const fallbackVerse = await getVerseByKey(verseKey)
+      // The local copy is only a fallback, so it is read only if needed — and
+      // through the server reader: the browser one hung this request.
+      const localPage = async () => (await getVerseByKeyServer(verseKey))?.page_number || 1
       try {
         const page = await fetchVerseVisualPage(verseKey)
-        return NextResponse.json({ page: page || fallbackVerse.page_number || 1 })
+        return NextResponse.json({ page: page || (await localPage()) })
       } catch {
-        return NextResponse.json({ page: fallbackVerse.page_number || 1 })
+        return NextResponse.json({ page: await localPage() })
       }
     }
 

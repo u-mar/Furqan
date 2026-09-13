@@ -1,74 +1,51 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
-import AccountForm from '@/components/account/AccountForm'
-import AppMark from '@/components/account/AppMark'
-import { APP_NAME } from '@/lib/app-brand'
+import AuthFlow from '@/components/account/AuthFlow'
 import { dismissWelcomeAccount, shouldShowWelcomeAccount } from '@/lib/onboarding'
 
+/**
+ * First launch. Shown straight away rather than after a delay: arriving over
+ * an app that has already appeared reads as an interruption, while arriving
+ * first reads as the start of the app.
+ *
+ * Always skippable — reading the Quran needs no account, and both app stores
+ * reject apps that demand one for features that do not.
+ */
 export default function WelcomeAccountDialog() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (shouldShowWelcomeAccount()) setVisible(true)
-    }, 2800)
-    return () => window.clearTimeout(timer)
+    if (shouldShowWelcomeAccount()) setVisible(true)
   }, [])
 
-  function skip() {
-    dismissWelcomeAccount()
-    setVisible(false)
-  }
-
-  function onSuccess() {
-    dismissWelcomeAccount()
-    setVisible(false)
-    window.dispatchEvent(new CustomEvent('auth-user-changed'))
-  }
+  useEffect(() => {
+    if (!visible) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [visible])
 
   if (!visible) return null
 
+  const close = () => {
+    dismissWelcomeAccount()
+    setVisible(false)
+  }
+
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-4 backdrop-blur-sm pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="welcome-account-title"
-    >
-      <div className="relative w-full max-w-[22rem] rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 pb-6 pt-5 shadow-[var(--home-card-shadow)] sm:max-w-sm sm:px-6 sm:pb-7 sm:pt-6">
-        <button
-          type="button"
-          onClick={skip}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--app-surface)]"
-          aria-label="Close"
-        >
-          <X className="h-5 w-5" strokeWidth={1.75} />
-        </button>
-
-        <div className="mb-6 flex flex-col items-center pt-2 text-center">
-          <AppMark className="mb-4" />
-          <h2
-            id="welcome-account-title"
-            className="home-serif text-[1.65rem] font-semibold leading-snug text-[var(--home-heading)]"
-          >
-            Save your progress
-          </h2>
-          <p className="mt-2 max-w-[16rem] text-sm leading-relaxed text-[var(--home-muted)]">
-            A username and PIN on this device. Optional — you can add it later in Settings.
-          </p>
-        </div>
-
-        <AccountForm initialMode="signup" onSuccess={onSuccess} compact />
-
-        <button
-          type="button"
-          onClick={skip}
-          className="mt-5 w-full py-1 text-center text-sm text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
-        >
-          Not now
-        </button>
+    <div className="auth-screen" role="dialog" aria-modal="true" aria-label="Welcome">
+      <div className="auth-screen__body">
+        <AuthFlow
+          start="welcome"
+          onSkip={close}
+          onDone={() => {
+            window.dispatchEvent(new CustomEvent('auth-user-changed'))
+            close()
+          }}
+        />
       </div>
     </div>
   )

@@ -3,17 +3,24 @@ import { prisma } from '@/lib/prisma'
 /**
  * Confirm the caller owns the username they are writing to.
  *
- * Accounts come in two shapes: database-backed (the id is the User row's id)
- * and local-only (`local_<username>`, which never reaches the server). Both
- * are accepted, but neither lets one qari act as another.
+ * A database account answers only to its own id. The `local_<username>` form
+ * is accepted solely for a username with no account behind it — it is
+ * guessable by anyone, so it must never unlock a real account. Checking for
+ * the account first is what enforces that; checking the local form first let
+ * anyone act as any registered user.
+ *
+ * Fails closed: if the account cannot be looked up, the answer is no.
  */
 export async function ownsUsername(username: string, userId: string): Promise<boolean> {
   if (!username || !userId) return false
-  if (userId === `local_${username}`) return true
+
+  let account: { id: string } | null
   try {
-    const user = await prisma.user.findUnique({ where: { username } })
-    return Boolean(user && user.id === userId)
+    account = await prisma.user.findUnique({ where: { username }, select: { id: true } })
   } catch {
     return false
   }
+
+  if (account) return account.id === userId
+  return userId === `local_${username}`
 }
