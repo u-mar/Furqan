@@ -84,6 +84,35 @@ function ReadPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [uiVisible, setUiVisible] = useState(false)
+
+  /* The phone's status and navigation bars follow the reader's chrome: gone
+     while you are reading, back the moment you tap for the controls. */
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    if (uiVisible) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+      return
+    }
+
+    // Entering fullscreen needs a user gesture. The tap that just hid the
+    // chrome is one; on first load there has not been a tap yet, so this
+    // quietly does nothing until the reader is touched.
+    const root = document.documentElement
+    if (!document.fullscreenElement && root.requestFullscreen) {
+      void root.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
+    }
+  }, [uiVisible])
+
+  /* Never leave the rest of the app stuck in fullscreen. */
+  useEffect(
+    () => () => {
+      if (typeof document !== 'undefined' && document.fullscreenElement) {
+        void document.exitFullscreen().catch(() => {})
+      }
+    },
+    []
+  )
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [showTranslation, setShowTranslation] = useState(false)

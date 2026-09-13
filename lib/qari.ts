@@ -6,6 +6,8 @@ export interface Recitation {
   userUsername: string
   /** What the reciter called this recording. */
   title: string
+  /** Which room it is played back in. */
+  space: string
   /** Lower-case, no leading '#'. */
   hashtags: string[]
   /** Visible only to the reciter. */
@@ -111,6 +113,7 @@ export interface PublishInput {
   mimeType: string
   durationSec: number
   title: string
+  space: string
   /** Free text — the server tidies it into a list. */
   hashtags: string
   isPrivate: boolean
@@ -126,6 +129,7 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   form.append('audio', input.blob, `recitation.${ext}`)
   form.append('durationSec', String(input.durationSec))
   form.append('title', input.title)
+  form.append('space', input.space)
   form.append('hashtags', input.hashtags)
   form.append('isPrivate', String(input.isPrivate))
   form.append('caption', input.caption)

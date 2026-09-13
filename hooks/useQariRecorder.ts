@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { buildVoiceChain, findSpace, type SpaceId } from '@/lib/audio-space'
+import { buildVoiceShaping } from '@/lib/audio-space'
 
 /**
  * Recorder for Qari uploads.
@@ -11,9 +11,10 @@ import { buildVoiceChain, findSpace, type SpaceId } from '@/lib/audio-space'
  * matters when every recording is uploaded.
  *
  * What reaches the recorder is not the bare microphone but a cleaned, evened
- * voice with an optional room tail (see lib/audio-space). The processing has
- * to happen on the way in: re-encoding afterwards in the browser would mean
- * replaying the whole take in real time.
+ * voice (see lib/audio-space). That shaping has to happen on the way in —
+ * re-encoding afterwards in the browser would mean replaying the whole take
+ * in real time. The room tail is deliberately *not* baked in, so the space
+ * can still be changed after the take; it is applied on playback instead.
  */
 
 /**
@@ -58,7 +59,7 @@ const idle: QariRecorderState = {
   durationSec: 0,
 }
 
-export function useQariRecorder(spaceId: SpaceId = 'reciter', maxSeconds = 600) {
+export function useQariRecorder(maxSeconds = 600) {
   const [state, setState] = useState<QariRecorderState>(idle)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -103,7 +104,7 @@ export function useQariRecorder(spaceId: SpaceId = 'reciter', maxSeconds = 600) 
       audioCtxRef.current = ctx
       if (ctx.state === 'suspended') await ctx.resume()
 
-      const voice = buildVoiceChain(ctx, ctx.createMediaStreamSource(stream), findSpace(spaceId))
+      const voice = buildVoiceShaping(ctx, ctx.createMediaStreamSource(stream))
       const sink = ctx.createMediaStreamDestination()
       voice.connect(sink)
 
@@ -175,7 +176,7 @@ export function useQariRecorder(spaceId: SpaceId = 'reciter', maxSeconds = 600) 
           : 'Could not start recording on this device.',
       })
     }
-  }, [maxSeconds, spaceId, teardown])
+  }, [maxSeconds, teardown])
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current

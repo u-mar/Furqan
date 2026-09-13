@@ -3,8 +3,8 @@ import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import AppSplash from '@/components/AppSplash'
-import InstallPrompt from '@/components/InstallPrompt'
 import WelcomeAccountDialog from '@/components/onboarding/WelcomeAccountDialog'
+import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
@@ -82,9 +82,9 @@ export default function RootLayout({
           <AppSplash />
           <AppShell>{children}</AppShell>
           <AdminRuntime />
+          <ListenPlaybackGuard />
           <PwaRegister />
           <OfflineBootstrap />
-          <InstallPrompt />
           <WelcomeAccountDialog />
         </SettingsProvider>
       </body>

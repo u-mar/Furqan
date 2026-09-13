@@ -1,11 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getPlayableListenSurahAudioUrl, OFFLINE_AUDIO_HINT } from '@/lib/offline-audio'
 import {
-  getPlayableListenSurahAudioUrl,
-  OFFLINE_AUDIO_HINT,
-  revokePlayableAyahAudioUrl,
-} from '@/lib/offline-audio'
+  clearListenObjectUrl,
+  getListenAudio,
+  getListenNowPlaying,
+  setListenNowPlaying,
+  setListenObjectUrl,
+} from '@/lib/listen-audio'
 
 export interface SurahPlayerState {
   surahId: number | null
@@ -34,13 +37,8 @@ export function useSurahPlayer(reciterId: string) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
   const reciterRef = useRef(reciterId)
-  const objectUrlRef = useRef<string | null>(null)
-
   const clearMainObjectUrl = useCallback(() => {
-    if (objectUrlRef.current) {
-      revokePlayableAyahAudioUrl(objectUrlRef.current)
-      objectUrlRef.current = null
-    }
+    clearListenObjectUrl()
   }, [])
 
   const stop = useCallback(() => {
@@ -51,6 +49,7 @@ export function useSurahPlayer(reciterId: string) {
       clearMainObjectUrl()
       audio.src = ''
     }
+    setListenNowPlaying(null)
     setState(initialState)
   }, [clearMainObjectUrl])
 
@@ -64,6 +63,10 @@ export function useSurahPlayer(reciterId: string) {
     ) => {
       const audio = audioRef.current
       if (!audio || session !== sessionRef.current) return
+
+      // Recorded outside React so returning to this screen — possibly after
+      // it unmounted entirely — can tell what is still playing.
+      setListenNowPlaying({ surahId, surahName, versesCount })
 
       setState({
         surahId,
@@ -89,7 +92,7 @@ export function useSurahPlayer(reciterId: string) {
 
       try {
         clearMainObjectUrl()
-        if (url.startsWith('blob:')) objectUrlRef.current = url
+        if (url.startsWith('blob:')) setListenObjectUrl(url)
         audio.src = url
         // Same surah, different narration/reciter — pick up where you left off
         // instead of restarting from the top.
@@ -155,8 +158,26 @@ export function useSurahPlayer(reciterId: string) {
   }, [state.loading, state.playing, state.surahId])
 
   useEffect(() => {
-    const audio = new Audio()
+    const audio = getListenAudio()
     audioRef.current = audio
+
+    // Coming back to Listen while something is still playing: show it again
+    // rather than presenting an idle player over audible audio.
+    const live = getListenNowPlaying()
+    if (live && audio.src) {
+      setState((s) => ({
+        ...s,
+        surahId: live.surahId,
+        surahName: live.surahName,
+        versesCount: live.versesCount,
+        playing: !audio.paused && !audio.ended,
+        currentTime: audio.currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+      }))
+    }
+
+    const onPlay = () => setState((s) => ({ ...s, playing: true }))
+    const onPause = () => setState((s) => ({ ...s, playing: false }))
 
     const onEnded = () => {
       setState((s) => ({ ...s, playing: false, loading: false }))
@@ -185,17 +206,20 @@ export function useSurahPlayer(reciterId: string) {
     audio.addEventListener('error', onError)
     audio.addEventListener('loadedmetadata', onLoadedMetadata)
     audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onPause)
 
+    // Only the listeners come down. The element, its source and anything
+    // playing through it deliberately outlive this screen.
     return () => {
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('error', onError)
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
       audio.removeEventListener('timeupdate', onTimeUpdate)
-      audio.pause()
-      clearMainObjectUrl()
-      audio.src = ''
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onPause)
     }
-  }, [clearMainObjectUrl])
+  }, [])
 
   useEffect(() => {
     if (reciterRef.current === reciterId) return

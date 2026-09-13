@@ -90,20 +90,13 @@ export function createImpulseResponse(ctx: BaseAudioContext, space: Space): Audi
 }
 
 /**
- * Source → a published-sounding voice → its space.
+ * The shaping half of the chain: everything that makes a phone capsule sound
+ * like a recorded voice, and nothing that depends on which space was chosen.
  *
- * A phone capsule is thin, boxy and quiet. The published recitations people
- * know are none of those things: they are close, warm, forward and loud, and
- * their reverb sits around the voice rather than behind it. This chain works
- * through that list in order — shape, then level, then space, then ceiling.
- *
- * Returns the node to record from. The browser's own echo cancellation,
- * noise suppression and gain control are left switched off by the caller:
- * they are tuned for phone calls and undo most of what happens here.
+ * This is what gets baked into the recording. The tail is deliberately left
+ * out so the space can still be changed after the take — see createSpaceMixer.
  */
-export function buildVoiceChain(ctx: AudioContext, source: AudioNode, space: Space): AudioNode {
-  /* --- shape --- */
-
+export function buildVoiceShaping(ctx: AudioContext, source: AudioNode): AudioNode {
   // Rumble, handling noise and breath pops all live below here.
   const highpass = ctx.createBiquadFilter()
   highpass.type = 'highpass'
@@ -144,8 +137,6 @@ export function buildVoiceChain(ctx: AudioContext, source: AudioNode, space: Spa
   air.frequency.value = 9500
   air.gain.value = 2
 
-  /* --- level --- */
-
   // Evens out the distance between a quiet phrase and a raised one. Measured
   // by rendering noise at four levels through this chain: a 26dB spread at
   // the input leaves as 6.5dB, which is the consistency a published
@@ -157,9 +148,16 @@ export function buildVoiceChain(ctx: AudioContext, source: AudioNode, space: Spa
   leveller.attack.value = 0.005
   leveller.release.value = 0.18
 
-  // Back up to a published loudness after that compression.
   const makeup = ctx.createGain()
   makeup.gain.value = 2.1
+
+  // Nothing reaches the encoder hot enough to clip.
+  const limiter = ctx.createDynamicsCompressor()
+  limiter.threshold.value = -6
+  limiter.knee.value = 2
+  limiter.ratio.value = 14
+  limiter.attack.value = 0.002
+  limiter.release.value = 0.08
 
   source.connect(highpass)
   highpass.connect(body)
@@ -169,48 +167,64 @@ export function buildVoiceChain(ctx: AudioContext, source: AudioNode, space: Spa
   sibilance.connect(air)
   air.connect(leveller)
   leveller.connect(makeup)
-
-  /* --- space --- */
-
-  const mixed = ctx.createGain()
-
-  if (space.seconds > 0 && space.wet > 0) {
-    // The voice stays at full level; the tail is added under it rather than
-    // traded against it, which is what keeps it forward instead of distant.
-    const dry = ctx.createGain()
-    dry.gain.value = 1
-
-    const wet = ctx.createGain()
-    wet.gain.value = space.wet
-
-    const preDelay = ctx.createDelay(1)
-    preDelay.delayTime.value = space.preDelay
-
-    const convolver = ctx.createConvolver()
-    convolver.normalize = true
-    convolver.buffer = createImpulseResponse(ctx, space)
-
-    makeup.connect(dry).connect(mixed)
-    makeup.connect(preDelay)
-    preDelay.connect(convolver)
-    convolver.connect(wet).connect(mixed)
-  } else {
-    makeup.connect(mixed)
-  }
-
-  /* --- ceiling --- */
-
-  // Last in the chain so it catches the summed peaks of voice and tail, and
-  // nothing reaches the encoder hot enough to clip.
-  const limiter = ctx.createDynamicsCompressor()
-  limiter.threshold.value = -6
-  limiter.knee.value = 2
-  limiter.ratio.value = 14
-  limiter.attack.value = 0.002
-  limiter.release.value = 0.08
+  makeup.connect(limiter)
 
   const out = ctx.createGain()
-  mixed.connect(limiter)
   limiter.connect(out)
   return out
+}
+
+export interface SpaceMixer {
+  /** Connect this to a destination. */
+  output: AudioNode
+  /** Swap the space without rebuilding the graph, so it can change mid-play. */
+  setSpace(space: Space): void
+}
+
+/**
+ * The tail half, kept swappable.
+ *
+ * The convolver's buffer, pre-delay and wet level are all parameters rather
+ * than wiring, so choosing a different space is a handful of assignments —
+ * which is what lets the filter be changed on a take that already exists,
+ * and even while it is playing.
+ */
+export function createSpaceMixer(ctx: AudioContext, source: AudioNode): SpaceMixer {
+  const dry = ctx.createGain()
+  dry.gain.value = 1
+
+  const preDelay = ctx.createDelay(1)
+  const convolver = ctx.createConvolver()
+  convolver.normalize = true
+
+  const wet = ctx.createGain()
+  wet.gain.value = 0
+
+  const output = ctx.createGain()
+
+  source.connect(dry).connect(output)
+  source.connect(preDelay)
+  preDelay.connect(convolver)
+  convolver.connect(wet).connect(output)
+
+  // Rebuilding an impulse response is not free, so each one is kept.
+  const impulses = new Map<SpaceId, AudioBuffer>()
+
+  return {
+    output,
+    setSpace(space: Space) {
+      if (space.seconds <= 0 || space.wet <= 0) {
+        wet.gain.value = 0
+        return
+      }
+      let impulse = impulses.get(space.id)
+      if (!impulse) {
+        impulse = createImpulseResponse(ctx, space)
+        impulses.set(space.id, impulse)
+      }
+      convolver.buffer = impulse
+      preDelay.delayTime.value = space.preDelay
+      wet.gain.value = space.wet
+    },
+  }
 }

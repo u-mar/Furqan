@@ -6,7 +6,7 @@ import { Globe, Hash, Lock, Mic, Pause, Play, RotateCcw, Send, Square } from 'lu
 import { Notice, QariHeader, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useQariRecorder } from '@/hooks/useQariRecorder'
-import { SPACES, type SpaceId } from '@/lib/audio-space'
+import { createSpaceMixer, findSpace, SPACES, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
 import { formatDuration, publishRecitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 
@@ -18,7 +18,7 @@ export default function QariRecordPage() {
   const viewer = useViewer()
   const { notice, setNotice } = useNotice()
   const [spaceId, setSpaceId] = useState<SpaceId>('reciter')
-  const { state, start, stop, reset, supported } = useQariRecorder(spaceId)
+  const { state, start, stop, reset, supported } = useQariRecorder()
 
   const [title, setTitle] = useState('')
   const [hashtags, setHashtags] = useState('')
@@ -28,13 +28,22 @@ export default function QariRecordPage() {
   const [accountOpen, setAccountOpen] = useState(false)
 
   const previewRef = useRef<HTMLAudioElement | null>(null)
+  const previewCtxRef = useRef<AudioContext | null>(null)
+  const mixerRef = useRef<SpaceMixer | null>(null)
   const [previewing, setPreviewing] = useState(false)
+
+  /* Changing the filter takes effect at once — even mid-playback. */
+  useEffect(() => {
+    mixerRef.current?.setSpace(findSpace(spaceId))
+  }, [spaceId])
 
   useEffect(() => {
     return () => {
       previewRef.current?.pause()
       if (previewRef.current?.src) URL.revokeObjectURL(previewRef.current.src)
       previewRef.current = null
+      void previewCtxRef.current?.close().catch(() => {})
+      previewCtxRef.current = null
     }
   }, [])
 
@@ -50,14 +59,28 @@ export default function QariRecordPage() {
       audio.addEventListener('pause', () => setPreviewing(false))
       audio.addEventListener('ended', () => setPreviewing(false))
       previewRef.current = audio
+
+      // Routed through the mixer so the preview is exactly what a listener
+      // will hear, and so the filter can be swapped without re-recording.
+      const ctx = new AudioContext()
+      previewCtxRef.current = ctx
+      const mixer = createSpaceMixer(ctx, ctx.createMediaElementSource(audio))
+      mixer.output.connect(ctx.destination)
+      mixer.setSpace(findSpace(spaceId))
+      mixerRef.current = mixer
     }
+
+    void previewCtxRef.current?.resume().catch(() => {})
     void previewRef.current.play().catch(() => setNotice('Could not play that back.'))
-  }, [previewing, setNotice, state.blob])
+  }, [previewing, setNotice, spaceId, state.blob])
 
   const discard = useCallback(() => {
     previewRef.current?.pause()
     if (previewRef.current?.src) URL.revokeObjectURL(previewRef.current.src)
     previewRef.current = null
+    mixerRef.current = null
+    void previewCtxRef.current?.close().catch(() => {})
+    previewCtxRef.current = null
     setPreviewing(false)
     reset()
   }, [reset])
@@ -80,6 +103,7 @@ export default function QariRecordPage() {
         mimeType: state.mimeType,
         durationSec: state.durationSec,
         title: title.trim(),
+        space: spaceId,
         hashtags: hashtags.trim(),
         isPrivate,
         caption: caption.trim(),
@@ -97,6 +121,7 @@ export default function QariRecordPage() {
     hashtags,
     isPrivate,
     router,
+    spaceId,
     setNotice,
     state.blob,
     state.durationSec,
@@ -223,7 +248,7 @@ export default function QariRecordPage() {
               <p className="qari-field-label mb-0">Sound</p>
               {hasTake ? (
                 <span className="text-[11px] text-[var(--home-muted)]">
-                  Tap Again to change
+                  Listen back to compare
                 </span>
               ) : null}
             </div>
@@ -233,10 +258,9 @@ export default function QariRecordPage() {
                   key={space.id}
                   type="button"
                   onClick={() => setSpaceId(space.id)}
-                  disabled={hasTake || state.recording}
                   aria-pressed={spaceId === space.id}
                   className={cn(
-                    'ed-focus rounded-2xl border px-2.5 py-2.5 text-left transition-colors disabled:opacity-55',
+                    'ed-focus rounded-2xl border px-2.5 py-2.5 text-left transition-colors',
                     spaceId === space.id
                       ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)]'
                       : 'border-[var(--home-rule-strong)] hover:bg-[var(--home-track)]'

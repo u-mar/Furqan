@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
         userName: r.userName,
         userUsername: r.userUsername,
         title: r.title || 'Recitation',
+        space: r.space || 'clean',
         hashtags: r.hashtags ?? [],
         isPrivate: r.isPrivate === true,
         caption: r.caption,
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
     }
 
     const title = clean(form.get('title'), 80)
+    const space = clean(form.get('space'), 16) || 'clean'
     const hashtags = parseHashtags(clean(form.get('hashtags'), 200))
     const isPrivate = clean(form.get('isPrivate'), 5) === 'true'
     const durationSec = Math.round(Number(form.get('durationSec') || 0))
@@ -187,6 +189,7 @@ export async function POST(request: NextRequest) {
         durationSec,
         sizeBytes: buffer.length,
         title,
+        space,
         hashtags,
         isPrivate,
         caption: clean(form.get('caption'), 280),

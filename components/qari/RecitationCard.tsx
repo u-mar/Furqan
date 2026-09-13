@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Flag, Heart, Lock, Pause, Play, Share2, Trash2 } from 'lucide-react'
 import QariAvatar from '@/components/qari/QariAvatar'
+import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { cn } from '@/lib/cn'
 import {
   countPlay,
@@ -29,6 +30,33 @@ interface RecitationCardProps {
   onNotice?: (message: string) => void
 }
 
+/**
+ * A single AudioContext for the whole feed. One per card would hit the
+ * browser's limit within a few scrolls.
+ */
+let playbackContext: AudioContext | null = null
+function sharedPlaybackContext(): AudioContext {
+  if (!playbackContext) playbackContext = new AudioContext()
+  return playbackContext
+}
+
+/**
+ * Whichever recitation is playing, across every card on the screen.
+ *
+ * Each card owns its own audio element, so without this, starting a second
+ * one simply layers it over the first.
+ */
+let nowPlaying: HTMLAudioElement | null = null
+
+function claimPlayback(audio: HTMLAudioElement): void {
+  if (nowPlaying && nowPlaying !== audio) nowPlaying.pause()
+  nowPlaying = audio
+}
+
+function releasePlayback(audio: HTMLAudioElement): void {
+  if (nowPlaying === audio) nowPlaying = null
+}
+
 export default function RecitationCard({
   recitation,
   viewerId,
@@ -45,6 +73,7 @@ export default function RecitationCard({
   const [sharing, setSharing] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const countedRef = useRef(false)
+  const routedRef = useRef(false)
 
   const isOwner = Boolean(
     viewerId && viewerUsername && viewerUsername === recitation.userUsername
@@ -60,10 +89,43 @@ export default function RecitationCard({
 
   useEffect(() => {
     return () => {
-      audioRef.current?.pause()
+      const audio = audioRef.current
+      if (audio) {
+        audio.pause()
+        releasePlayback(audio)
+      }
       audioRef.current = null
     }
   }, [])
+
+  /**
+   * Put the room back on playback.
+   *
+   * Deliberately after play() has resolved, and only once the context is
+   * confirmed running: routing a media element into a suspended context
+   * silences it, and createMediaElementSource cannot be undone. A recitation
+   * playing dry is a far smaller failure than one playing not at all.
+   */
+  const applySpace = useCallback(async () => {
+    const audio = audioRef.current
+    if (!audio || routedRef.current) return
+
+    const space = findSpace(recitation.space as SpaceId)
+    if (space.wet <= 0) return
+
+    try {
+      const ctx = sharedPlaybackContext()
+      if (ctx.state !== 'running') await ctx.resume()
+      if (ctx.state !== 'running') return
+
+      routedRef.current = true
+      const mixer = createSpaceMixer(ctx, ctx.createMediaElementSource(audio))
+      mixer.output.connect(ctx.destination)
+      mixer.setSpace(space)
+    } catch {
+      // Left dry, still audible.
+    }
+  }, [recitation.space])
 
   const togglePlay = useCallback(() => {
     if (playing) {
@@ -74,6 +136,9 @@ export default function RecitationCard({
     if (!audioRef.current) {
       const audio = new Audio(recitationAudioUrl(recitation.id))
       audio.preload = 'none'
+      // The recording is stored dry; the room it was published with is put
+      // back here, which is what lets a reciter change it after the fact.
+      audio.crossOrigin = 'anonymous'
       audio.addEventListener('play', () => setPlaying(true))
       audio.addEventListener('pause', () => setPlaying(false))
       audio.addEventListener('ended', () => {
@@ -93,11 +158,15 @@ export default function RecitationCard({
       audioRef.current = audio
     }
 
+    // Anything else playing stands down before this one starts.
+    claimPlayback(audioRef.current)
+
     setLoading(true)
     void audioRef.current
       .play()
       .then(() => {
         setLoading(false)
+        void applySpace()
         if (!countedRef.current) {
           countedRef.current = true
           void countPlay(recitation.id, viewerId)
@@ -107,7 +176,7 @@ export default function RecitationCard({
         setLoading(false)
         onNotice?.('That recitation could not be played.')
       })
-  }, [playing, recitation.id, recitation.durationSec, onNotice, viewerId])
+  }, [applySpace, playing, recitation.id, recitation.durationSec, onNotice, viewerId])
 
   const handleLike = useCallback(async () => {
     if (!viewerId) {
