@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bookmark, Play, Share2, Square } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getDailyVerseConfig } from '@/lib/admin'
@@ -8,6 +8,14 @@ import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { IconOrnament } from '@/components/home/TileIcons'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
+import { useQcfFont } from '@/hooks/useQcfFont'
+import {
+  getVerseQcfGlyphWords,
+  pageHasQcfData,
+  qcfPageFontFamily,
+  qcfPageSampleGlyphs,
+  versePageNumber,
+} from '@/lib/qcf-page'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import type { Verse } from '@/types'
@@ -30,6 +38,22 @@ export default function DailyVerseCard() {
   const [dailyVerse, setDailyVerse] = useState<Verse | null>(null)
   const [dailySurahLabel, setDailySurahLabel] = useState(DEFAULT_SURAH)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  /* The verse is set in the same mushaf glyphs the reader uses, rather than a
+     substitute Arabic face, so the two screens agree. Falls back to the plain
+     text whenever the page's glyph font cannot be had. */
+  const qcfPage = dailyVerse ? versePageNumber(dailyVerse) : 0
+  const hasQcf = Boolean(dailyVerse) && qcfPage > 0 && pageHasQcfData(dailyVerse ? [dailyVerse] : [])
+  const qcfWords = useMemo(
+    () => (hasQcf && dailyVerse ? getVerseQcfGlyphWords(dailyVerse, qcfPage) : []),
+    [hasQcf, dailyVerse, qcfPage]
+  )
+  const qcfSample = useMemo(
+    () => (hasQcf && dailyVerse ? qcfPageSampleGlyphs([dailyVerse], qcfPage) : ''),
+    [hasQcf, dailyVerse, qcfPage]
+  )
+  const { ready: qcfReady } = useQcfFont(qcfPage, hasQcf && qcfWords.length > 0, qcfSample)
+  const useGlyphs = hasQcf && qcfReady && qcfWords.length > 0
 
   useEffect(() => {
     const applyConfig = async () => {
@@ -184,27 +208,44 @@ export default function DailyVerseCard() {
           </button>
         </div>
 
-        <p className="ed-arabic relative mt-5 text-[var(--home-heading)]" dir="rtl" lang="ar">
-          {loading ? (
-            '…'
-          ) : (
-            <>
-              {arabic || '…'}
-              {dailyVerse ? (
-                <>
-                  {' '}
-                  <AyahEndMark
-                    verseKey={dailyVerseKey}
-                    pageNumber={endMarkPage}
-                    codeV2={endWord?.code_v2}
-                    fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
-                    className="text-[var(--home-sage-deep)]"
-                  />
-                </>
-              ) : null}
-            </>
-          )}
-        </p>
+        {useGlyphs ? (
+          // The glyph run already carries its own ayah marker, so no end mark
+          // is appended here.
+          <p
+            className="ed-arabic relative mt-5 text-[var(--home-heading)]"
+            dir="rtl"
+            lang="ar"
+            style={{ fontFamily: qcfPageFontFamily(qcfPage) }}
+          >
+            {qcfWords.map((word, i) => (
+              <span key={i} className="mushaf-translation-qcf-word">
+                {word}
+              </span>
+            ))}
+          </p>
+        ) : (
+          <p className="ed-arabic relative mt-5 text-[var(--home-heading)]" dir="rtl" lang="ar">
+            {loading ? (
+              '…'
+            ) : (
+              <>
+                {arabic || '…'}
+                {dailyVerse ? (
+                  <>
+                    {' '}
+                    <AyahEndMark
+                      verseKey={dailyVerseKey}
+                      pageNumber={endMarkPage}
+                      codeV2={endWord?.code_v2}
+                      fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
+                      className="text-[var(--home-sage-deep)]"
+                    />
+                  </>
+                ) : null}
+              </>
+            )}
+          </p>
+        )}
 
         <div className="relative my-4 flex items-center justify-center gap-3">
           <span className="ed-rule w-10" />
