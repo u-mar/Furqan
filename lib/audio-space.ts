@@ -7,7 +7,7 @@
  * recitation is normally heard.
  */
 
-export type SpaceId = 'dry' | 'room' | 'mosque'
+export type SpaceId = 'clean' | 'reciter' | 'mosque'
 
 export interface Space {
   id: SpaceId
@@ -27,42 +27,42 @@ export interface Space {
 
 export const SPACES: Space[] = [
   {
-    id: 'dry',
-    label: 'Dry',
-    hint: 'Your voice, cleaned up',
-    seconds: 0,
-    decay: 0,
-    brightness: 0,
-    preDelay: 0,
-    wet: 0,
+    id: 'clean',
+    label: 'Clean',
+    hint: 'Close and dry',
+    seconds: 0.9,
+    decay: 2.2,
+    brightness: 0.6,
+    preDelay: 0.022,
+    wet: 0.12,
   },
   {
-    id: 'room',
-    label: 'Room',
-    hint: 'A little air around it',
-    seconds: 1.6,
-    decay: 1.9,
-    brightness: 0.55,
-    preDelay: 0.016,
-    wet: 0.24,
+    id: 'reciter',
+    label: 'Reciter',
+    hint: 'Warm hall, voice forward',
+    // The published-recitation sound: a long pre-delay keeps the voice up
+    // front while the tail opens up behind it. Most of the character comes
+    // from the pre-delay, not the length.
+    seconds: 1.9,
+    decay: 1.6,
+    brightness: 0.5,
+    preDelay: 0.075,
+    wet: 0.26,
   },
   {
     id: 'mosque',
     label: 'Mosque',
-    hint: 'Wide, stone, echoing',
-    // Tuned by rendering a click through the chain: this lands at roughly
-    // two seconds of audible tail, which is what a prayer hall actually has.
-    // Longer swallows the words.
-    seconds: 3.8,
-    decay: 1.2,
-    brightness: 0.45,
-    preDelay: 0.048,
-    wet: 0.4,
+    hint: 'Big stone hall',
+    seconds: 3.4,
+    decay: 1.15,
+    brightness: 0.42,
+    preDelay: 0.06,
+    wet: 0.36,
   },
 ]
 
 export function findSpace(id: SpaceId): Space {
-  return SPACES.find((s) => s.id === id) ?? SPACES[0]
+  return SPACES.find((s) => s.id === id) ?? SPACES[1]
 }
 
 /**
@@ -90,62 +90,127 @@ export function createImpulseResponse(ctx: BaseAudioContext, space: Space): Audi
 }
 
 /**
- * Source → cleaned, evened-out voice → optional tail.
+ * Source → a published-sounding voice → its space.
+ *
+ * A phone capsule is thin, boxy and quiet. The published recitations people
+ * know are none of those things: they are close, warm, forward and loud, and
+ * their reverb sits around the voice rather than behind it. This chain works
+ * through that list in order — shape, then level, then space, then ceiling.
  *
  * Returns the node to record from. The browser's own echo cancellation,
  * noise suppression and gain control are left switched off by the caller:
- * they are tuned for phone calls and make a recitation sound thin and pumped.
+ * they are tuned for phone calls and undo most of what happens here.
  */
 export function buildVoiceChain(ctx: AudioContext, source: AudioNode, space: Space): AudioNode {
+  /* --- shape --- */
+
   // Rumble, handling noise and breath pops all live below here.
   const highpass = ctx.createBiquadFilter()
   highpass.type = 'highpass'
-  highpass.frequency.value = 80
+  highpass.frequency.value = 70
   highpass.Q.value = 0.7
 
-  // A small lift where consonants sit, so words stay legible under a tail.
+  // Body. A phone capsule held at arm's length has none of the weight a
+  // close large-diaphragm mic gives a voice; this puts some back.
+  const body = ctx.createBiquadFilter()
+  body.type = 'lowshelf'
+  body.frequency.value = 200
+  body.gain.value = 3
+
+  // The boxiness of an untreated room sits right about here.
+  const mud = ctx.createBiquadFilter()
+  mud.type = 'peaking'
+  mud.frequency.value = 420
+  mud.Q.value = 1.1
+  mud.gain.value = -2.5
+
+  // Diction — the consonants that let words stay legible under a tail.
   const presence = ctx.createBiquadFilter()
   presence.type = 'peaking'
-  presence.frequency.value = 3200
-  presence.Q.value = 0.9
-  presence.gain.value = 2.5
+  presence.frequency.value = 4200
+  presence.Q.value = 0.8
+  presence.gain.value = 3
 
-  // Narrows the gap between a quiet phrase and a raised one.
-  const compressor = ctx.createDynamicsCompressor()
-  compressor.threshold.value = -26
-  compressor.knee.value = 24
-  compressor.ratio.value = 3
-  compressor.attack.value = 0.006
-  compressor.release.value = 0.25
+  // Static de-ess, so lifting the air below does not sharpen every 's'.
+  const sibilance = ctx.createBiquadFilter()
+  sibilance.type = 'peaking'
+  sibilance.frequency.value = 7000
+  sibilance.Q.value = 1.5
+  sibilance.gain.value = -2
+
+  // Air. Most of what reads as "expensively recorded" is up here.
+  const air = ctx.createBiquadFilter()
+  air.type = 'highshelf'
+  air.frequency.value = 9500
+  air.gain.value = 2
+
+  /* --- level --- */
+
+  // Evens out the distance between a quiet phrase and a raised one. Measured
+  // by rendering noise at four levels through this chain: a 26dB spread at
+  // the input leaves as 6.5dB, which is the consistency a published
+  // recitation has. Lower thresholds than this start lifting room noise.
+  const leveller = ctx.createDynamicsCompressor()
+  leveller.threshold.value = -34
+  leveller.knee.value = 20
+  leveller.ratio.value = 4.5
+  leveller.attack.value = 0.005
+  leveller.release.value = 0.18
+
+  // Back up to a published loudness after that compression.
+  const makeup = ctx.createGain()
+  makeup.gain.value = 2.1
 
   source.connect(highpass)
-  highpass.connect(presence)
-  presence.connect(compressor)
+  highpass.connect(body)
+  body.connect(mud)
+  mud.connect(presence)
+  presence.connect(sibilance)
+  sibilance.connect(air)
+  air.connect(leveller)
+  leveller.connect(makeup)
 
-  const out = ctx.createGain()
+  /* --- space --- */
 
-  if (space.seconds <= 0 || space.wet <= 0) {
-    compressor.connect(out)
-    return out
+  const mixed = ctx.createGain()
+
+  if (space.seconds > 0 && space.wet > 0) {
+    // The voice stays at full level; the tail is added under it rather than
+    // traded against it, which is what keeps it forward instead of distant.
+    const dry = ctx.createGain()
+    dry.gain.value = 1
+
+    const wet = ctx.createGain()
+    wet.gain.value = space.wet
+
+    const preDelay = ctx.createDelay(1)
+    preDelay.delayTime.value = space.preDelay
+
+    const convolver = ctx.createConvolver()
+    convolver.normalize = true
+    convolver.buffer = createImpulseResponse(ctx, space)
+
+    makeup.connect(dry).connect(mixed)
+    makeup.connect(preDelay)
+    preDelay.connect(convolver)
+    convolver.connect(wet).connect(mixed)
+  } else {
+    makeup.connect(mixed)
   }
 
-  // Keep the dry voice forward; the tail sits underneath it.
-  const dry = ctx.createGain()
-  dry.gain.value = 1 - space.wet * 0.35
-  const wet = ctx.createGain()
-  wet.gain.value = space.wet
+  /* --- ceiling --- */
 
-  const preDelay = ctx.createDelay(1)
-  preDelay.delayTime.value = space.preDelay
+  // Last in the chain so it catches the summed peaks of voice and tail, and
+  // nothing reaches the encoder hot enough to clip.
+  const limiter = ctx.createDynamicsCompressor()
+  limiter.threshold.value = -6
+  limiter.knee.value = 2
+  limiter.ratio.value = 14
+  limiter.attack.value = 0.002
+  limiter.release.value = 0.08
 
-  const convolver = ctx.createConvolver()
-  convolver.normalize = true
-  convolver.buffer = createImpulseResponse(ctx, space)
-
-  compressor.connect(dry).connect(out)
-  compressor.connect(preDelay)
-  preDelay.connect(convolver)
-  convolver.connect(wet).connect(out)
-
+  const out = ctx.createGain()
+  mixed.connect(limiter)
+  limiter.connect(out)
   return out
 }

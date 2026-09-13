@@ -17,7 +17,7 @@ export default function QariRecordPage() {
   const router = useRouter()
   const viewer = useViewer()
   const { notice, setNotice } = useNotice()
-  const [spaceId, setSpaceId] = useState<SpaceId>('mosque')
+  const [spaceId, setSpaceId] = useState<SpaceId>('reciter')
   const { state, start, stop, reset, supported } = useQariRecorder(spaceId)
 
   const [title, setTitle] = useState('')
@@ -251,6 +251,10 @@ export default function QariRecordPage() {
                 </button>
               ))}
             </div>
+            <p className="mt-2.5 text-[11px] leading-relaxed text-[var(--home-muted)]">
+              Hold the phone about a hand's width away, in the quietest room you have — no
+              processing can undo noise that was there when you recorded.
+            </p>
           </section>
 
           {/* Details */}

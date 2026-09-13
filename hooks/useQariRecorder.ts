@@ -58,7 +58,7 @@ const idle: QariRecorderState = {
   durationSec: 0,
 }
 
-export function useQariRecorder(spaceId: SpaceId = 'mosque', maxSeconds = 600) {
+export function useQariRecorder(spaceId: SpaceId = 'reciter', maxSeconds = 600) {
   const [state, setState] = useState<QariRecorderState>(idle)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
