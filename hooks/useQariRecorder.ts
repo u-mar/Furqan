@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { buildVoiceChain, findSpace, type SpaceId } from '@/lib/audio-space'
 
 /**
  * Recorder for Qari uploads.
@@ -8,7 +9,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * Keeps MediaRecorder's own compressed output rather than converting to WAV —
  * a minute of WAV is several megabytes, while Opus is well under one, which
  * matters when every recording is uploaded.
+ *
+ * What reaches the recorder is not the bare microphone but a cleaned, evened
+ * voice with an optional room tail (see lib/audio-space). The processing has
+ * to happen on the way in: re-encoding afterwards in the browser would mean
+ * replaying the whole take in real time.
  */
+
+/**
+ * Opus is transparent for a single voice well below this, and the ceiling
+ * matters: with container overhead 128k put a full ten-minute take at ~11MB
+ * against a 12MB upload limit. This leaves real headroom and sounds the same.
+ */
+const AUDIO_BITRATE = 96000
 
 /** In preference order; the first the browser supports wins. */
 const CANDIDATE_TYPES = [
@@ -45,7 +58,7 @@ const idle: QariRecorderState = {
   durationSec: 0,
 }
 
-export function useQariRecorder(maxSeconds = 600) {
+export function useQariRecorder(spaceId: SpaceId = 'mosque', maxSeconds = 600) {
   const [state, setState] = useState<QariRecorderState>(idle)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -73,13 +86,32 @@ export function useQariRecorder(maxSeconds = 600) {
     if (recorderRef.current) return
 
     try {
+      // All three of these are tuned for phone calls. On a recitation they
+      // pump the level, swallow the tail of each phrase and add a warbling
+      // artefact — the single biggest cause of a take sounding cheap.
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
       })
       streamRef.current = stream
 
+      const ctx = new AudioContext()
+      audioCtxRef.current = ctx
+      if (ctx.state === 'suspended') await ctx.resume()
+
+      const voice = buildVoiceChain(ctx, ctx.createMediaStreamSource(stream), findSpace(spaceId))
+      const sink = ctx.createMediaStreamDestination()
+      voice.connect(sink)
+
       const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      const recorder = new MediaRecorder(sink.stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: AUDIO_BITRATE,
+      })
       recorderRef.current = recorder
       chunksRef.current = []
 
@@ -102,13 +134,11 @@ export function useQariRecorder(maxSeconds = 600) {
         })
       }
 
-      /* Live level meter */
-      const ctx = new AudioContext()
-      audioCtxRef.current = ctx
-      const source = ctx.createMediaStreamSource(stream)
+      /* Live level meter, tapped after the chain so it shows what is being
+         recorded rather than what the microphone happens to hear. */
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 1024
-      source.connect(analyser)
+      voice.connect(analyser)
       analyserRef.current = analyser
 
       const buffer = new Uint8Array(analyser.frequencyBinCount)
@@ -145,7 +175,7 @@ export function useQariRecorder(maxSeconds = 600) {
           : 'Could not start recording on this device.',
       })
     }
-  }, [maxSeconds, teardown])
+  }, [maxSeconds, spaceId, teardown])
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current

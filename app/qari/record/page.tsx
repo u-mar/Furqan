@@ -6,6 +6,7 @@ import { Globe, Hash, Lock, Mic, Pause, Play, RotateCcw, Send, Square } from 'lu
 import { Notice, QariHeader, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useQariRecorder } from '@/hooks/useQariRecorder'
+import { SPACES, type SpaceId } from '@/lib/audio-space'
 import { formatDuration, publishRecitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 
@@ -16,7 +17,8 @@ export default function QariRecordPage() {
   const router = useRouter()
   const viewer = useViewer()
   const { notice, setNotice } = useNotice()
-  const { state, start, stop, reset, supported } = useQariRecorder()
+  const [spaceId, setSpaceId] = useState<SpaceId>('mosque')
+  const { state, start, stop, reset, supported } = useQariRecorder(spaceId)
 
   const [title, setTitle] = useState('')
   const [hashtags, setHashtags] = useState('')
@@ -212,6 +214,43 @@ export default function QariRecordPage() {
                 </button>
               </div>
             ) : null}
+          </section>
+
+          {/* How it should sound — applied as you record, so it has to be
+              chosen first. */}
+          <section className="ed-card mt-4 rounded-[1.5rem] p-4">
+            <div className="mb-2.5 flex items-baseline justify-between gap-2">
+              <p className="qari-field-label mb-0">Sound</p>
+              {hasTake ? (
+                <span className="text-[11px] text-[var(--home-muted)]">
+                  Tap Again to change
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {SPACES.map((space) => (
+                <button
+                  key={space.id}
+                  type="button"
+                  onClick={() => setSpaceId(space.id)}
+                  disabled={hasTake || state.recording}
+                  aria-pressed={spaceId === space.id}
+                  className={cn(
+                    'ed-focus rounded-2xl border px-2.5 py-2.5 text-left transition-colors disabled:opacity-55',
+                    spaceId === space.id
+                      ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)]'
+                      : 'border-[var(--home-rule-strong)] hover:bg-[var(--home-track)]'
+                  )}
+                >
+                  <span className="block text-[0.82rem] font-semibold text-[var(--home-heading)]">
+                    {space.label}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] leading-snug text-[var(--home-muted)]">
+                    {space.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
           </section>
 
           {/* Details */}
