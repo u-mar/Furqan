@@ -1,0 +1,54 @@
+'use client'
+
+import { Pause, Play } from 'lucide-react'
+import type { PlayerStatus } from '@/lib/qari-player'
+import { cn } from '@/lib/cn'
+
+/**
+ * Round play control. Cream when idle, the accent while playing; `accent`
+ * makes the idle state the accent too, for the one big "play all".
+ */
+export default function PlayButton({
+  status,
+  onClick,
+  label,
+  size = 38,
+  accent = false,
+  className,
+}: {
+  status: PlayerStatus
+  onClick: () => void
+  label: string
+  size?: number
+  accent?: boolean
+  className?: string
+}) {
+  const active = status === 'playing' || status === 'loading'
+  const iconClass = size >= 48 ? 'h-5 w-5' : size >= 40 ? 'h-4 w-4' : 'h-[15px] w-[15px]'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={active ? `Pause ${label}` : `Play ${label}`}
+      className={cn(
+        'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full',
+        active
+          ? 'bg-[var(--home-sage-deep)] text-white'
+          : accent
+            ? 'bg-[var(--home-sage)] text-[var(--home-ink-fg)]'
+            : 'ed-ink',
+        className
+      )}
+      style={{ width: size, height: size }}
+    >
+      {status === 'loading' ? (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : active ? (
+        <Pause key="pause" className={cn('qari-swap fill-current', iconClass)} strokeWidth={0} />
+      ) : (
+        <Play key="play" className={cn('qari-swap ml-0.5 fill-current', iconClass)} strokeWidth={0} />
+      )}
+    </button>
+  )
+}

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
+import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
 import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, putAudio } from '@/lib/qari-storage'
+import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 
 export const runtime = 'nodejs'
 
 const FEED_PAGE_SIZE = 20
+const MAX_PEAKS = 64
 const ALLOWED_MIME = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav']
 
 const MAX_TAGS = 6
@@ -33,7 +36,23 @@ function parseHashtags(raw: string): string[] {
   return [...seen]
 }
 
-/** GET /api/qari?sort=recent|top&user=username&likedBy=userId&q=&skip= */
+/** A waveform sent from the phone: at most MAX_PEAKS whole numbers from 0 to 100. */
+function parsePeaks(raw: string): number[] {
+  try {
+    const value: unknown = JSON.parse(raw || '[]')
+    if (!Array.isArray(value)) return []
+    return value
+      .slice(0, MAX_PEAKS)
+      .map((n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0))))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * GET /api/qari?sort=recent|top&user=username&likedBy=userId&imitating=sheikhId
+ *   &following=1&viewerId=&q=&skip=&take=
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const sort = searchParams.get('sort') === 'top' ? 'top' : 'recent'
@@ -41,11 +60,29 @@ export async function GET(request: NextRequest) {
   const viewerId = searchParams.get('viewerId')?.trim()
   const likedBy = searchParams.get('likedBy')?.trim()
   const query = searchParams.get('q')?.trim().slice(0, 60)
+  const imitatingParam = searchParams.get('imitating')?.trim() ?? ''
+  const imitating = isSheikhId(imitatingParam) ? imitatingParam : null
+  const onlyFollowing = searchParams.get('following') === '1'
   const skip = Math.max(0, Number(searchParams.get('skip') || '0'))
+  const take = Math.min(50, Math.max(1, Number(searchParams.get('take') || FEED_PAGE_SIZE)))
   // A search for "#tajweed" should find the tag, not the literal text.
   const tagQuery = query?.startsWith('#') ? query.slice(1).toLowerCase() : null
+  // "sheikh sufi" also finds everything imitating him.
+  const sheikhQuery = query && !imitating ? matchSheikh(query) : null
 
   try {
+    // Only the people this viewer follows.
+    let followingFilter: { userUsername: { in: string[] } } | null = null
+    if (onlyFollowing) {
+      if (!viewerId) return NextResponse.json({ items: [], hasMore: false })
+      const follows = await prisma.qariFollow.findMany({
+        where: { followerId: viewerId },
+        select: { followingUsername: true },
+      })
+      if (follows.length === 0) return NextResponse.json({ items: [], hasMore: false })
+      followingFilter = { userUsername: { in: follows.map((f) => f.followingUsername) } }
+    }
+
     // The favourites tab: the ids this user has hearted. Collected first so
     // the recitations themselves are still one findMany.
     let likedFilter: { id: { in: string[] } } | null = null
@@ -63,7 +100,12 @@ export async function GET(request: NextRequest) {
     // Matches a reciter's name or handle, what they called the recording, or
     // one of its hashtags.
     const search = tagQuery
-      ? { hashtags: { has: tagQuery } }
+      ? {
+          OR: [
+            { hashtags: { has: tagQuery } },
+            ...(sheikhQuery ? [{ imitating: sheikhQuery.id }] : []),
+          ],
+        }
       : query
         ? {
             OR: [
@@ -71,6 +113,7 @@ export async function GET(request: NextRequest) {
               { userUsername: { contains: query, mode: 'insensitive' as const } },
               { title: { contains: query, mode: 'insensitive' as const } },
               { hashtags: { has: query.toLowerCase() } },
+              ...(sheikhQuery ? [{ imitating: sheikhQuery.id }] : []),
             ],
           }
         : {}
@@ -88,6 +131,8 @@ export async function GET(request: NextRequest) {
       // so this has to stay true of anything written here.
       ...(ownProfile ? {} : { isPrivate: false }),
       ...(username ? { userUsername: username } : {}),
+      ...(followingFilter ?? {}),
+      ...(imitating ? { imitating } : {}),
       ...(likedFilter ?? {}),
       ...search,
     }
@@ -96,36 +141,14 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: sort === 'top' ? [{ likeCount: 'desc' }, { createdAt: 'desc' }] : { createdAt: 'desc' },
       skip,
-      take: FEED_PAGE_SIZE,
+      take,
     })
 
-    // Which of these the viewer has already liked, in one query.
-    let likedIds = new Set<string>()
-    if (viewerId && recitations.length > 0) {
-      const likes = await prisma.recitationLike.findMany({
-        where: { userId: viewerId, recitationId: { in: recitations.map((r) => r.id) } },
-        select: { recitationId: true },
-      })
-      likedIds = new Set(likes.map((l) => l.recitationId))
-    }
+    const likedIds = await likedIdsFor(viewerId, recitations.map((r) => r.id))
 
     return NextResponse.json({
-      items: recitations.map((r) => ({
-        id: r.id,
-        userName: r.userName,
-        userUsername: r.userUsername,
-        title: r.title || 'Recitation',
-        space: r.space || 'clean',
-        hashtags: r.hashtags ?? [],
-        isPrivate: r.isPrivate === true,
-        caption: r.caption,
-        durationSec: r.durationSec,
-        likeCount: r.likeCount,
-        playCount: r.playCount,
-        createdAt: r.createdAt.toISOString(),
-        liked: likedIds.has(r.id),
-      })),
-      hasMore: recitations.length === FEED_PAGE_SIZE,
+      items: recitations.map((r) => toClientRecitation(r, likedIds.has(r.id))),
+      hasMore: recitations.length === take,
     })
   } catch (err) {
     console.error('[qari] feed failed:', err)
@@ -165,6 +188,9 @@ export async function POST(request: NextRequest) {
     const space = clean(form.get('space'), 16) || 'clean'
     const hashtags = parseHashtags(clean(form.get('hashtags'), 200))
     const isPrivate = clean(form.get('isPrivate'), 5) === 'true'
+    const imitatingRaw = clean(form.get('imitating'), 40)
+    const imitating = isSheikhId(imitatingRaw) ? imitatingRaw : null
+    const peaks = parsePeaks(clean(form.get('peaks'), 1200))
     const durationSec = Math.round(Number(form.get('durationSec') || 0))
     if (!title) {
       return NextResponse.json({ error: 'Give your recitation a title.' }, { status: 400 })
@@ -192,6 +218,10 @@ export async function POST(request: NextRequest) {
         space,
         hashtags,
         isPrivate,
+        // Left off entirely rather than stored as null, so "imitating anyone"
+        // stays a plain equality match on MongoDB.
+        ...(imitating ? { imitating } : {}),
+        peaks,
         caption: clean(form.get('caption'), 280),
       },
     })

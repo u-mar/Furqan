@@ -3,275 +3,333 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Heart, Mic, Pencil, Play, Share2 } from 'lucide-react'
-import RecitationCard from '@/components/qari/RecitationCard'
-import QariAvatar from '@/components/qari/QariAvatar'
+import { ChevronLeft, Heart, Mic, Pause, Pencil, Play, Share2, UsersRound } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
+import EmptyState from '@/components/qari/EmptyState'
+import FollowButton from '@/components/qari/FollowButton'
+import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
+import QariAvatar from '@/components/qari/QariAvatar'
+import RecitationRow from '@/components/qari/RecitationRow'
+import SkeletonRows from '@/components/qari/SkeletonRows'
 import { Notice, QariScreen, useNotice, useViewer } from '@/components/qari/QariShell'
-import { fetchFeed, type Recitation } from '@/lib/qari'
+import { useQariPlayer } from '@/hooks/useQariPlayer'
+import { tapFeedback } from '@/lib/haptics'
+import { fetchFeed, fetchFollowState, type Recitation } from '@/lib/qari'
+import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
+import { copyText } from '@/lib/qari-share-media'
+import { APP_NAME } from '@/lib/app-brand'
+import { cn } from '@/lib/cn'
 
-type Tab = 'audios' | 'favourites'
+type Tab = 'recitations' | 'favourites'
 
 export default function QariProfilePage() {
   const params = useParams<{ username: string }>()
   const username = decodeURIComponent(String(params?.username ?? ''))
   const viewer = useViewer()
+  const viewerId = viewer?.id ?? null
   const { notice, setNotice } = useNotice()
+  const player = useQariPlayer()
 
   // Usernames are stored lower-case; a link may arrive with any casing.
   const isMe = viewer?.username.toLowerCase() === username.toLowerCase()
 
-  const [tab, setTab] = useState<Tab>('audios')
-  const [audios, setAudios] = useState<Recitation[]>([])
+  const [tab, setTab] = useState<Tab>('recitations')
+  const [recitations, setRecitations] = useState<Recitation[] | null>(null)
   const [favourites, setFavourites] = useState<Recitation[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingFavourites, setLoadingFavourites] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [follow, setFollow] = useState<{ following: boolean; followers: number } | null>(null)
 
   const [editOpen, setEditOpen] = useState(false)
   const [avatarVersion, setAvatarVersion] = useState<number | undefined>(undefined)
   const [hasAvatar, setHasAvatar] = useState(false)
   const [nameOverride, setNameOverride] = useState<string | null>(null)
 
-  /* Their recitations — the default tab, so always loaded. */
+  useEffect(() => onPlayerError(setNotice), [setNotice])
+
+  const loadRecitations = useCallback(async () => {
+    if (!username) return
+    setFailed(false)
+    try {
+      const page = await fetchFeed({ user: username, viewerId, take: 50 })
+      setRecitations(page.items)
+    } catch {
+      setFailed(true)
+      setRecitations([])
+    }
+  }, [username, viewerId])
+
+  useEffect(() => {
+    setRecitations(null)
+    void loadRecitations()
+  }, [loadRecitations])
+
   useEffect(() => {
     if (!username) return
     let cancelled = false
-
-    void (async () => {
-      setLoading(true)
-      setFailed(false)
-      try {
-        const page = await fetchFeed({ user: username, viewerId: viewer?.id ?? null })
-        if (!cancelled) setAudios(page.items)
-      } catch {
-        if (!cancelled) setFailed(true)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-
+    fetchFollowState(username, viewerId).then((state) => !cancelled && setFollow(state))
     return () => {
       cancelled = true
     }
-  }, [username, viewer?.id])
+  }, [username, viewerId])
 
-  /* Favourites are fetched the first time that tab is opened. */
+  /* Favourites are yours alone, fetched the first time that tab opens. */
   useEffect(() => {
-    if (tab !== 'favourites' || favourites !== null || !viewer?.id) return
+    if (tab !== 'favourites' || favourites !== null || !viewerId) return
     let cancelled = false
-
-    void (async () => {
-      setLoadingFavourites(true)
-      try {
-        const page = await fetchFeed({ likedBy: viewer.id, viewerId: viewer.id })
-        if (!cancelled) setFavourites(page.items)
-      } catch {
-        if (!cancelled) setFavourites([])
-      } finally {
-        if (!cancelled) setLoadingFavourites(false)
-      }
-    })()
-
+    fetchFeed({ likedBy: viewerId, viewerId, take: 50 })
+      .then((page) => !cancelled && setFavourites(page.items))
+      .catch(() => !cancelled && setFavourites([]))
     return () => {
       cancelled = true
     }
-  }, [tab, favourites, viewer?.id])
+  }, [tab, favourites, viewerId])
 
   /* Whether there is a picture to offer removing. */
   useEffect(() => {
     if (!username) return
     let cancelled = false
     void fetch(`/api/qari/avatar/${encodeURIComponent(username)}`, { method: 'HEAD' })
-      .then((res) => {
-        if (!cancelled) setHasAvatar(res.ok)
-      })
+      .then((res) => !cancelled && setHasAvatar(res.ok))
       .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [username, avatarVersion])
 
-  const removeFromAudios = useCallback((id: string) => {
-    setAudios((prev) => prev.filter((r) => r.id !== id))
-    setFavourites((prev) => (prev ? prev.filter((r) => r.id !== id) : prev))
-  }, [])
-
-  const removeFromFavourites = useCallback((id: string) => {
-    setFavourites((prev) => (prev ? prev.filter((r) => r.id !== id) : prev))
-  }, [])
+  const { pull, refreshing } = usePullToRefresh(async () => {
+    await loadRecitations()
+    if (tab === 'favourites') setFavourites(null)
+  })
 
   const handleSaved = useCallback((changes: { name?: string; avatarChanged?: boolean }) => {
     if (changes.name) {
       const saved = changes.name
       setNameOverride(saved)
-      // Past recordings carry the reciter's name, and the server rewrote
-      // them — mirror that here so the list agrees without a refetch.
-      setAudios((prev) => prev.map((r) => ({ ...r, userName: saved })))
+      setRecitations((prev) => prev?.map((r) => ({ ...r, userName: saved })) ?? prev)
     }
     if (changes.avatarChanged) setAvatarVersion(Date.now())
   }, [])
 
+  const displayName =
+    nameOverride || recitations?.[0]?.userName || (isMe ? viewer?.name : '') || username
+
   const handleShare = useCallback(async () => {
+    tapFeedback()
     const url = `${window.location.origin}/qari/${encodeURIComponent(username)}`
-    const text = `${nameOverride || audios[0]?.userName || username} on Al Furqaan`
+    const text = `${displayName} on ${APP_NAME}`
     try {
       if (navigator.share) {
         await navigator.share({ title: text, text, url })
         return
       }
-      await navigator.clipboard.writeText(url)
-      setNotice('Profile link copied.')
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      setNotice('Could not share that.')
     }
-  }, [audios, nameOverride, setNotice, username])
+    const ok = await copyText(url)
+    setNotice(ok ? 'Profile link copied.' : 'Could not share that.')
+  }, [displayName, setNotice, username])
 
-  const displayName = nameOverride || audios[0]?.userName || (isMe ? viewer?.name : '') || username
-  const totalPlays = useMemo(() => audios.reduce((sum, r) => sum + r.playCount, 0), [audios])
-  const totalLikes = useMemo(() => audios.reduce((sum, r) => sum + r.likeCount, 0), [audios])
+  const totals = useMemo(() => {
+    const list = recitations ?? []
+    return {
+      count: list.length,
+      plays: list.reduce((sum, r) => sum + r.playCount, 0),
+      loved: list.reduce((sum, r) => sum + r.likeCount, 0),
+    }
+  }, [recitations])
 
-  const list = tab === 'audios' ? audios : (favourites ?? [])
-  const listLoading = tab === 'audios' ? loading : loadingFavourites
+  const list = tab === 'recitations' ? recitations : favourites
+  const listIds = useMemo(() => new Set((list ?? []).map((r) => r.id)), [list])
+  const playingHere = Boolean(player.current && listIds.has(player.current.id))
+  const playingNow = playingHere && (player.status === 'playing' || player.status === 'loading')
+
+  const playAll = useCallback(() => {
+    if (!list || list.length === 0) return
+    tapFeedback()
+    if (playingNow) {
+      pausePlayback()
+      return
+    }
+    const start = playingHere && player.current ? player.current : list[0]
+    playRecitation(start, { queue: list, viewerId })
+  }, [list, player, playingHere, playingNow, viewerId])
+
+  const removeRecitation = useCallback((id: string) => {
+    setRecitations((prev) => prev?.filter((r) => r.id !== id) ?? prev)
+    setFavourites((prev) => prev?.filter((r) => r.id !== id) ?? prev)
+  }, [])
 
   return (
     <QariScreen>
-      {/* Header — the handle sits up here so the name can breathe below. */}
-      <header className="mb-4 flex items-center gap-3">
+      <PullIndicator pull={pull} refreshing={refreshing} />
+
+      <header className="flex items-center">
         <Link
           href="/qari"
           aria-label="Back"
-          className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
+          className="qari-press ed-focus flex h-11 w-11 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_7%,transparent)] text-[var(--home-heading)]"
         >
-          <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+          <ChevronLeft className="h-[22px] w-[22px]" strokeWidth={2.2} />
         </Link>
-        <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-[var(--home-heading)]">
-          @{username}
-        </p>
-        <span className="h-11 w-11 shrink-0" aria-hidden />
       </header>
 
       {/* Identity */}
-      <section className="text-center">
-        <div className="relative mx-auto w-fit">
-          <QariAvatar username={username} name={displayName} size={96} version={avatarVersion} />
+      <section className="qari-enter flex flex-col items-center text-center">
+        <div className="relative">
+          <div className="rounded-full shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)]">
+            <QariAvatar username={username} name={displayName} size={108} version={avatarVersion} />
+          </div>
           {isMe ? (
             <button
               type="button"
               onClick={() => setEditOpen(true)}
               aria-label="Edit profile picture"
-              className="ed-focus absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--app-surface)] bg-[var(--home-sage-deep)] text-white transition-transform active:scale-95"
+              className="qari-press ed-focus ed-ink absolute -right-0.5 bottom-0 flex h-[34px] w-[34px] items-center justify-center rounded-full border-[3px] border-[var(--app-bg)]"
             >
-              <Pencil className="h-[14px] w-[14px]" strokeWidth={2.2} />
+              <Pencil className="h-[13px] w-[13px]" strokeWidth={2.6} />
             </button>
           ) : null}
         </div>
 
-        <h1 className="home-serif mt-3 truncate text-[1.6rem] font-semibold leading-tight text-[var(--home-heading)]">
+        <h1 className="mt-4 max-w-full truncate text-[1.75rem] font-extrabold leading-tight tracking-[-0.025em] text-[var(--home-heading)]">
           {displayName}
         </h1>
+        <p className="mt-0.5 text-sm font-medium text-[var(--home-muted)]">@{username}</p>
 
-        <div className="mt-4 flex items-stretch justify-center">
-          <Stat
-            icon={<Mic className="h-4 w-4" strokeWidth={2} />}
-            value={audios.length}
-            label="recitations"
-          />
-          <span className="mx-1 w-px self-stretch bg-[var(--home-rule)]" />
-          <Stat
-            icon={<Play className="h-4 w-4" strokeWidth={2} />}
-            value={totalPlays}
-            label="plays"
-          />
-          <span className="mx-1 w-px self-stretch bg-[var(--home-rule)]" />
-          <Stat
-            icon={<Heart className="h-4 w-4 text-rose-500" strokeWidth={2} />}
-            value={totalLikes}
-            label="loved"
-          />
+        <div className="mt-3 flex items-center gap-4 text-sm font-bold text-[var(--home-heading)]">
+          <Stat value={totals.count} Icon={Mic} label="recitations" />
+          <Stat value={totals.plays} Icon={Play} label="plays" />
+          <Stat value={totals.loved} Icon={Heart} label="loved" />
+          <Stat value={follow?.followers ?? 0} Icon={UsersRound} label="followers" />
         </div>
 
-        {/* Actions sit under the profile, the way a profile page reads. */}
-        <div className="mt-5 flex gap-2">
+        <div className="mt-5 flex w-full gap-2">
           {isMe ? (
             <button
               type="button"
               onClick={() => setEditOpen(true)}
-              className="ed-ink ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform active:scale-[0.98]"
+              className="qari-press ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-sm font-bold text-[var(--home-heading)]"
             >
-              <Pencil className="h-4 w-4" strokeWidth={2} />
+              <Pencil className="h-[15px] w-[15px]" strokeWidth={2.3} />
               Edit profile
             </button>
-          ) : null}
+          ) : (
+            <FollowButton
+              size="lg"
+              viewer={viewer}
+              target={username}
+              following={follow?.following ?? false}
+              onNotice={setNotice}
+              onChange={(state) =>
+                setFollow((prev) => ({
+                  following: state.following,
+                  followers:
+                    state.followers ??
+                    Math.max(0, (prev?.followers ?? 0) + (state.following === prev?.following ? 0 : state.following ? 1 : -1)),
+                }))
+              }
+            />
+          )}
           <button
             type="button"
             onClick={() => void handleShare()}
-            className="ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] active:scale-[0.98]"
+            className="qari-press ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-sm font-bold text-[var(--home-heading)]"
           >
-            <Share2 className="h-4 w-4" strokeWidth={2} />
+            <Share2 className="h-[15px] w-[15px]" strokeWidth={2.3} />
             Share profile
           </button>
         </div>
       </section>
 
-      {/* Tabs — what you have saved is your own business, so only you see it. */}
-      {isMe ? (
-        <div className="qari-tabs mt-6" role="tablist" aria-label="Profile sections">
-          {(
-            [
-              { id: 'audios' as const, label: 'Recitations', Icon: Mic },
-              { id: 'favourites' as const, label: 'Favourites', Icon: Heart },
-            ] as const
-          ).map(({ id, label, Icon }) => (
+      {/* Tabs and play all */}
+      <div className="mt-6 flex items-center justify-between gap-3 pb-1.5">
+        <div className="flex gap-2" role="tablist" aria-label="Profile sections">
+          {(isMe
+            ? ([
+                { id: 'recitations', label: 'Recitations' },
+                { id: 'favourites', label: 'Favourites' },
+              ] as const)
+            : ([{ id: 'recitations', label: 'Recitations' }] as const)
+          ).map(({ id, label }) => (
             <button
               key={id}
               type="button"
               role="tab"
               aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className="qari-tab ed-focus"
+              onClick={() => {
+                tapFeedback()
+                setTab(id)
+              }}
+              className={cn(
+                'qari-press ed-focus h-9 rounded-full px-4 text-sm transition-colors',
+                tab === id
+                  ? 'ed-ink font-bold'
+                  : 'border border-[var(--home-card-border)] bg-[var(--home-card-bg)] font-semibold text-[var(--home-heading)]'
+              )}
             >
-              <Icon className="h-4 w-4" strokeWidth={2} />
               {label}
             </button>
           ))}
-          <span
-            className="qari-tabs__ink"
-            style={{ transform: `translateX(${tab === 'audios' ? '0%' : '100%'})` }}
-            aria-hidden
-          />
         </div>
-      ) : (
-        <div className="mt-6 flex items-center gap-3">
-          <span className="ed-label">Recitations</span>
-          <span className="ed-rule flex-1" />
-        </div>
-      )}
+        {list && list.length > 0 ? (
+          <button
+            type="button"
+            onClick={playAll}
+            aria-label={playingNow ? 'Pause' : 'Play all'}
+            className={cn(
+              'qari-press ed-focus flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full shadow-[0_8px_24px_-6px_color-mix(in_srgb,var(--home-sage)_45%,transparent)]',
+              playingNow ? 'bg-[var(--home-sage-deep)] text-white' : 'bg-[var(--home-sage)] text-[var(--home-ink-fg)]'
+            )}
+          >
+            {playingNow ? (
+              <Pause key="pause" className="qari-swap h-5 w-5 fill-current" strokeWidth={0} />
+            ) : (
+              <Play key="play" className="qari-swap ml-0.5 h-5 w-5 fill-current" strokeWidth={0} />
+            )}
+          </button>
+        ) : null}
+      </div>
 
-      <div className="mt-4">
-        {listLoading ? (
-          <div className="space-y-3">
-            {[0, 1].map((i) => (
-              <div key={i} className="ed-card h-[7.5rem] animate-pulse rounded-[1.5rem]" />
-            ))}
-          </div>
-        ) : failed && tab === 'audios' ? (
-          <p className="ed-card rounded-[1.5rem] p-6 text-center text-sm text-[var(--home-heading)]">
-            Could not load this profile.
-          </p>
+      <div>
+        {list === null ? (
+          <SkeletonRows count={4} />
+        ) : failed && tab === 'recitations' ? (
+          <EmptyState
+            Icon={Mic}
+            title="Could not load this profile"
+            body="Check your connection and try again."
+            action={{ label: 'Try again', onClick: () => void loadRecitations() }}
+          />
         ) : list.length === 0 ? (
-          <EmptyState tab={tab} isMe={isMe} />
+          tab === 'favourites' ? (
+            <EmptyState
+              Icon={Heart}
+              title="Nothing saved yet"
+              body="Tap the heart on a recitation and it will be waiting here."
+              action={{ label: 'Explore Qari', href: '/qari' }}
+            />
+          ) : isMe ? (
+            <EmptyState
+              Icon={Mic}
+              title="No recitations yet"
+              body="Record a few ayahs and they will appear here."
+              action={{ label: 'Record one', href: '/qari/record', Icon: Mic }}
+            />
+          ) : (
+            <EmptyState Icon={Mic} title="Nothing published yet" body={`${displayName} hasn't published anything yet.`} />
+          )
         ) : (
-          <div className="space-y-3">
-            {list.map((recitation) => (
-              <RecitationCard
+          <div>
+            {list.map((recitation, i) => (
+              <RecitationRow
                 key={recitation.id}
                 recitation={recitation}
-                viewerId={viewer?.id ?? null}
+                queue={list}
+                index={i}
+                hideAuthor={tab === 'recitations'}
+                viewerId={viewerId}
                 viewerUsername={viewer?.username ?? null}
-                hideAuthor={tab === 'audios'}
-                onRemoved={tab === 'audios' ? removeFromAudios : removeFromFavourites}
+                onRemoved={removeRecitation}
                 onNotice={setNotice}
               />
             ))}
@@ -296,48 +354,12 @@ export default function QariProfilePage() {
   )
 }
 
-function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+/** A number with its icon after it — "1 ♥" rather than "1 loved". */
+function Stat({ value, Icon, label }: { value: number; Icon: typeof Mic; label: string }) {
   return (
-    <span className="min-w-[5.5rem] px-1 py-1 text-center">
-      <span className="ed-num flex items-center justify-center gap-1.5 text-[1.3rem] font-semibold leading-none text-[var(--home-heading)]">
-        <span className="text-[var(--home-sage-deep)]">{icon}</span>
-        {value}
-      </span>
-      <span className="mt-1.5 block text-[11px] text-[var(--home-muted)]">{label}</span>
+    <span className="flex items-center gap-1.5" aria-label={`${value} ${label}`}>
+      <span className="tabular-nums">{value}</span>
+      <Icon className="h-[15px] w-[15px] text-[var(--home-muted)]" strokeWidth={2.2} aria-hidden />
     </span>
-  )
-}
-
-function EmptyState({ tab, isMe }: { tab: Tab; isMe: boolean }) {
-  const favourites = tab === 'favourites'
-  return (
-    <div className="ed-card rounded-[1.5rem] p-8 text-center">
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-        {favourites ? (
-          <Heart className="h-7 w-7" strokeWidth={1.8} />
-        ) : (
-          <Mic className="h-7 w-7" strokeWidth={1.8} />
-        )}
-      </span>
-      <p className="home-serif mt-4 text-[1.2rem] font-semibold text-[var(--home-heading)]">
-        {favourites ? 'Nothing saved yet' : isMe ? 'No recitations yet' : 'Nothing published yet'}
-      </p>
-      <p className="mx-auto mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">
-        {favourites
-          ? 'Tap the heart on a recitation and it will be waiting here.'
-          : isMe
-            ? 'Record a few ayahs and they will appear here.'
-            : 'This qari hasn’t published anything yet.'}
-      </p>
-      {isMe && !favourites ? (
-        <Link
-          href="/qari/record"
-          className="ed-ink ed-focus mt-5 inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold"
-        >
-          <Mic className="h-4 w-4" strokeWidth={2} />
-          Record one
-        </Link>
-      ) : null}
-    </div>
   )
 }

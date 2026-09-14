@@ -36,7 +36,7 @@ export default function QariTabBar() {
             aria-label="Home"
             className={cn('qari-tabbar__item ed-focus', onFeed && 'is-active')}
           >
-            <House className="h-[23px] w-[23px]" strokeWidth={onFeed ? 2.3 : 1.9} />
+            <House className="h-5 w-5" strokeWidth={onFeed ? 2.3 : 1.9} />
           </Link>
 
           <Link
@@ -44,7 +44,7 @@ export default function QariTabBar() {
             aria-label="Add a recitation"
             className="qari-tabbar__add ed-focus"
           >
-            <Plus className="h-6 w-6" strokeWidth={2.6} />
+            <Plus className="h-[18px] w-[18px]" strokeWidth={2.7} />
           </Link>
 
           {viewer && myProfile ? (
@@ -55,7 +55,7 @@ export default function QariTabBar() {
               className={cn('qari-tabbar__item ed-focus', onMyProfile && 'is-active')}
             >
               <UserRound
-                className="h-[23px] w-[23px]"
+                className="h-5 w-5"
                 strokeWidth={onMyProfile ? 2.3 : 1.9}
               />
             </Link>
@@ -66,7 +66,7 @@ export default function QariTabBar() {
               aria-label="Sign in"
               className="qari-tabbar__item ed-focus"
             >
-              <UserRound className="h-[23px] w-[23px]" strokeWidth={1.9} />
+              <UserRound className="h-5 w-5" strokeWidth={1.9} />
             </button>
           )}
         </div>

@@ -25,7 +25,11 @@ function normalizeUsername(value: string): string {
  * accounts alone would let someone register the name and inherit another
  * person's recitations and picture.
  */
+/** Qari pages live at /qari/<name>, so a handle can never be one of these. */
+const RESERVED_USERNAMES = new Set(['record', 'qaris', 'sheikh', 'sheikhs', 'admin', 'settings'])
+
 async function isUsernameTaken(username: string): Promise<boolean> {
+  if (RESERVED_USERNAMES.has(username)) return true
   const [account, recitation, avatar] = await Promise.all([
     prisma.user.findUnique({ where: { username }, select: { id: true } }),
     prisma.recitation.findFirst({ where: { userUsername: username }, select: { id: true } }),

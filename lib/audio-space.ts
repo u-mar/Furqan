@@ -189,7 +189,7 @@ export interface SpaceMixer {
  * which is what lets the filter be changed on a take that already exists,
  * and even while it is playing.
  */
-export function createSpaceMixer(ctx: AudioContext, source: AudioNode): SpaceMixer {
+export function createSpaceMixer(ctx: BaseAudioContext, source: AudioNode): SpaceMixer {
   const dry = ctx.createGain()
   dry.gain.value = 1
 

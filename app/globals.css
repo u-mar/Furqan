@@ -1180,41 +1180,6 @@ html.dark .mushaf-reader {
   transform: rotate(180deg);
 }
 
-@keyframes hifdh-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.65;
-  }
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-
-.recording-pulse::before {
-  content: '';
-  position: absolute;
-  inset: -10px;
-  border-radius: 50%;
-  background: #fee2e2;
-  animation: hifdh-pulse 1.3s ease-out infinite;
-}
-
-@keyframes hifdh-wave {
-  from {
-    transform: scaleY(0.15);
-  }
-  to {
-    transform: scaleY(1);
-  }
-}
-
-.hifdh-wave-bar {
-  height: 100%;
-  max-height: 2.5rem;
-  animation: hifdh-wave 0.45s ease-in-out infinite alternate;
-}
-
 /* --- Long-form reading pages (privacy policy) --- */
 
 .privacy-prose {
@@ -1360,60 +1325,6 @@ html.dark .mushaf-reader {
   }
 }
 
-/* --- Qari: form fields on the record screen --- */
-
-.qari-field-label {
-  display: block;
-  margin-bottom: 0.375rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--home-muted);
-}
-
-.qari-field {
-  width: 100%;
-  min-height: 2.75rem;
-  padding-inline: 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--home-rule-strong);
-  background: var(--app-surface);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--home-heading);
-}
-
-/* Leaves room for a leading icon. A Tailwind pl-* would lose to the
-   padding-inline above, since this file sits outside the utility layer. */
-.qari-field--icon {
-  padding-left: 2.25rem;
-}
-
-.qari-field::placeholder {
-  font-weight: 400;
-  color: var(--home-muted);
-}
-
-/* A hashtag on a recitation — a quiet chip that runs a search when tapped. */
-.qari-tag {
-  display: inline-flex;
-  align-items: center;
-  height: 1.55rem;
-  padding-inline: 0.55rem;
-  border-radius: 999px;
-  background: var(--home-track);
-  color: var(--home-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-.qari-tag:hover {
-  color: var(--home-heading);
-  background: var(--home-sage-soft);
-}
-
 /* --- Qari: the bar along the bottom --- */
 
 .qari-tabbar {
@@ -1441,7 +1352,7 @@ html.dark .mushaf-reader {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
+  min-height: 44px;
   border-radius: 0.9rem;
   color: var(--home-muted);
   transition: color 0.16s ease;
@@ -1457,9 +1368,9 @@ html.dark .mushaf-reader {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.75rem;
-  height: 2.5rem;
-  border-radius: 0.8rem;
+  width: 2.75rem;
+  height: 1.875rem;
+  border-radius: 0.6rem;
   background: var(--home-ink);
   color: var(--home-ink-fg);
   box-shadow:
@@ -1472,136 +1383,367 @@ html.dark .mushaf-reader {
   transform: scale(0.94);
 }
 
-/* Pop-over list — lifted off the feed so it reads as a layer above it. */
-.qari-menu {
-  box-shadow:
-    0 4px 10px rgba(0, 0, 0, 0.1),
-    0 18px 40px -18px rgba(0, 0, 0, 0.55);
+/* --- Qari: sheets rise from the bottom instead of popping in --- */
+
+.qari-sheet {
+  animation: qari-fade-in 0.18s ease-out both;
 }
 
-/* Floating record button — lifted off the feed so it reads above the cards. */
-.qari-fab {
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.18),
-    0 12px 28px -12px rgba(0, 0, 0, 0.55);
+.qari-sheet__panel {
+  animation: qari-sheet-rise 0.32s cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
-/* The card currently playing, picked out of the stack by a hairline. */
-.qari-card-playing {
-  box-shadow:
-    0 0 0 1px var(--home-sage-deep),
-    var(--home-card-shadow);
-}
-
-/* --- Qari: profile tabs --- */
-
-/* Two equal tabs with a rule underneath and an ink bar that slides between
-   them. The bar is a sibling rather than a border so it can animate. */
-.qari-tabs {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid var(--home-rule);
-}
-
-.qari-tab {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding-bottom: 0.6rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--home-muted);
-  transition: color 0.18s ease;
-}
-
-.qari-tab[aria-selected='true'] {
-  color: var(--home-heading);
-}
-
-.qari-tabs__ink {
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 50%;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--home-heading);
-  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .qari-tabs__ink {
-    transition: none;
-  }
-}
-
-/* --- Qari: a recitation that is playing --- */
-
-@keyframes qari-ring {
-  0% {
-    transform: scale(1);
-    opacity: 0.55;
-  }
-  100% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-}
-
-/* Rings breathing out from the reciter's picture while their audio plays. */
-.qari-ring {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid var(--home-sage-deep);
-  animation: qari-ring 1.9s ease-out infinite;
-  pointer-events: none;
-}
-
-.qari-ring-late {
-  animation-delay: 0.95s;
-}
-
-@keyframes qari-eq {
+@keyframes qari-fade-in {
   from {
-    transform: scaleY(0.25);
+    opacity: 0;
   }
   to {
-    transform: scaleY(1);
+    opacity: 1;
   }
 }
 
-/* Four-bar level meter beside the running time. */
-.qari-eq-bar {
-  width: 2px;
-  height: 12px;
-  border-radius: 1px;
-  background: var(--home-sage-deep);
-  transform-origin: center bottom;
-  animation: qari-eq 0.52s ease-in-out infinite alternate;
+@keyframes qari-sheet-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .recording-pulse::before {
+  .qari-sheet,
+  .qari-sheet__panel {
     animation: none;
+  }
+}
+
+/* ======================================================================
+   Qari: slim rows, one player, and small motion that confirms every
+   touch. All colours come from the theme tokens, so light and dark both
+   follow automatically.
+   ====================================================================== */
+
+.qari-no-scrollbar {
+  scrollbar-width: none;
+}
+
+.qari-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* A recitation row. The one playing gets a soft wash of the accent. */
+.qari-row {
+  position: relative;
+  border-radius: 1rem;
+  transition: background-color 0.25s ease;
+}
+
+.qari-row.is-current {
+  background: color-mix(in srgb, var(--home-sage) 8%, transparent);
+}
+
+/* Rows rise in, a beat apart, the first time a list appears. */
+.qari-enter {
+  animation: qari-enter 0.36s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes qari-enter {
+  from {
     opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The heart pops when it is filled. */
+.qari-pop {
+  animation: qari-pop 0.42s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes qari-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.34);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Play and pause trade places rather than snapping. */
+.qari-swap {
+  animation: qari-swap 0.2s ease-out both;
+}
+
+@keyframes qari-swap {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Anything pressable sinks a little under the finger. */
+.qari-press {
+  transition: transform 0.12s ease;
+}
+
+.qari-press:active {
+  transform: scale(0.95);
+}
+
+/* --- Dropdowns: the sort pill and the record page choices --- */
+
+.qari-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.125rem;
+  padding-inline: 0.75rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid var(--home-card-border);
+  background: var(--home-card-bg);
+  color: var(--home-heading);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.qari-dropdown[aria-expanded='true'] {
+  border-color: var(--home-sage-deep);
+}
+
+/* Inside a card the pill needs its own faint fill to read as a control. */
+.qari-dropdown--in-card {
+  background: color-mix(in srgb, var(--home-heading) 5%, transparent);
+  border-color: var(--home-rule);
+  font-size: 0.875rem;
+}
+
+.qari-dropdown__menu {
+  position: absolute;
+  z-index: 45;
+  min-width: 11rem;
+  max-height: min(19rem, 60vh);
+  overflow-y: auto;
+  padding: 0.375rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--home-rule);
+  background: var(--home-card-bg);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.12),
+    0 18px 40px -16px rgba(0, 0, 0, 0.55);
+  transform-origin: top right;
+  animation: qari-menu-in 0.16s ease-out both;
+}
+
+@keyframes qari-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.qari-dropdown__item {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.625rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.625rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--home-heading);
+  transition: background-color 0.12s ease;
+}
+
+.qari-dropdown__item:hover {
+  background: var(--home-track);
+}
+
+.qari-dropdown__item[aria-selected='true'] {
+  background: var(--home-sage-soft);
+  font-weight: 600;
+}
+
+/* --- Switch --- */
+
+.qari-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.875rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--home-track);
+  transition: background-color 0.2s ease;
+}
+
+.qari-switch[aria-checked='true'] {
+  background: var(--home-sage-deep);
+}
+
+.qari-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  background: #f7f4ec;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.22s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.qari-switch[aria-checked='true'] .qari-switch__knob {
+  transform: translateX(1.125rem);
+}
+
+/* --- Loading placeholders that shimmer instead of a blank screen --- */
+
+.qari-skeleton {
+  background: linear-gradient(
+    100deg,
+    var(--home-track) 30%,
+    color-mix(in srgb, var(--home-heading) 10%, var(--home-track)) 50%,
+    var(--home-track) 70%
+  );
+  background-size: 300% 100%;
+  animation: qari-shimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes qari-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* --- Record flow --- */
+
+.qari-step {
+  animation: qari-step 0.34s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+
+@keyframes qari-step {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.qari-count {
+  animation: qari-count 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes qari-count {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.15;
+    transform: scale(0.9);
+  }
+}
+
+/* The record control: a ring with a red dot that becomes a red square. */
+.qari-rec {
+  display: flex;
+  width: 5.25rem;
+  height: 5.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 4px solid var(--home-heading);
+  transition: transform 0.12s ease;
+}
+
+.qari-rec:active {
+  transform: scale(0.94);
+}
+
+.qari-rec__core {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: #f43f5e;
+  transition:
+    width 0.25s cubic-bezier(0.3, 1.2, 0.5, 1),
+    height 0.25s cubic-bezier(0.3, 1.2, 0.5, 1),
+    border-radius 0.25s ease;
+}
+
+.qari-rec.is-recording .qari-rec__core {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.5rem;
+}
+
+.qari-done {
+  animation: qari-done 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes qari-done {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qari-enter,
+  .qari-pop,
+  .qari-swap,
+  .qari-dropdown__menu,
+  .qari-step,
+  .qari-count,
+  .qari-done {
+    animation: none;
   }
 
-  .hifdh-wave-bar {
+  .qari-skeleton {
     animation: none;
-    transform: scaleY(0.5);
   }
 
-  .qari-ring {
-    animation: none;
-    opacity: 0.4;
-  }
-
-  .qari-eq-bar {
-    animation: none;
-    transform: scaleY(0.6);
+  .qari-switch__knob,
+  .qari-rec__core {
+    transition: none;
   }
 }

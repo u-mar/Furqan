@@ -12,6 +12,10 @@ export interface Recitation {
   hashtags: string[]
   /** Visible only to the reciter. */
   isPrivate: boolean
+  /** Sheikh id from lib/sheikhs, when the reciter imitated one. */
+  imitating: string | null
+  /** Loudness across the recording, 0–100. Empty for recordings made before waveforms. */
+  peaks: number[]
   caption: string
   durationSec: number
   likeCount: number
@@ -60,7 +64,12 @@ export async function fetchFeed(options: {
   likedBy?: string | null
   /** Matches reciter name, handle, or recitation title. */
   query?: string
+  /** Only imitations of this sheikh. */
+  imitating?: string
+  /** Only people the viewer follows. */
+  following?: boolean
   skip?: number
+  take?: number
 }): Promise<FeedPage> {
   const params = new URLSearchParams()
   if (options.sort) params.set('sort', options.sort)
@@ -68,7 +77,10 @@ export async function fetchFeed(options: {
   if (options.viewerId) params.set('viewerId', options.viewerId)
   if (options.likedBy) params.set('likedBy', options.likedBy)
   if (options.query) params.set('q', options.query)
+  if (options.imitating) params.set('imitating', options.imitating)
+  if (options.following) params.set('following', '1')
   if (options.skip) params.set('skip', String(options.skip))
+  if (options.take) params.set('take', String(options.take))
 
   const res = await fetch(`/api/qari?${params.toString()}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Could not load recitations.')
@@ -118,6 +130,9 @@ export interface PublishInput {
   hashtags: string
   isPrivate: boolean
   caption: string
+  /** Sheikh id, or empty when not imitating. */
+  imitating: string
+  peaks: number[]
   userId: string
   userName: string
   userUsername: string
@@ -133,6 +148,8 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   form.append('hashtags', input.hashtags)
   form.append('isPrivate', String(input.isPrivate))
   form.append('caption', input.caption)
+  form.append('imitating', input.imitating)
+  form.append('peaks', JSON.stringify(input.peaks))
   form.append('userId', input.userId)
   form.append('userName', input.userName)
   form.append('userUsername', input.userUsername)
@@ -172,6 +189,29 @@ export async function renameQari(user: {
  */
 const audioBlobs = new Map<string, Promise<Blob | null>>()
 
+/** Hand over a recording already on the phone — just published — so sharing it needs no download. */
+export function primeRecitationAudio(id: string, blob: Blob): void {
+  audioBlobs.set(id, Promise.resolve(blob))
+}
+
+/**
+ * The same tidy-up the server does to hashtags, so the chips shown while
+ * typing are exactly what will be saved.
+ */
+export function tidyHashtags(raw: string): string[] {
+  const seen = new Set<string>()
+  for (const piece of raw.split(/[\s,]+/)) {
+    const tag = piece
+      .replace(/^#+/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_؀-ۿ]/g, '')
+      .slice(0, 24)
+    if (tag) seen.add(tag)
+    if (seen.size >= 6) break
+  }
+  return [...seen]
+}
+
 export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
   let pending = audioBlobs.get(id)
   if (!pending) {
@@ -183,60 +223,95 @@ export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
   return pending
 }
 
-/** Share targets read the extension, so it has to match the actual bytes. */
-const AUDIO_EXTENSIONS: Array<[string, string]> = [
-  ['mp4', 'm4a'],
-  ['m4a', 'm4a'],
-  ['mpeg', 'mp3'],
-  ['mp3', 'mp3'],
-  ['ogg', 'ogg'],
-  ['wav', 'wav'],
-  ['webm', 'webm'],
-]
 
-function audioFileName(r: Pick<Recitation, 'title' | 'userName'>, mimeType: string): string {
-  const ext = AUDIO_EXTENSIONS.find(([needle]) => mimeType.includes(needle))?.[1] ?? 'webm'
-  const stem = `${r.userName} - ${r.title}`.replace(/[^\w\s-]/g, '').trim() || 'recitation'
-  return `${stem}.${ext}`
+/* ---------------------------------------------------------------- discover */
+
+export interface TagCount {
+  tag: string
+  count: number
 }
 
-/**
- * Share a recitation as the recording itself wherever the platform allows,
- * so it arrives as something you can play rather than a link to tap.
- */
-export async function shareRecitation(r: Recitation): Promise<'shared' | 'copied'> {
-  const url = `${window.location.origin}/qari/${encodeURIComponent(r.userUsername)}?r=${r.id}`
-  const text = `${r.userName} — ${r.title}`
+export interface SheikhCount {
+  id: string
+  count: number
+}
 
-  if (navigator.share) {
-    try {
-      const blob = await prefetchRecitationAudio(r.id)
-      if (blob && blob.size > 0) {
-        const type = blob.type || 'audio/webm'
-        const file = new File([blob], audioFileName(r, type), { type })
-        // Several targets refuse a file and a url together, so the link rides
-        // along inside the text instead.
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: text, text: `${text}
-${url}` })
-          return 'shared'
-        }
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-      // Anything else — the platform refused the file, or the gesture lapsed
-      // while it downloaded — falls through to sharing the link.
-    }
+export interface Discover {
+  /** Hashtags people use most, for the row under search. */
+  tags: TagCount[]
+  /** Sheikhs with the most imitations. */
+  sheikhs: SheikhCount[]
+  /** Recitations with the most hearts. */
+  mostLoved: Recitation[]
+}
 
-    try {
-      await navigator.share({ title: text, text, url })
-      return 'shared'
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared'
-    }
+export async function fetchDiscover(viewerId: string | null): Promise<Discover> {
+  const params = new URLSearchParams()
+  if (viewerId) params.set('viewerId', viewerId)
+  const res = await fetch(`/api/qari/discover?${params.toString()}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Could not load Qari.')
+  return (await res.json()) as Discover
+}
+
+/** How many people imitated one sheikh, and from how many different qaris. */
+export async function fetchSheikhStats(sheikhId: string): Promise<{ count: number; people: number }> {
+  const res = await fetch(`/api/qari/discover?sheikh=${encodeURIComponent(sheikhId)}`, {
+    cache: 'no-store',
+  })
+  if (!res.ok) return { count: 0, people: 0 }
+  return (await res.json()) as { count: number; people: number }
+}
+
+/* ------------------------------------------------------------------ follow */
+
+export interface QariSummary {
+  username: string
+  name: string
+  recitations: number
+  /** Whether the viewer follows them. */
+  following: boolean
+}
+
+export async function fetchQaris(options: {
+  viewerId: string | null
+  query?: string
+  onlyFollowing?: boolean
+}): Promise<QariSummary[]> {
+  const params = new URLSearchParams()
+  if (options.viewerId) params.set('viewerId', options.viewerId)
+  if (options.query) params.set('q', options.query)
+  if (options.onlyFollowing) params.set('following', '1')
+  const res = await fetch(`/api/qari/qaris?${params.toString()}`, { cache: 'no-store' })
+  if (!res.ok) throw new Error('Could not load qaris.')
+  return ((await res.json()) as { items: QariSummary[] }).items
+}
+
+export async function setFollowing(
+  viewer: { id: string; username: string },
+  target: string,
+  follow: boolean
+): Promise<{ following: boolean; followers: number }> {
+  const res = await fetch('/api/qari/follow', {
+    method: follow ? 'POST' : 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: viewer.id, username: viewer.username, target }),
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    following?: boolean
+    followers?: number
+    error?: string
   }
+  if (!res.ok) throw new Error(data.error || 'Could not update that.')
+  return { following: Boolean(data.following), followers: data.followers ?? 0 }
+}
 
-  await navigator.clipboard.writeText(`${text}
-${url}`)
-  return 'copied'
+export async function fetchFollowState(
+  target: string,
+  viewerId: string | null
+): Promise<{ following: boolean; followers: number }> {
+  const params = new URLSearchParams({ target })
+  if (viewerId) params.set('viewerId', viewerId)
+  const res = await fetch(`/api/qari/follow?${params.toString()}`, { cache: 'no-store' })
+  if (!res.ok) return { following: false, followers: 0 }
+  return (await res.json()) as { following: boolean; followers: number }
 }

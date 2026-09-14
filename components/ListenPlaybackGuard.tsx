@@ -1,8 +1,9 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { stopListenAudio } from '@/lib/listen-audio'
+import { stopPlayback } from '@/lib/qari-player'
 
 /**
  * Listen keeps playing as you move around the app — stepping back to the home
@@ -13,15 +14,22 @@ import { stopListenAudio } from '@/lib/listen-audio'
  */
 const SILENCES_LISTEN = ['/read', '/test', '/qari']
 
+function within(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
+
 export default function ListenPlaybackGuard() {
   const pathname = usePathname()
+  const previous = useRef<string | null>(null)
 
   useEffect(() => {
     if (!pathname) return
-    const conflicts = SILENCES_LISTEN.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`)
-    )
-    if (conflicts) stopListenAudio()
+    if (SILENCES_LISTEN.some((route) => within(pathname, route))) stopListenAudio()
+
+    // A Qari recitation is controlled from its row, so it stops when you move
+    // to a screen where that row is gone — and never runs into a recording.
+    if (previous.current !== null && previous.current !== pathname) stopPlayback()
+    previous.current = pathname
   }, [pathname])
 
   return null

@@ -14,9 +14,11 @@
     "split-somali-voice": "node scripts/split-somali-voice.mjs"
   },
   "dependencies": {
+    "@mediabunny/mp3-encoder": "^1.56.2",
     "@prisma/client": "^6.19.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
+    "mediabunny": "^1.56.2",
     "mongodb": "^7.6.0",
     "next": "^16.2.4",
     "prisma": "^6.19.3",

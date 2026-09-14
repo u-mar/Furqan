@@ -37,6 +37,54 @@ function pickMimeType(): string {
   return CANDIDATE_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? ''
 }
 
+export interface PreparedRecording {
+  stream: MediaStream
+  context: AudioContext
+}
+
+/**
+ * Ask for the microphone and wake the audio engine, straight from the tap.
+ *
+ * Done before the 3-2-1 countdown rather than after it: phones only let audio
+ * start inside a tap, the permission prompt would otherwise land mid-count,
+ * and the microphone gets a moment to settle before the first word.
+ */
+export async function prepareRecording(): Promise<PreparedRecording> {
+  const context = new AudioContext()
+  void context.resume().catch(() => {})
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    })
+    return { stream, context }
+  } catch (err) {
+    void context.close().catch(() => {})
+    throw err
+  }
+}
+
+export function releasePrepared(prepared: PreparedRecording | null): void {
+  if (!prepared) return
+  prepared.stream.getTracks().forEach((track) => track.stop())
+  void prepared.context.close().catch(() => {})
+}
+
+/** Why the microphone could not be used, in words a reciter can act on. */
+export function microphoneError(err: unknown): string {
+  if (err instanceof DOMException) {
+    if (err.name === 'NotAllowedError') {
+      return 'Microphone access was blocked. Allow it in your browser settings to record.'
+    }
+    if (err.name === 'NotFoundError') return 'No microphone was found on this device.'
+  }
+  return 'Could not start recording on this device.'
+}
+
 export interface QariRecorderState {
   recording: boolean
   /** Seconds elapsed in the current take. */
@@ -83,24 +131,26 @@ export function useQariRecorder(maxSeconds = 600) {
 
   useEffect(() => teardown, [teardown])
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (prepared?: PreparedRecording) => {
     if (recorderRef.current) return
 
     try {
       // All three of these are tuned for phone calls. On a recitation they
       // pump the level, swallow the tail of each phrase and add a warbling
       // artefact — the single biggest cause of a take sounding cheap.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
-      })
+      const stream =
+        prepared?.stream ??
+        (await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        }))
       streamRef.current = stream
 
-      const ctx = new AudioContext()
+      const ctx = prepared?.context ?? new AudioContext()
       audioCtxRef.current = ctx
       if (ctx.state === 'suspended') await ctx.resume()
 
@@ -168,13 +218,7 @@ export function useQariRecorder(maxSeconds = 600) {
       rafRef.current = requestAnimationFrame(tick)
     } catch (err) {
       teardown()
-      const denied = err instanceof DOMException && err.name === 'NotAllowedError'
-      setState({
-        ...idle,
-        error: denied
-          ? 'Microphone access was blocked. Allow it in your browser settings to record.'
-          : 'Could not start recording on this device.',
-      })
+      setState({ ...idle, error: microphoneError(err) })
     }
   }, [maxSeconds, teardown])
 

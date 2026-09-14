@@ -77,6 +77,12 @@ model Recitation {
   /// Private recordings are visible only to the reciter. Optional so the
   /// recordings made before this existed still read back as public.
   isPrivate   Boolean?
+  /// The sheikh whose style this imitates — an id from lib/sheikhs. Absent
+  /// when the reciter did not switch Imitate on.
+  imitating   String?
+  /// Loudness across the recording, 0–100, measured on the phone when it was
+  /// published. Draws the waveform without downloading the audio.
+  peaks       Int[]
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)
@@ -87,6 +93,20 @@ model Recitation {
   @@index([createdAt])
   @@index([userUsername])
   @@index([likeCount])
+  @@index([imitating])
+}
+
+/// One qari following another. By username on both sides, because accounts
+/// can be local-only (`local_<username>` ids) as well as database-backed.
+model QariFollow {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  followerId        String
+  followerUsername  String
+  followingUsername String
+  createdAt         DateTime @default(now())
+
+  @@index([followerId])
+  @@index([followingUsername])
 }
 
 /// Profile picture for a qari. Keyed by username because accounts can be
