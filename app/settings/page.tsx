@@ -2,23 +2,29 @@
 
 import Link from 'next/link'
 import {
-  ArrowRight,
+  BookOpen,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
-  Circle,
+  ChevronRight,
   Download,
-  Moon,
-  Sun,
+  Globe,
+  Image as ImageIcon,
+  Lock,
+  LogOut,
+  MessageSquare,
+  Trash,
+  UserRound,
+  type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 import AccountSheet from '@/components/settings/AccountSheet'
 import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
-import { IconOrnament } from '@/components/home/TileIcons'
-import { APP_NAME } from '@/lib/app-brand'
-import { clearSignedInUser, getSignedInUser } from '@/lib/auth'
+import SettingsSheet from '@/components/settings/SettingsSheet'
+import QariAvatar from '@/components/qari/QariAvatar'
+import Switch from '@/components/qari/Switch'
+import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
   applyThemeToDocument,
   getAppSettings,
@@ -28,7 +34,6 @@ import {
 } from '@/lib/app-settings'
 import {
   DEFAULT_TRANSLATION_EDITION,
-  getTranslationOption,
   translationLanguageLabel,
   translationsForLanguage,
   type TranslationLanguageId,
@@ -45,147 +50,56 @@ import {
 import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
-import { VERSE_IMAGE_BACKGROUNDS } from '@/lib/verse-image'
 
-/* ---------- Shared button recipes ---------- */
+type SheetName = 'mushaf' | 'translation' | 'offline' | 'feedback'
+
+/* Each dot depicts a theme, so its colour is fixed rather than a token. */
+const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
+  { mode: 'light', label: 'Light', swatch: '#fffdf8' },
+  { mode: 'dark', label: 'Dark', swatch: '#161d1a' },
+  { mode: 'black', label: 'Black', swatch: '#000000' },
+]
+
+const MUSHAF_WIDTHS: { mode: MushafWidthMode; label: string; hint: string; inset: string }[] = [
+  { mode: 'full', label: 'Full width', hint: 'Bigger script', inset: '0.5rem' },
+  { mode: 'spaced', label: 'Spaced', hint: 'Margins on the sides', inset: '1.15rem' },
+]
+
 const btnBase =
-  'ed-focus flex min-h-[46px] w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-[transform,background-color,color,opacity] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50'
-const btnInk = cn(btnBase, 'ed-ink hover:opacity-90')
+  'ed-focus flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-[transform,background-color,opacity] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50'
+const btnInk = cn(btnBase, 'ed-ink')
 const btnQuiet = cn(
   btnBase,
   'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
 )
-const btnAccent = cn(
-  btnBase,
-  'border border-[var(--home-sage)] text-[var(--home-sage-deep)] hover:bg-[var(--home-sage-soft)]'
-)
 
-/* Fixed preview colours: each swatch depicts a theme, so it must not follow
-   the current one. */
-const themeOptions = [
-  {
-    mode: 'light' as ThemeMode,
-    Icon: Sun,
-    label: 'Light',
-    bg: '#f4f1e8',
-    ink: '#1c1a16',
-    line: 'rgba(28, 26, 22, 0.32)',
-    edge: 'rgba(28, 26, 22, 0.14)',
-  },
-  {
-    mode: 'dark' as ThemeMode,
-    Icon: Moon,
-    label: 'Dark',
-    bg: '#0f1513',
-    ink: '#ece7dc',
-    line: 'rgba(236, 231, 220, 0.34)',
-    edge: 'rgba(236, 231, 220, 0.16)',
-  },
-  {
-    mode: 'black' as ThemeMode,
-    Icon: Circle,
-    label: 'Black',
-    bg: '#000000',
-    ink: '#f6f6f6',
-    line: 'rgba(246, 246, 246, 0.34)',
-    edge: 'rgba(246, 246, 246, 0.18)',
-  },
-] as const
+function SectionLabel({ children }: { children: ReactNode }) {
+  return <h2 className="home-label mx-1 mb-2 mt-[22px]">{children}</h2>
+}
 
-function SettingsRow({
-  title,
-  description,
-  selected,
-  onClick,
-}: {
-  title: string
-  description: string
-  selected: boolean
-  onClick: () => void
-}) {
+function RowIcon({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'neutral' | 'danger' }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <span
       className={cn(
-        'ed-focus flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl border px-4 py-3.5 text-left transition-colors active:scale-[0.99]',
-        selected
-          ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
-          : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
+        'set-row__icon',
+        tone === 'neutral' && 'set-row__icon--neutral',
+        tone === 'danger' && 'set-row__icon--danger'
       )}
-      aria-pressed={selected}
+      aria-hidden
     >
-      <span className="min-w-0">
-        <p className="font-semibold text-[var(--home-heading)]">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
-      </span>
-      <span
-        className={cn(
-          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors',
-          selected
-            ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-deep)] text-white'
-            : 'border-[var(--home-rule-strong)]'
-        )}
-        aria-hidden
-      >
-        {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
-      </span>
-    </button>
+      <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+    </span>
   )
 }
 
-function SettingsToggle({
-  title,
-  description,
-  enabled,
-  onToggle,
-}: {
-  title: string
-  description: string
-  enabled: boolean
-  onToggle: () => void
-}) {
+function RowChevron() {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      onClick={onToggle}
-      className="ed-card ed-focus flex min-h-[56px] w-full items-center justify-between gap-4 rounded-2xl px-4 py-3.5 text-left transition-colors active:scale-[0.99]"
-    >
-      <div className="min-w-0">
-        <p className="font-semibold text-[var(--home-heading)]">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">{description}</p>
-      </div>
-      <span
-        className={cn(
-          'relative h-7 w-12 shrink-0 rounded-full transition-colors',
-          enabled ? 'bg-[var(--home-sage-deep)]' : 'bg-[var(--home-track)]'
-        )}
-        aria-hidden
-      >
-        <span
-          className={cn(
-            'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
-            enabled ? 'translate-x-5' : 'translate-x-0.5'
-          )}
-        />
-      </span>
-    </button>
+    <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
   )
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-3 flex items-center gap-3">
-      <h2 className="ed-label">{children}</h2>
-      <span className="ed-rule flex-1" />
-    </div>
-  )
-}
-
-function SubLabel({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-xs font-semibold text-[var(--home-heading)]">{children}</p>
+function Divider() {
+  return <div className="set-row__divider" aria-hidden />
 }
 
 function ProgressBar({ percent, label }: { percent: number; label: string }) {
@@ -198,24 +112,31 @@ function ProgressBar({ percent, label }: { percent: number; label: string }) {
         />
       </div>
       <p className="mt-2 text-center text-xs text-[var(--home-muted)]">
-        <span className="ed-num font-semibold text-[var(--home-heading)]">{percent}%</span>
+        <span className="font-semibold tabular-nums text-[var(--home-heading)]">{percent}%</span>
         {label ? ` · ${label}` : ''}
       </p>
     </div>
   )
 }
 
+function ErrorNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400" role="alert">
+      {children}
+    </p>
+  )
+}
+
 export default function SettingsPage() {
   const [returnHref, setReturnHref] = useState('/')
+  const [user, setUser] = useState<AppUser | null>(null)
   const [theme, setTheme] = useState<ThemeMode>('dark')
   const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('full')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [translationEditionId, setTranslationEditionId] = useState<string>(
     DEFAULT_TRANSLATION_EDITION.en
   )
-  const [translatorPickerOpen, setTranslatorPickerOpen] = useState(false)
   const [verseWallpapers, setVerseWallpapers] = useState(true)
-  const [galleryOpen, setGalleryOpen] = useState(false)
   const [offline, setOffline] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -230,18 +151,22 @@ export default function SettingsPage() {
   const [progressLabel, setProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
-  const [feedbackNotice, setFeedbackNotice] = useState('')
+  const [sendingFeedback, setSendingFeedback] = useState(false)
+  const [sheet, setSheet] = useState<SheetName | null>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [accountNotice, setAccountNotice] = useState('')
-  const [signedInName, setSignedInName] = useState('')
-  const [signedInUsername, setSignedInUsername] = useState('')
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<number | null>(null)
 
-  function refreshProfile() {
-    const signedIn = getSignedInUser()
-    setSignedInName(signedIn?.name ?? '')
-    setSignedInUsername(signedIn?.username ?? '')
-  }
+  const refreshProfile = useCallback(() => setUser(getSignedInUser()), [])
+
+  const showToast = useCallback((message: string) => {
+    setToast(message)
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 2600)
+  }, [])
+
+  const closeSheet = useCallback(() => setSheet(null), [])
 
   useEffect(() => {
     const s = getAppSettings()
@@ -256,20 +181,19 @@ export default function SettingsPage() {
       so: areTranslationsCached('so'),
     })
     refreshProfile()
-    const onAuthChanged = () => refreshProfile()
-    window.addEventListener('auth-user-changed', onAuthChanged)
     const onOfflineReady = () => {
       setOffline(isOfflineReady() || getAppSettings().offlineDownloaded)
     }
+    window.addEventListener('auth-user-changed', refreshProfile)
     window.addEventListener('offline-bootstrap-complete', onOfflineReady)
     return () => {
-      window.removeEventListener('auth-user-changed', onAuthChanged)
+      window.removeEventListener('auth-user-changed', refreshProfile)
       window.removeEventListener('offline-bootstrap-complete', onOfflineReady)
+      if (toastTimer.current) window.clearTimeout(toastTimer.current)
     }
-  }, [])
+  }, [refreshProfile])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     setReturnHref(resolveSettingsReturnHref(params.get('returnTo')))
   }, [])
@@ -277,6 +201,7 @@ export default function SettingsPage() {
   function handleLogout() {
     clearSignedInUser()
     refreshProfile()
+    showToast('Signed out.')
   }
 
   function saveTheme(next: ThemeMode) {
@@ -285,12 +210,21 @@ export default function SettingsPage() {
     applyThemeToDocument(next)
   }
 
+  function saveMushafWidth(next: MushafWidthMode) {
+    setMushafWidth(next)
+    setAppSettings({ mushafWidth: next })
+  }
+
+  function saveVerseWallpapers(next: boolean) {
+    setVerseWallpapers(next)
+    setAppSettings({ verseWallpapersEnabled: next })
+  }
+
   function saveTranslationLanguage(next: TranslationLanguageId) {
     const nextEdition = DEFAULT_TRANSLATION_EDITION[next]
     setTranslationLanguage(next)
     setTranslationEditionId(nextEdition)
     setAppSettings({ translationLanguage: next, translationEditionId: nextEdition })
-    setTranslatorPickerOpen(false)
   }
 
   function saveTranslationEdition(next: string) {
@@ -370,567 +304,462 @@ export default function SettingsPage() {
   }
 
   async function handleSendFeedback() {
-    if (!feedbackMessage.trim()) return
+    if (!feedbackMessage.trim() || sendingFeedback) return
+    setSendingFeedback(true)
     try {
       await addFeedbackMessage(feedbackMessage, '')
       setFeedbackMessage('')
-      setFeedbackNotice('Feedback sent. JazakAllahu khayran.')
-      window.setTimeout(() => setFeedbackNotice(''), 2200)
+      setSheet(null)
+      showToast('Feedback sent. JazakAllahu khayran.')
     } catch {
-      setFeedbackNotice('Could not send feedback right now.')
-      window.setTimeout(() => setFeedbackNotice(''), 2200)
+      showToast('Could not send feedback right now.')
+    } finally {
+      setSendingFeedback(false)
     }
   }
 
-  const initial = (signedInName || 'A').charAt(0).toUpperCase()
+  const busy = downloading || downloadingTranslationLang !== null
 
   return (
-    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] bg-[var(--home-glow)]"
-        aria-hidden
-      />
-      <div className="relative mx-auto w-full max-w-lg px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6">
-        {/* Masthead */}
-        <header className="reveal mb-9">
-          <div className="flex items-center gap-4">
-            <Link
-              href={returnHref}
-              className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
-              aria-label="Back to home"
-            >
-              <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
-            </Link>
-            <div className="min-w-0">
-              <p className="ed-label">{APP_NAME}</p>
-              <h1 className="home-serif mt-1 text-[2.25rem] font-medium leading-none tracking-[-0.025em] text-[var(--home-heading)]">
-                Settings
-              </h1>
-            </div>
-          </div>
-
-          {/* Identity on its own line, action beneath — a long name and the
-              button fighting for the same row left both cramped. */}
-          <div className="ed-card mt-7 rounded-[1.25rem] p-3.5">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="ed-ink home-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg font-medium">
-                {initial}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="home-serif truncate text-[1.15rem] font-medium leading-tight text-[var(--home-heading)]">
-                  {signedInName || 'Anonymous'}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-[var(--home-muted)]">
-                  {signedInUsername ? `@${signedInUsername}` : 'Not signed in'}
-                </p>
-              </div>
-            </div>
-            {signedInName ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className={cn(btnQuiet, 'mt-3.5')}
-                >
-                  Sign out
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteOpen(true)}
-                  className="ed-focus mt-2 w-full py-2 text-center text-[0.8rem] font-medium text-[var(--home-muted)] transition-colors hover:text-rose-500"
-                >
-                  Delete account
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAccountOpen(true)}
-                className={cn(btnInk, 'mt-3.5')}
-              >
-                Add account
-              </button>
-            )}
-          </div>
+    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+        <header className="flex items-center gap-3">
+          <Link href={returnHref} className="home-round ed-focus" aria-label="Back">
+            <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+          </Link>
+          <h1 className="home-serif text-[1.625rem] font-semibold tracking-[-0.02em] text-[var(--home-heading)]">
+            Settings
+          </h1>
         </header>
 
-        <AccountSheet
-          open={accountOpen}
-          onClose={() => setAccountOpen(false)}
-          onSuccess={refreshProfile}
-        />
-
-        {(() => {
-          const current = getSignedInUser()
-          return current ? (
-            <DeleteAccountSheet
-              open={deleteOpen}
-              user={current}
-              onClose={() => setDeleteOpen(false)}
-              onDeleted={() => {
-                setDeleteOpen(false)
-                refreshProfile()
-                setAccountNotice('Your account has been deleted.')
-              }}
-            />
-          ) : null
-        })()}
-
-        {accountNotice ? (
-          <p className="ed-card mb-6 rounded-[1.25rem] px-4 py-3 text-center text-sm text-[var(--home-heading)]" role="status">
-            {accountNotice}
-          </p>
-        ) : null}
-
-        {/* Appearance */}
-        <section className="mb-9">
-          <SectionTitle>Appearance</SectionTitle>
-          <div className="grid grid-cols-3 gap-2.5">
-            {themeOptions.map(({ mode, Icon, label, bg, ink, line, edge }) => {
-              const selected = theme === mode
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => saveTheme(mode)}
-                  className={cn(
-                    'ed-focus flex flex-col gap-2 rounded-2xl border p-2 text-left transition-colors active:scale-[0.98]',
-                    selected
-                      ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
-                      : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
-                  )}
-                  aria-pressed={selected}
-                >
-                  <span
-                    className="relative block aspect-[4/3] w-full overflow-hidden rounded-xl"
-                    style={{ background: bg, boxShadow: `inset 0 0 0 1px ${edge}` }}
-                    aria-hidden
-                  >
-                    {/* Real script rather than placeholder bars — the swatch
-                        should look like the page it represents. */}
-                    <span
-                      className="amiri absolute inset-0 flex items-center justify-center px-1.5 text-center text-[0.62rem] leading-[1.85]"
-                      style={{ color: ink }}
-                      dir="rtl"
-                      lang="ar"
-                    >
-                      بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ
-                    </span>
-                    {selected ? (
-                      <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="flex items-center justify-between px-1 pb-0.5">
-                    <span className="text-xs font-semibold text-[var(--home-heading)]">{label}</span>
-                    <Icon className="h-3.5 w-3.5 text-[var(--home-muted)]" strokeWidth={1.75} />
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Mushaf page */}
-        <section className="mb-9">
-          <SectionTitle>Mushaf page</SectionTitle>
-          <div className="grid grid-cols-2 gap-2.5">
-            {(
-              [
-                { mode: 'full' as MushafWidthMode, label: 'Full width', hint: 'Bigger script', inset: '0.5rem' },
-                { mode: 'spaced' as MushafWidthMode, label: 'Spaced', hint: 'Margins on the sides', inset: '1.15rem' },
-              ] as const
-            ).map(({ mode, label, hint, inset }) => {
-              const selected = mushafWidth === mode
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setMushafWidth(mode)
-                    setAppSettings({ mushafWidth: mode })
-                  }}
-                  className={cn(
-                    'ed-focus flex flex-col gap-2 rounded-2xl border p-2 text-left transition-colors active:scale-[0.98]',
-                    selected
-                      ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
-                      : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] hover:border-[var(--home-rule-strong)]'
-                  )}
-                  aria-pressed={selected}
-                >
-                  <span
-                    className="relative block h-16 w-full overflow-hidden rounded-xl bg-[var(--app-bg)]"
-                    style={{ boxShadow: 'inset 0 0 0 1px var(--home-rule)' }}
-                    aria-hidden
-                  >
-                    {/* Actual script at each width, so the difference is visible
-                        rather than implied by grey bars. */}
-                    <span
-                      className="amiri absolute inset-y-0 flex flex-col justify-center gap-0.5 text-center leading-tight text-[var(--home-heading)]"
-                      style={{ left: inset, right: inset, fontSize: mode === 'full' ? '0.6rem' : '0.5rem' }}
-                      dir="rtl"
-                      lang="ar"
-                    >
-                      <span>ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ</span>
-                      <span>ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
-                      <span className="opacity-70">مَٰلِكِ يَوْمِ ٱلدِّينِ</span>
-                    </span>
-                  </span>
-                  <span className="flex items-center justify-between gap-2 px-1 pb-0.5">
-                    <span className="min-w-0">
-                      <span className="block text-xs font-semibold text-[var(--home-heading)]">{label}</span>
-                      <span className="block text-[0.68rem] text-[var(--home-muted)]">{hint}</span>
-                    </span>
-                    {selected ? (
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Ayah wallpapers */}
-        <section className="mb-9">
-          <SectionTitle>Ayah wallpapers</SectionTitle>
-          <SettingsToggle
-            title="Share ayah as a wallpaper"
-            description={
-              verseWallpapers
-                ? 'Long-press an ayah in Read and tap Share to make a card.'
-                : 'Turned off — the Share action is hidden in Read.'
-            }
-            enabled={verseWallpapers}
-            onToggle={() => {
-              const next = !verseWallpapers
-              setVerseWallpapers(next)
-              setAppSettings({ verseWallpapersEnabled: next })
-            }}
-          />
-          {verseWallpapers ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setGalleryOpen((v) => !v)}
-                aria-expanded={galleryOpen}
-                className="ed-card ed-focus mt-2.5 flex min-h-[56px] w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-transform active:scale-[0.99]"
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="flex -space-x-2">
-                    {VERSE_IMAGE_BACKGROUNDS.slice(0, 3).map((bg) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={bg.id}
-                        src={bg.src}
-                        alt=""
-                        loading="lazy"
-                        className="h-8 w-8 rounded-full object-cover ring-2 ring-[var(--home-card-bg)]"
-                      />
-                    ))}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-[var(--home-heading)]">
-                      Backgrounds
-                    </span>
-                    <span className="block text-xs text-[var(--home-muted)]">
-                      {VERSE_IMAGE_BACKGROUNDS.length} to choose from
-                    </span>
-                  </span>
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform',
-                    galleryOpen && 'rotate-180'
-                  )}
-                />
-              </button>
-
-              {galleryOpen ? (
-                <div className="mt-2 grid grid-cols-4 gap-1.5">
-                  {VERSE_IMAGE_BACKGROUNDS.map((bg) => (
-                    <div
-                      key={bg.id}
-                      className="relative overflow-hidden rounded-lg"
-                      style={{ aspectRatio: '4 / 5' }}
-                      title={bg.label}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={bg.src}
-                        alt={bg.label}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </section>
-
-        {/* Translation */}
-        <section className="mb-9">
-          <SectionTitle>Translation</SectionTitle>
-          <SubLabel>Language</SubLabel>
-          <div className="ed-seg grid-cols-2">
-            {(['en', 'so'] as const).map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => saveTranslationLanguage(lang)}
-                className="ed-seg__item ed-focus flex min-h-[44px] items-center justify-center text-sm font-semibold"
-                aria-pressed={translationLanguage === lang}
-              >
-                {translationLanguageLabel(lang)}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5">
-            <SubLabel>Translator</SubLabel>
-          </div>
+        {/* Account */}
+        {user ? (
+          <Link
+            href={`/qari/${encodeURIComponent(user.username)}`}
+            className="home-card home-press ed-focus mt-[18px] flex items-center gap-3 rounded-2xl px-3.5 py-3"
+          >
+            <QariAvatar username={user.username} name={user.name} size={48} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-semibold text-[var(--home-heading)]">
+                {user.name}
+              </span>
+              <span className="mt-px block truncate text-[0.8125rem] text-[var(--home-muted)]">
+                @{user.username}
+              </span>
+            </span>
+            <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+          </Link>
+        ) : (
           <button
             type="button"
-            onClick={() => setTranslatorPickerOpen((v) => !v)}
-            className={cn(
-              'ed-card ed-focus flex min-h-[56px] w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-[border-radius,border-color] active:scale-[0.99]',
-              translatorPickerOpen ? 'rounded-t-2xl rounded-b-none' : 'rounded-2xl'
-            )}
-            aria-expanded={translatorPickerOpen}
+            onClick={() => setAccountOpen(true)}
+            className="home-card home-press ed-focus mt-[18px] flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left"
           >
-            <span className="min-w-0">
-              <p className="font-semibold text-[var(--home-heading)]">
-                {getTranslationOption(translationEditionId).label}
-              </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-[var(--home-muted)]">
-                {translationsForLanguage(translationLanguage).length === 1
-                  ? `Only one ${translationLanguageLabel(translationLanguage)} translation is available`
-                  : 'Tap to change translator'}
-              </p>
+            <span className="ed-ink flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+              <UserRound className="h-[22px] w-[22px]" strokeWidth={1.9} />
             </span>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 shrink-0 text-[var(--home-muted)] transition-transform',
-                translatorPickerOpen && 'rotate-180'
-              )}
-              strokeWidth={2}
-            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-semibold text-[var(--home-heading)]">Add account</span>
+              <span className="mt-px block text-[0.8125rem] text-[var(--home-muted)]">
+                Sign in to share your recitations
+              </span>
+            </span>
+            <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
           </button>
-          {translatorPickerOpen && (
-            <div className="space-y-2 rounded-b-2xl border border-t-0 border-[var(--home-card-border)] bg-[var(--home-location-bg)] p-2">
-              {translationsForLanguage(translationLanguage).map((option) => (
-                <SettingsRow
-                  key={option.id}
-                  title={option.label}
-                  description={
-                    option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
-                      ? 'Also available offline'
-                      : 'Online only'
-                  }
-                  selected={translationEditionId === option.id}
-                  onClick={() => {
-                    saveTranslationEdition(option.id)
-                    setTranslatorPickerOpen(false)
-                  }}
-                />
-              ))}
-            </div>
-          )}
-          <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
-            Used in Read translation mode and when you long-press an ayah.
-          </p>
+        )}
 
-          <div className="mt-6">
-            <SubLabel>Offline translations</SubLabel>
-          </div>
-          <p className="mb-3 text-xs leading-relaxed text-[var(--home-muted)]">
-            Download each language separately for offline use (604 pages each). Use Wi‑Fi.
-          </p>
-
-          {downloadingTranslationLang && (
-            <div className="mb-3">
-              <ProgressBar percent={translationProgress} label={translationProgressLabel} />
-            </div>
-          )}
-
-          <div className="ed-card divide-y divide-[var(--home-rule)] rounded-2xl">
-            {(['en', 'so'] as const).map((lang) => {
-              const label = translationLanguageLabel(lang)
-              const defaultEditionLabel = getTranslationOption(DEFAULT_TRANSLATION_EDITION[lang]).label
-              const cached = translationCached[lang]
-              return (
-                <div key={lang} className="flex items-center justify-between gap-3 p-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span
-                      className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-                        cached
-                          ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
-                          : 'border border-[var(--home-rule-strong)] text-[var(--home-muted)]'
-                      )}
-                      aria-hidden
-                    >
-                      {cached ? (
-                        <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-                      ) : (
-                        <Download className="h-4 w-4" strokeWidth={1.75} />
-                      )}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--home-heading)]">{label}</p>
-                      <p className="text-xs leading-snug text-[var(--home-muted)]">
-                        {cached ? 'Saved offline' : `${defaultEditionLabel} — not downloaded`}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={downloadingTranslationLang !== null || downloading}
-                    onClick={() => void handleDownloadTranslation(lang)}
-                    aria-label={cached ? `Re-download ${label}` : `Download ${label}`}
-                    className={cn(
-                      'ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
-                      cached
-                        ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
-                        : 'ed-ink hover:opacity-90'
-                    )}
-                  >
-                    {cached ? 'Re-download' : 'Download'}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Offline reader */}
-        <section className="mb-9">
-          <SectionTitle>Offline reader</SectionTitle>
-          <div className="ed-card rounded-2xl p-4">
-            {offline ? (
-              <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-                  <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--home-heading)]">Quran saved</p>
-                  <p className="text-xs text-[var(--home-muted)]">The reader works offline.</p>
-                </div>
-              </div>
-            ) : (
-              <p className="mb-4 text-sm leading-relaxed text-[var(--home-muted)]">
-                Install the app to your home screen and the Quran text plus mushaf fonts download
-                automatically. Open the installed app on Wi‑Fi and wait a minute if you are offline
-                here in the browser.
-              </p>
-            )}
-
-            {downloading && (
-              <div className="mb-4">
-                <ProgressBar percent={progress} label={progressLabel} />
-              </div>
-            )}
-
-            {error && (
-              <p className="mb-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
-                {error}
-              </p>
-            )}
-
-            {!offline && (
+        {/* Appearance */}
+        <SectionLabel>Appearance</SectionLabel>
+        <div className="home-card grid grid-cols-3 gap-1.5 rounded-2xl p-1.5" role="radiogroup" aria-label="Theme">
+          {THEMES.map(({ mode, label, swatch }) => {
+            const selected = theme === mode
+            return (
               <button
+                key={mode}
                 type="button"
-                disabled={downloading || downloadingTranslationLang !== null}
-                onClick={() => void handleRetryOfflineBootstrap()}
-                className={btnInk}
+                role="radio"
+                aria-checked={selected}
+                onClick={() => saveTheme(mode)}
+                className={cn(
+                  'ed-focus flex h-11 items-center justify-center gap-2 rounded-[11px] text-[0.84375rem] font-semibold transition-colors',
+                  selected ? 'ed-ink' : 'text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+                )}
               >
-                <Download className="h-4 w-4" strokeWidth={2} />
-                Set up offline reader now
+                <span
+                  className="h-3.5 w-3.5 shrink-0 rounded-full"
+                  style={{
+                    background: swatch,
+                    boxShadow: 'inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent)',
+                  }}
+                  aria-hidden
+                />
+                {label}
               </button>
-            )}
+            )
+          })}
+        </div>
 
+        {/* Reading */}
+        <SectionLabel>Reading</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          <button type="button" className="set-row" onClick={() => setSheet('mushaf')}>
+            <RowIcon icon={BookOpen} />
+            <span className="set-row__label">Mushaf page</span>
+            <span className="set-row__value">
+              {MUSHAF_WIDTHS.find((w) => w.mode === mushafWidth)?.label ?? 'Full width'}
+            </span>
+            <RowChevron />
+          </button>
+          <Divider />
+          <label className="set-row cursor-pointer">
+            <RowIcon icon={ImageIcon} />
+            <span className="set-row__label">Ayah wallpapers</span>
+            <Switch checked={verseWallpapers} onChange={saveVerseWallpapers} label="Ayah wallpapers" />
+          </label>
+          <Divider />
+          <button type="button" className="set-row" onClick={() => setSheet('translation')}>
+            <RowIcon icon={Globe} />
+            <span className="set-row__label">Translation</span>
+            <span className="set-row__value">{translationLanguageLabel(translationLanguage)}</span>
+            <RowChevron />
+          </button>
+        </div>
+
+        {/* Offline */}
+        <SectionLabel>Offline</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          <button type="button" className="set-row" onClick={() => setSheet('offline')}>
+            <RowIcon icon={Download} />
+            <span className="set-row__label">Quran for offline</span>
+            {downloading ? (
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--home-sage-deep)]">
+                {progress}%
+              </span>
+            ) : offline ? (
+              <span className="flex shrink-0 items-center gap-[5px] text-sm font-semibold text-[var(--home-sage-deep)]">
+                <Check className="h-[15px] w-[15px]" strokeWidth={2.6} />
+                Downloaded
+              </span>
+            ) : (
+              <>
+                <span className="set-row__value">Not saved</span>
+                <RowChevron />
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Support */}
+        <SectionLabel>Support</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          <button type="button" className="set-row" onClick={() => setSheet('feedback')}>
+            <RowIcon icon={MessageSquare} />
+            <span className="set-row__label">Send feedback</span>
+            <RowChevron />
+          </button>
+          <Divider />
+          <Link href="/privacy" className="set-row">
+            <RowIcon icon={Lock} />
+            <span className="set-row__label">Privacy Policy</span>
+            <RowChevron />
+          </Link>
+        </div>
+
+        {/* Account actions */}
+        {user ? (
+          <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
+            <button type="button" className="set-row" onClick={handleLogout}>
+              <RowIcon icon={LogOut} tone="neutral" />
+              <span className="set-row__label">Sign out</span>
+            </button>
+            <Divider />
+            <button type="button" className="set-row set-row--danger" onClick={() => setDeleteOpen(true)}>
+              <RowIcon icon={Trash} tone="danger" />
+              <span className="set-row__label">Delete account</span>
+            </button>
+          </div>
+        ) : null}
+
+        <p className="home-serif mt-8 text-center text-sm italic text-[var(--home-muted)]">For Sadaqah Jariyah</p>
+      </div>
+
+      {/* Mushaf page */}
+      <SettingsSheet
+        open={sheet === 'mushaf'}
+        title="Mushaf page"
+        description="How the page sits on your screen in Read."
+        onClose={closeSheet}
+      >
+        <div className="grid grid-cols-2 gap-2.5">
+          {MUSHAF_WIDTHS.map(({ mode, label, hint, inset }) => {
+            const selected = mushafWidth === mode
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  saveMushafWidth(mode)
+                  setSheet(null)
+                }}
+                className={cn(
+                  'ed-focus flex flex-col gap-2 rounded-2xl border p-2 text-left transition-colors active:scale-[0.98]',
+                  selected
+                    ? 'border-[var(--home-sage)] bg-[var(--home-sage-soft)]'
+                    : 'border-[var(--home-rule)] hover:border-[var(--home-rule-strong)]'
+                )}
+                aria-pressed={selected}
+              >
+                <span
+                  className="relative block h-20 w-full overflow-hidden rounded-xl bg-[var(--app-bg)]"
+                  style={{ boxShadow: 'inset 0 0 0 1px var(--home-rule)' }}
+                  aria-hidden
+                >
+                  {/* Actual script at each width, so the difference is visible
+                      rather than implied by grey bars. */}
+                  <span
+                    className="amiri absolute inset-y-0 flex flex-col items-center justify-center gap-0.5 leading-tight text-[var(--home-heading)]"
+                    style={{ left: inset, right: inset, fontSize: mode === 'full' ? '0.66rem' : '0.55rem' }}
+                    dir="rtl"
+                    lang="ar"
+                  >
+                    <span>ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ</span>
+                    <span>ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
+                    <span className="opacity-70">مَٰلِكِ يَوْمِ ٱلدِّينِ</span>
+                  </span>
+                </span>
+                <span className="flex items-center justify-between gap-2 px-1 pb-0.5">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-[var(--home-heading)]">{label}</span>
+                    <span className="block text-xs text-[var(--home-muted)]">{hint}</span>
+                  </span>
+                  {selected ? (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </SettingsSheet>
+
+      {/* Translation */}
+      <SettingsSheet
+        open={sheet === 'translation'}
+        title="Translation"
+        description="Used in Read translation mode and when you long-press an ayah."
+        onClose={closeSheet}
+      >
+        <p className="mb-2 text-xs font-semibold text-[var(--home-heading)]">Language</p>
+        <div className="ed-seg grid-cols-2">
+          {(['en', 'so'] as const).map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => saveTranslationLanguage(lang)}
+              className="ed-seg__item ed-focus flex min-h-[44px] items-center justify-center text-sm font-semibold"
+              aria-pressed={translationLanguage === lang}
+            >
+              {translationLanguageLabel(lang)}
+            </button>
+          ))}
+        </div>
+
+        <p className="mb-2 mt-5 text-xs font-semibold text-[var(--home-heading)]">Translator</p>
+        <div
+          className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]"
+          role="radiogroup"
+          aria-label="Translator"
+        >
+          {translationsForLanguage(translationLanguage).map((option) => {
+            const selected = translationEditionId === option.id
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => saveTranslationEdition(option.id)}
+                className="set-row"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[0.9375rem] font-medium">{option.label}</span>
+                  <span className="block text-xs text-[var(--home-muted)]">
+                    {option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
+                      ? 'Also available offline'
+                      : 'Online only'}
+                  </span>
+                </span>
+                {selected ? (
+                  <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+
+        <p className="mt-5 text-xs font-semibold text-[var(--home-heading)]">Offline translations</p>
+        <p className="mb-3 mt-1 text-xs leading-relaxed text-[var(--home-muted)]">
+          Each language downloads separately, 604 pages each. Use Wi‑Fi.
+        </p>
+
+        {downloadingTranslationLang ? (
+          <div className="mb-3">
+            <ProgressBar percent={translationProgress} label={translationProgressLabel} />
+          </div>
+        ) : null}
+
+        <div className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]">
+          {(['en', 'so'] as const).map((lang) => {
+            const label = translationLanguageLabel(lang)
+            const cached = translationCached[lang]
+            return (
+              <div key={lang} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                      cached
+                        ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
+                        : 'bg-[var(--home-track)] text-[var(--home-muted)]'
+                    )}
+                    aria-hidden
+                  >
+                    {cached ? (
+                      <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
+                    ) : (
+                      <Download className="h-4 w-4" strokeWidth={1.9} />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--home-heading)]">{label}</p>
+                    <p className="text-xs text-[var(--home-muted)]">{cached ? 'Saved offline' : 'Not downloaded'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleDownloadTranslation(lang)}
+                  aria-label={cached ? `Re-download ${label}` : `Download ${label}`}
+                  className={cn(
+                    'ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
+                    cached
+                      ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+                      : 'ed-ink'
+                  )}
+                >
+                  {cached ? 'Re-download' : 'Download'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        {error ? <ErrorNote>{error}</ErrorNote> : null}
+      </SettingsSheet>
+
+      {/* Offline */}
+      <SettingsSheet open={sheet === 'offline'} title="Quran for offline" onClose={closeSheet}>
+        {offline ? (
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+              <CheckCircle2 className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[var(--home-heading)]">Quran saved</p>
+              <p className="text-xs text-[var(--home-muted)]">The reader works without a connection.</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-[var(--home-muted)]">
+            Install the app to your home screen and the Quran text and mushaf fonts download on their
+            own. Open the installed app on Wi‑Fi and give it a minute.
+          </p>
+        )}
+
+        {downloading ? (
+          <div className="mt-4">
+            <ProgressBar percent={progress} label={progressLabel} />
+          </div>
+        ) : null}
+
+        {error ? <ErrorNote>{error}</ErrorNote> : null}
+
+        <div className="mt-5 space-y-2.5">
+          {!offline ? (
             <button
               type="button"
-              disabled={downloading || downloadingTranslationLang !== null}
-              onClick={handleDownload}
-              className={cn('mt-3', offline ? btnQuiet : btnAccent)}
+              disabled={busy}
+              onClick={() => void handleRetryOfflineBootstrap()}
+              className={btnInk}
             >
-              {offline ? 'Re-download Quran data' : 'Download manually (browser)'}
+              <Download className="h-4 w-4" strokeWidth={2} />
+              Set up offline reader now
             </button>
+          ) : null}
+          <button type="button" disabled={busy} onClick={() => void handleDownload()} className={btnQuiet}>
+            {offline ? 'Re-download Quran data' : 'Download manually (browser)'}
+          </button>
+          {!offline ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleUseBundled()}
+              className="ed-focus flex min-h-[44px] w-full items-center justify-center rounded-full text-xs font-medium text-[var(--home-muted)] underline-offset-4 hover:underline disabled:opacity-50"
+            >
+              Load bundled file from server
+            </button>
+          ) : null}
+        </div>
+      </SettingsSheet>
 
-            {!offline && (
-              <button
-                type="button"
-                disabled={downloading || downloadingTranslationLang !== null}
-                onClick={handleUseBundled}
-                className="ed-focus mt-3 flex min-h-[44px] w-full items-center justify-center rounded-full text-xs font-medium text-[var(--home-muted)] underline-offset-4 hover:underline disabled:opacity-50"
-              >
-                Load bundled file from server
-              </button>
-            )}
-          </div>
-        </section>
-
-        {/* Feedback */}
-        <section className="mb-9">
-          <SectionTitle>Feedback</SectionTitle>
-          <div className="ed-card overflow-hidden rounded-2xl">
-            <textarea
-              value={feedbackMessage}
-              onChange={(e) => setFeedbackMessage(e.target.value)}
-              rows={4}
-              placeholder="Share a bug, idea, or request…"
-              className="block w-full resize-none bg-transparent px-4 py-3.5 text-sm leading-relaxed text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none"
-            />
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--home-rule)] px-3 py-2.5">
-              <p
-                className={cn(
-                  'min-w-0 truncate text-xs font-medium text-[var(--home-sage-deep)] transition-opacity',
-                  feedbackNotice ? 'opacity-100' : 'opacity-0'
-                )}
-                aria-live="polite"
-              >
-                {feedbackNotice || ' '}
-              </p>
-              <button
-                type="button"
-                onClick={() => void handleSendFeedback()}
-                disabled={!feedbackMessage.trim()}
-                className="ed-ink ed-focus flex h-9 shrink-0 items-center gap-1.5 rounded-full pl-4 pr-3 text-xs font-semibold transition-opacity disabled:opacity-40"
-              >
-                Send
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <Link
-          href="/read"
-          className="ed-card ed-focus group flex min-h-[56px] items-center justify-between rounded-2xl px-4 transition-[border-color] hover:border-[var(--home-sage)] active:scale-[0.99]"
+      {/* Feedback */}
+      <SettingsSheet
+        open={sheet === 'feedback'}
+        title="Send feedback"
+        description="A bug, an idea or a request — it all helps."
+        onClose={closeSheet}
+      >
+        <textarea
+          value={feedbackMessage}
+          onChange={(e) => setFeedbackMessage(e.target.value)}
+          rows={5}
+          placeholder="Write your message…"
+          className="block w-full resize-none rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 py-3.5 text-[0.95rem] leading-relaxed text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:border-[var(--home-sage)] focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => void handleSendFeedback()}
+          disabled={!feedbackMessage.trim() || sendingFeedback}
+          className={cn(btnInk, 'mt-3')}
         >
-          <span className="home-serif text-[1.05rem] font-medium text-[var(--home-heading)]">
-            Open the reader
-          </span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors group-hover:bg-[var(--home-ink)] group-hover:text-[var(--home-ink-fg)]">
-            <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
-          </span>
-        </Link>
+          {sendingFeedback ? 'Sending…' : 'Send'}
+        </button>
+      </SettingsSheet>
 
-        <footer className="mt-10 flex flex-col items-center gap-3 pb-2 text-center">
-          <div className="flex w-full items-center gap-3">
-            <span className="ed-rule flex-1" />
-            <IconOrnament className="h-3 w-3 text-[var(--home-sage)]" />
-            <span className="ed-rule flex-1" />
-          </div>
-          <p className="home-serif text-sm italic text-[var(--home-muted)]">For Sadaqah Jariyah</p>
-        </footer>
-      </div>
+      <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} onSuccess={refreshProfile} />
+
+      {user ? (
+        <DeleteAccountSheet
+          open={deleteOpen}
+          user={user}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => {
+            setDeleteOpen(false)
+            refreshProfile()
+            showToast('Your account has been deleted.')
+          }}
+        />
+      ) : null}
+
+      {toast ? (
+        <div
+          className="qari-enter pointer-events-none fixed inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-[60] flex justify-center px-4"
+          role="status"
+        >
+          <p className="ed-ink rounded-full px-4 py-2.5 text-sm font-semibold shadow-lg">{toast}</p>
+        </div>
+      ) : null}
     </main>
   )
 }

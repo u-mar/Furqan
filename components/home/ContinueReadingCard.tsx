@@ -77,11 +77,9 @@ export default function ContinueReadingCard() {
 
   if (loading) {
     return (
-      <section className="mb-9" aria-label="Continue reading">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="ed-label">Continue reading</h2>
-        </div>
-        <div className="h-[92px] animate-pulse rounded-[1.25rem] bg-[var(--home-track)]" />
+      <section aria-label="Continue reading">
+        <h2 className="home-label mb-[9px]">Continue reading</h2>
+        <div className="h-[70px] animate-pulse rounded-2xl bg-[var(--home-track)]" />
       </section>
     )
   }
@@ -89,40 +87,33 @@ export default function ContinueReadingCard() {
   if (!state) return null
 
   return (
-    <section className="mb-9" aria-label="Continue reading">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="ed-label">Continue reading</h2>
-      </div>
+    <section aria-label="Continue reading">
+      <h2 className="home-label mb-[9px]">Continue reading</h2>
 
       <Link
         href={`/read?page=${state.page}`}
-        className="ed-card ed-focus group flex items-center gap-4 rounded-[1.25rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.99]"
+        className="home-card home-press ed-focus flex items-center gap-3 rounded-2xl px-3.5 py-3"
+        aria-label={`Continue reading ${state.surahName}, page ${state.page}`}
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
           <IconRead className="h-6 w-6" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="home-serif block truncate text-[1.15rem] font-medium leading-tight text-[var(--home-heading)]">
+          <span className="home-serif block truncate text-[1.03125rem] font-semibold leading-snug text-[var(--home-heading)]">
             {state.surahName}
           </span>
-          <span className="mt-0.5 block text-xs text-[var(--home-muted)]">
-            Ayah <span className="ed-num text-[var(--home-heading)]">{state.ayah}</span> · Page{' '}
-            <span className="ed-num text-[var(--home-heading)]">{state.page}</span> of 604
+          <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">
+            Ayah {state.ayah} · Page {state.page} of 604
           </span>
-          <span className="mt-3 flex items-center gap-2.5">
-            <span className="block h-1 flex-1 overflow-hidden rounded-full bg-[var(--home-track)]">
-              <span
-                className="block h-full rounded-full bg-[var(--home-sage)]"
-                style={{ width: `${state.progress}%` }}
-              />
-            </span>
-            <span className="ed-num text-[0.7rem] font-semibold text-[var(--home-sage-deep)]">
-              {state.progress}%
-            </span>
+          <span className="mt-[7px] block h-[3px] overflow-hidden rounded-sm bg-[var(--home-track)]">
+            <span
+              className="block h-full min-w-1 bg-[var(--home-sage)]"
+              style={{ width: `${state.progress}%` }}
+            />
           </span>
         </span>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors group-hover:bg-[var(--home-ink)] group-hover:text-[var(--home-ink-fg)]">
-          <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+        <span className="ed-ink flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full">
+          <ArrowRight className="h-4 w-4" strokeWidth={2.2} />
         </span>
       </Link>
     </section>

@@ -45,11 +45,6 @@ const exploreTiles = [
   },
 ] as const
 
-const tileSurface =
-  'ed-card group relative flex h-full flex-col gap-3.5 rounded-[1.5rem] p-4 transition-[border-color,transform] duration-200 hover:border-[var(--home-sage)] active:scale-[0.97]'
-
-const tileFocus = 'ed-focus block rounded-[1.5rem] text-left'
-
 export default function Home() {
   useAppSettings()
   const [displayName, setDisplayName] = useState('Guest')
@@ -65,36 +60,33 @@ export default function Home() {
     <HomeScreen className="max-w-lg mx-auto">
       <HomeHero displayName={displayName} />
 
-      <div className="reveal" style={{ animationDelay: '80ms' }}>
+      <div className="reveal mt-[22px]" style={{ animationDelay: '80ms' }}>
         <DailyVerseCard />
       </div>
-      <div className="reveal" style={{ animationDelay: '160ms' }}>
+      <div className="reveal mt-[22px]" style={{ animationDelay: '160ms' }}>
         <ContinueReadingCard />
       </div>
 
-      <section aria-label="Explore" className="reveal" style={{ animationDelay: '240ms' }}>
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="ed-label">Explore</h2>
-          <span className="ed-rule flex-1" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+      <section aria-label="Explore" className="reveal mt-[22px]" style={{ animationDelay: '240ms' }}>
+        <h2 className="home-label mb-[9px]">Explore</h2>
+        <div className="grid grid-cols-2 gap-2.5">
           {exploreTiles.map((tile) => {
             const { Icon } = tile
             return (
-              <Link key={tile.id} href={tile.href} className={tileFocus}>
-                <div className={tileSurface}>
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-                    <Icon className="h-[30px] w-[30px]" />
-                  </span>
-                  <div>
-                    <span className="home-serif block text-[1.25rem] font-semibold leading-tight text-[var(--home-heading)]">
-                      {tile.label}
-                    </span>
-                    <span className="mt-1 block text-[0.8rem] leading-snug text-[var(--home-muted)]">
-                      {tile.hint}
-                    </span>
-                  </div>
-                </div>
+              <Link
+                key={tile.id}
+                href={tile.href}
+                className="home-card home-press ed-focus block rounded-2xl p-3.5 text-left"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-[11px] bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                  <Icon className="h-6 w-6" />
+                </span>
+                <span className="home-serif mt-3 block text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">
+                  {tile.label}
+                </span>
+                <span className="mt-px block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
+                  {tile.hint}
+                </span>
               </Link>
             )
           })}

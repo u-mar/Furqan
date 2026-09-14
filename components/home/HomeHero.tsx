@@ -6,13 +6,11 @@ import { useEffect, useState } from 'react'
 import { IconCrescent } from '@/components/home/TileIcons'
 import { formatHijri } from '@/lib/hijri'
 
-/** e.g. "Sun 13 Sep" — the Hijri date leads, so this one stays short. */
+/** e.g. "Sun 13 Sep" — the Hijri date leads, so this one stays short. Built
+ *  from parts because en-GB now abbreviates September as "Sept". */
 function formatGregorian(date: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(date)
+  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', options).format(date)
+  return `${part({ weekday: 'short' })} ${date.getDate()} ${part({ month: 'short' })}`
 }
 
 export default function HomeHero({ displayName }: { displayName: string }) {

@@ -6,7 +6,6 @@ import { cn } from '@/lib/cn'
 import { getDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
 import AyahEndMark from '@/components/read/AyahEndMark'
-import { IconOrnament } from '@/components/home/TileIcons'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
 import { useQcfFont } from '@/hooks/useQcfFont'
 import {
@@ -25,6 +24,9 @@ const DEFAULT_SURAH = 'Al-Baqarah'
 
 const FALLBACK_TRANSLATION =
   'So remember Me; I will remember you. And be grateful to Me and do not deny Me.'
+
+/* Inline, because .ed-arabic sets its own size and would win over a utility. */
+const ARABIC_SIZE = { fontSize: '1.5625rem', lineHeight: 1.95 } as const
 
 /**
  * The one verse this card needs.
@@ -189,27 +191,24 @@ export default function DailyVerseCard() {
   }
 
   return (
-    <section className="mb-9" aria-label="Daily verse">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="ed-label">Weekly verse</h2>
+    <section aria-label="Weekly verse">
+      <div className="mb-[9px] flex items-center justify-between gap-3">
+        <h2 className="home-label">Weekly verse</h2>
         <button
           type="button"
           onClick={() => void handleShare()}
-          className="ed-focus flex items-center gap-1.5 rounded-md text-xs font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
+          className="ed-focus -my-2 flex items-center gap-[5px] rounded-md py-2 text-[0.78125rem] font-semibold text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
         >
-          <Share2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
           Share
         </button>
       </div>
 
-      <div
-        className="ed-card relative overflow-hidden rounded-[1.5rem] px-4 pb-4 pt-4 sm:px-7 sm:pb-5 sm:pt-5"
-        style={{ ['--ed-radius' as string]: '1.5rem' }}
-      >
-        <div className="relative flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--home-rule-strong)] py-1 pl-3 pr-2.5 text-[0.7rem] font-semibold tracking-[0.08em] text-[var(--home-heading)]">
-            {surahBadge}
-            <span className="ed-num text-[0.78rem] font-normal text-[var(--home-muted)]">
+      <div className="home-card rounded-[18px] px-[18px] pb-3.5 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-full bg-[var(--home-sage-soft)] px-[11px] text-xs font-semibold text-[var(--home-sage-deep)]">
+            <span className="truncate">{surahBadge}</span>
+            <span className="shrink-0 font-medium opacity-80">
               {surahNum}:{ayahNum}
             </span>
           </span>
@@ -217,7 +216,7 @@ export default function DailyVerseCard() {
             type="button"
             onClick={toggleSave}
             className={cn(
-              'ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
+              'ed-focus -mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors',
               saved
                 ? 'text-[var(--home-sage-deep)]'
                 : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
@@ -225,7 +224,7 @@ export default function DailyVerseCard() {
             aria-label={saved ? 'Remove bookmark' : 'Bookmark verse'}
             aria-pressed={saved}
           >
-            <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} strokeWidth={1.75} />
+            <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} strokeWidth={1.8} />
           </button>
         </div>
 
@@ -233,10 +232,10 @@ export default function DailyVerseCard() {
           // The glyph run already carries its own ayah marker, so no end mark
           // is appended here.
           <p
-            className="ed-arabic relative mt-5 text-[var(--home-heading)]"
+            className="ed-arabic mt-2.5 text-[var(--home-heading)]"
             dir="rtl"
             lang="ar"
-            style={{ fontFamily: qcfPageFontFamily(qcfPage) }}
+            style={{ fontFamily: qcfPageFontFamily(qcfPage), ...ARABIC_SIZE }}
           >
             {qcfWords.map((word, i) => (
               <span key={i} className="mushaf-translation-qcf-word">
@@ -245,7 +244,7 @@ export default function DailyVerseCard() {
             ))}
           </p>
         ) : (
-          <p className="ed-arabic relative mt-5 text-[var(--home-heading)]" dir="rtl" lang="ar">
+          <p className="ed-arabic mt-2.5 text-[var(--home-heading)]" dir="rtl" lang="ar" style={ARABIC_SIZE}>
             {loading ? (
               '…'
             ) : (
@@ -259,7 +258,7 @@ export default function DailyVerseCard() {
                       pageNumber={endMarkPage}
                       codeV2={endWord?.code_v2}
                       fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
-                      className="text-[var(--home-sage-deep)]"
+                      className="text-[var(--home-sage)]"
                     />
                   </>
                 ) : null}
@@ -268,30 +267,26 @@ export default function DailyVerseCard() {
           </p>
         )}
 
-        <div className="relative my-4 flex items-center justify-center gap-3">
-          <span className="ed-rule w-10" />
-          <IconOrnament className="h-2.5 w-2.5 text-[var(--home-sage)]" />
-          <span className="ed-rule w-10" />
-        </div>
-
-        <p className="home-serif relative mx-auto max-w-[36ch] text-center text-[1.05rem] leading-[1.65] text-[var(--home-heading)]">
+        <p className="home-serif mx-auto mt-2 max-w-[300px] text-center text-[1.03125rem] leading-[1.5] text-[var(--home-heading)] [text-wrap:pretty]">
           {loading ? 'Loading translation…' : translation}
         </p>
 
-        <div className="relative mt-5 flex items-center justify-between gap-3 border-t border-[var(--home-rule)] pt-3.5">
-          <span className="text-xs text-[var(--home-muted)]">
-            Page <span className="ed-num text-[var(--home-heading)]">{page}</span> of the mushaf
+        <div className="ed-rule mb-3 mt-3.5" />
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[0.78125rem] text-[var(--home-muted)]">
+            Page <span className="font-semibold text-[var(--home-heading)]">{page}</span> of the mushaf
           </span>
           <button
             type="button"
             onClick={handlePlayToggle}
-            className="ed-ink ed-focus flex h-11 items-center gap-2 rounded-full pl-4 pr-[1.15rem] text-[0.85rem] font-semibold transition-transform hover:scale-[1.03] active:scale-95"
+            className="ed-ink ed-focus flex h-9 shrink-0 items-center gap-[7px] rounded-full pl-3 pr-[15px] text-[0.84375rem] font-semibold transition-transform active:scale-95"
             aria-label={playing ? 'Stop recitation' : 'Play recitation'}
           >
             {playing ? (
-              <Square className="h-3.5 w-3.5 fill-current" />
+              <Square className="h-3 w-3 fill-current" />
             ) : (
-              <Play className="h-3.5 w-3.5 fill-current" />
+              <Play className="h-[13px] w-[13px] fill-current" />
             )}
             {playing ? 'Stop' : 'Listen'}
           </button>

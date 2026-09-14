@@ -1747,3 +1747,164 @@ html.dark .mushaf-reader {
     transition: none;
   }
 }
+
+/* ======================================================================
+   Home & Settings: paper cards that lift on a soft shadow in light, and
+   sit on a hairline in the dark themes, where a shadow cannot be seen.
+   ====================================================================== */
+
+html,
+html.dark {
+  --home-lift: inset 0 0 0 1px var(--home-card-border), 0 14px 30px -22px rgba(0, 0, 0, 0.7);
+  --home-lift-sm: inset 0 0 0 1px var(--home-card-border);
+}
+
+html:not(.dark) {
+  --home-lift: 0 1px 2px rgba(38, 34, 26, 0.06), 0 10px 28px -14px rgba(38, 34, 26, 0.18);
+  --home-lift-sm: 0 1px 2px rgba(38, 34, 26, 0.06), 0 4px 12px -6px rgba(38, 34, 26, 0.16);
+}
+
+html.dark.black {
+  --home-lift: inset 0 0 0 1px var(--home-card-border);
+  --home-lift-sm: inset 0 0 0 1px var(--home-card-border);
+}
+
+.home-card {
+  background: var(--home-card-bg);
+  box-shadow: var(--home-lift);
+}
+
+/* Cards you can tap sink a little under the finger. */
+.home-press {
+  transition: transform 0.14s ease;
+}
+
+.home-press:active {
+  transform: scale(0.98);
+}
+
+/* The round buttons at the top of Home and Settings. */
+.home-round {
+  display: flex;
+  flex-shrink: 0;
+  width: 2.625rem;
+  height: 2.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--home-card-bg);
+  box-shadow: var(--home-lift-sm);
+  color: var(--home-heading);
+  transition: transform 0.12s ease;
+}
+
+.home-round:active {
+  transform: scale(0.94);
+}
+
+/* The small tracked label above each card. */
+.home-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--home-muted);
+}
+
+/* --- Settings: grouped rows --- */
+
+.set-row {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  text-align: left;
+  color: var(--home-heading);
+  transition: background-color 0.12s ease;
+}
+
+a.set-row:active,
+button.set-row:active,
+label.set-row:active {
+  background: color-mix(in srgb, var(--home-heading) 5%, transparent);
+}
+
+@media (hover: hover) {
+  a.set-row:hover,
+  button.set-row:hover {
+    background: color-mix(in srgb, var(--home-heading) 3.5%, transparent);
+  }
+}
+
+.set-row:disabled {
+  opacity: 0.5;
+}
+
+/* Rows sit flush inside a clipped card, so the focus ring is drawn inside. */
+.set-row:focus-visible {
+  outline: 2px solid var(--home-sage);
+  outline-offset: -2px;
+}
+
+.set-row__label {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.set-row__value {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  color: var(--home-muted);
+}
+
+.set-row__icon {
+  display: flex;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--home-sage-soft);
+  color: var(--home-sage-deep);
+}
+
+.set-row__icon--neutral {
+  background: color-mix(in srgb, var(--home-heading) 6%, transparent);
+  color: var(--home-heading);
+}
+
+.set-row__icon--danger {
+  background: rgba(225, 29, 72, 0.08);
+  color: #e11d48;
+}
+
+.set-row--danger {
+  color: #e11d48;
+}
+
+html.dark .set-row__icon--danger {
+  background: rgba(251, 113, 133, 0.12);
+  color: #fb7185;
+}
+
+html.dark .set-row--danger {
+  color: #fb7185;
+}
+
+.set-row__divider {
+  height: 1px;
+  margin-left: 3.5rem;
+  background: color-mix(in srgb, var(--home-heading) 8%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-press,
+  .home-round {
+    transition: none;
+  }
+}
