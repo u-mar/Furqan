@@ -12,7 +12,7 @@ export default function SheikhsPage() {
   const [counts, setCounts] = useState<Map<string, number> | null>(null)
 
   useEffect(() => {
-    fetchDiscover(null)
+    fetchDiscover()
       .then((d) => setCounts(new Map(d.sheikhs.map((s) => [s.id, s.count]))))
       .catch(() => setCounts(new Map()))
   }, [])

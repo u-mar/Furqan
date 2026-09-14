@@ -236,19 +236,24 @@ export interface SheikhCount {
   count: number
 }
 
+export interface LovedQari {
+  username: string
+  name: string
+  /** Hearts across all of their public recitations. */
+  likes: number
+}
+
 export interface Discover {
   /** Hashtags people use most, for the row under search. */
   tags: TagCount[]
   /** Sheikhs with the most imitations. */
   sheikhs: SheikhCount[]
-  /** Recitations with the most hearts. */
-  mostLoved: Recitation[]
+  /** Qaris whose recitations have the most hearts altogether. */
+  lovedQaris: LovedQari[]
 }
 
-export async function fetchDiscover(viewerId: string | null): Promise<Discover> {
-  const params = new URLSearchParams()
-  if (viewerId) params.set('viewerId', viewerId)
-  const res = await fetch(`/api/qari/discover?${params.toString()}`, { cache: 'no-store' })
+export async function fetchDiscover(): Promise<Discover> {
+  const res = await fetch('/api/qari/discover', { cache: 'no-store' })
   if (!res.ok) throw new Error('Could not load Qari.')
   return (await res.json()) as Discover
 }

@@ -64,6 +64,15 @@ export interface Reciter {
   top?: boolean
 }
 
+/**
+ * Hassan Al-Wajdi's full surahs live in our own R2 bucket, "recitations",
+ * as 001.mp3 … 114.mp3 at its root. This is the bucket's public address — the
+ * …r2.cloudflarestorage.com one needs signed requests and cannot be played.
+ * Offline downloads fetch the files, so the bucket needs a CORS rule allowing
+ * GET from the app as well.
+ */
+const HASSAN_AL_WAJDI_AUDIO = 'https://pub-0d4d974a9cad4a92b81667e5b4f5523f.r2.dev'
+
 /** A calm, varied palette so each reciter card is distinguishable. */
 const A = {
   gold: ['#f0c877', '#d29a3c'] as [string, string],
@@ -953,6 +962,17 @@ export const RECITERS: Reciter[] = [
     qiraat: 'hafs',
     style: 'Murattal',
     accent: A.emerald,
+  },
+  {
+    id: 'hassan_al_wajdi',
+    photoUrl: 'https://media.way2quran.com/imgs/hassan-al-wajdi.png',
+    name: 'Hassan Al-Wajdi',
+    source: 'mp3quran',
+    folder: HASSAN_AL_WAJDI_AUDIO,
+    mp3quranBase: HASSAN_AL_WAJDI_AUDIO,
+    qiraat: 'hafs',
+    style: 'Murattal',
+    accent: A.teal,
   },
 ]
 

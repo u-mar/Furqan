@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, Clock, Heart, Mic, RotateCw, Search, SearchX, Sparkles, Users, UsersRound, X } from 'lucide-react'
 import Dropdown from '@/components/qari/Dropdown'
 import EmptyState from '@/components/qari/EmptyState'
-import LovedCard from '@/components/qari/LovedCard'
+import QariAvatar from '@/components/qari/QariAvatar'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import RecitationRow from '@/components/qari/RecitationRow'
 import SectionHeader from '@/components/qari/SectionHeader'
@@ -69,11 +69,11 @@ function QariHomeContent() {
 
   const loadDiscover = useCallback(async () => {
     try {
-      setDiscover(await fetchDiscover(viewerId))
+      setDiscover(await fetchDiscover())
     } catch {
-      setDiscover((prev) => prev ?? { tags: [], sheikhs: [], mostLoved: [] })
+      setDiscover((prev) => prev ?? { tags: [], sheikhs: [], lovedQaris: [] })
     }
-  }, [viewerId])
+  }, [])
 
   const loadFeed = useCallback(async () => {
     setFailed(false)
@@ -241,34 +241,31 @@ function QariHomeContent() {
             </section>
           ) : null}
 
-          {discover && discover.mostLoved.length > 0 ? (
+          {discover && discover.lovedQaris.length > 0 ? (
             <section>
               <SectionHeader
                 first={sheikhs.length === 0}
                 title="Most loved"
                 action={
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSort('top')
-                      document.getElementById('all-recitations')?.scrollIntoView({ behavior: 'smooth' })
-                    }}
-                    className="ed-focus text-[13px] font-semibold text-[var(--home-sage)]"
-                  >
+                  <Link href="/qari/qaris" className="ed-focus text-[13px] font-semibold text-[var(--home-sage)]">
                     See all
-                  </button>
+                  </Link>
                 }
               />
-              <div className="qari-no-scrollbar -mx-5 flex snap-x scroll-px-5 gap-2.5 overflow-x-auto px-5 pb-1">
-                {discover.mostLoved.map((recitation, i) => (
-                  <LovedCard
-                    key={recitation.id}
-                    recitation={recitation}
-                    queue={discover.mostLoved}
-                    viewerId={viewerId}
-                    index={i}
-                    onNotice={setNotice}
-                  />
+              {/* The qaris people love most: a picture and a name, straight to their profile. */}
+              <div className="qari-no-scrollbar -mx-5 flex snap-x scroll-px-5 gap-4 overflow-x-auto px-5 pb-1">
+                {discover.lovedQaris.map((qari, i) => (
+                  <Link
+                    key={qari.username}
+                    href={`/qari/${encodeURIComponent(qari.username)}`}
+                    className="qari-enter qari-press ed-focus flex w-[76px] shrink-0 snap-start flex-col items-center gap-2 rounded-2xl"
+                    style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}
+                  >
+                    <QariAvatar username={qari.username} name={qari.name} size={72} />
+                    <span className="w-full truncate text-center text-[12.5px] font-semibold text-[var(--home-heading)]">
+                      {qari.name}
+                    </span>
+                  </Link>
                 ))}
               </div>
             </section>
@@ -276,7 +273,7 @@ function QariHomeContent() {
 
           <section id="all-recitations" className="scroll-mt-4">
             <SectionHeader
-              first={sheikhs.length === 0 && !(discover && discover.mostLoved.length > 0)}
+              first={sheikhs.length === 0 && !(discover && discover.lovedQaris.length > 0)}
               title={sort === 'following' ? 'Following' : 'All recitations'}
               action={<Dropdown label="Sort" value={sort} options={sortOptions} onChange={setSort} />}
             />

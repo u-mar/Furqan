@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
 import { isSheikhId } from '@/lib/sheikhs'
 
 export const runtime = 'nodejs'
@@ -12,13 +11,12 @@ const PUBLIC = { hidden: false, isPrivate: false }
 const SAMPLE = 800
 
 /**
- * GET /api/qari/discover?viewerId= — the sections at the top of Qari home.
+ * GET /api/qari/discover — the sections at the top of Qari home.
  * GET /api/qari/discover?sheikh=id — how many imitations one sheikh has.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const sheikh = searchParams.get('sheikh')?.trim() ?? ''
-  const viewerId = searchParams.get('viewerId')?.trim() || null
 
   try {
     if (sheikh) {
@@ -40,10 +38,12 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: SAMPLE,
       }),
+      // Newest first, so the first name met for a handle is the current one.
       prisma.recitation.findMany({
         where: { ...PUBLIC, likeCount: { gt: 0 } },
-        orderBy: [{ likeCount: 'desc' }, { createdAt: 'desc' }],
-        take: 10,
+        select: { userUsername: true, userName: true, likeCount: true },
+        orderBy: { createdAt: 'desc' },
+        take: 3000,
       }),
     ])
 
@@ -58,12 +58,19 @@ export async function GET(request: NextRequest) {
 
     const byCount = <T extends { count: number }>(a: T, b: T) => b.count - a.count
 
-    const likedIds = await likedIdsFor(viewerId, loved.map((r) => r.id))
+    // The qaris whose recitations have been loved most, all hearts added up.
+    const qaris = new Map<string, { username: string; name: string; likes: number }>()
+    for (const row of loved) {
+      const key = row.userUsername.toLowerCase()
+      const entry = qaris.get(key)
+      if (entry) entry.likes += row.likeCount
+      else qaris.set(key, { username: row.userUsername, name: row.userName || row.userUsername, likes: row.likeCount })
+    }
 
     return NextResponse.json({
       tags: [...tagCounts].map(([tag, count]) => ({ tag, count })).sort(byCount).slice(0, 12),
       sheikhs: [...sheikhCounts].map(([id, count]) => ({ id, count })).sort(byCount).slice(0, 8),
-      mostLoved: loved.map((r) => toClientRecitation(r, likedIds.has(r.id))),
+      lovedQaris: [...qaris.values()].sort((a, b) => b.likes - a.likes || a.name.localeCompare(b.name)).slice(0, 15),
     })
   } catch (err) {
     console.error('[qari] discover failed:', err)

@@ -10,8 +10,28 @@ const DEFAULT_FAVORITE_RECITER_IDS = [
   'soufi',
   'idris_abkar',
   'nourin_siddig',
-  'hazaa_balushi',
+  'hassan_al_wajdi',
 ]
+
+/**
+ * Defaults that were later replaced, as [old, new]. Someone who saved their
+ * favorites while the old default was in the list gets the new one once, in
+ * the same place, instead of keeping a reciter the app no longer suggests.
+ */
+const REPLACED_DEFAULTS: Array<[string, string]> = [['hazaa_balushi', 'hassan_al_wajdi']]
+const REPLACED_KEY = 'muyassar_favorite_reciters_replaced_v1'
+
+function applyReplacedDefaults(ids: string[]): string[] {
+  if (localStorage.getItem(REPLACED_KEY)) return ids
+  localStorage.setItem(REPLACED_KEY, '1')
+  let next = ids
+  for (const [from, to] of REPLACED_DEFAULTS) {
+    if (!next.includes(from)) continue
+    next = next.includes(to) ? next.filter((id) => id !== from) : next.map((id) => (id === from ? to : id))
+  }
+  if (next !== ids) localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  return next
+}
 
 function readIds(): string[] {
   if (typeof window === 'undefined') return DEFAULT_FAVORITE_RECITER_IDS
@@ -19,7 +39,8 @@ function readIds(): string[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === null) return DEFAULT_FAVORITE_RECITER_IDS
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+    const ids = Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+    return applyReplacedDefaults(ids)
   } catch {
     return DEFAULT_FAVORITE_RECITER_IDS
   }
