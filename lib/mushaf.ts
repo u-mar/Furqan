@@ -60,3 +60,6 @@ export function clampPage(page: number): number {
 }
 
 export const LAST_READ_PAGE_KEY = 'muyassar_read_page'
+
+/** The page last read and the first ayah on it, so Home can name the place without loading the Quran. */
+export const LAST_READ_POSITION_KEY = 'muyassar_read_position'

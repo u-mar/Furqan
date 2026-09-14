@@ -1811,6 +1811,55 @@ html.dark.black {
   color: var(--home-muted);
 }
 
+/* Content that arrives after the page draws fades in rather than popping. */
+.home-fade {
+  animation: home-fade 0.32s ease-out both;
+}
+
+@keyframes home-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Home: weekly verse --- */
+
+/* Mushaf glyphs, one word per item so a long ayah wraps between words. */
+.weekly-verse__qcf {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 0.3em;
+  padding-block: 0.125rem;
+  direction: rtl;
+  unicode-bidi: isolate;
+  font-size: 1.3125rem;
+  line-height: 2;
+  letter-spacing: 0;
+  font-feature-settings: normal;
+  font-synthesis: none;
+}
+
+/* The plain-script fallback, for when the mushaf font cannot be had. */
+.weekly-verse__arabic {
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Scheherazade New',
+    'Amiri', serif;
+  direction: rtl;
+  text-align: center;
+  font-size: 1.3125rem;
+  line-height: 2;
+  padding-block: 0.125rem;
+}
+
+.weekly-verse__translation {
+  color: color-mix(in srgb, var(--home-heading) 80%, transparent);
+  text-wrap: balance;
+}
+
 /* --- Settings: grouped rows --- */
 
 .set-row {
@@ -1906,5 +1955,9 @@ html.dark .set-row--danger {
   .home-press,
   .home-round {
     transition: none;
+  }
+
+  .home-fade {
+    animation: none;
   }
 }

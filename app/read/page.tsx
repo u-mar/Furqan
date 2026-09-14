@@ -49,6 +49,7 @@ import {
   clampPage,
   juzForChapter,
   LAST_READ_PAGE_KEY,
+  LAST_READ_POSITION_KEY,
   TOTAL_MUSHAF_PAGES,
 } from '@/lib/mushaf'
 import {
@@ -159,6 +160,9 @@ function ReadPageContent() {
     setSliderPage(page)
     setLoadError(null)
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
+    if (verses[0]?.verse_key) {
+      localStorage.setItem(LAST_READ_POSITION_KEY, JSON.stringify({ page, verseKey: verses[0].verse_key }))
+    }
     prefetchMushafPages(page, 3)
   }, [])
 

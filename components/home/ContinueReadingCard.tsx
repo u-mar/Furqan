@@ -3,72 +3,67 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { getLocalMushafPage, hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
-import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
-import { getChapters, getMushafPage } from '@/lib/quran'
+import { LAST_READ_PAGE_KEY, LAST_READ_POSITION_KEY } from '@/lib/mushaf'
 import { IconRead } from '@/components/home/TileIcons'
 
 interface ContinueState {
   surahName: string
-  ayah: number
+  /** Unknown until the reader has saved a position on this page. */
+  ayah: number | null
   page: number
   progress: number
+}
+
+interface ChapterRow {
+  id: number
+  name_simple: string
+  pages: [number, number]
+}
+
+/** The page last read, and the first ayah on it when the reader recorded one. */
+function readPosition(): { page: number; surah: number | null; ayah: number | null } {
+  const page = Math.min(604, Math.max(1, Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1))
+  try {
+    const raw = localStorage.getItem(LAST_READ_POSITION_KEY)
+    const saved = raw ? (JSON.parse(raw) as { page?: number; verseKey?: string }) : null
+    const match = saved?.page === page ? /^(\d+):(\d+)$/.exec(saved.verseKey ?? '') : null
+    if (match) return { page, surah: Number(match[1]), ayah: Number(match[2]) }
+  } catch {
+    // Fall back to naming the surah from the page alone.
+  }
+  return { page, surah: null, ayah: null }
 }
 
 export default function ContinueReadingCard() {
   const [state, setState] = useState<ContinueState | null>(null)
   const [loading, setLoading] = useState(true)
 
+  /* Naming the place needs only the small chapter list. This used to load and
+     parse the whole Quran to read one ayah number, which froze the home
+     screen for a couple of seconds on every visit. */
   useEffect(() => {
     let cancelled = false
+    const { page, surah, ayah } = readPosition()
+    const progress = Math.max(1, Math.min(100, Math.round((page / 604) * 100)))
 
-    void (async () => {
-      const savedPage = Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1
-      try {
-        let verses = isOfflineReady() ? getLocalMushafPage(savedPage) || [] : []
-        if (verses.length === 0) {
-          try {
-            await hydrateOfflineFromDisk()
-            verses = getLocalMushafPage(savedPage) || []
-          } catch {
-            // fall back to network fetch below
-          }
-        }
-
-        if (verses.length === 0) {
-          verses = await getMushafPage(savedPage)
-        }
-
-        const chapters = await getChapters().catch(() => [])
-        if (cancelled || verses.length === 0) return
-
-        const first = verses[0]
-        const surahId = Number(first.verse_key.split(':')[0]) || 1
-        const ayah = Number(first.verse_key.split(':')[1]) || 1
-        const surahName =
-          chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
-        const progress = Math.min(100, Math.round((savedPage / 604) * 100))
-
-        setState({
-          surahName,
-          ayah,
-          page: savedPage,
-          progress: Math.max(progress, 1),
-        })
-      } catch {
+    fetch('/quran-chapters.json', { cache: 'force-cache' })
+      .then((res) => (res.ok ? (res.json() as Promise<{ chapters: ChapterRow[] }>) : Promise.reject()))
+      .then(({ chapters }) => {
+        if (cancelled) return
+        // The first surah whose pages include this one is the one at the top of it.
+        const chapter = surah
+          ? chapters.find((c) => c.id === surah)
+          : chapters.find((c) => c.pages[0] <= page && page <= c.pages[1])
+        setState({ surahName: chapter?.name_simple ?? `Page ${page}`, ayah, page, progress })
+      })
+      .catch(() => {
         if (!cancelled) {
-          // Keep continue reading available even when offline data is not ready yet.
-          setState({
-            surahName: 'Continue reading',
-            ayah: 1,
-            page: savedPage,
-            progress: Math.max(1, Math.min(100, Math.round((savedPage / 604) * 100))),
-          })
+          setState({ surahName: surah ? `Surah ${surah}` : 'Continue reading', ayah, page, progress })
         }
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false)
-      }
-    })()
+      })
 
     return () => {
       cancelled = true
@@ -103,7 +98,7 @@ export default function ContinueReadingCard() {
             {state.surahName}
           </span>
           <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">
-            Ayah {state.ayah} · Page {state.page} of 604
+            {state.ayah ? `Ayah ${state.ayah} · ` : ''}Page {state.page} of 604
           </span>
           <span className="mt-[7px] block h-[3px] overflow-hidden rounded-sm bg-[var(--home-track)]">
             <span

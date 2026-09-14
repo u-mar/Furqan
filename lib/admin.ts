@@ -1,6 +1,7 @@
 'use client'
 
 import { getFirstSeenAt, getUsageIdentity } from '@/lib/usage-identity'
+import { forgetWeeklyVerse } from '@/lib/weekly-verse-cache'
 import {
   formatPresenceLabel,
   isUserOnline,
@@ -124,14 +125,30 @@ function isNewUsageSession(): boolean {
   }
 }
 
-export async function getDailyVerseConfig(): Promise<DailyVerseConfig> {
+/**
+ * The weekly verse as the server has it, or null when the server cannot be
+ * reached. Callers that must not show a stale verse need to tell "no answer"
+ * apart from the default, which getDailyVerseConfig cannot.
+ */
+export async function fetchDailyVerseConfig(): Promise<DailyVerseConfig | null> {
   try {
-    const res = await fetch('/api/admin/daily-verse', { cache: 'no-store' })
-    if (!res.ok) return readLocalAdminStore().dailyVerse
-    return (await res.json()) as DailyVerseConfig
+    const res = await fetch('/api/admin/daily-verse', {
+      cache: 'no-store',
+      signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(6000) : undefined,
+    })
+    return res.ok ? ((await res.json()) as DailyVerseConfig) : null
   } catch {
-    return readLocalAdminStore().dailyVerse
+    return null
   }
+}
+
+/** The copy kept on this device for running without a database, or the default. */
+export function getLocalDailyVerseConfig(): DailyVerseConfig {
+  return readLocalAdminStore().dailyVerse
+}
+
+export async function getDailyVerseConfig(): Promise<DailyVerseConfig> {
+  return (await fetchDailyVerseConfig()) ?? getLocalDailyVerseConfig()
 }
 
 export async function setDailyVerseConfig(
@@ -154,12 +171,14 @@ export async function setDailyVerseConfig(
         label: surahName?.trim() || `Surah ${surahPart || ''}`.trim(),
       }
       const store = readLocalAdminStore()
+      forgetWeeklyVerse()
       writeLocalAdminStore({ ...store, dailyVerse: updated })
       return updated
     }
     throw new Error('Could not update daily verse.')
   }
   const updated = (await res.json()) as DailyVerseConfig
+  forgetWeeklyVerse()
   window.dispatchEvent(new CustomEvent('admin-store-changed'))
   return updated
 }

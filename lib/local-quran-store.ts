@@ -246,12 +246,23 @@ export async function downloadOfflineQuran(
 }
 
 /** Hydrate from already-fetched bundle (e.g. after settings flag set). */
+let hydrating: Promise<void> | null = null
+
 export async function hydrateOfflineFromDisk(): Promise<void> {
   if (pageIndex) return
-  const response = await loadQuranBundleResponse()
-  const buffer = await response.arrayBuffer()
-  const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
-  ingestQuranData(data)
+  // Parsing the whole Quran freezes the page for a moment; callers that ask at
+  // the same time share one parse instead of each doing it again.
+  if (!hydrating) {
+    hydrating = (async () => {
+      const response = await loadQuranBundleResponse()
+      const buffer = await response.arrayBuffer()
+      const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
+      ingestQuranData(data)
+    })().finally(() => {
+      hydrating = null
+    })
+  }
+  return hydrating
 }
 
 /** Load offline mushaf into memory if a bundle exists in cache or on disk. */
