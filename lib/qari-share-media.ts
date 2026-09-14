@@ -14,7 +14,7 @@
 
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
-import { formatDuration, prefetchRecitationAudio, type Recitation } from '@/lib/qari'
+import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -39,21 +39,6 @@ const SAMPLE_RATE = 44100
 const W = 720
 const H = 1280
 const FPS = 30
-
-/** A short end card after the last word, so the app's name is the final thing seen. */
-const OUTRO_SECONDS = 1.6
-
-/** Photos that ship with the app; each recitation always gets the same one. */
-const VIDEO_BACKGROUNDS = [
-  'mosque-arches',
-  'mosque-columns',
-  'lantern',
-  'night-sky',
-  'islamic-pattern',
-  'kiswah-gold',
-]
-
-const ACCENT = '#5cc4ab'
 
 /** True when this browser can make the video at all. Checked before offering it. */
 export function canMakeVideo(): boolean {
@@ -166,17 +151,35 @@ export async function makeRecitationAudio(
 
 /* ------------------------------------------------------------------ video */
 
+/**
+ * The look: a calm ocean at dusk that keeps moving, the reciter's picture
+ * small in the middle, a waveform that follows the voice's own frequencies,
+ * and the app's mark with the reciter's name in the corner. Nothing else.
+ */
+
+/** Frequency bands; the bars mirror them, low voices in the middle and higher ones outwards. */
+const BANDS = 18
+const BAR_WIDTH = 6
+const BAR_GAP = 6
+
+const HORIZON = Math.round(H * 0.4)
+const AVATAR_Y = 600
+const AVATAR_SIZE = 148
+const WAVE_Y = 780
+
 interface Scene {
-  base: HTMLCanvasElement
   avatar: HTMLCanvasElement
-  outro: HTMLCanvasElement
-  /** Loudness per video frame, 0–1, smoothed so the rings breathe rather than flicker. */
-  envelope: Float32Array
-  peaks: Float32Array
-  audioSeconds: number
-  sans: string
-  /** Vertical centre of the waveform, below however many lines the title took. */
-  waveMid: number
+  badge: HTMLCanvasElement
+  /** Band levels per frame, 0–1: frame f, band b is at f * BANDS + b. */
+  bands: Float32Array
+  /** Overall loudness per frame, 0–1. */
+  level: Float32Array
+  frames: number
+  seconds: number
+  sky: CanvasGradient
+  sea: CanvasGradient
+  glow: CanvasGradient
+  shade: CanvasGradient
 }
 
 function cssFont(varName: string, fallback: string): string {
@@ -202,55 +205,14 @@ function makeCanvas(width = W, height = H): [HTMLCanvasElement, CanvasRenderingC
   return [canvas, ctx]
 }
 
-function hashIndex(id: string, size: number): number {
-  let h = 0
-  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0
-  return h % size
-}
-
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean)
-  const lines: string[] = []
-  let line = ''
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word
-    if (!line || ctx.measureText(candidate).width <= maxWidth) {
-      line = candidate
-    } else {
-      lines.push(line)
-      line = word
-      if (lines.length === maxLines) break
-    }
-  }
-  if (line && lines.length < maxLines) lines.push(line)
-  // Anything that did not fit ends the last line with an ellipsis.
-  const shown = lines.join(' ').split(/\s+/).length
-  if (shown < words.length && lines.length) {
-    let last = lines[lines.length - 1]
-    while (last && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1)
-    lines[lines.length - 1] = `${last.trimEnd()}…`
-  }
-  return lines
-}
-
-function shadowed(ctx: CanvasRenderingContext2D, draw: () => void) {
-  ctx.save()
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
-  ctx.shadowBlur = 18
-  ctx.shadowOffsetY = 2
-  draw()
-  ctx.restore()
-}
-
 function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, serif: string) {
-  const r = size * 0.24
   ctx.save()
   ctx.beginPath()
-  ctx.roundRect(x, y, size, size, r)
+  ctx.roundRect(x, y, size, size, size * 0.24)
   ctx.fillStyle = '#000000'
   ctx.fill()
   ctx.lineWidth = 2
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)'
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
   ctx.stroke()
   ctx.fillStyle = '#f5ecd8'
   ctx.font = `700 ${Math.round(size * 0.62)}px ${serif}`
@@ -260,239 +222,307 @@ function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.restore()
 }
 
-/** Everything that never changes between frames, drawn once. */
+/** In-place fast Fourier transform. Both arrays must have a power-of-two length. */
+function fft(re: Float32Array, im: Float32Array) {
+  const n = re.length
+  for (let i = 1, j = 0; i < n; i += 1) {
+    let bit = n >> 1
+    for (; j & bit; bit >>= 1) j ^= bit
+    j ^= bit
+    if (i < j) {
+      const tr = re[i]
+      re[i] = re[j]
+      re[j] = tr
+      const ti = im[i]
+      im[i] = im[j]
+      im[j] = ti
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const angle = (-2 * Math.PI) / len
+    const wr = Math.cos(angle)
+    const wi = Math.sin(angle)
+    const half = len >> 1
+    for (let i = 0; i < n; i += len) {
+      let cr = 1
+      let ci = 0
+      for (let j = 0; j < half; j += 1) {
+        const a = i + j
+        const b = a + half
+        const tr = re[b] * cr - im[b] * ci
+        const ti = re[b] * ci + im[b] * cr
+        re[b] = re[a] - tr
+        im[b] = im[a] - ti
+        re[a] += tr
+        im[a] += ti
+        const next = cr * wr - ci * wi
+        ci = cr * wi + ci * wr
+        cr = next
+      }
+    }
+  }
+}
+
+/**
+ * Listen to the whole recitation once, frame by frame: how loud it is and how
+ * that loudness spreads across the voice's range. The bars are drawn from this.
+ */
+function analyse(buffer: AudioBuffer): { bands: Float32Array; level: Float32Array; frames: number } {
+  const data = buffer.getChannelData(0)
+  const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
+  const size = 1024
+  const windowShape = new Float32Array(size)
+  for (let i = 0; i < size; i += 1) windowShape[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1))
+
+  // Log-spaced bands from 90 Hz to 7 kHz: where a reciting voice lives.
+  const binHz = buffer.sampleRate / size
+  const edges: number[] = []
+  for (let b = 0; b <= BANDS; b += 1) {
+    const bin = Math.round((90 * Math.pow(7000 / 90, b / BANDS)) / binHz)
+    edges.push(b > 0 ? Math.max(edges[b - 1] + 1, bin) : Math.max(1, bin))
+  }
+
+  const re = new Float32Array(size)
+  const im = new Float32Array(size)
+  const raw = new Float32Array(frames * BANDS)
+  const loud = new Float32Array(frames)
+
+  for (let f = 0; f < frames; f += 1) {
+    const start = Math.floor((f / FPS) * buffer.sampleRate) - size / 2
+    let energy = 0
+    for (let i = 0; i < size; i += 1) {
+      const index = start + i
+      const sample = index >= 0 && index < data.length ? data[index] : 0
+      re[i] = sample * windowShape[i]
+      im[i] = 0
+      energy += sample * sample
+    }
+    loud[f] = Math.sqrt(energy / size)
+    fft(re, im)
+    for (let b = 0; b < BANDS; b += 1) {
+      let sum = 0
+      for (let k = edges[b]; k < edges[b + 1]; k += 1) sum += Math.hypot(re[k], im[k])
+      raw[f * BANDS + b] = sum / (edges[b + 1] - edges[b])
+    }
+  }
+
+  // Each band is measured against its own loud moments, so the treble moves as
+  // freely as the bass instead of sitting flat beside it.
+  const ceiling = new Float32Array(BANDS)
+  const column = new Float32Array(frames)
+  for (let b = 0; b < BANDS; b += 1) {
+    for (let f = 0; f < frames; f += 1) column[f] = raw[f * BANDS + b]
+    const sorted = Float32Array.from(column).sort()
+    ceiling[b] = sorted[Math.floor(sorted.length * 0.96)] || 1e-6
+  }
+  const sortedLoud = Float32Array.from(loud).sort()
+  const loudCeiling = sortedLoud[Math.floor(sortedLoud.length * 0.97)] || 1e-6
+
+  const level = new Float32Array(frames)
+  const bands = new Float32Array(frames * BANDS)
+  const held = new Float32Array(BANDS)
+  let heldLevel = 0
+  for (let f = 0; f < frames; f += 1) {
+    const targetLevel = Math.min(1, Math.pow(loud[f] / loudCeiling, 0.7))
+    heldLevel += (targetLevel - heldLevel) * (targetLevel > heldLevel ? 0.5 : 0.16)
+    level[f] = heldLevel
+    for (let b = 0; b < BANDS; b += 1) {
+      // Quiet stretches settle the bars down rather than showing room noise.
+      const target = Math.min(1, Math.pow(raw[f * BANDS + b] / ceiling[b], 0.75)) * (0.25 + 0.75 * targetLevel)
+      held[b] += (target - held[b]) * (target > held[b] ? 0.6 : 0.2)
+      bands[f * BANDS + b] = held[b]
+    }
+  }
+
+  return { bands, level, frames }
+}
+
 async function prepareScene(r: Recitation, buffer: AudioBuffer): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
-  const arabic = cssFont('--font-amiri', "'Amiri', serif")
-  const titleFont = `${serif}, ${arabic}`
 
-  const backgroundId = VIDEO_BACKGROUNDS[hashIndex(r.id, VIDEO_BACKGROUNDS.length)]
-  const [photo, picture] = await Promise.all([
-    loadImage(`/share-bg/${backgroundId}.jpg`),
+  const [picture] = await Promise.all([
     loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`),
     document.fonts
       ? Promise.all([
-          document.fonts.load(`600 48px ${serif}`, r.title),
-          document.fonts.load(`600 28px ${sans}`, r.userName),
+          document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
+          document.fonts.load(`600 30px ${sans}`, r.userName),
         ]).catch(() => null)
       : null,
   ])
 
-  /* Base: photo, scrims, brand, words */
-  const [base, ctx] = makeCanvas()
-  ctx.fillStyle = '#0f1513'
-  ctx.fillRect(0, 0, W, H)
-  if (photo) {
-    const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight)
-    const dw = photo.naturalWidth * scale
-    const dh = photo.naturalHeight * scale
-    ctx.drawImage(photo, (W - dw) / 2, (H - dh) / 2, dw, dh)
-  }
-  ctx.fillStyle = 'rgba(8, 12, 11, 0.58)'
-  ctx.fillRect(0, 0, W, H)
-  const scrim = ctx.createLinearGradient(0, 0, 0, H)
-  scrim.addColorStop(0, 'rgba(6, 10, 9, 0.55)')
-  scrim.addColorStop(0.3, 'rgba(6, 10, 9, 0.1)')
-  scrim.addColorStop(0.62, 'rgba(6, 10, 9, 0.32)')
-  scrim.addColorStop(1, 'rgba(6, 10, 9, 0.85)')
-  ctx.fillStyle = scrim
-  ctx.fillRect(0, 0, W, H)
+  const [, ctx] = makeCanvas(2, 2)
 
-  // Brand, centred as one unit: mark + name.
-  ctx.font = `600 32px ${serif}`
-  const markSize = 52
-  const nameWidth = ctx.measureText(APP_NAME).width
-  const brandWidth = markSize + 14 + nameWidth
-  const brandX = (W - brandWidth) / 2
-  shadowed(ctx, () => drawBrandMark(ctx, brandX, 92, markSize, serif))
-  shadowed(ctx, () => {
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `600 32px ${serif}`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(APP_NAME, brandX + markSize + 14, 92 + markSize / 2 + 2)
-  })
-  shadowed(ctx, () => {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
-    ctx.font = `500 20px ${sans}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText('Quran recitations', W / 2, 182)
-  })
+  const sky = ctx.createLinearGradient(0, 0, 0, HORIZON)
+  sky.addColorStop(0, '#07122a')
+  sky.addColorStop(0.55, '#173a5e')
+  sky.addColorStop(1, '#6e94b1')
 
-  // Title, up to two lines.
-  ctx.font = `600 48px ${titleFont}`
-  const titleLines = wrap(ctx, r.title, 600, 2)
-  let y = 652
-  shadowed(ctx, () => {
-    ctx.fillStyle = '#ffffff'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'alphabetic'
-    for (const line of titleLines) {
-      ctx.fillText(line, W / 2, y)
-      y += 60
-    }
-  })
-  y += 2
-  shadowed(ctx, () => {
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `600 30px ${sans}`
-    ctx.textAlign = 'center'
-    ctx.fillText(r.userName, W / 2, y)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
-    ctx.font = `500 23px ${sans}`
-    ctx.fillText(`@${r.userUsername}`, W / 2, y + 36)
-  })
-  // A two-line title pushes the waveform down rather than under the handle.
-  const waveMid = Math.max(846, y + 36 + 70)
+  const sea = ctx.createLinearGradient(0, HORIZON, 0, H)
+  sea.addColorStop(0, '#2d5877')
+  sea.addColorStop(0.28, '#153655')
+  sea.addColorStop(1, '#04101f')
 
-  // Call to action, kept above the strip TikTok covers with its own caption.
-  shadowed(ctx, () => {
-    ctx.textAlign = 'center'
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)'
-    ctx.font = `500 21px ${sans}`
-    ctx.fillText('Listen and recite on', W / 2, 988)
-    ctx.fillStyle = ACCENT
-    ctx.font = `600 32px ${serif}`
-    ctx.fillText(APP_NAME, W / 2, 1028)
-  })
+  const glow = ctx.createRadialGradient(W / 2, HORIZON, 0, W / 2, HORIZON, 380)
+  glow.addColorStop(0, 'rgba(255, 228, 186, 0.42)')
+  glow.addColorStop(0.45, 'rgba(255, 210, 170, 0.12)')
+  glow.addColorStop(1, 'rgba(255, 210, 170, 0)')
 
-  /* Avatar: the picture, or the initial on the accent */
-  const size = 208
-  const [avatar, actx] = makeCanvas(size, size)
+  const shade = ctx.createLinearGradient(0, H - 480, 0, H)
+  shade.addColorStop(0, 'rgba(2, 8, 16, 0)')
+  shade.addColorStop(1, 'rgba(2, 8, 16, 0.72)')
+
+  /* The picture, small and round; the initial on deep blue when there is none */
+  const [avatar, actx] = makeCanvas(AVATAR_SIZE, AVATAR_SIZE)
   actx.beginPath()
-  actx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
   actx.closePath()
   actx.clip()
   if (picture) {
-    const scale = Math.max(size / picture.naturalWidth, size / picture.naturalHeight)
+    const scale = Math.max(AVATAR_SIZE / picture.naturalWidth, AVATAR_SIZE / picture.naturalHeight)
     const dw = picture.naturalWidth * scale
     const dh = picture.naturalHeight * scale
-    actx.drawImage(picture, (size - dw) / 2, (size - dh) / 2, dw, dh)
+    actx.drawImage(picture, (AVATAR_SIZE - dw) / 2, (AVATAR_SIZE - dh) / 2, dw, dh)
   } else {
-    const fill = actx.createLinearGradient(0, 0, size, size)
-    fill.addColorStop(0, '#2f7f6e')
-    fill.addColorStop(1, '#11302b')
+    const fill = actx.createLinearGradient(0, 0, AVATAR_SIZE, AVATAR_SIZE)
+    fill.addColorStop(0, '#4a86ad')
+    fill.addColorStop(1, '#16324f')
     actx.fillStyle = fill
-    actx.fillRect(0, 0, size, size)
-    actx.fillStyle = '#f1ede3'
-    actx.font = `600 104px ${serif}`
+    actx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE)
+    actx.fillStyle = '#ffffff'
+    actx.font = `600 64px ${serif}`
     actx.textAlign = 'center'
     actx.textBaseline = 'middle'
-    actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), size / 2, size / 2 + 6)
+    actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 4)
+  }
+  // A thin white edge keeps the picture crisp against the water.
+  actx.lineWidth = 6
+  actx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
+  actx.beginPath()
+  actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
+  actx.stroke()
+
+  /* The app's mark and the reciter's name, for the bottom-left corner */
+  const [badge, bctx] = makeCanvas(600, 96)
+  const mark = 54
+  bctx.save()
+  bctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
+  bctx.shadowBlur = 16
+  drawBrandMark(bctx, 4, (96 - mark) / 2, mark, serif)
+  bctx.restore()
+  bctx.save()
+  bctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+  bctx.shadowBlur = 14
+  bctx.shadowOffsetY = 2
+  bctx.fillStyle = '#ffffff'
+  bctx.font = `600 32px ${sans}`
+  bctx.textAlign = 'left'
+  bctx.textBaseline = 'middle'
+  let name = r.userName || r.userUsername
+  while (name.length > 1 && bctx.measureText(name).width > 600 - mark - 30) name = name.slice(0, -1)
+  if (name !== (r.userName || r.userUsername)) name = `${name.trimEnd()}…`
+  bctx.fillText(name, mark + 22, 96 / 2 + 1)
+  bctx.restore()
+
+  const { bands, level, frames } = analyse(buffer)
+  return { avatar, badge, bands, level, frames, seconds: buffer.duration, sky, sea, glow, shade }
+}
+
+/** Sky, a light on the horizon, rolling swells and a shimmer of light across the water. */
+function drawOcean(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
+  ctx.fillStyle = scene.sky
+  ctx.fillRect(0, 0, W, HORIZON + 1)
+  ctx.fillStyle = scene.sea
+  ctx.fillRect(0, HORIZON, W, H - HORIZON)
+  ctx.fillStyle = scene.glow
+  ctx.fillRect(0, HORIZON - 380, W, 760)
+
+  // Swells: packed tight near the horizon, wider and slower-looking up close.
+  const rows = 18
+  for (let k = 0; k < rows; k += 1) {
+    const depth = k / (rows - 1)
+    const y = HORIZON + 4 + Math.pow(depth, 1.8) * (H - HORIZON)
+    const amp = 1 + depth * 10
+    const length = 60 + depth * 300
+    const speed = 0.3 + depth * 0.55
+    ctx.beginPath()
+    for (let x = -24; x <= W + 24; x += 12) {
+      const wave =
+        Math.sin((x / length) * Math.PI * 2 + t * speed + k * 1.7) * amp +
+        Math.sin((x / (length * 0.43)) * Math.PI * 2 - t * speed * 1.4 + k * 0.6) * amp * 0.32
+      if (x === -24) ctx.moveTo(x, y + wave)
+      else ctx.lineTo(x, y + wave)
+    }
+    ctx.strokeStyle = `rgba(196, 226, 242, ${0.05 + (1 - depth) * 0.12})`
+    ctx.lineWidth = 1 + depth * 1.8
+    ctx.stroke()
   }
 
-  /* End card */
-  const [outro, octx] = makeCanvas()
-  octx.fillStyle = 'rgba(6, 10, 9, 0.94)'
-  octx.fillRect(0, 0, W, H)
-  drawBrandMark(octx, (W - 120) / 2, 470, 120, serif)
-  octx.fillStyle = '#ffffff'
-  octx.font = `600 56px ${serif}`
-  octx.textAlign = 'center'
-  octx.textBaseline = 'alphabetic'
-  octx.fillText(APP_NAME, W / 2, 680)
-  octx.fillStyle = 'rgba(255, 255, 255, 0.72)'
-  octx.font = `500 24px ${sans}`
-  octx.fillText('Listen and recite the Quran together', W / 2, 728)
-
-  /* Loudness, per frame and as a strip of peaks */
-  const data = buffer.getChannelData(0)
-  const frames = Math.ceil(buffer.duration * FPS)
-  const envelope = new Float32Array(frames)
-  const perFrame = Math.floor(buffer.sampleRate / FPS)
-  let smooth = 0
-  for (let f = 0; f < frames; f += 1) {
-    const start = f * perFrame
-    const end = Math.min(data.length, start + perFrame)
-    let sum = 0
-    for (let i = start; i < end; i += 4) sum += data[i] * data[i]
-    const rms = Math.sqrt(sum / Math.max(1, (end - start) / 4))
-    const level = Math.min(1, Math.pow(rms * 5, 0.8))
-    smooth += (level - smooth) * (level > smooth ? 0.55 : 0.14)
-    envelope[f] = smooth
+  // The path of light on the water under the glow, flickering as it moves.
+  for (let i = 0; i < 30; i += 1) {
+    const depth = i / 29
+    const y = HORIZON + 6 + Math.pow(depth, 1.6) * 440
+    const flicker = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 2.39)
+    const width = (26 + depth * 170) * (0.55 + 0.45 * flicker)
+    const x = W / 2 + Math.sin(t * 0.7 + i * 1.3) * (4 + depth * 22) - width / 2
+    ctx.fillStyle = `rgba(255, 240, 214, ${(0.34 - depth * 0.3) * flicker})`
+    ctx.fillRect(x, y, width, 1.4 + depth * 1.8)
   }
 
-  const bars = 44
-  const peaks = new Float32Array(bars)
-  const bucket = Math.floor(data.length / bars) || 1
-  let loudest = 0
-  for (let b = 0; b < bars; b += 1) {
-    let sum = 0
-    const start = b * bucket
-    const end = Math.min(data.length, start + bucket)
-    for (let i = start; i < end; i += 16) sum += data[i] * data[i]
-    peaks[b] = Math.sqrt(sum / Math.max(1, (end - start) / 16))
-    loudest = Math.max(loudest, peaks[b])
-  }
-  for (let b = 0; b < bars; b += 1) peaks[b] = 0.14 + 0.86 * (loudest > 0 ? peaks[b] / loudest : 0)
-
-  return { base, avatar, outro, envelope, peaks, audioSeconds: buffer.duration, sans, waveMid }
+  ctx.fillStyle = scene.shade
+  ctx.fillRect(0, H - 480, W, 480)
 }
 
 function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  ctx.drawImage(scene.base, 0, 0)
+  drawOcean(ctx, scene, t)
 
-  const frame = Math.min(scene.envelope.length - 1, Math.floor(t * FPS))
-  const level = t < scene.audioSeconds ? scene.envelope[Math.max(0, frame)] : 0
-  const progress = Math.min(1, t / scene.audioSeconds)
+  const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
+  const level = scene.level[f] ?? 0
 
-  // Rings that swell with the voice, never reaching the title below.
-  const cx = W / 2
-  const cy = 400
-  const radius = scene.avatar.width / 2
+  // A soft ring breathing out from the picture with the voice.
+  const r = AVATAR_SIZE / 2
   ctx.save()
-  ctx.strokeStyle = ACCENT
-  ctx.globalAlpha = 0.22 + level * 0.3
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius + 14 + level * 30, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 0.1 + level * 0.18
+  ctx.strokeStyle = '#ffffff'
+  ctx.globalAlpha = 0.12 + level * 0.3
   ctx.lineWidth = 2
   ctx.beginPath()
-  ctx.arc(cx, cy, radius + 34 + level * 44, 0, Math.PI * 2)
+  ctx.arc(W / 2, AVATAR_Y, r + 12 + level * 16, 0, Math.PI * 2)
   ctx.stroke()
   ctx.restore()
 
   ctx.save()
   ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
-  ctx.shadowBlur = 28
-  ctx.drawImage(scene.avatar, cx - radius, cy - radius)
+  ctx.shadowBlur = 34
+  ctx.shadowOffsetY = 10
+  ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
   ctx.restore()
 
-  // Waveform: played bars in the accent, the current one lifted by the voice.
-  const bars = scene.peaks.length
-  const left = 110
-  const span = W - left * 2
-  const step = span / bars
-  const barWidth = Math.max(3, step * 0.52)
-  const mid = scene.waveMid
-  for (let b = 0; b < bars; b += 1) {
-    const at = (b + 0.5) / bars
-    const played = at <= progress
-    const isCurrent = Math.abs(at - progress) < 0.5 / bars
-    const height = Math.max(6, scene.peaks[b] * 70 * (isCurrent ? 1 + level * 0.5 : 1))
-    ctx.fillStyle = played ? ACCENT : 'rgba(255, 255, 255, 0.32)'
-    ctx.beginPath()
-    ctx.roundRect(left + b * step + (step - barWidth) / 2, mid - height / 2, barWidth, height, barWidth / 2)
-    ctx.fill()
+  // The waveform: mirrored bars with a faint glow, tallest in the middle.
+  const count = BANDS * 2 - 1
+  const span = count * BAR_WIDTH + (count - 1) * BAR_GAP
+  const left = (W - span) / 2
+  ctx.save()
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.4)'
+  ctx.shadowBlur = 16
+  ctx.beginPath()
+  for (let i = 0; i < count; i += 1) {
+    const band = Math.abs(i - (BANDS - 1))
+    const value = scene.bands[f * BANDS + band] ?? 0
+    const taper = 1 - (band / BANDS) * 0.45
+    const height = BAR_WIDTH + value * 116 * taper
+    ctx.roundRect(left + i * (BAR_WIDTH + BAR_GAP), WAVE_Y - height / 2, BAR_WIDTH, height, BAR_WIDTH / 2)
   }
+  ctx.fill()
+  ctx.restore()
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-  ctx.font = `500 21px ${scene.sans}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'alphabetic'
-  const elapsed = Math.min(scene.audioSeconds, t)
-  ctx.fillText(`${formatDuration(elapsed)} / ${formatDuration(scene.audioSeconds)}`, W / 2, mid + 66)
+  ctx.drawImage(scene.badge, 40, H - 262)
 
-  // End card fades in once the recitation is over.
-  if (t > scene.audioSeconds) {
-    ctx.save()
-    ctx.globalAlpha = Math.min(1, (t - scene.audioSeconds) / 0.45)
-    ctx.drawImage(scene.outro, 0, 0)
-    ctx.restore()
+  // In from black, and out again over the last moments of the tail.
+  const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)
+  if (fade < 1) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, 1 - Math.max(0, fade))})`
+    ctx.fillRect(0, 0, W, H)
   }
 }
 
@@ -532,7 +562,7 @@ export async function makeRecitationVideo(
   output.addAudioTrack(audio)
   await output.start()
 
-  const totalFrames = Math.ceil((buffer.duration + OUTRO_SECONDS) * FPS)
+  const totalFrames = scene.frames
   const audioChunk = buffer.sampleRate
   let audioCursor = 0
 
