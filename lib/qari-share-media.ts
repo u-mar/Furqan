@@ -152,9 +152,9 @@ export async function makeRecitationAudio(
 /* ------------------------------------------------------------------ video */
 
 /**
- * The look: a calm ocean at dusk that keeps moving, the reciter's picture
- * small in the middle, a waveform that follows the voice's own frequencies,
- * and the app's mark with the reciter's name in the corner. Nothing else.
+ * The look: plain black, the reciter's picture small in the middle, a waveform
+ * that follows the voice's own frequencies, and the app's mark with the
+ * reciter's name under it in the corner. Nothing else.
  */
 
 /** Frequency bands; the bars mirror them, low voices in the middle and higher ones outwards. */
@@ -162,7 +162,6 @@ const BANDS = 18
 const BAR_WIDTH = 6
 const BAR_GAP = 6
 
-const HORIZON = Math.round(H * 0.4)
 const AVATAR_Y = 600
 const AVATAR_SIZE = 148
 const WAVE_Y = 780
@@ -176,10 +175,6 @@ interface Scene {
   level: Float32Array
   frames: number
   seconds: number
-  sky: CanvasGradient
-  sea: CanvasGradient
-  glow: CanvasGradient
-  shade: CanvasGradient
 }
 
 function cssFont(varName: string, fallback: string): string {
@@ -351,27 +346,6 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer): Promise<Scene> 
       : null,
   ])
 
-  const [, ctx] = makeCanvas(2, 2)
-
-  const sky = ctx.createLinearGradient(0, 0, 0, HORIZON)
-  sky.addColorStop(0, '#07122a')
-  sky.addColorStop(0.55, '#173a5e')
-  sky.addColorStop(1, '#6e94b1')
-
-  const sea = ctx.createLinearGradient(0, HORIZON, 0, H)
-  sea.addColorStop(0, '#2d5877')
-  sea.addColorStop(0.28, '#153655')
-  sea.addColorStop(1, '#04101f')
-
-  const glow = ctx.createRadialGradient(W / 2, HORIZON, 0, W / 2, HORIZON, 380)
-  glow.addColorStop(0, 'rgba(255, 228, 186, 0.42)')
-  glow.addColorStop(0.45, 'rgba(255, 210, 170, 0.12)')
-  glow.addColorStop(1, 'rgba(255, 210, 170, 0)')
-
-  const shade = ctx.createLinearGradient(0, H - 480, 0, H)
-  shade.addColorStop(0, 'rgba(2, 8, 16, 0)')
-  shade.addColorStop(1, 'rgba(2, 8, 16, 0.72)')
-
   /* The picture, small and round; the initial on deep blue when there is none */
   const [avatar, actx] = makeCanvas(AVATAR_SIZE, AVATAR_SIZE)
   actx.beginPath()
@@ -395,86 +369,35 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer): Promise<Scene> 
     actx.textBaseline = 'middle'
     actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 4)
   }
-  // A thin white edge keeps the picture crisp against the water.
+  // A thin white edge keeps the picture crisp against the black.
   actx.lineWidth = 6
   actx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
   actx.beginPath()
   actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
   actx.stroke()
 
-  /* The app's mark and the reciter's name, for the bottom-left corner */
-  const [badge, bctx] = makeCanvas(600, 96)
-  const mark = 54
-  bctx.save()
-  bctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
-  bctx.shadowBlur = 16
-  drawBrandMark(bctx, 4, (96 - mark) / 2, mark, serif)
-  bctx.restore()
-  bctx.save()
-  bctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
-  bctx.shadowBlur = 14
-  bctx.shadowOffsetY = 2
-  bctx.fillStyle = '#ffffff'
-  bctx.font = `600 32px ${sans}`
+  /* The app's mark with the reciter's name under it, for the bottom-left corner */
+  const badgeWidth = 520
+  const mark = 48
+  const [badge, bctx] = makeCanvas(badgeWidth, 92)
+  drawBrandMark(bctx, 2, 2, mark, serif)
+  bctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  bctx.font = `600 22px ${sans}`
   bctx.textAlign = 'left'
-  bctx.textBaseline = 'middle'
-  let name = r.userName || r.userUsername
-  while (name.length > 1 && bctx.measureText(name).width > 600 - mark - 30) name = name.slice(0, -1)
-  if (name !== (r.userName || r.userUsername)) name = `${name.trimEnd()}…`
-  bctx.fillText(name, mark + 22, 96 / 2 + 1)
-  bctx.restore()
+  bctx.textBaseline = 'top'
+  const fullName = r.userName || r.userUsername
+  let name = fullName
+  while (name.length > 1 && bctx.measureText(name).width > badgeWidth - 8) name = name.slice(0, -1)
+  if (name !== fullName) name = `${name.trimEnd()}…`
+  bctx.fillText(name, 2, mark + 14)
 
   const { bands, level, frames } = analyse(buffer)
-  return { avatar, badge, bands, level, frames, seconds: buffer.duration, sky, sea, glow, shade }
-}
-
-/** Sky, a light on the horizon, rolling swells and a shimmer of light across the water. */
-function drawOcean(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  ctx.fillStyle = scene.sky
-  ctx.fillRect(0, 0, W, HORIZON + 1)
-  ctx.fillStyle = scene.sea
-  ctx.fillRect(0, HORIZON, W, H - HORIZON)
-  ctx.fillStyle = scene.glow
-  ctx.fillRect(0, HORIZON - 380, W, 760)
-
-  // Swells: packed tight near the horizon, wider and slower-looking up close.
-  const rows = 18
-  for (let k = 0; k < rows; k += 1) {
-    const depth = k / (rows - 1)
-    const y = HORIZON + 4 + Math.pow(depth, 1.8) * (H - HORIZON)
-    const amp = 1 + depth * 10
-    const length = 60 + depth * 300
-    const speed = 0.3 + depth * 0.55
-    ctx.beginPath()
-    for (let x = -24; x <= W + 24; x += 12) {
-      const wave =
-        Math.sin((x / length) * Math.PI * 2 + t * speed + k * 1.7) * amp +
-        Math.sin((x / (length * 0.43)) * Math.PI * 2 - t * speed * 1.4 + k * 0.6) * amp * 0.32
-      if (x === -24) ctx.moveTo(x, y + wave)
-      else ctx.lineTo(x, y + wave)
-    }
-    ctx.strokeStyle = `rgba(196, 226, 242, ${0.05 + (1 - depth) * 0.12})`
-    ctx.lineWidth = 1 + depth * 1.8
-    ctx.stroke()
-  }
-
-  // The path of light on the water under the glow, flickering as it moves.
-  for (let i = 0; i < 30; i += 1) {
-    const depth = i / 29
-    const y = HORIZON + 6 + Math.pow(depth, 1.6) * 440
-    const flicker = 0.5 + 0.5 * Math.sin(t * 2.2 + i * 2.39)
-    const width = (26 + depth * 170) * (0.55 + 0.45 * flicker)
-    const x = W / 2 + Math.sin(t * 0.7 + i * 1.3) * (4 + depth * 22) - width / 2
-    ctx.fillStyle = `rgba(255, 240, 214, ${(0.34 - depth * 0.3) * flicker})`
-    ctx.fillRect(x, y, width, 1.4 + depth * 1.8)
-  }
-
-  ctx.fillStyle = scene.shade
-  ctx.fillRect(0, H - 480, W, 480)
+  return { avatar, badge, bands, level, frames, seconds: buffer.duration }
 }
 
 function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  drawOcean(ctx, scene, t)
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, W, H)
 
   const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
   const level = scene.level[f] ?? 0
@@ -490,12 +413,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
   ctx.stroke()
   ctx.restore()
 
-  ctx.save()
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)'
-  ctx.shadowBlur = 34
-  ctx.shadowOffsetY = 10
   ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
-  ctx.restore()
 
   // The waveform: mirrored bars with a faint glow, tallest in the middle.
   const count = BANDS * 2 - 1
@@ -516,7 +434,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
   ctx.fill()
   ctx.restore()
 
-  ctx.drawImage(scene.badge, 40, H - 262)
+  ctx.drawImage(scene.badge, 40, H - 240)
 
   // In from black, and out again over the last moments of the tail.
   const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)

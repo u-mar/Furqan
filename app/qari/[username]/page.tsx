@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Heart, Mic, Pause, Pencil, Play, Share2, UsersRound } from 'lucide-react'
+import { ChevronLeft, Heart, Mic, Pause, Pencil, Play, Share2 } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
@@ -200,7 +200,6 @@ export default function QariProfilePage() {
           <Stat value={totals.count} Icon={Mic} label="recitations" />
           <Stat value={totals.plays} Icon={Play} label="plays" />
           <Stat value={totals.loved} Icon={Heart} label="loved" />
-          <Stat value={follow?.followers ?? 0} Icon={UsersRound} label="followers" />
         </div>
 
         <div className="mt-5 flex w-full gap-2">

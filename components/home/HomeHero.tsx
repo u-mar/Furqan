@@ -1,17 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Settings2 } from 'lucide-react'
+import { SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { IconCrescent, IconOrnament } from '@/components/home/TileIcons'
-import { APP_NAME } from '@/lib/app-brand'
+import { IconCrescent } from '@/components/home/TileIcons'
 import { formatHijri } from '@/lib/hijri'
 
+/** e.g. "Sun 13 Sep" — the Hijri date leads, so this one stays short. */
 function formatGregorian(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
+    weekday: 'short',
     day: 'numeric',
-    month: 'long',
+    month: 'short',
   }).format(date)
 }
 
@@ -26,45 +26,24 @@ export default function HomeHero({ displayName }: { displayName: string }) {
   }, [])
 
   return (
-    <header className="reveal mb-9">
-      {/* Masthead */}
-      <div className="flex items-center justify-between gap-4">
-        <p className="ed-label">{APP_NAME}</p>
-        <Link
-          href="/settings"
-          className="ed-focus flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
-          aria-label="Open settings"
-        >
-          <Settings2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
-        </Link>
-      </div>
-
-      {/* Greeting */}
-      <div className="mt-7">
-        <p
-          className="amiri !text-left text-[1.6rem] leading-none text-[var(--home-sage-deep)]"
-          dir="rtl"
-        >
+    <header className="reveal flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="amiri !text-left text-[1.3125rem] leading-[1.5] text-[var(--home-sage)]" dir="rtl">
           ٱلسَّلَامُ عَلَيْكُمْ
         </p>
-        <h1 className="home-serif mt-3 truncate text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.025em] text-[var(--home-heading)]">
+        <h1 className="home-serif truncate text-[1.8125rem] font-semibold leading-[1.1] tracking-[-0.02em] text-[var(--home-heading)]">
           {displayName}
         </h1>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] text-[var(--home-muted)]">
+          <IconCrescent className="h-[13px] w-[13px] shrink-0 text-[var(--home-sage)]" />
+          <span className="font-semibold text-[var(--home-heading)]">{hijri || '…'}</span>
+          {gregorian ? <span>· {gregorian}</span> : null}
+        </p>
       </div>
 
-      {/* Dateline */}
-      <div className="mt-7 flex items-center gap-3">
-        <span className="ed-rule flex-1" />
-        <IconOrnament className="h-3 w-3 text-[var(--home-sage)]" />
-        <span className="ed-rule flex-1" />
-      </div>
-      <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="flex items-center gap-2 text-[var(--home-heading)]">
-          <IconCrescent className="h-3.5 w-3.5 text-[var(--home-sage)]" />
-          <span className="home-serif text-[1.02rem] font-medium">{hijri || '…'}</span>
-        </span>
-        <span className="text-[0.8rem] text-[var(--home-muted)]">{gregorian || '…'}</span>
-      </div>
+      <Link href="/settings" className="home-round ed-focus" aria-label="Open settings">
+        <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      </Link>
     </header>
   )
 }
