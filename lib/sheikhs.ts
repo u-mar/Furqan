@@ -5,8 +5,8 @@
  * on one page — people spell names a dozen ways (#sufi, #suufi, #sheikhsufi),
  * and a tag per spelling would scatter them.
  *
- * Names only, never photos: using a sheikh's picture needs permission, and the
- * app must not look like any of them endorse it.
+ * A sheikh's picture is the one Listen already shows for him; the first letter
+ * of his Arabic name stands in where there is none.
  */
 
 export interface Sheikh {
@@ -17,89 +17,105 @@ export interface Sheikh {
   shortName: string
   /** Other spellings people search with, including Somali and Arabic. */
   aliases: string[]
+  /** The same sheikh in Listen, whose portrait Qari shows too. */
+  reciterId?: string
 }
 
 export const SHEIKHS: Sheikh[] = [
   {
     id: 'abdirashid-sufi',
+    reciterId: 'soufi',
     name: 'Sheikh Abdirashid Ali Sufi',
     shortName: 'Sheikh Sufi',
     aliases: ['sufi', 'suufi', 'abdirashid', 'abdirashiid', 'cabdirashiid', 'cabdirashid', 'ali sufi', 'cali suufi', 'صوفي'],
   },
   {
     id: 'sudais',
+    reciterId: 'sudais',
     name: 'Abdul Rahman Al-Sudais',
     shortName: 'Al-Sudais',
     aliases: ['sudais', 'sudeis', 'sudays', 'sudes', 'abdurrahman sudais', 'السديس'],
   },
   {
     id: 'alafasy',
+    reciterId: 'alafasy',
     name: 'Mishary Rashid Alafasy',
     shortName: 'Mishary Alafasy',
     aliases: ['mishary', 'mishari', 'alafasy', 'afasy', 'alafasi', 'afasi', 'العفاسي'],
   },
   {
     id: 'abdul-basit',
+    reciterId: 'abdulbasit',
     name: 'Abdul Basit Abdul Samad',
     shortName: 'Abdul Basit',
     aliases: ['abdul basit', 'abdulbasit', 'abdelbasset', 'basit', 'cabdul baasid', 'عبد الباسط'],
   },
   {
     id: 'husary',
+    reciterId: 'husary',
     name: 'Mahmoud Khalil Al-Husary',
     shortName: 'Al-Husary',
     aliases: ['husary', 'husari', 'hussary', 'hosary', 'الحصري'],
   },
   {
     id: 'minshawi',
+    reciterId: 'minshawi',
     name: 'Mohamed Siddiq Al-Minshawi',
     shortName: 'Al-Minshawi',
     aliases: ['minshawi', 'menshawi', 'minshawy', 'المنشاوي'],
   },
   {
     id: 'muaiqly',
+    reciterId: 'maher',
     name: 'Maher Al-Muaiqly',
     shortName: 'Maher Al-Muaiqly',
     aliases: ['maher', 'muaiqly', 'muaiqli', 'mueaqly', 'المعيقلي'],
   },
   {
     id: 'shuraim',
+    reciterId: 'shuraim',
     name: 'Saud Al-Shuraim',
     shortName: 'Al-Shuraim',
     aliases: ['shuraim', 'shuraym', 'shreem', 'الشريم'],
   },
   {
     id: 'ghamdi',
+    reciterId: 'ghamadi',
     name: 'Saad Al-Ghamdi',
     shortName: 'Saad Al-Ghamdi',
     aliases: ['ghamdi', 'ghamidi', 'saad', 'الغامدي'],
   },
   {
     id: 'dosari',
+    reciterId: 'yasser_dosari',
     name: 'Yasser Al-Dosari',
     shortName: 'Yasser Al-Dosari',
     aliases: ['yasser', 'yasir', 'dosari', 'dossari', 'dosary', 'الدوسري'],
   },
   {
     id: 'shatri',
+    reciterId: 'shatri',
     name: 'Abu Bakr Al-Shatri',
     shortName: 'Abu Bakr Al-Shatri',
     aliases: ['shatri', 'shatry', 'abu bakr', 'الشاطري'],
   },
   {
     id: 'qatami',
+    reciterId: 'qatami',
     name: 'Nasser Al-Qatami',
     shortName: 'Nasser Al-Qatami',
     aliases: ['qatami', 'katami', 'nasser', 'القطامي'],
   },
   {
     id: 'ajmi',
+    reciterId: 'ajmi',
     name: 'Ahmed Al-Ajmi',
     shortName: 'Ahmed Al-Ajmi',
     aliases: ['ajmi', 'ajami', 'العجمي'],
   },
   {
     id: 'abkar',
+    reciterId: 'idris_abkar',
     name: 'Idris Abkar',
     shortName: 'Idris Abkar',
     aliases: ['abkar', 'idris', 'idrees', 'أبكر'],
@@ -112,6 +128,7 @@ export const SHEIKHS: Sheikh[] = [
   },
   {
     id: 'baleela',
+    reciterId: 'balilah',
     name: 'Bandar Baleela',
     shortName: 'Bandar Baleela',
     aliases: ['baleela', 'balila', 'bandar', 'بليلة'],

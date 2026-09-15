@@ -188,6 +188,7 @@ export const RECITERS: Reciter[] = [
   {
     id: 'qatami',
     top: true,
+    photoUrl: 'https://media.way2quran.com/imgs/naser-al-katamy.jpg',
     name: 'Nasser Al-Qatami',
     source: 'everyayah',
     folder: 'Nasser_Alqatami_128kbps',
@@ -439,6 +440,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'tablawi_mujawwad',
+    photoUrl: 'https://media.way2quran.com/imgs/muhammad-mahmoud-al-tablawi.jpg',
     name: 'Mohammad Al-Tablawi',
     source: 'mp3quran',
     folder: 'https://server12.mp3quran.net/tblawi/Al-Mojawwad',
@@ -572,6 +574,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'saltany_ibn_dhakwan',
+    photoUrl: 'https://media.way2quran.com/imgs/muftah-al-saltani.jpg',
     name: 'Muftah As-Saltany',
     source: 'mp3quran',
     folder: 'https://server14.mp3quran.net/muftah_sultany/Rewayat_Ibn-Thakwan-A-n-Ibn-Amer',
@@ -582,6 +585,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'abdullah_kisai',
+    photoUrl: 'https://media.way2quran.com/imgs/muhammad-abdul-hakim-al-abdullah.jpg',
     name: 'Mohammad Al-Abdullah',
     source: 'mp3quran',
     folder: 'https://server9.mp3quran.net/abdullah/Rewayat-AlDorai-A-n-Al-Kisa-ai',
@@ -592,6 +596,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'mazroyee_rowis',
+    photoUrl: 'https://media.way2quran.com/imgs/yasser-al-mazroui.jpg',
     name: 'Yasser Al-Mazroyee',
     source: 'mp3quran',
     folder: 'https://server9.mp3quran.net/mzroyee',
@@ -659,6 +664,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'jamal_shaker',
+    photoUrl: 'https://media.way2quran.com/imgs/jamal-shaker-abdullah.jfif',
     name: 'Jamal Shaker Abdullah',
     source: 'mp3quran',
     folder: 'https://server6.mp3quran.net/jamal/',
@@ -702,6 +708,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'junaid_abdullah',
+    photoUrl: 'https://media.way2quran.com/imgs/junaid-adam-abdullah.jpg',
     name: 'Junaid Adam Abdullah',
     source: 'mp3quran',
     folder: 'https://server16.mp3quran.net/J-Abdullah/Rewayat-Hafs-A-n-Assem/',

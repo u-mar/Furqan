@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 import { Mic } from 'lucide-react'
+import { RECITERS } from '@/lib/reciters'
 import { sheikhLetter, type Sheikh } from '@/lib/sheikhs'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
@@ -10,20 +12,49 @@ export function plural(count: number, word: string, many = `${word}s`) {
   return `${count} ${count === 1 ? word : many}`
 }
 
-/** A sheikh never has a photo: a letter of his Arabic name stands for him. */
+/**
+ * The sheikh's portrait from Listen, faded in over the first letter of his
+ * Arabic name — which stays when there is no picture or it fails to load.
+ */
 export function SheikhMonogram({ sheikh, size = 40, className }: { sheikh: Sheikh; size?: number; className?: string }) {
+  const photo = sheikh.reciterId ? RECITERS.find((r) => r.id === sheikh.reciterId)?.photoUrl : undefined
+  const [shown, setShown] = useState<string | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+
+  // A cached picture can finish before hydration and its load event is gone.
+  useEffect(() => {
+    const img = imgRef.current
+    if (img?.complete && img.naturalWidth > 0 && photo) setShown(photo)
+  }, [photo])
+
   return (
     <span
       aria-hidden
-      className={cn('qari-monogram', className)}
+      className={cn('qari-monogram relative overflow-hidden', className)}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.52), paddingBottom: Math.round(size * 0.18) }}
     >
       {sheikhLetter(sheikh)}
+      {photo && failed !== photo ? (
+        <img
+          key={photo}
+          ref={imgRef}
+          src={photo}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onLoad={() => setShown(photo)}
+          onError={() => setFailed(photo)}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ opacity: shown === photo ? 1 : 0, transition: 'opacity 200ms ease' }}
+        />
+      ) : null}
     </span>
   )
 }
 
-/** A sheikh in the Imitations row. Names only — never a photo. */
+/** A sheikh in the Imitations row. */
 export function SheikhCard({
   sheikh,
   count,
