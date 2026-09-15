@@ -7,6 +7,7 @@ import {
   AudioLines,
   Check,
   ChevronLeft,
+  Film,
   Globe,
   Hash,
   Lock,
@@ -15,15 +16,15 @@ import {
   Play,
   RotateCcw,
   Send,
-  Share2,
   UserRound,
   X,
 } from 'lucide-react'
 import Dropdown from '@/components/qari/Dropdown'
+import RecitationCard from '@/components/qari/RecitationCard'
 import ShareSheet from '@/components/qari/ShareSheet'
 import Switch from '@/components/qari/Switch'
 import Waveform from '@/components/qari/Waveform'
-import { Notice, useNotice, useViewer } from '@/components/qari/QariShell'
+import { QariHeader, QariLabel, QariSegmented, qariNotice, useQariNeutral, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
 import {
   microphoneError,
@@ -33,7 +34,8 @@ import {
   type PreparedRecording,
 } from '@/hooks/useQariRecorder'
 import { createSpaceMixer, findSpace, SPACES, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
-import { strongFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
+import { errorFeedback, strongFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
+import { toast } from '@/lib/toast'
 import {
   formatDuration,
   primeRecitationAudio,
@@ -59,7 +61,6 @@ function clock(seconds: number): string {
 function RecordFlow() {
   const params = useSearchParams()
   const viewer = useViewer()
-  const { notice, setNotice } = useNotice()
   const recorder = useQariRecorder(MAX_SECONDS)
   const { state } = recorder
 
@@ -86,6 +87,7 @@ function RecordFlow() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [published, setPublished] = useState<Recitation | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
+  const [titleShake, setTitleShake] = useState(false)
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -106,7 +108,7 @@ function RecordFlow() {
 
   const begin = useCallback(async () => {
     if (!recorder.supported) {
-      setNotice('This browser cannot record audio. Try Chrome on Android, or Safari on iPhone.')
+      qariNotice('This browser cannot record audio. Try Chrome on Android, or Safari on iPhone.')
       return
     }
     strongFeedback()
@@ -116,7 +118,7 @@ function RecordFlow() {
       preparedRef.current = await prepareRecording()
     } catch (err) {
       setStep('ready')
-      setNotice(microphoneError(err))
+      qariNotice(microphoneError(err))
       return
     }
 
@@ -136,7 +138,7 @@ function RecordFlow() {
       preparedRef.current = null
       void recorder.start(prepared ?? undefined)
     }, 850)
-  }, [clearCountdown, recorder, setNotice])
+  }, [clearCountdown, recorder])
 
   const cancelCountdown = useCallback(() => {
     clearCountdown()
@@ -163,9 +165,9 @@ function RecordFlow() {
   useEffect(() => {
     if (state.error && step === 'recording') {
       setStep('ready')
-      setNotice(state.error)
+      qariNotice(state.error)
     }
-  }, [setNotice, state.error, step])
+  }, [state.error, step])
 
   // When the take lands, move on to publishing and measure its shape.
   useEffect(() => {
@@ -240,8 +242,8 @@ function RecordFlow() {
       mixerRef.current = mixer
     }
     void previewCtxRef.current?.resume().catch(() => {})
-    void previewRef.current.play().catch(() => setNotice('Could not play that back.'))
-  }, [previewing, setNotice, spaceId, state.blob, state.durationSec])
+    void previewRef.current.play().catch(() => qariNotice('Could not play that back.'))
+  }, [previewing, spaceId, state.blob, state.durationSec])
 
   const seekPreview = useCallback(
     (fraction: number) => {
@@ -273,7 +275,10 @@ function RecordFlow() {
       return
     }
     if (!title.trim()) {
-      setNotice('Give your recitation a title.')
+      errorFeedback()
+      toast('Give your recitation a title.')
+      setTitleShake(true)
+      window.setTimeout(() => setTitleShake(false), 450)
       document.getElementById('qari-title')?.focus()
       return
     }
@@ -318,11 +323,11 @@ function RecordFlow() {
       successFeedback()
       setStep('published')
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : 'Could not publish.')
+      qariNotice(err instanceof Error ? err.message : 'Could not publish.')
     } finally {
       setPublishing(false)
     }
-  }, [caption, hashtags, imitate, isPrivate, peaks, setNotice, sheikhId, spaceId, state, stopPreview, tags, title, viewer])
+  }, [caption, hashtags, imitate, isPrivate, peaks, sheikhId, spaceId, state, stopPreview, tags, title, viewer])
 
   const startOver = useCallback(() => {
     recorder.reset()
@@ -339,14 +344,21 @@ function RecordFlow() {
   const spaceOptions = SPACES.map((s) => ({ id: s.id, label: s.label, hint: s.hint }))
   const sheikhOptions = SHEIKHS.map((s) => ({ id: s.id, label: s.shortName, hint: s.name }))
 
-  const settings = (
+  const settings = (hints: boolean) => (
     <Group>
-      <SettingRow Icon={AudioLines} label="Sound" hint="How the room sounds">
+      <SettingRow Icon={AudioLines} label="Sound" hint={hints ? 'How the room sounds' : undefined}>
         <Dropdown variant="field" label="Sound" value={spaceId} options={spaceOptions} onChange={setSpaceId} />
       </SettingRow>
       <Divider />
-      <SettingRow Icon={MicVocal} label="Imitate a sheikh" hint="Also shows on his page">
-        <Switch checked={imitate} onChange={setImitate} label="Imitate a sheikh" />
+      <SettingRow Icon={MicVocal} label="Imitate a sheikh" hint={hints ? 'Also shows on his page' : undefined}>
+        <Switch
+          checked={imitate}
+          onChange={(on) => {
+            tapFeedback()
+            setImitate(on)
+          }}
+          label="Imitate a sheikh"
+        />
       </SettingRow>
       {imitate ? (
         <>
@@ -364,45 +376,65 @@ function RecordFlow() {
   if (step === 'published' && published) {
     return (
       <Screen>
-        <div className="qari-step flex flex-1 flex-col items-center justify-center text-center">
-          <span className="qari-done flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[var(--home-sage)] text-[var(--home-ink-fg)] shadow-[0_18px_40px_-14px_color-mix(in_srgb,var(--home-sage)_60%,transparent)]">
-            <Check className="h-10 w-10" strokeWidth={3} />
-          </span>
-          <h1 className="mt-6 text-[1.7rem] font-extrabold tracking-[-0.02em] text-[var(--home-heading)]">
-            {published.isPrivate ? 'Saved to your profile' : 'Published'}
-          </h1>
-          <p className="mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">
-            “{published.title}”
-            {published.imitating && sheikh ? ` · imitating ${sheikh.shortName}` : ''}
-            {published.isPrivate ? '. Only you can hear it.' : ' is now in the Qari feed.'}
-          </p>
+        <div className="flex justify-end">
+          <Link href="/qari" onClick={tapFeedback} aria-label="Close" className="home-round ed-focus">
+            <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
+          </Link>
+        </div>
 
-          <div className="mt-8 flex w-full max-w-sm flex-col gap-2.5">
+        <div className="qari-step flex flex-1 flex-col justify-center pb-4">
+          <div className="flex flex-col items-center text-center">
+            <span className="qari-done flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[var(--home-sage)] text-white shadow-[0_0_0_10px_var(--home-sage-soft),0_18px_40px_-14px_rgba(15,122,106,0.6)]">
+              <Check className="h-10 w-10" strokeWidth={3} />
+            </span>
+            <h1 className="home-serif mt-[26px] text-[1.9375rem] font-semibold tracking-[-0.02em] text-[var(--home-heading)]">
+              {published.isPrivate ? 'Saved' : 'Published'}
+            </h1>
+            <p className="mt-1.5 max-w-[32ch] text-[15px] leading-normal text-[var(--home-muted)]">
+              {published.isPrivate
+                ? 'It is on your profile. Only you can hear it.'
+                : published.imitating && sheikh
+                  ? `It is in the Qari feed and on ${sheikh.shortName}'s page.`
+                  : 'It is in the Qari feed.'}
+            </p>
+          </div>
+
+          <div className="mt-7">
+            <RecitationCard recitation={published} viewerId={viewer?.id ?? null} viewerUsername={viewer?.username ?? null} onNotice={qariNotice} />
+          </div>
+
+          <div className="mt-[26px] flex flex-col gap-2.5">
             <button
               type="button"
-              onClick={() => setShareOpen(true)}
-              className="ed-ink ed-focus qari-press flex h-[52px] items-center justify-center gap-2 rounded-full text-[15px] font-bold"
+              onClick={() => {
+                tapFeedback()
+                setShareOpen(true)
+              }}
+              className="ed-ink ed-focus qari-press flex h-[52px] items-center justify-center gap-2 rounded-full text-[15px] font-semibold"
             >
-              <Share2 className="h-[18px] w-[18px]" strokeWidth={2.2} />
-              Share as video or audio
+              <Film className="h-[17px] w-[17px]" strokeWidth={2.1} />
+              Share as a video
             </button>
             <Link
               href={`/qari/${encodeURIComponent(published.userUsername)}`}
-              className="qari-press ed-focus flex h-12 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)]"
+              onClick={tapFeedback}
+              className="qari-press ed-focus flex h-12 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[14.5px] font-semibold text-[var(--home-heading)]"
             >
               See it on your profile
             </Link>
             <button
               type="button"
-              onClick={startOver}
-              className="ed-focus h-11 text-sm font-semibold text-[var(--home-muted)] hover:text-[var(--home-heading)]"
+              onClick={() => {
+                tapFeedback()
+                startOver()
+              }}
+              className="ed-focus h-10 text-sm font-semibold text-[var(--home-muted)] hover:text-[var(--home-heading)]"
             >
               Record another
             </button>
           </div>
         </div>
-        <ShareSheet recitation={published} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={setNotice} />
-        <Notice message={notice} />
+        <ShareSheet recitation={published} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={qariNotice} />
       </Screen>
     )
   }
@@ -410,17 +442,17 @@ function RecordFlow() {
   if (step === 'review' && state.blob) {
     return (
       <Screen scroll>
-        <TopBar
-          left={
-            <IconButton label="Record again" onClick={recordAgain}>
-              <ChevronLeft className="h-6 w-6" strokeWidth={2} />
-            </IconButton>
+        <QariHeader
+          title="Publish"
+          back={
+            <button type="button" onClick={recordAgain} aria-label="Record again" className="home-round ed-focus">
+              <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+            </button>
           }
-          center={<p className="text-base font-semibold text-[var(--home-heading)]">Publish</p>}
         />
 
         <div className="qari-step">
-          <GroupLabel>Your recording</GroupLabel>
+          <QariLabel>Your recording</QariLabel>
           <Group>
             <div className="p-3.5">
               <div className="flex items-center gap-3">
@@ -459,12 +491,12 @@ function RecordFlow() {
             </div>
           </Group>
 
-          <GroupLabel>Details</GroupLabel>
+          <QariLabel>Details</QariLabel>
           <Group>
-            <label className="block px-3.5 py-3 focus-within:bg-[color-mix(in_srgb,var(--home-heading)_4%,transparent)]" htmlFor="qari-title">
+            <label className={cn('block px-3.5 py-[11px]', titleShake && 'fx-shake')} htmlFor="qari-title">
               <span className="flex items-center justify-between text-xs font-semibold text-[var(--home-muted)]">
                 Title
-                <span className="font-normal tabular-nums">{title.length}/80</span>
+                <span className="font-medium tabular-nums">{title.length}/80</span>
               </span>
               <input
                 id="qari-title"
@@ -475,8 +507,8 @@ function RecordFlow() {
                 className="mt-1 w-full bg-transparent text-[15px] font-medium text-[var(--home-heading)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)]"
               />
             </label>
-            <Divider inset="left-3.5" />
-            <label className="block px-3.5 py-3 focus-within:bg-[color-mix(in_srgb,var(--home-heading)_4%,transparent)]" htmlFor="qari-tags">
+            <Divider inset="0.875rem" />
+            <label className="block px-3.5 py-[11px]" htmlFor="qari-tags">
               <span className="text-xs font-semibold text-[var(--home-muted)]">Hashtags</span>
               <span className="mt-1 flex items-center gap-2">
                 <Hash className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
@@ -495,61 +527,42 @@ function RecordFlow() {
               {tags.length > 0 ? (
                 <span className="mt-2 flex flex-wrap gap-1.5">
                   {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="qari-enter rounded-full bg-[var(--home-sage-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--home-sage)]"
-                    >
+                    <span key={tag} className="qari-chip qari-enter" style={{ height: '1.75rem', paddingInline: '0.625rem', fontSize: '0.78125rem' }}>
                       #{tag}
                     </span>
                   ))}
                 </span>
               ) : null}
             </label>
-            <Divider inset="left-3.5" />
-            <label className="block px-3.5 py-3 focus-within:bg-[color-mix(in_srgb,var(--home-heading)_4%,transparent)]" htmlFor="qari-caption">
+            <Divider inset="0.875rem" />
+            <label className="block px-3.5 py-[11px]" htmlFor="qari-caption">
               <span className="text-xs font-semibold text-[var(--home-muted)]">Note</span>
               <textarea
                 id="qari-caption"
                 value={caption}
                 onChange={(e) => setCaption(e.target.value.slice(0, 280))}
                 rows={2}
-                placeholder="Anything you'd like to say about this recitation"
-                className="mt-1 w-full resize-none bg-transparent text-sm leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+                placeholder="Anything you would like to say about it"
+                className="mt-1 w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
               />
             </label>
           </Group>
 
-          <GroupLabel>Recitation</GroupLabel>
-          {settings}
+          <QariLabel>Recitation</QariLabel>
+          {settings(false)}
 
-          <GroupLabel>Who can hear it</GroupLabel>
-          <div className="grid h-[46px] grid-cols-2 gap-1 rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-1" role="radiogroup" aria-label="Who can hear it">
-            {(
-              [
-                { value: false, label: 'Everyone', Icon: Globe },
-                { value: true, label: 'Only me', Icon: Lock },
-              ] as const
-            ).map(({ value, label, Icon }) => (
-              <button
-                key={label}
-                type="button"
-                role="radio"
-                aria-checked={isPrivate === value}
-                onClick={() => {
-                  tapFeedback()
-                  setIsPrivate(value)
-                }}
-                className={cn(
-                  'ed-focus flex items-center justify-center gap-2 rounded-[9px] text-sm font-semibold transition-colors',
-                  isPrivate === value ? 'ed-ink' : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
-                )}
-              >
-                <Icon className="h-[15px] w-[15px]" strokeWidth={2.2} />
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="px-1 pt-2 text-xs leading-relaxed text-[var(--home-muted)]">
+          <QariLabel>Who can hear it</QariLabel>
+          <QariSegmented
+            label="Who can hear it"
+            value={isPrivate ? 'private' : 'everyone'}
+            onChange={(value) => setIsPrivate(value === 'private')}
+            itemClassName="h-[38px]"
+            options={[
+              { id: 'everyone', label: 'Everyone', Icon: Globe },
+              { id: 'private', label: 'Only me', Icon: Lock },
+            ]}
+          />
+          <p className="mx-1 mt-2 text-[12.5px] leading-relaxed text-[var(--home-muted)]">
             {isPrivate
               ? 'Only you can hear it, on your profile.'
               : imitate && sheikh
@@ -561,28 +574,27 @@ function RecordFlow() {
             type="button"
             onClick={() => void handlePublish()}
             disabled={publishing}
-            className="ed-ink ed-focus qari-press mt-7 flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-bold disabled:opacity-60"
+            className="ed-ink ed-focus qari-press mt-6 flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold disabled:opacity-70"
           >
             {publishing ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
-              <Send className="h-[17px] w-[17px]" strokeWidth={2.2} />
+              <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
             )}
             {publishing
-              ? 'Publishing…'
+              ? 'Publishing'
               : !viewer
                 ? 'Sign in to publish'
                 : isPrivate
                   ? 'Save to my profile'
                   : 'Publish recitation'}
           </button>
-          <p className="pb-6 pt-2.5 text-center text-xs text-[var(--home-muted)]">
+          <p className="pb-6 pt-2.5 text-center text-[12.5px] text-[var(--home-muted)]">
             You can delete it any time from your profile.
           </p>
         </div>
 
         <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} onSuccess={() => {}} />
-        <Notice message={notice} />
       </Screen>
     )
   }
@@ -592,69 +604,72 @@ function RecordFlow() {
   const elapsed = recording ? state.elapsed : 0
   const left = MAX_SECONDS - elapsed
 
+  const closeButton = recording ? (
+    <button
+      type="button"
+      aria-label={discardArmed ? 'Tap again to discard' : 'Discard recording'}
+      title={discardArmed ? 'Tap again to discard' : 'Discard recording'}
+      onClick={() => {
+        if (!discardArmed) {
+          tapFeedback()
+          setDiscardArmed(true)
+          qariNotice('Tap again to discard this recording.')
+          return
+        }
+        setDiscardArmed(false)
+        recorder.reset()
+        setStep('ready')
+        qariNotice('Recording discarded.')
+      }}
+      className={cn('home-round ed-focus', discardArmed && 'text-rose-500')}
+    >
+      <X className="h-5 w-5" strokeWidth={1.9} />
+    </button>
+  ) : countingDown ? (
+    <button type="button" aria-label="Cancel" onClick={cancelCountdown} className="home-round ed-focus">
+      <X className="h-5 w-5" strokeWidth={1.9} />
+    </button>
+  ) : (
+    <Link href="/qari" onClick={tapFeedback} aria-label="Close" className="home-round ed-focus">
+      <X className="h-5 w-5" strokeWidth={1.9} />
+    </Link>
+  )
+
   return (
     <Screen>
-      <TopBar
-        left={
-          recording ? (
-            <IconButton
-              label={discardArmed ? 'Tap again to discard' : 'Discard recording'}
-              onClick={() => {
-                if (!discardArmed) {
-                  tapFeedback()
-                  setDiscardArmed(true)
-                  return
-                }
-                setDiscardArmed(false)
-                recorder.reset()
-                setStep('ready')
-                setNotice('Recording discarded.')
-              }}
-            >
-              <X className="h-[22px] w-[22px]" strokeWidth={2} />
-            </IconButton>
-          ) : countingDown ? (
-            <IconButton label="Cancel" onClick={cancelCountdown}>
-              <X className="h-[22px] w-[22px]" strokeWidth={2} />
-            </IconButton>
-          ) : (
-            <Link
-              href="/qari"
-              aria-label="Close"
-              className="qari-press ed-focus flex h-11 w-11 items-center justify-center text-[var(--home-heading)]"
-            >
-              <X className="h-[22px] w-[22px]" strokeWidth={2} />
-            </Link>
-          )
-        }
-        center={
-          recording ? (
-            <span className="flex h-8 items-center gap-2 rounded-full bg-rose-500/15 px-3 text-[13px] font-bold text-rose-500">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
-              Recording
-            </span>
-          ) : (
-            <p className="text-base font-semibold text-[var(--home-heading)]">New recitation</p>
-          )
-        }
-      />
-
       {recording || countingDown ? (
-        <p className="qari-step mt-3 text-center text-[13px] text-[var(--home-muted)]">
-          {space.label} sound{imitate && sheikh ? ` · Imitating ${sheikh.shortName}` : ''}
-        </p>
+        <>
+          <div className="flex items-center justify-between">
+            {closeButton}
+            {recording ? (
+              <span className="qari-step flex h-[34px] items-center gap-2 rounded-full bg-rose-500/[0.12] px-3.5 text-[13px] font-bold text-rose-600 dark:text-rose-400">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+                Recording
+              </span>
+            ) : (
+              <span className="text-[15px] font-semibold text-[var(--home-heading)]">Get ready</span>
+            )}
+            <span className="w-[42px]" aria-hidden />
+          </div>
+          <p className="qari-step mt-3.5 text-center text-[13px] text-[var(--home-muted)]">
+            {space.label} sound{imitate && sheikh ? ` · Imitating ${sheikh.shortName}` : ''}
+          </p>
+        </>
       ) : (
-        <div className="qari-step">
-          <GroupLabel>Before you start</GroupLabel>
-          {settings}
-        </div>
+        <>
+          <QariHeader title="New recitation" back={closeButton} />
+          <div className="qari-step">
+            <QariLabel>Before you start</QariLabel>
+            {settings(true)}
+          </div>
+        </>
       )}
 
       {/* Stage */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
         {countingDown ? (
           <>
-            <span key={count} className="qari-count text-[7rem] font-extrabold leading-none tabular-nums text-[var(--home-heading)]">
+            <span key={count} className="qari-count home-serif text-[7rem] font-medium leading-none tabular-nums text-[var(--home-heading)]">
               {count}
             </span>
             <p className="text-sm text-[var(--home-muted)]">Get ready…</p>
@@ -662,7 +677,7 @@ function RecordFlow() {
         ) : (
           <>
             <span
-              className="text-[3.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
+              className="home-serif text-[3.75rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
               aria-live="polite"
             >
               {clock(elapsed)}
@@ -696,12 +711,10 @@ function RecordFlow() {
         >
           <span className="qari-rec__core" />
         </button>
-        <p className="mt-3.5 text-xs text-[var(--home-muted)]">
+        <p className="mt-3.5 text-[12.5px] text-[var(--home-muted)]">
           {recording ? 'Tap to finish' : 'Up to 10 minutes · a quiet room sounds best'}
         </p>
       </div>
-
-      <Notice message={notice} />
     </Screen>
   )
 }
@@ -709,12 +722,12 @@ function RecordFlow() {
 /* ------------------------------------------------------------ pieces */
 
 function Screen({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) {
+  useQariNeutral()
   return (
     <main className="relative min-h-[100dvh] w-full bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] bg-[var(--home-glow)]" aria-hidden />
       <div
         className={cn(
-          'relative mx-auto flex w-full max-w-lg flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))]',
+          'relative mx-auto flex w-full max-w-lg flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]',
           scroll ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'min-h-[100dvh] pb-[max(1.5rem,env(safe-area-inset-bottom))]'
         )}
       >
@@ -724,50 +737,12 @@ function Screen({ children, scroll = false }: { children: React.ReactNode; scrol
   )
 }
 
-function TopBar({ left, center }: { left: React.ReactNode; center: React.ReactNode }) {
-  return (
-    <div className="-mx-1.5 flex items-center justify-between">
-      {left}
-      {center}
-      <span className="h-11 w-11" aria-hidden />
-    </div>
-  )
-}
-
-function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="qari-press ed-focus flex h-11 w-11 items-center justify-center rounded-full text-[var(--home-heading)]"
-    >
-      {children}
-    </button>
-  )
-}
-
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="px-1 pb-2 pt-6 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--home-muted)]">
-      {children}
-    </p>
-  )
-}
-
 function Group({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)]">{children}</div>
-  )
+  return <div className="home-card rounded-2xl">{children}</div>
 }
 
-function Divider({ inset = 'left-[58px]' }: { inset?: string }) {
-  return (
-    <div className="relative h-px">
-      <span className={cn('absolute right-0 top-0 h-px bg-[var(--home-rule)]', inset)} />
-    </div>
-  )
+function Divider({ inset = '3.5rem' }: { inset?: string }) {
+  return <div className="set-row__divider" style={{ marginLeft: inset }} />
 }
 
 function SettingRow({
@@ -782,13 +757,13 @@ function SettingRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex min-h-[58px] items-center gap-3 py-2.5 pl-3.5 pr-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[color-mix(in_srgb,var(--home-heading)_7%,transparent)] text-[var(--home-heading)]">
-        <Icon className="h-[17px] w-[17px]" strokeWidth={2} />
+    <div className="flex min-h-[52px] items-center gap-3 py-2 pl-3.5 pr-3">
+      <span className="set-row__icon">
+        <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold text-[var(--home-heading)]">{label}</span>
-        {hint ? <span className="mt-px block truncate text-xs text-[var(--home-muted)]">{hint}</span> : null}
+        <span className="block text-[15px] font-medium text-[var(--home-heading)]">{label}</span>
+        {hint ? <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{hint}</span> : null}
       </span>
       {children}
     </div>
@@ -797,8 +772,8 @@ function SettingRow({
 
 function IdleLine() {
   return (
-    <div className="flex h-14 items-center gap-[3px]" aria-hidden>
-      {Array.from({ length: 44 }, (_, i) => (
+    <div className="flex h-14 items-center gap-1" aria-hidden>
+      {Array.from({ length: 36 }, (_, i) => (
         <span key={i} className="h-[3px] w-[3px] rounded-full bg-[var(--home-rule-strong)]" />
       ))}
     </div>

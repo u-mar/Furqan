@@ -41,6 +41,17 @@ export function formatDuration(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** 950, 1.4k, 12k, 2.1m — for play and heart counts. */
+export function compactNumber(value: number): string {
+  if (value < 1000) return String(value)
+  if (value < 1_000_000) {
+    const k = value / 1000
+    return `${k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)}k`
+  }
+  const m = value / 1_000_000
+  return `${m < 10 ? m.toFixed(1).replace(/\.0$/, '') : Math.round(m)}m`
+}
+
 /** "just now", "4h", "3d", then a date. */
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime()

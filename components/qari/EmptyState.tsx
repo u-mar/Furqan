@@ -18,11 +18,13 @@ export default function EmptyState({
     'ed-ink ed-focus qari-press mt-5 inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold'
 
   return (
-    <div className="qari-enter ed-card rounded-[1.5rem] px-6 py-8 text-center">
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--home-sage-soft)] text-[var(--home-sage)]">
-        <Icon className="h-7 w-7" strokeWidth={1.8} />
+    <div className="qari-enter home-card rounded-[18px] px-6 py-8 text-center">
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">
+        <Icon className="h-6 w-6" strokeWidth={1.9} />
       </span>
-      <p className="mt-4 text-[1.05rem] font-bold text-[var(--home-heading)]">{title}</p>
+      <p className="home-serif mt-4 text-[1.1875rem] font-semibold tracking-[-0.01em] text-[var(--home-heading)]">
+        {title}
+      </p>
       <p className="mx-auto mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">{body}</p>
       {action ? (
         action.href ? (

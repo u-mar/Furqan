@@ -8,6 +8,21 @@ export function avatarUrl(username: string, version?: number): string {
   return version ? `${base}?v=${version}` : base
 }
 
+/** Soft backgrounds for the initial, mixed into the card so both themes suit them. */
+const AVATAR_TONES = [
+  'color-mix(in srgb, #0f7a6a 16%, var(--home-card-bg))',
+  'color-mix(in srgb, #64748b 20%, var(--home-card-bg))',
+  'color-mix(in srgb, #7c6aa8 20%, var(--home-card-bg))',
+  'var(--home-track)',
+]
+
+/** The same person always gets the same tone. */
+function toneIndex(key: string): number {
+  let h = 0
+  for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.toLowerCase().charCodeAt(i)) | 0
+  return Math.abs(h) % AVATAR_TONES.length
+}
+
 /**
  * A qari's picture, drawn over their initial.
  *
@@ -43,6 +58,7 @@ export default function QariAvatar({
   const initial = (name || username || '?').trim().charAt(0).toUpperCase()
 
   const hasPicture = loadedSrc === src
+  const tone = AVATAR_TONES[toneIndex(username || name)]
 
   // Held in a ref so an inline callback does not re-fire the effect each render.
   const notify = useRef(onPictureChange)
@@ -73,10 +89,10 @@ export default function QariAvatar({
   return (
     <span
       className={cn(
-        'ed-ink home-serif relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
+        'home-serif relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium text-[var(--home-heading)]',
         className
       )}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.42) }}
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.42), background: tone }}
     >
       {showInitial ? initial : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}

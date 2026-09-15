@@ -206,12 +206,26 @@ export function seekPlayback(fraction: number): void {
   emit({ position: el.currentTime })
 }
 
-function playNext(): boolean {
+function nextInQueue(): Recitation | undefined {
   const index = snapshot.current ? queue.findIndex((q) => q.id === snapshot.current!.id) : -1
-  const next = index >= 0 ? queue[index + 1] : undefined
+  return index >= 0 ? queue[index + 1] : undefined
+}
+
+function playNext(): boolean {
+  const next = nextInQueue()
   if (!next) return false
   playRecitation(next)
   return true
+}
+
+/** Whether something waits after the recitation playing — for a "next" button. */
+export function hasNextRecitation(): boolean {
+  return Boolean(nextInQueue())
+}
+
+/** Skip to the next recitation in the list it was played from. */
+export function skipToNextRecitation(): boolean {
+  return playNext()
 }
 
 /** Silence Qari entirely, for when you leave it or start recording. */

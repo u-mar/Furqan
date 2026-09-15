@@ -1,76 +1,210 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
-import HomeScreen from '@/components/home/HomeScreen'
+import { useEffect } from 'react'
+import { ChevronLeft, Search, X, type LucideIcon } from 'lucide-react'
+import QariMiniPlayer from '@/components/qari/QariMiniPlayer'
 import QariTabBar from '@/components/qari/QariTabBar'
+import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
+import { toast } from '@/lib/toast'
+import { cn } from '@/lib/cn'
 
 /** Re-exported so the Qari screens keep one import for their shared chrome. */
 export { useViewer } from '@/hooks/useViewer'
 
+let neutralScreens = 0
+
+/**
+ * Turns the light theme neutral — white cards on grey — for as long as a Qari
+ * screen is open. On <html>, so sheets and toasts portaled to <body> follow.
+ */
+export function useQariNeutral() {
+  useEffect(() => {
+    neutralScreens += 1
+    document.documentElement.classList.add('qari-neutral')
+    return () => {
+      neutralScreens -= 1
+      if (neutralScreens === 0) document.documentElement.classList.remove('qari-neutral')
+    }
+  }, [])
+}
+
+/** Round back button, a serif title and whatever sits on the right. */
 export function QariHeader({
-  eyebrow,
   title,
-  backHref = '/',
+  sub,
+  backHref = '/qari',
   action,
+  back,
 }: {
-  eyebrow: string
-  title: string
+  title?: string
+  sub?: string
   backHref?: string
   action?: React.ReactNode
+  /** Replaces the back link, e.g. a close button. */
+  back?: React.ReactNode
 }) {
   return (
-    <header className="mb-5 flex items-start justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <Link
-          href={backHref}
-          className="ed-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-ink)] hover:text-[var(--home-ink-fg)] active:scale-95"
-          aria-label="Back"
-        >
-          <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+    <header className="flex items-center gap-3">
+      {back ?? (
+        <Link href={backHref} className="home-round ed-focus" aria-label="Back">
+          <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
         </Link>
-        <div className="min-w-0">
-          <p className="ed-label">{eyebrow}</p>
-          <h1 className="home-serif mt-1 truncate text-[1.5rem] font-medium leading-tight tracking-[-0.025em] text-[var(--home-heading)] sm:text-[2rem]">
+      )}
+      <div className="min-w-0 flex-1">
+        {title ? (
+          <h1 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
             {title}
           </h1>
-        </div>
+        ) : null}
+        {sub ? <p className="truncate text-[13px] text-[var(--home-muted)]">{sub}</p> : null}
       </div>
       {action}
     </header>
   )
 }
 
-export function QariScreen({ children }: { children: React.ReactNode }) {
-  // pb-28 keeps the last card clear of the fixed bar along the bottom.
+/** The small tracked label above a card, with an optional action on the right. */
+export function QariLabel({
+  children,
+  action,
+  className,
+}: {
+  children: React.ReactNode
+  action?: React.ReactNode
+  className?: string
+}) {
   return (
-    <HomeScreen className="mx-auto max-w-lg pb-28">
-      {children}
-      <QariTabBar />
-    </HomeScreen>
-  )
-}
-
-export function Notice({ message }: { message: string | null }) {
-  if (!message) return null
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[120] flex justify-center px-4">
-      <p className="ed-ink max-w-sm rounded-full px-4 py-2.5 text-center text-xs font-semibold shadow-lg">
-        {message}
-      </p>
+    <div className={cn('mx-1 mb-2 mt-[22px] flex min-h-5 items-center justify-between gap-3', className)}>
+      <h2 className="home-label tabular-nums">{children}</h2>
+      {action}
     </div>
   )
 }
 
-export function useNotice() {
-  const [notice, setNotice] = useState<string | null>(null)
+/** A search field in a white card, with a clear button once there is text. */
+export function QariSearch({
+  value,
+  onChange,
+  placeholder,
+  label,
+  className,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  label: string
+  className?: string
+}) {
+  return (
+    <label
+      className={cn(
+        'home-card flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]',
+        className
+      )}
+    >
+      <Search className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-label={label}
+        enterKeyHint="search"
+        className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)] [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => {
+            tapFeedback()
+            onChange('')
+          }}
+          aria-label="Clear search"
+          className="ed-focus -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-[var(--home-heading)]"
+        >
+          <X className="h-4 w-4" strokeWidth={2.2} />
+        </button>
+      ) : null}
+    </label>
+  )
+}
 
-  useEffect(() => {
-    if (!notice) return
-    const id = window.setTimeout(() => setNotice(null), 3200)
-    return () => window.clearTimeout(id)
-  }, [notice])
+/** The app's segmented control: a track with the chosen option in ink. */
+export function QariSegmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className,
+  itemClassName = 'h-9',
+}: {
+  options: { id: T; label: string; Icon?: LucideIcon }[]
+  value: T
+  onChange: (value: T) => void
+  label: string
+  className?: string
+  itemClassName?: string
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className={cn('ed-seg', className)}
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map(({ id, label: text, Icon }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={value === id}
+          onClick={() => {
+            if (value === id) return
+            tapFeedback()
+            onChange(id)
+          }}
+          className={cn(
+            'ed-seg__item ed-focus flex items-center justify-center gap-1.5 truncate px-1 text-[0.8125rem] font-semibold',
+            itemClassName
+          )}
+        >
+          {Icon ? <Icon className="h-[15px] w-[15px] shrink-0" strokeWidth={2.2} /> : null}
+          {text}
+        </button>
+      ))}
+    </div>
+  )
+}
 
-  return { notice, setNotice }
+export function QariScreen({ children, className }: { children: React.ReactNode; className?: string }) {
+  useQariNeutral()
+  return (
+    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
+      <div
+        className={cn('mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]', className)}
+        // Clear of the tab bar and the mini player above it.
+        style={{ paddingBottom: 'calc(10rem + env(safe-area-inset-bottom))' }}
+      >
+        {children}
+      </div>
+      <QariMiniPlayer />
+      <QariTabBar />
+    </main>
+  )
+}
+
+const SUCCESS = /copied|deleted|updated|removed|saved|thank you|published|following/i
+const FAILURE = /^(could not|couldn|no connection|that recitation could not)/i
+
+/** A Qari message as a toast, its tone read from the words. */
+export function qariNotice(message: string) {
+  if (FAILURE.test(message)) {
+    errorFeedback()
+    toast(message, 'error')
+  } else if (SUCCESS.test(message)) {
+    successFeedback()
+    toast(message, 'success')
+  } else {
+    toast(message)
+  }
 }

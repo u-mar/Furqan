@@ -120,6 +120,17 @@ export const SHEIKHS: Sheikh[] = [
 
 const BY_ID = new Map(SHEIKHS.map((s) => [s.id, s]))
 
+/**
+ * The letter that stands for a sheikh, since there is never a photo: the first
+ * letter of his family name in Arabic, without "ال" (صوفي → ص, السديس → س).
+ */
+export function sheikhLetter(sheikh: Sheikh): string {
+  const arabic = sheikh.aliases.find((alias) => /[؀-ۿ]/.test(alias))
+  if (!arabic) return sheikh.shortName.replace(/^(Sheikh|Al-)\s*/i, '').charAt(0).toUpperCase()
+  const last = arabic.trim().split(/\s+/).pop() ?? arabic
+  return last.replace(/^ال/, '').charAt(0)
+}
+
 export function findSheikh(id: string | null | undefined): Sheikh | null {
   return id ? (BY_ID.get(id) ?? null) : null
 }

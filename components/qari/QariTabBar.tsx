@@ -3,14 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { House, Plus, UserRound } from 'lucide-react'
+import { House, Mic, UserRound } from 'lucide-react'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useViewer } from '@/hooks/useViewer'
+import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 
 /**
- * The bar along the bottom of every Qari screen: the feed, a button to add a
- * recitation, and your own profile.
+ * The bar along the bottom of every Qari screen: the feed, a pill to record,
+ * and your own profile.
  *
  * Hidden while recording — that screen is a single task with its own way
  * out, and the bar would only invite you to abandon a take mid-recitation.
@@ -32,41 +33,42 @@ export default function QariTabBar() {
         <div className="qari-tabbar__inner">
           <Link
             href="/qari"
+            onClick={tapFeedback}
             aria-current={onFeed ? 'page' : undefined}
-            aria-label="Home"
             className={cn('qari-tabbar__item ed-focus', onFeed && 'is-active')}
           >
-            <House className="h-5 w-5" strokeWidth={onFeed ? 2.3 : 1.9} />
+            <House className="h-[21px] w-[21px]" strokeWidth={onFeed ? 2.3 : 1.9} />
+            Feed
           </Link>
 
-          <Link
-            href="/qari/record"
-            aria-label="Add a recitation"
-            className="qari-tabbar__add ed-focus"
-          >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.7} />
+          <Link href="/qari/record" onClick={tapFeedback} className="qari-tabbar__add ed-focus">
+            <Mic className="h-[17px] w-[17px]" strokeWidth={2.2} />
+            Record
           </Link>
 
           {viewer && myProfile ? (
             <Link
               href={myProfile}
+              onClick={tapFeedback}
               aria-current={onMyProfile ? 'page' : undefined}
               aria-label="Your profile"
               className={cn('qari-tabbar__item ed-focus', onMyProfile && 'is-active')}
             >
-              <UserRound
-                className="h-5 w-5"
-                strokeWidth={onMyProfile ? 2.3 : 1.9}
-              />
+              <UserRound className="h-[21px] w-[21px]" strokeWidth={onMyProfile ? 2.3 : 1.9} />
+              You
             </Link>
           ) : (
             <button
               type="button"
-              onClick={() => setAccountOpen(true)}
+              onClick={() => {
+                tapFeedback()
+                setAccountOpen(true)
+              }}
               aria-label="Sign in"
               className="qari-tabbar__item ed-focus"
             >
-              <UserRound className="h-5 w-5" strokeWidth={1.9} />
+              <UserRound className="h-[21px] w-[21px]" strokeWidth={1.9} />
+              You
             </button>
           )}
         </div>

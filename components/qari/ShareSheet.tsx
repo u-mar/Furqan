@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Download, Film, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
+import { ChevronRight, Download, Film, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import {
   canMakeVideo,
@@ -18,8 +18,6 @@ import {
   type ShareMedia,
 } from '@/lib/qari-share-media'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
-import { APP_NAME } from '@/lib/app-brand'
-import { cn } from '@/lib/cn'
 
 type Stage =
   | { name: 'choose' }
@@ -154,14 +152,14 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
       onClick={close}
     >
       <div
-        className="qari-sheet__panel relative w-full max-w-md rounded-t-[1.75rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[var(--home-card-shadow)] sm:rounded-[1.75rem]"
+        className="qari-sheet__panel relative w-full max-w-md rounded-t-[1.75rem] bg-[var(--home-card-bg)] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[var(--home-card-shadow)] sm:rounded-[1.75rem]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--home-rule-strong)] sm:hidden" aria-hidden />
 
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="qari-share-title" className="text-[1.05rem] font-bold text-[var(--home-heading)]">
+            <h2 id="qari-share-title" className="home-serif text-[1.3125rem] font-semibold leading-tight text-[var(--home-heading)]">
               {stage.name === 'ready'
                 ? stage.media.kind === 'video'
                   ? 'Your video is ready'
@@ -183,31 +181,28 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
         </div>
 
         {stage.name === 'choose' ? (
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
             <ShareOption
               icon={Film}
               title="Video"
-              hint={
-                videoPossible
-                  ? `For TikTok, Instagram and Status. Shows ${APP_NAME} and the qari's name.`
-                  : 'Needs a newer browser. Update Chrome or Safari to make videos.'
-              }
+              hint={videoPossible ? 'For TikTok, Instagram and Status' : 'Needs a newer Chrome or Safari'}
               disabled={!videoPossible}
               onClick={() => void make('video')}
             />
+            <div className="set-row__divider" />
             <ShareOption
               icon={Music2}
               title="Audio"
-              hint="An MP3 you can send on WhatsApp, Telegram or anywhere."
+              hint="An MP3 for WhatsApp or Telegram"
               onClick={() => void make('audio')}
             />
-            <button
-              type="button"
-              onClick={() => void handleCopy()}
-              className="ed-focus flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
-            >
-              <Link2 className="h-4 w-4" strokeWidth={2} />
-              Copy link
+            <div className="set-row__divider" />
+            <button type="button" onClick={() => void handleCopy()} className="set-row">
+              <span className="set-row__icon">
+                <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
+              </span>
+              <span className="set-row__label">Copy link</span>
+              <span className="text-sm font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">Copy</span>
             </button>
           </div>
         ) : null}
@@ -303,22 +298,15 @@ function ShareOption({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'ed-focus flex w-full items-center gap-3.5 rounded-2xl border border-[var(--home-rule-strong)] p-3.5 text-left transition-[background-color,transform] active:scale-[0.99]',
-        disabled ? 'opacity-55' : 'hover:bg-[var(--home-track)]'
-      )}
-    >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage)]">
-        <Icon className="h-5 w-5" strokeWidth={2} />
+    <button type="button" onClick={onClick} disabled={disabled} className="set-row" style={{ paddingBlock: '0.5625rem' }}>
+      <span className="set-row__icon">
+        <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
       </span>
-      <span className="min-w-0">
-        <span className="block text-[0.95rem] font-semibold text-[var(--home-heading)]">{title}</span>
-        <span className="mt-0.5 block text-xs leading-snug text-[var(--home-muted)]">{hint}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-medium">{title}</span>
+        <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{hint}</span>
       </span>
+      <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
     </button>
   )
 }

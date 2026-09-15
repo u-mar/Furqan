@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, UserPlus } from 'lucide-react'
 import { tapFeedback } from '@/lib/haptics'
 import { setFollowing } from '@/lib/qari'
 import type { AppUser } from '@/lib/auth'
@@ -58,14 +58,17 @@ export default function FollowButton({
       disabled={busy}
       aria-pressed={on}
       className={cn(
-        'qari-press ed-focus flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition-colors',
-        size === 'lg' ? 'h-11 flex-1 text-sm' : 'h-[34px] px-4 text-[13px]',
-        on
-          ? 'border border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-[var(--home-heading)]'
-          : 'ed-ink font-bold'
+        'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full font-semibold transition-colors',
+        size === 'lg' ? 'h-12 flex-1 gap-2 text-[14.5px]' : 'h-[34px] gap-1.5 text-[13px]',
+        size === 'sm' && (on ? 'pl-2.5 pr-3' : 'px-[15px]'),
+        on ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)]' : 'ed-ink'
       )}
     >
-      {on ? <Check className="h-3.5 w-3.5 text-[var(--home-sage)]" strokeWidth={2.8} /> : null}
+      {on ? (
+        <Check key="on" className={cn('qari-pop', size === 'lg' ? 'h-[17px] w-[17px]' : 'h-3.5 w-3.5')} strokeWidth={2.6} />
+      ) : size === 'lg' ? (
+        <UserPlus key="off" className="h-[17px] w-[17px]" strokeWidth={2.1} />
+      ) : null}
       {on ? 'Following' : 'Follow'}
     </button>
   )

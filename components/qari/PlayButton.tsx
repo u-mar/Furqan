@@ -5,8 +5,8 @@ import type { PlayerStatus } from '@/lib/qari-player'
 import { cn } from '@/lib/cn'
 
 /**
- * Round play control. Cream when idle, the accent while playing; `accent`
- * makes the idle state the accent too, for the one big "play all".
+ * Round play control in ink; `accent` makes the idle state the accent, for a
+ * call to play something.
  */
 export default function PlayButton({
   status,
@@ -33,11 +33,7 @@ export default function PlayButton({
       aria-label={active ? `Pause ${label}` : `Play ${label}`}
       className={cn(
         'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full',
-        active
-          ? 'bg-[var(--home-sage-deep)] text-white'
-          : accent
-            ? 'bg-[var(--home-sage)] text-[var(--home-ink-fg)]'
-            : 'ed-ink',
+        accent && !active ? 'bg-[var(--home-sage)] text-white' : 'ed-ink',
         className
       )}
       style={{ width: size, height: size }}

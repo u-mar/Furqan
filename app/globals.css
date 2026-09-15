@@ -2463,3 +2463,134 @@ html.dark .set-row--danger {
     transition: none;
   }
 }
+
+/* ======================================================================
+   Qari, redesigned: white cards on a neutral grey in the light theme,
+   compact recitation cards, a mini player and a labelled tab bar.
+   ====================================================================== */
+
+/* Set on <html> while a Qari screen is open, so sheets and toasts portaled
+   to <body> turn neutral too. The dark themes are already neutral. */
+html.qari-neutral:not(.dark) {
+  --app-bg: #f2f2f5;
+  --app-surface: #ffffff;
+  --app-border: rgba(22, 23, 27, 0.1);
+  --app-text: #16171b;
+  --app-muted: #6b6f78;
+  --home-glow: none;
+  --home-card-bg: #ffffff;
+  --home-card-border: rgba(22, 23, 27, 0.07);
+  --home-track: #e6e7eb;
+  --home-heading: #16171b;
+  --home-muted: #6b6f78;
+  --home-ink: #16171b;
+  --home-ink-fg: #ffffff;
+  --home-rule: rgba(22, 23, 27, 0.1);
+  --home-rule-strong: rgba(22, 23, 27, 0.2);
+  --home-lift: 0 1px 2px rgba(22, 23, 27, 0.05), 0 8px 24px -14px rgba(22, 23, 27, 0.16);
+  --home-lift-sm: 0 1px 2px rgba(22, 23, 27, 0.06), 0 4px 12px -6px rgba(22, 23, 27, 0.14);
+}
+
+html.qari-neutral:not(.dark) body {
+  background: var(--app-bg);
+}
+
+/* The tab bar: Feed, a Record pill, You. */
+.qari-tabbar {
+  background: color-mix(in srgb, var(--app-bg) 92%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+}
+
+html.qari-neutral:not(.dark) .qari-tabbar {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.qari-tabbar__inner {
+  padding: 0.3rem 1.75rem 0.35rem;
+}
+
+.qari-tabbar__item {
+  flex-direction: column;
+  gap: 2px;
+  min-height: 52px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.qari-tabbar__item.is-active {
+  font-weight: 700;
+}
+
+.qari-tabbar__add {
+  width: auto;
+  height: 2.625rem;
+  gap: 0.4375rem;
+  padding: 0 1.125rem 0 0.9375rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* One recitation. The one playing is outlined in the accent. */
+.qari-card {
+  position: relative;
+  border-radius: 1rem;
+  background: var(--home-card-bg);
+  box-shadow: var(--home-lift);
+  transition: box-shadow 0.25s ease;
+}
+
+.qari-card.is-current {
+  box-shadow:
+    var(--home-lift),
+    inset 0 0 0 1.5px var(--home-sage);
+}
+
+.qari-card__strip {
+  border-radius: 0.75rem;
+  background: var(--app-bg);
+  transition: background-color 0.25s ease;
+}
+
+.qari-card.is-current .qari-card__strip {
+  background: color-mix(in srgb, var(--home-sage) 8%, var(--home-card-bg));
+}
+
+html.dark .qari-card__strip {
+  background: color-mix(in srgb, var(--home-heading) 5%, transparent);
+}
+
+.qari-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--home-sage-soft);
+  color: var(--home-sage-deep);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+html.dark .qari-chip {
+  color: var(--home-sage);
+}
+
+/* A sheikh never has a photo: a letter of his Arabic name stands for him. */
+.qari-monogram {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--home-sage-soft);
+  color: var(--home-sage-deep);
+  font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
+  line-height: 1;
+}
+
+html.dark .qari-monogram {
+  color: var(--home-sage);
+}
