@@ -52,6 +52,8 @@ export interface PreparedRecording {
 export async function prepareRecording(): Promise<PreparedRecording> {
   const context = new AudioContext()
   void context.resume().catch(() => {})
+  // Fetch the noise expander now, so the take does not wait for it after 3-2-1.
+  void context.audioWorklet?.addModule('/audio/qari-expander.js').catch(() => {})
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -91,6 +93,11 @@ export interface QariRecorderState {
   elapsed: number
   /** 0–1, for the live level meter. */
   level: number
+  /**
+   * Whether the microphone itself is being pushed too hard (clipping, which no
+   * processing can undo) or barely hears the reciter. Null when it is fine.
+   */
+  inputHint: 'loud' | 'quiet' | null
   error: string | null
   blob: Blob | null
   mimeType: string
@@ -101,6 +108,7 @@ const idle: QariRecorderState = {
   recording: false,
   elapsed: 0,
   level: 0,
+  inputHint: null,
   error: null,
   blob: null,
   mimeType: '',
@@ -154,7 +162,15 @@ export function useQariRecorder(maxSeconds = 600) {
       audioCtxRef.current = ctx
       if (ctx.state === 'suspended') await ctx.resume()
 
-      const voice = buildVoiceShaping(ctx, ctx.createMediaStreamSource(stream))
+      const microphone = ctx.createMediaStreamSource(stream)
+      const voice = await buildVoiceShaping(ctx, microphone)
+
+      // The bare microphone, before any shaping, to tell the reciter when it
+      // is too close (clipping) or too far away.
+      const raw = ctx.createAnalyser()
+      raw.fftSize = 2048
+      microphone.connect(raw)
+      const rawBuffer = new Float32Array(raw.fftSize)
       const sink = ctx.createMediaStreamDestination()
       voice.connect(sink)
 
@@ -193,6 +209,8 @@ export function useQariRecorder(maxSeconds = 600) {
       analyserRef.current = analyser
 
       const buffer = new Uint8Array(analyser.frequencyBinCount)
+      let lastClip = -Infinity
+      let lastVoice = 0
       const tick = () => {
         const node = analyserRef.current
         if (!node) return
@@ -201,9 +219,24 @@ export function useQariRecorder(maxSeconds = 600) {
         for (let i = 0; i < buffer.length; i += 1) {
           peak = Math.max(peak, Math.abs(buffer[i] - 128) / 128)
         }
-        const seconds = Math.floor((Date.now() - startedAtRef.current) / 1000)
+        const now = Date.now()
+        const seconds = Math.floor((now - startedAtRef.current) / 1000)
+
+        raw.getFloatTimeDomainData(rawBuffer)
+        let rawPeak = 0
+        for (let i = 0; i < rawBuffer.length; i += 1) rawPeak = Math.max(rawPeak, Math.abs(rawBuffer[i]))
+        if (rawPeak >= 0.97) lastClip = now
+        // Anything above about -30dB counts as the reciter being heard.
+        if (rawPeak >= 0.03) lastVoice = now
+        const inputHint: QariRecorderState['inputHint'] =
+          now - lastClip < 1500
+            ? 'loud'
+            : now - startedAtRef.current > 4000 && now - lastVoice > 4000
+              ? 'quiet'
+              : null
+
         setState((s) =>
-          s.recording ? { ...s, level: peak, elapsed: seconds } : s
+          s.recording ? { ...s, level: peak, elapsed: seconds, inputHint } : s
         )
         if (seconds >= maxSeconds) {
           recorderRef.current?.stop()
@@ -213,6 +246,7 @@ export function useQariRecorder(maxSeconds = 600) {
       }
 
       startedAtRef.current = Date.now()
+      lastVoice = startedAtRef.current
       recorder.start()
       setState({ ...idle, recording: true })
       rafRef.current = requestAnimationFrame(tick)

@@ -683,12 +683,27 @@ function RecordFlow() {
               {clock(elapsed)}
             </span>
             {recording ? <LiveWave levels={levels} /> : <IdleLine />}
-            <p className="text-[13px] text-[var(--home-muted)]">
+            <p
+              key={recording ? (state.inputHint ?? 'ok') : 'ready'}
+              className={cn(
+                'qari-step text-center text-[13px]',
+                recording && state.inputHint === 'loud'
+                  ? 'font-semibold text-rose-600 dark:text-rose-400'
+                  : recording && state.inputHint === 'quiet'
+                    ? 'font-semibold text-amber-600 dark:text-amber-400'
+                    : 'text-[var(--home-muted)]'
+              )}
+              aria-live="polite"
+            >
               {recording
-                ? left <= 60
-                  ? `${left} seconds left`
-                  : 'Recite now — tap the square when you finish'
-                : 'Tap the button and begin reciting'}
+                ? state.inputHint === 'loud'
+                  ? 'Too loud — hold the phone a little further away'
+                  : state.inputHint === 'quiet'
+                    ? 'We can barely hear you — come a little closer'
+                    : left <= 60
+                      ? `${left} seconds left`
+                      : 'Recite now — tap the square when you finish'
+                : 'Hold the phone a hand-span away, then tap to begin'}
             </p>
           </>
         )}
@@ -712,7 +727,7 @@ function RecordFlow() {
           <span className="qari-rec__core" />
         </button>
         <p className="mt-3.5 text-[12.5px] text-[var(--home-muted)]">
-          {recording ? 'Tap to finish' : 'Up to 10 minutes · a quiet room sounds best'}
+          {recording ? 'Tap to finish' : 'Up to 10 minutes · a quiet room with carpet or curtains sounds best'}
         </p>
       </div>
     </Screen>
