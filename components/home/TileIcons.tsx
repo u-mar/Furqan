@@ -24,37 +24,25 @@ export function IconRead({ className }: { className?: string }) {
   )
 }
 
-/** A card checked off — one page of your hifdh confirmed. */
-export function IconTest({ className }: { className?: string }) {
+/** A halaqa seen from above: six people sitting around an open mushaf. */
+export function IconHalaqa({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
-      <rect
-        x="4"
-        y="13"
-        width="22"
-        height="27"
-        rx="5"
+      <circle cx="24" cy="5.5" r="4.2" />
+      <circle cx="40" cy="14.8" r="4.2" />
+      <circle cx="40" cy="33.2" r="4.2" />
+      <circle cx="24" cy="42.5" r="4.2" />
+      <circle cx="8" cy="33.2" r="4.2" />
+      <circle cx="8" cy="14.8" r="4.2" />
+      <path
+        d="M22.8 16.8c-2.6-1.5-5.6-2.2-9-2a1.4 1.4 0 0 0-1.3 1.4v14.2c0 .8.7 1.4 1.5 1.4 3.2-.1 6 .6 8.8 2.1V16.8z"
         opacity="0.4"
-        transform="rotate(-11 15 26.5)"
-      />
-      <rect
-        x="16"
-        y="8"
-        width="26"
-        height="31"
-        rx="5.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
       />
       <path
-        d="M22.6 23.6l4.5 4.5 8.6-8.8"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M25.2 16.8c2.6-1.5 5.6-2.2 9-2a1.4 1.4 0 0 1 1.3 1.4v14.2c0 .8-.7 1.4-1.5 1.4-3.2-.1-6 .6-8.8 2.1V16.8z"
+        opacity="0.4"
       />
+      <rect x="22.9" y="16.2" width="2.2" height="18.4" rx="1.1" />
     </svg>
   )
 }

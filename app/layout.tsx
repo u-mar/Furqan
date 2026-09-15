@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
-import AppSplash from '@/components/AppSplash'
 import WelcomeAccountDialog from '@/components/onboarding/WelcomeAccountDialog'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
@@ -42,7 +41,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'Read the Quran and practice your hifdh with Al Furqaan',
+  description: 'Read the Quran, listen, and read together in a halaqa with Al Furqaan',
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -79,7 +78,6 @@ export default function RootLayout({
       </head>
       <body className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)] antialiased">
         <SettingsProvider>
-          <AppSplash />
           <AppShell>{children}</AppShell>
           <AdminRuntime />
           <ListenPlaybackGuard />

@@ -33,14 +33,14 @@ export default function PrivacyPage() {
 
         <div className="privacy-prose mt-8">
           <p>
-            {APP_NAME} is built to help you read, listen to and memorise the Quran. You can use
+            {APP_NAME} is built to help you read, listen to and share the Quran. You can use
             almost all of it without an account, and nothing is collected to sell or to show you
             advertising. This page explains exactly what is stored, where, and how to remove it.
           </p>
 
           <h2>Using the app without an account</h2>
           <p>
-            Your bookmarks, reading position, hifdh progress and settings are stored{' '}
+            Your bookmarks, reading position and settings are stored{' '}
             <strong>only on your device</strong>. They are never sent to us, and they are removed
             if you clear the app&rsquo;s data or uninstall it.
           </p>
@@ -77,6 +77,37 @@ export default function PrivacyPage() {
             until you choose to publish.
           </p>
 
+          <h2>Halaqas</h2>
+          <p>If you start or join a halaqa, we store:</p>
+          <ul>
+            <li>
+              <strong>The name you enter,</strong> which everyone in that halaqa can see.
+            </li>
+            <li>
+              <strong>The days you read.</strong> A day is marked when you tap &ldquo;Yes, I
+              read&rdquo;, or when you read in the app while you are in a halaqa. The halaqa sees
+              which days you read &mdash; never how much, or what.
+            </li>
+            <li>
+              <strong>The juz you take</strong> in a shared khatmah, and when you finish it.
+            </li>
+            <li>The halaqa&rsquo;s name, how long it runs, and its invite link.</li>
+          </ul>
+          <p>
+            No account is needed. Your phone keeps a random key that identifies you in your
+            halaqas, and we store only a protected (hashed) copy of it. If you clear the
+            app&rsquo;s data, the key is gone and you will need to join again.
+          </p>
+          <p>
+            Anyone with a halaqa&rsquo;s invite link can see its name, how many people are in it
+            and how many have read today, and can join it. The person who made the halaqa can
+            make a new link at any time, remove people, or delete the halaqa for everyone.
+          </p>
+          <p>
+            Leaving a halaqa removes you from it and gives back any juz you have not finished.
+            Once you are not in any halaqa, the days you read are deleted.
+          </p>
+
           <h2>Your profile picture</h2>
           <p>
             If you add one, it is resized on your device and then stored so that others can see it
@@ -108,8 +139,8 @@ export default function PrivacyPage() {
             To show Quran text, translations, fonts and recitations, the app fetches them from
             public Quran services, including api.quran.com, api.alquran.cloud, everyayah.com and
             mp3quran.net. Like any website, those services receive your device&rsquo;s IP address
-            when the app requests something from them. Your account and recitations are stored
-            with our database provider, MongoDB Atlas.
+            when the app requests something from them. Your account, recitations and halaqas are
+            stored with our database provider, MongoDB Atlas.
           </p>
           <p>We do not sell your information, and we do not use advertising or tracking networks.</p>
 

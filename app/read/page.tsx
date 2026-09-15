@@ -41,6 +41,7 @@ import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { useWakeLock } from '@/hooks/useWakeLock'
+import { useHalaqaReadingTick } from '@/hooks/useHalaqaReadingTick'
 import { getAppSettings } from '@/lib/app-settings'
 import { setSettingsReturnTo } from '@/lib/settings-return'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
@@ -586,6 +587,7 @@ function ReadPageContent() {
   }, [currentPage, pageVerses, findNextSomaliVerse])
 
   useWakeLock(playbackActive)
+  useHalaqaReadingTick(pageVerses.length ? currentPage : 0)
 
   useLayoutEffect(() => {
     if (!playbackActive) {

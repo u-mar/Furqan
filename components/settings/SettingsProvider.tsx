@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import {
   applyThemeToDocument,
   getAppSettings,
@@ -8,9 +8,15 @@ import {
 } from '@/lib/app-settings'
 import { hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
 
+/*
+ * Renders its children as they are from the very first render. It used to
+ * wrap them in a <div> until this effect had run and then drop the wrapper;
+ * that change of shape made React unmount and remount the whole app once on
+ * every load, so every screen's requests went out twice. The theme is already
+ * on the page before it draws (the script in the layout's <head>), and the
+ * body paints its background, so the wrapper added nothing.
+ */
 export default function SettingsProvider({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false)
-
   useEffect(() => {
     const settings = getAppSettings()
     applyThemeToDocument(settings.theme)
@@ -38,7 +44,6 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
     }
 
     window.addEventListener('app-settings-changed', onChange)
-    setReady(true)
 
     return () => {
       window.removeEventListener('app-settings-changed', onChange)
@@ -48,12 +53,6 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
       }
     }
   }, [])
-
-  if (!ready) {
-    return (
-      <div className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">{children}</div>
-    )
-  }
 
   return <>{children}</>
 }

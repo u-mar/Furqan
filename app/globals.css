@@ -1961,3 +1961,127 @@ html.dark .set-row--danger {
     animation: none;
   }
 }
+
+/* ======================================================================
+   Halaqa: the same grouped rows as Settings, plus people and their days.
+   Every colour is a theme token (or mixed from one), so light, dark and
+   black all follow.
+   ====================================================================== */
+
+.halaqa-avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  color: var(--home-heading);
+}
+
+.halaqa-avatar--0 {
+  background: color-mix(in srgb, var(--home-heading) 11%, var(--home-card-bg));
+}
+
+.halaqa-avatar--1 {
+  background: color-mix(in srgb, var(--home-sage) 18%, var(--home-card-bg));
+}
+
+.halaqa-avatar--2 {
+  background: color-mix(in srgb, #b0602c 16%, var(--home-card-bg));
+}
+
+.halaqa-avatar--me {
+  background: var(--home-ink);
+  color: var(--home-ink-fg);
+}
+
+.halaqa-avatar--faded {
+  opacity: 0.55;
+}
+
+/* The small tick on someone who has read today. */
+.halaqa-tick {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--home-card-bg);
+  background: var(--home-sage);
+  color: var(--home-ink-fg);
+}
+
+/* Reading days: one small square per day. */
+.halaqa-dots {
+  display: grid;
+  gap: 2px;
+}
+
+.halaqa-dot {
+  border-radius: 30%;
+  background: var(--home-track);
+}
+
+.halaqa-dot--read {
+  background: var(--home-sage);
+}
+
+/* Before they joined: not counted, so barely there. */
+.halaqa-dot--before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--home-heading) 10%, transparent);
+}
+
+/* The 30 juz of a shared khatmah. */
+.halaqa-juz {
+  display: flex;
+  height: 4rem;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.5625rem;
+  text-align: left;
+  transition: transform 0.12s ease;
+}
+
+.halaqa-juz:active {
+  transform: scale(0.96);
+}
+
+.halaqa-juz--done {
+  background: var(--home-sage);
+  color: var(--home-ink-fg);
+}
+
+.halaqa-juz--mine {
+  background: var(--home-ink);
+  color: var(--home-ink-fg);
+}
+
+.halaqa-juz--taken {
+  background: var(--home-card-bg);
+  box-shadow: var(--home-lift-sm);
+  color: var(--home-heading);
+}
+
+.halaqa-juz--free {
+  border: 1.5px dashed var(--home-rule-strong);
+  color: var(--home-muted);
+}
+
+.halaqa-bubble {
+  border-radius: 1rem 0.25rem 1rem 1rem;
+  background: color-mix(in srgb, var(--home-sage) 12%, var(--home-card-bg));
+  box-shadow: var(--home-lift-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halaqa-juz {
+    transition: none;
+  }
+}

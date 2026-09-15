@@ -1,0 +1,161 @@
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { BookOpen, CalendarCheck, ChevronLeft } from 'lucide-react'
+import { ErrorCard, HalaqaScreen, SectionLabel, Skeleton } from '@/components/halaqa/HalaqaScreen'
+import { getSignedInUser } from '@/lib/auth'
+import { cn } from '@/lib/cn'
+import { successFeedback } from '@/lib/haptics'
+import { getJoinPreview, joinHalaqa, savedMemberName, type JoinPreview } from '@/lib/halaqa'
+
+const TONES = ['halaqa-avatar--me', 'halaqa-avatar--1', 'halaqa-avatar--2', 'halaqa-avatar--0']
+
+/** Opening an invite link: see the halaqa, type a name, join. Members go straight in. */
+export default function JoinHalaqa({ code }: { code: string }) {
+  const router = useRouter()
+  const [preview, setPreview] = useState<JoinPreview | null>(null)
+  const [error, setError] = useState('')
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [joinError, setJoinError] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const data = await getJoinPreview(code)
+      if (data.isMember) {
+        router.replace(`/halaqa/${data.id}`)
+        return
+      }
+      setPreview(data)
+      setError('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open this invite.')
+    }
+  }, [code, router])
+
+  useEffect(() => {
+    setName(getSignedInUser()?.name || savedMemberName())
+    void load()
+  }, [load])
+
+  const join = async () => {
+    if (!preview || busy) return
+    if (!name.trim()) {
+      setJoinError('Add your name so the others know who you are.')
+      return
+    }
+    setBusy(true)
+    setJoinError('')
+    try {
+      const { id } = await joinHalaqa(code, name)
+      successFeedback()
+      router.replace(`/halaqa/${id}`)
+    } catch (err) {
+      setJoinError(err instanceof Error ? err.message : 'Could not join right now.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <HalaqaScreen>
+      <Link href="/" className="home-round ed-focus" aria-label="Home">
+        <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+      </Link>
+
+      {error ? <ErrorCard message={error} /> : null}
+      {!preview && !error ? <Skeleton className="mt-6 h-[360px] rounded-2xl" /> : null}
+
+      {preview ? (
+        <>
+          <div className="mt-4 flex flex-col items-center text-center">
+            <div className="flex items-center">
+              {preview.initials.map((letter, i) => (
+                <span
+                  key={i}
+                  className={cn('halaqa-avatar h-11 w-11 border-[3px] border-[var(--app-bg)] text-[17px]', TONES[i % TONES.length], i && '-ml-3')}
+                >
+                  {letter}
+                </span>
+              ))}
+              {preview.memberCount > preview.initials.length ? (
+                <span className="-ml-3 flex h-11 min-w-11 items-center justify-center rounded-full border-[3px] border-[var(--app-bg)] bg-[var(--home-card-bg)] px-2 text-[13px] font-bold text-[var(--home-muted)] shadow-[var(--home-lift-sm)]">
+                  +{preview.memberCount - preview.initials.length}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-4 text-[0.84375rem] text-[var(--home-muted)]">
+              {preview.creatorName ? `${preview.creatorName} invited you to join` : 'You are invited to join'}
+            </p>
+            <h1 className="home-serif mt-1 text-[1.8125rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
+              {preview.name}
+            </h1>
+            <p className="mt-1 text-[0.84375rem] text-[var(--home-muted)]">
+              {preview.memberCount} {preview.memberCount === 1 ? 'member' : 'members'} · {preview.endDay ? 'For a set time' : 'Every day'}
+            </p>
+          </div>
+
+          <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
+            <div className="set-row">
+              <span className="set-row__icon" aria-hidden>
+                <CalendarCheck className="h-[17px] w-[17px]" strokeWidth={1.9} />
+              </span>
+              <span className="set-row__label">Daily check-in</span>
+              <span className="set-row__value">{preview.readCount} read today</span>
+            </div>
+            {preview.khatmah ? (
+              <>
+                <div className="set-row__divider" aria-hidden />
+                <div className="set-row">
+                  <span className="set-row__icon" aria-hidden>
+                    <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                  </span>
+                  <span className="set-row__label">Khatmah together</span>
+                  <span className="set-row__value">
+                    {preview.khatmah.done} of {preview.khatmah.total} juz
+                  </span>
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          {preview.full ? (
+            <p className="home-card mt-[22px] rounded-2xl px-4 py-4 text-center text-sm text-[var(--home-heading)]">
+              This halaqa is full.
+            </p>
+          ) : (
+            <>
+              <SectionLabel>Your name</SectionLabel>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void join()
+                }}
+                maxLength={40}
+                placeholder="How the others will see you"
+                aria-label="Your name"
+                className="block h-[52px] w-full rounded-2xl bg-[var(--home-card-bg)] px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] shadow-[var(--home-lift)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)] focus:ring-2 focus:ring-[var(--home-sage)]"
+              />
+              {joinError ? (
+                <p className="mt-3 text-center text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
+                  {joinError}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void join()}
+                disabled={busy}
+                className="ed-ink ed-focus mt-[22px] flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+              >
+                {busy ? 'Joining…' : 'Join halaqa'}
+              </button>
+              <p className="mt-3 text-center text-[0.78125rem] text-[var(--home-muted)]">No account needed.</p>
+            </>
+          )}
+        </>
+      ) : null}
+    </HalaqaScreen>
+  )
+}

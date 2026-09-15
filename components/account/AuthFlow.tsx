@@ -298,7 +298,7 @@ function Welcome({
 
         <ul className="mt-9 w-full max-w-[19rem] space-y-4 text-left">
           <Benefit Icon={BookOpen} text="Pick up exactly where you stopped reading" />
-          <Benefit Icon={Sparkles} text="Keep your hifdh progress and bookmarks safe" />
+          <Benefit Icon={Sparkles} text="Save the recitations you love to Favourites" />
           <Benefit Icon={Mic} text="Share your recitation with the Qari community" />
         </ul>
       </div>

@@ -43,16 +43,3 @@ export interface VerseWord {
   translation?: { text: string; language_name?: string }
 }
 
-export type ScopeMode = 'surah' | 'juz' | 'range' | 'random' | 'subac'
-
-export type ScopeType = 'surah' | 'juz' | 'range'
-
-export type DiffStatus = 'correct' | 'wrong' | 'missed' | 'extra'
-
-export type Op = 'match' | 'substitution' | 'deletion' | 'insertion'
-
-export interface WordResult {
-  canonical: string
-  hypothesis: string
-  op: Op
-}

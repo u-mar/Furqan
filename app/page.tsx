@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { IconListen, IconQari, IconRead, IconTest } from '@/components/home/TileIcons'
+import { IconHalaqa, IconListen, IconQari, IconRead } from '@/components/home/TileIcons'
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
@@ -20,12 +20,12 @@ const exploreTiles = [
     Icon: IconRead,
   },
   {
-    id: 'test',
+    id: 'halaqa',
     index: '02',
-    label: 'Test',
-    hint: 'Check your hifdh',
-    href: '/test/select',
-    Icon: IconTest,
+    label: 'Halaqa',
+    hint: 'Read together',
+    href: '/halaqa',
+    Icon: IconHalaqa,
   },
   {
     id: 'qari',

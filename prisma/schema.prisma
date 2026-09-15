@@ -147,3 +147,74 @@ model PopupMessage {
   createdAt    DateTime @default(now())
   dismissedBy  String[]
 }
+
+/// A halaqa: people reading the Quran together. Joined with a link and a name,
+/// so nobody needs an account.
+model Halaqa {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  /// The short code in the invite link. Replaced when the creator makes a new link.
+  code           String
+  /// First day of the current run, in the creator's calendar (YYYY-MM-DD).
+  startDay       String
+  /// Last day of a set-time halaqa. Absent when it runs every day with no end.
+  endDay         String?
+  khatmahEnabled Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([code])
+}
+
+/// Someone in a halaqa. `memberKey` is a hash of a secret kept on their phone:
+/// the secret itself is never stored, and never sent anywhere else.
+model HalaqaMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  halaqaId  String
+  memberKey String
+  name      String
+  isCreator Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  @@index([halaqaId])
+  @@index([memberKey])
+}
+
+/// A day someone read. Kept per person rather than per halaqa, so reading once
+/// counts in every halaqa they are in.
+model HalaqaReadDay {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberKey String
+  /// The reader's own calendar day (YYYY-MM-DD).
+  day       String
+  /// "app" when reading in Read ticked it; "manual" when they tapped "Yes, I read".
+  source    String
+  createdAt DateTime @default(now())
+
+  @@index([memberKey, day])
+}
+
+/// A khatmah a halaqa reads together, one juz per person or more.
+model HalaqaKhatmah {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  halaqaId    String
+  /// YYYY-MM-DD, or absent for no deadline.
+  finishBy    String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([halaqaId])
+}
+
+/// A juz someone took in a khatmah.
+model HalaqaJuz {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  khatmahId String
+  juz       Int
+  /// HalaqaMember.id of whoever took it.
+  memberId  String
+  takenAt   DateTime  @default(now())
+  doneAt    DateTime?
+
+  @@index([khatmahId])
+}

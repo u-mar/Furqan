@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_NAME,
-    description: 'Read the Quran and practice your hifdh with Al Furqaan',
+    description: 'Read the Quran, listen, and read together in a halaqa with Al Furqaan',
     start_url: '/',
     scope: '/',
     // Standalone, not fullscreen: the phone's status and navigation bars are

@@ -9,7 +9,7 @@ import { revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
  * A recitation should keep playing when you step back to the home screen —
  * an element created inside the component would be torn down the moment the
  * route unmounted. Anything that genuinely conflicts with listening (Read,
- * Test, Qari) stops it explicitly instead; see ListenPlaybackGuard.
+ * Qari) stops it explicitly instead; see ListenPlaybackGuard.
  */
 
 export interface ListenNowPlaying {
