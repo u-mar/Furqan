@@ -3,6 +3,7 @@ import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import WelcomeAccountDialog from '@/components/onboarding/WelcomeAccountDialog'
+import ToastHost from '@/components/feedback/ToastHost'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
@@ -84,6 +85,7 @@ export default function RootLayout({
           <PwaRegister />
           <OfflineBootstrap />
           <WelcomeAccountDialog />
+          <ToastHost />
         </SettingsProvider>
       </body>
     </html>

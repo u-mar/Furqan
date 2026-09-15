@@ -1,28 +1,22 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BookOpen, CalendarDays, Hourglass, Infinity as InfinityIcon } from 'lucide-react'
+import Radio from '@/components/settings/Radio'
 import Switch from '@/components/qari/Switch'
-import { HalaqaHeader, HalaqaScreen, SectionLabel } from '@/components/halaqa/HalaqaScreen'
+import { ActionButton, HalaqaHeader, HalaqaScreen, SectionLabel } from '@/components/halaqa/HalaqaScreen'
 import { getSignedInUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { addLocalDays, createHalaqa, localDay, savedMemberName, shortDay } from '@/lib/halaqa'
+import { errorMessage } from '@/lib/toast'
 
 type Length = 7 | 30 | 40 | 'date'
+type Field = 'name' | 'memberName'
 
 const inputClass =
-  'block h-[52px] w-full rounded-2xl bg-[var(--home-card-bg)] px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] shadow-[var(--home-lift)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)] focus:ring-2 focus:ring-[var(--home-sage)]'
-
-function Radio({ on }: { on: boolean }) {
-  return on ? (
-    <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-[var(--home-sage)]" aria-hidden>
-      <span className="h-2 w-2 rounded-full bg-[var(--home-ink-fg)]" />
-    </span>
-  ) : (
-    <span className="h-[22px] w-[22px] shrink-0 rounded-full border-[1.5px] border-[var(--home-rule-strong)]" aria-hidden />
-  )
-}
+  'block h-[52px] w-full rounded-2xl bg-[var(--home-card-bg)] px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] shadow-[var(--home-lift)] outline-none transition-shadow placeholder:font-normal placeholder:text-[var(--home-muted)] focus:ring-2 focus:ring-[var(--home-sage)]'
 
 export default function NewHalaqaPage() {
   const router = useRouter()
@@ -36,6 +30,10 @@ export default function NewHalaqaPage() {
   const [finishBy, setFinishBy] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  /** The field that stopped the form, and a counter so it shakes again on the next try. */
+  const [missing, setMissing] = useState<{ field: Field; n: number } | null>(null)
+  const nameInput = useRef<HTMLInputElement>(null)
+  const memberInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setMemberName(getSignedInUser()?.name || savedMemberName())
@@ -43,11 +41,22 @@ export default function NewHalaqaPage() {
 
   const lastDay = setTime ? (length === 'date' ? endDay : addLocalDays(today, length - 1)) : null
 
+  // The shaken field is drawn afresh, so it takes the focus once it is back.
+  useEffect(() => {
+    if (missing) (missing.field === 'name' ? nameInput : memberInput).current?.focus()
+  }, [missing])
+
+  const stop = (field: Field, message: string) => {
+    errorFeedback()
+    setError(message)
+    setMissing((m) => ({ field, n: (m?.n ?? 0) + 1 }))
+  }
+
   const submit = async () => {
     if (busy) return
     setError('')
-    if (!name.trim()) return setError('Give the halaqa a name.')
-    if (!memberName.trim()) return setError('Add your name so the others know who you are.')
+    if (!name.trim()) return stop('name', 'Give the halaqa a name.')
+    if (!memberName.trim()) return stop('memberName', 'Add your name so the others know who you are.')
     setBusy(true)
     try {
       const { id } = await createHalaqa({
@@ -58,12 +67,16 @@ export default function NewHalaqaPage() {
         khatmah,
         finishBy: khatmah ? finishBy || lastDay : null,
       })
+      successFeedback()
       router.replace(`/halaqa/${id}/invite`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the halaqa.')
+      errorFeedback()
+      setError(errorMessage(err, 'Could not start the halaqa.'))
       setBusy(false)
     }
   }
+
+  const shakeClass = (field: Field) => (missing?.field === field ? 'fx-shake' : '')
 
   return (
     <HalaqaScreen>
@@ -71,27 +84,49 @@ export default function NewHalaqaPage() {
 
       <SectionLabel>Name</SectionLabel>
       <input
+        ref={nameInput}
+        key={missing?.field === 'name' ? `name-${missing.n}` : 'name'}
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => {
+          setName(e.target.value)
+          if (missing?.field === 'name') setError('')
+        }}
         maxLength={50}
         placeholder="e.g. Family Quran"
         aria-label="Halaqa name"
-        className={inputClass}
+        aria-invalid={missing?.field === 'name' && !name.trim() ? true : undefined}
+        className={cn(inputClass, shakeClass('name'))}
       />
 
       <SectionLabel>Your name</SectionLabel>
       <input
+        ref={memberInput}
+        key={missing?.field === 'memberName' ? `member-${missing.n}` : 'member'}
         value={memberName}
-        onChange={(e) => setMemberName(e.target.value)}
+        onChange={(e) => {
+          setMemberName(e.target.value)
+          if (missing?.field === 'memberName') setError('')
+        }}
         maxLength={40}
         placeholder="How the others will see you"
         aria-label="Your name"
-        className={inputClass}
+        aria-invalid={missing?.field === 'memberName' && !memberName.trim() ? true : undefined}
+        className={cn(inputClass, shakeClass('memberName'))}
       />
 
       <SectionLabel>How long</SectionLabel>
       <div className="home-card overflow-hidden rounded-2xl" role="radiogroup" aria-label="How long">
-        <button type="button" role="radio" aria-checked={!setTime} onClick={() => setSetTime(false)} className="set-row" style={{ paddingBlock: 9 }}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!setTime}
+          onClick={() => {
+            if (setTime) tapFeedback()
+            setSetTime(false)
+          }}
+          className="set-row"
+          style={{ paddingBlock: 9 }}
+        >
           <span className="set-row__icon" aria-hidden>
             <InfinityIcon className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
@@ -102,7 +137,17 @@ export default function NewHalaqaPage() {
           <Radio on={!setTime} />
         </button>
         <div className="set-row__divider" aria-hidden />
-        <button type="button" role="radio" aria-checked={setTime} onClick={() => setSetTime(true)} className="set-row" style={{ paddingBlock: 9 }}>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={setTime}
+          onClick={() => {
+            if (!setTime) tapFeedback()
+            setSetTime(true)
+          }}
+          className="set-row"
+          style={{ paddingBlock: 9 }}
+        >
           <span className="set-row__icon" aria-hidden>
             <Hourglass className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
@@ -113,13 +158,16 @@ export default function NewHalaqaPage() {
           <Radio on={setTime} />
         </button>
         {setTime ? (
-          <div className="pb-3.5 pl-14 pr-3.5 pt-0.5">
+          <div className="qari-enter pb-3.5 pl-14 pr-3.5 pt-0.5">
             <div className="ed-seg grid-cols-4">
               {([7, 30, 40, 'date'] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
-                  onClick={() => setLength(option)}
+                  onClick={() => {
+                    if (length !== option) tapFeedback()
+                    setLength(option)
+                  }}
                   aria-pressed={length === option}
                   className="ed-seg__item ed-focus h-9 whitespace-nowrap text-[0.78125rem] font-semibold"
                 >
@@ -135,7 +183,7 @@ export default function NewHalaqaPage() {
                 max={addLocalDays(today, 366)}
                 onChange={(e) => e.target.value && setEndDay(e.target.value)}
                 aria-label="Last day"
-                className="mt-2.5 h-10 w-full rounded-xl border border-[var(--home-rule)] bg-transparent px-3 text-sm text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
+                className="qari-enter mt-2.5 h-10 w-full rounded-xl border border-[var(--home-rule)] bg-transparent px-3 text-sm text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
               />
             ) : null}
             {lastDay ? (
@@ -158,7 +206,7 @@ export default function NewHalaqaPage() {
           <Switch checked={khatmah} onChange={setKhatmah} label="Khatmah together" />
         </label>
         {khatmah ? (
-          <>
+          <div className="qari-enter">
             <div className="set-row__divider" aria-hidden />
             <label className="set-row">
               <span className="set-row__icon" aria-hidden>
@@ -178,24 +226,19 @@ export default function NewHalaqaPage() {
                 )}
               />
             </label>
-          </>
+          </div>
         ) : null}
       </div>
 
       {error ? (
-        <p className="mt-4 text-center text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
+        <p key={missing?.n ?? error} className="qari-enter mt-4 text-center text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
           {error}
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={() => void submit()}
-        disabled={busy}
-        className="ed-ink ed-focus mt-6 flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
-      >
-        {busy ? 'Starting…' : 'Create halaqa'}
-      </button>
+      <ActionButton busy={busy} onClick={() => void submit()} className="mt-6">
+        {busy ? 'Creating…' : 'Create halaqa'}
+      </ActionButton>
       <p className="mt-3 text-center text-[0.78125rem] text-[var(--home-muted)]">You can change all of this later.</p>
     </HalaqaScreen>
   )

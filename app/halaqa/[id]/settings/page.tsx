@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   BookOpen,
   CalendarDays,
@@ -9,26 +9,30 @@ import {
   Hourglass,
   Infinity as InfinityIcon,
   Link2,
+  Loader2,
   LogOut,
   RefreshCw,
   Trash,
   UserMinus,
 } from 'lucide-react'
+import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import Switch from '@/components/qari/Switch'
 import {
+  ActionButton,
+  CopyLabel,
   ErrorCard,
   HalaqaHeader,
   HalaqaScreen,
+  Rise,
   SectionLabel,
   Skeleton,
-  Toast,
   copyText,
-  useToast,
+  useFlash,
 } from '@/components/halaqa/HalaqaScreen'
 import { DayDots, MemberAvatar, ReadingDaysRow, byMeThenName } from '@/components/halaqa/People'
 import { cn } from '@/lib/cn'
-import { successFeedback } from '@/lib/haptics'
+import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import {
   addLocalDays,
   dayGap,
@@ -41,31 +45,33 @@ import {
   type HalaqaDetail,
   type HalaqaMemberView,
 } from '@/lib/halaqa'
+import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
 
 type Sheet = 'rename' | 'schedule' | 'finish' | 'leave' | 'delete' | null
-
-const primaryButton =
-  'ed-ink ed-focus flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold transition-transform active:scale-[0.98] disabled:opacity-60'
-const dangerButton =
-  'ed-focus flex h-12 w-full items-center justify-center rounded-full bg-rose-600 text-[0.90625rem] font-semibold text-white disabled:opacity-60'
 
 export default function HalaqaSettingsPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [detail, setDetail] = useState<HalaqaDetail | null>(null)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
+  /** The action waiting on the server, so only its own button shows a spinner. */
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [member, setMember] = useState<HalaqaMemberView | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
-  const { toast, showToast } = useToast()
+  const [copied, flashCopied] = useFlash()
+  /** Loads can finish out of order; only the newest counts. */
+  const loads = useRef(0)
 
   const load = useCallback(async () => {
+    const mine = ++loads.current
     try {
-      setDetail(await getHalaqa(id))
+      const next = await getHalaqa(id)
+      if (mine !== loads.current) return
+      setDetail(next)
       setError('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load this halaqa.')
+      if (mine === loads.current) setError(errorMessage(err, 'Could not load this halaqa.'))
     }
   }, [id])
 
@@ -73,24 +79,26 @@ export default function HalaqaSettingsPage() {
     void load()
   }, [load])
 
-  const act = async (action: string, extra: Record<string, unknown> = {}, done?: string) => {
-    setBusy(true)
+  const act = async (action: string, extra: Record<string, unknown> = {}, done?: string, key = action) => {
+    setPendingAction(key)
     try {
       const result = await halaqaAction(id, action, extra)
       successFeedback()
       if (result.left) {
+        toastSuccess(`You left ${detail?.halaqa.name ?? 'the halaqa'}`)
         router.replace('/halaqa')
         return
       }
-      if (done) showToast(done)
+      if (done) toastSuccess(done)
       setSheet(null)
       setMember(null)
       setConfirmRemove(false)
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not do that right now.')
+      errorFeedback()
+      toastError(errorMessage(err, 'Could not do that right now.'))
     } finally {
-      setBusy(false)
+      setPendingAction(null)
     }
   }
 
@@ -101,7 +109,7 @@ export default function HalaqaSettingsPage() {
       <HalaqaScreen>
         <HalaqaHeader title="Halaqa settings" backHref={`/halaqa/${id}`} />
         {error ? (
-          <ErrorCard message={error} onRetry={() => void load()} />
+          <ErrorCard message={error} onRetry={load} />
         ) : (
           <div className="mt-[18px] space-y-3" aria-busy>
             <Skeleton className="h-[72px] rounded-2xl" />
@@ -120,140 +128,193 @@ export default function HalaqaSettingsPage() {
     : 'Every day'
   const khatmahActive = halaqa.khatmahEnabled && khatmah && !khatmah.completedAt
   const memberJuz = member && khatmah ? khatmah.juz.filter((row) => row.memberId === member.id && !row.done) : []
+  const busy = pendingAction !== null
 
   const copyLink = async () => {
-    showToast((await copyText(inviteLink(halaqa.code))) ? 'Invite link copied.' : 'Could not copy the link.')
+    if (await copyText(inviteLink(halaqa.code))) {
+      tapFeedback()
+      flashCopied()
+    } else {
+      errorFeedback()
+      toastError('Could not copy the link.')
+    }
+  }
+
+  // The switch moves at once; it moves back if the server says no.
+  const setKhatmah = async (enabled: boolean) => {
+    const before = detail
+    loads.current++
+    setDetail({ ...detail, halaqa: { ...halaqa, khatmahEnabled: enabled } })
+    try {
+      await halaqaAction(id, 'khatmah', { enabled })
+      toastSuccess(enabled ? 'Khatmah is on' : 'Khatmah is off')
+      await load()
+    } catch (err) {
+      setDetail(before)
+      errorFeedback()
+      toastError(errorMessage(err, 'Could not change that right now.'))
+    }
   }
 
   const removeHalaqa = async () => {
-    setBusy(true)
+    setPendingAction('delete')
     try {
       await deleteHalaqa(id)
+      successFeedback()
+      toastSuccess(`${halaqa.name} was deleted`)
       router.replace('/halaqa')
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not delete the halaqa.')
-      setBusy(false)
+      errorFeedback()
+      toastError(errorMessage(err, 'Could not delete the halaqa.'))
+      setPendingAction(null)
     }
+  }
+
+  const open = (next: Sheet) => {
+    tapFeedback()
+    setSheet(next)
   }
 
   return (
     <HalaqaScreen>
       <HalaqaHeader title="Halaqa settings" backHref={`/halaqa/${id}`} />
 
-      <button
-        type="button"
-        onClick={() => me.isCreator && setSheet('rename')}
-        disabled={!me.isCreator}
-        className="home-card home-press ed-focus mt-[18px] flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left disabled:active:scale-100"
-      >
-        <span className="home-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[var(--home-sage-soft)] text-xl font-semibold text-[var(--home-sage-deep)]">
-          {(halaqa.name.trim().charAt(0) || 'H').toUpperCase()}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-base font-semibold text-[var(--home-heading)]">{halaqa.name}</span>
-          <span className="mt-px block truncate text-[0.8125rem] text-[var(--home-muted)]">
-            {me.isCreator ? 'Created by you' : `Created by ${creator?.name ?? 'someone'}`} · {detail.members.length}{' '}
-            {detail.members.length === 1 ? 'member' : 'members'}
+      <Rise>
+        <button
+          type="button"
+          onClick={() => me.isCreator && open('rename')}
+          disabled={!me.isCreator}
+          className="home-card home-press ed-focus mt-[18px] flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left disabled:active:scale-100"
+        >
+          <span className="home-serif flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[var(--home-sage-soft)] text-xl font-semibold text-[var(--home-sage-deep)]">
+            {(halaqa.name.trim().charAt(0) || 'H').toUpperCase()}
           </span>
-        </span>
-        {me.isCreator ? <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
-      </button>
-
-      <SectionLabel>Halaqa</SectionLabel>
-      <div className="home-card overflow-hidden rounded-2xl">
-        <button type="button" className="set-row" onClick={() => me.isCreator && setSheet('schedule')} disabled={!me.isCreator}>
-          <span className="set-row__icon" aria-hidden>
-            {halaqa.endDay ? <Hourglass className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <InfinityIcon className="h-[17px] w-[17px]" strokeWidth={1.9} />}
-          </span>
-          <span className="set-row__label">How long</span>
-          <span className="set-row__value">{scheduleValue}</span>
-          {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
-        </button>
-        <div className="set-row__divider" aria-hidden />
-        {me.isCreator ? (
-          <label className="set-row cursor-pointer">
-            <span className="set-row__icon" aria-hidden>
-              <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+          <span className="min-w-0 flex-1">
+            <span key={halaqa.name} className="home-fade block truncate text-base font-semibold text-[var(--home-heading)]">
+              {halaqa.name}
             </span>
-            <span className="set-row__label">Khatmah together</span>
-            <Switch
-              checked={halaqa.khatmahEnabled}
-              onChange={(enabled) => void act('khatmah', { enabled }, enabled ? 'Khatmah is on.' : 'Khatmah is off.')}
-              label="Khatmah together"
-            />
-          </label>
-        ) : (
-          <div className="set-row">
-            <span className="set-row__icon" aria-hidden>
-              <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+            <span className="mt-px block truncate text-[0.8125rem] text-[var(--home-muted)]">
+              {me.isCreator ? 'Created by you' : `Created by ${creator?.name ?? 'someone'}`} · {detail.members.length}{' '}
+              {detail.members.length === 1 ? 'member' : 'members'}
             </span>
-            <span className="set-row__label">Khatmah together</span>
-            <span className="set-row__value">{halaqa.khatmahEnabled ? 'On' : 'Off'}</span>
-          </div>
-        )}
-        {khatmahActive ? (
-          <>
-            <div className="set-row__divider" aria-hidden />
-            <button type="button" className="set-row" onClick={() => me.isCreator && setSheet('finish')} disabled={!me.isCreator}>
-              <span className="set-row__icon" aria-hidden>
-                <CalendarDays className="h-[17px] w-[17px]" strokeWidth={1.9} />
-              </span>
-              <span className="set-row__label">Finish by</span>
-              <span className="set-row__value">{khatmah?.finishBy ? shortDay(khatmah.finishBy) : 'No date'}</span>
-              {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      <SectionLabel>Invite</SectionLabel>
-      <div className="home-card overflow-hidden rounded-2xl">
-        <button type="button" className="set-row" onClick={() => void copyLink()}>
-          <span className="set-row__icon" aria-hidden>
-            <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
-          <span className="set-row__label">Invite link</span>
-          <span className="shrink-0 text-sm font-semibold text-[var(--home-sage-deep)]">Copy</span>
+          {me.isCreator ? <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
         </button>
-        {me.isCreator ? (
-          <>
-            <div className="set-row__divider" aria-hidden />
-            <button
-              type="button"
-              className="set-row"
-              style={{ paddingBlock: 9 }}
-              disabled={busy}
-              onClick={() => void act('new-code', {}, 'New link made. The old one no longer works.')}
-            >
+      </Rise>
+
+      <Rise order={1}>
+        <SectionLabel>Halaqa</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          <button type="button" className="set-row" onClick={() => me.isCreator && open('schedule')} disabled={!me.isCreator}>
+            <span className="set-row__icon" aria-hidden>
+              {halaqa.endDay ? <Hourglass className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <InfinityIcon className="h-[17px] w-[17px]" strokeWidth={1.9} />}
+            </span>
+            <span className="set-row__label">How long</span>
+            <span className="set-row__value">{scheduleValue}</span>
+            {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
+          </button>
+          <div className="set-row__divider" aria-hidden />
+          {me.isCreator ? (
+            <label className="set-row cursor-pointer">
               <span className="set-row__icon" aria-hidden>
-                <RefreshCw className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-medium">Make a new link</span>
-                <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">The old link stops working</span>
+              <span className="set-row__label">Khatmah together</span>
+              <Switch checked={halaqa.khatmahEnabled} onChange={(enabled) => void setKhatmah(enabled)} label="Khatmah together" />
+            </label>
+          ) : (
+            <div className="set-row">
+              <span className="set-row__icon" aria-hidden>
+                <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-            </button>
-          </>
-        ) : null}
-      </div>
+              <span className="set-row__label">Khatmah together</span>
+              <span className="set-row__value">{halaqa.khatmahEnabled ? 'On' : 'Off'}</span>
+            </div>
+          )}
+          {khatmahActive ? (
+            <div className="qari-enter">
+              <div className="set-row__divider" aria-hidden />
+              <button type="button" className="set-row" onClick={() => me.isCreator && open('finish')} disabled={!me.isCreator}>
+                <span className="set-row__icon" aria-hidden>
+                  <CalendarDays className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                </span>
+                <span className="set-row__label">Finish by</span>
+                <span className="set-row__value">{khatmah?.finishBy ? shortDay(khatmah.finishBy) : 'No date'}</span>
+                {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </Rise>
 
-      <SectionLabel>Reading days · last {detail.windowDays} days</SectionLabel>
-      <div className="home-card overflow-hidden rounded-2xl">
-        {people.map((person, i) => (
-          <div key={person.id}>
-            {i ? <div className="set-row__divider" style={{ marginLeft: 62 }} aria-hidden /> : null}
-            <ReadingDaysRow
-              name={person.name}
-              me={person.isMe}
-              line={person.recent}
-              onOpen={me.isCreator && !person.isMe ? () => setMember(person) : undefined}
-            />
-          </div>
-        ))}
-      </div>
+      <Rise order={2}>
+        <SectionLabel>Invite</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          <button
+            type="button"
+            className="set-row"
+            onClick={() => void copyLink()}
+            aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
+          >
+            <span className="set-row__icon" aria-hidden>
+              <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
+            </span>
+            <span className="set-row__label">Invite link</span>
+            <CopyLabel copied={copied} />
+          </button>
+          {me.isCreator ? (
+            <>
+              <div className="set-row__divider" aria-hidden />
+              <button
+                type="button"
+                className="set-row"
+                style={{ paddingBlock: 9 }}
+                disabled={busy}
+                onClick={() => void act('new-code', {}, 'New link made. The old one no longer works.')}
+              >
+                <span className="set-row__icon" aria-hidden>
+                  {pendingAction === 'new-code' ? (
+                    <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={2} />
+                  ) : (
+                    <RefreshCw className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.9375rem] font-medium">Make a new link</span>
+                  <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">The old link stops working</span>
+                </span>
+              </button>
+            </>
+          ) : null}
+        </div>
+      </Rise>
 
-      <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
-        <button type="button" className="set-row" onClick={() => setSheet('leave')}>
+      <Rise order={3}>
+        <SectionLabel>Reading days · last {detail.windowDays} days</SectionLabel>
+        <div className="home-card overflow-hidden rounded-2xl">
+          {people.map((person, i) => (
+            <div key={person.id}>
+              {i ? <div className="set-row__divider" style={{ marginLeft: 62 }} aria-hidden /> : null}
+              <ReadingDaysRow
+                name={person.name}
+                me={person.isMe}
+                line={person.recent}
+                onOpen={
+                  me.isCreator && !person.isMe
+                    ? () => {
+                        tapFeedback()
+                        setMember(person)
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          ))}
+        </div>
+      </Rise>
+
+      <Rise order={4} className="home-card mt-[22px] overflow-hidden rounded-2xl">
+        <button type="button" className="set-row" onClick={() => open('leave')}>
           <span className="set-row__icon set-row__icon--neutral" aria-hidden>
             <LogOut className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
@@ -262,7 +323,7 @@ export default function HalaqaSettingsPage() {
         {me.isCreator ? (
           <>
             <div className="set-row__divider" aria-hidden />
-            <button type="button" className="set-row set-row--danger" onClick={() => setSheet('delete')}>
+            <button type="button" className="set-row set-row--danger" onClick={() => open('delete')}>
               <span className="set-row__icon set-row__icon--danger" aria-hidden>
                 <Trash className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
@@ -270,23 +331,29 @@ export default function HalaqaSettingsPage() {
             </button>
           </>
         ) : null}
-      </div>
+      </Rise>
 
-      <RenameSheet open={sheet === 'rename'} name={halaqa.name} busy={busy} onClose={() => setSheet(null)} onSave={(name) => void act('rename', { name }, 'Name saved.')} />
+      <RenameSheet
+        open={sheet === 'rename'}
+        name={halaqa.name}
+        busy={pendingAction === 'rename'}
+        onClose={() => setSheet(null)}
+        onSave={(name) => void act('rename', { name }, 'Name saved')}
+      />
       <ScheduleSheet
         open={sheet === 'schedule'}
         endDay={halaqa.endDay}
         startDay={halaqa.startDay}
-        busy={busy}
+        busy={pendingAction === 'schedule'}
         onClose={() => setSheet(null)}
-        onSave={(extra) => void act('schedule', extra, 'Saved.')}
+        onSave={(extra) => void act('schedule', extra, 'Saved')}
       />
       <FinishSheet
         open={sheet === 'finish'}
         day={khatmah?.finishBy ?? null}
-        busy={busy}
+        pending={pendingAction}
         onClose={() => setSheet(null)}
-        onSave={(day) => void act('finish-by', { day }, 'Saved.')}
+        onSave={(day) => void act('finish-by', { day }, day ? `Finish by ${shortDay(day)}` : 'No finish date', day ? 'finish-save' : 'finish-clear')}
       />
 
       <SettingsSheet
@@ -301,9 +368,9 @@ export default function HalaqaSettingsPage() {
         }
         onClose={() => setSheet(null)}
       >
-        <button type="button" disabled={busy} onClick={() => void act('leave')} className={dangerButton}>
+        <ActionButton kind="danger" busy={pendingAction === 'leave'} disabled={busy} onClick={() => void act('leave')}>
           Leave
-        </button>
+        </ActionButton>
       </SettingsSheet>
 
       <SettingsSheet
@@ -312,9 +379,9 @@ export default function HalaqaSettingsPage() {
         description="It will be removed for everyone in it, with its khatmah. This cannot be undone."
         onClose={() => setSheet(null)}
       >
-        <button type="button" disabled={busy} onClick={() => void removeHalaqa()} className={dangerButton}>
+        <ActionButton kind="danger" busy={pendingAction === 'delete'} disabled={busy} onClick={() => void removeHalaqa()}>
           Delete halaqa
-        </button>
+        </ActionButton>
       </SettingsSheet>
 
       <SettingsSheet
@@ -352,10 +419,14 @@ export default function HalaqaSettingsPage() {
                     className="set-row"
                     style={{ paddingBlock: 9 }}
                     disabled={busy}
-                    onClick={() => void act('free', { juz: row.juz }, `Juz ${row.juz} is free again.`)}
+                    onClick={() => void act('free', { juz: row.juz }, `Juz ${row.juz} is free again`, `free-${row.juz}`)}
                   >
                     <span className="set-row__icon" aria-hidden>
-                      <RefreshCw className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                      {pendingAction === `free-${row.juz}` ? (
+                        <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={2} />
+                      ) : (
+                        <RefreshCw className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[0.9375rem] font-medium">Free Juz {row.juz}</span>
@@ -366,7 +437,7 @@ export default function HalaqaSettingsPage() {
                 </div>
               ))}
               {confirmRemove ? (
-                <div className="px-3.5 py-3">
+                <div className="qari-enter px-3.5 py-3">
                   <p className="text-sm text-[var(--home-heading)]">
                     Remove {member.name}? Any juz they have not finished goes back.
                   </p>
@@ -374,22 +445,30 @@ export default function HalaqaSettingsPage() {
                     <button
                       type="button"
                       onClick={() => setConfirmRemove(false)}
-                      className="ed-focus h-11 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)]"
+                      className="ed-focus fx-press h-11 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)]"
                     >
                       Keep
                     </button>
-                    <button
-                      type="button"
+                    <ActionButton
+                      kind="danger"
+                      busy={pendingAction === 'remove'}
                       disabled={busy}
-                      onClick={() => void act('remove', { memberId: member.id }, `${member.name} was removed.`)}
-                      className="ed-focus h-11 rounded-full bg-rose-600 text-sm font-semibold text-white disabled:opacity-60"
+                      className="h-11 text-sm"
+                      onClick={() => void act('remove', { memberId: member.id }, `${member.name} was removed`)}
                     >
                       Remove
-                    </button>
+                    </ActionButton>
                   </div>
                 </div>
               ) : (
-                <button type="button" className="set-row set-row--danger" onClick={() => setConfirmRemove(true)}>
+                <button
+                  type="button"
+                  className="set-row set-row--danger"
+                  onClick={() => {
+                    tapFeedback()
+                    setConfirmRemove(true)
+                  }}
+                >
                   <span className="set-row__icon set-row__icon--danger" aria-hidden>
                     <UserMinus className="h-[17px] w-[17px]" strokeWidth={1.9} />
                   </span>
@@ -400,8 +479,6 @@ export default function HalaqaSettingsPage() {
           </>
         ) : null}
       </SettingsSheet>
-
-      <Toast message={toast} />
     </HalaqaScreen>
   )
 }
@@ -420,21 +497,38 @@ function RenameSheet({
   onSave: (name: string) => void
 }) {
   const [value, setValue] = useState(name)
+  const [shake, setShake] = useState(0)
   useEffect(() => {
     if (open) setValue(name)
   }, [open, name])
+  const save = () => {
+    if (!value.trim()) {
+      errorFeedback()
+      setShake((n) => n + 1)
+      return
+    }
+    onSave(value)
+  }
   return (
     <SettingsSheet open={open} title="Halaqa name" onClose={onClose}>
       <input
+        key={shake}
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+        }}
         maxLength={50}
         aria-label="Halaqa name"
-        className="block h-[52px] w-full rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
+        className={cn(
+          'block h-[52px] w-full rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]',
+          shake && 'fx-shake'
+        )}
+        autoFocus={shake > 0}
       />
-      <button type="button" disabled={busy || !value.trim()} onClick={() => onSave(value)} className={cn(primaryButton, 'mt-3')}>
+      <ActionButton busy={busy} onClick={save} className="mt-3">
         Save
-      </button>
+      </ActionButton>
     </SettingsSheet>
   )
 }
@@ -489,7 +583,17 @@ function ScheduleSheet({
         ].map(({ on, Icon, title, hint, pick }, i) => (
           <div key={title}>
             {i ? <div className="set-row__divider" aria-hidden /> : null}
-            <button type="button" role="radio" aria-checked={on} onClick={pick} className="set-row" style={{ paddingBlock: 9 }}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => {
+                if (!on) tapFeedback()
+                pick()
+              }}
+              className="set-row"
+              style={{ paddingBlock: 9 }}
+            >
               <span className="set-row__icon" aria-hidden>
                 <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
@@ -497,27 +601,22 @@ function ScheduleSheet({
                 <span className="block text-[0.9375rem] font-medium">{title}</span>
                 <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{hint}</span>
               </span>
-              <span
-                className={cn(
-                  'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full',
-                  on ? 'bg-[var(--home-sage)]' : 'border-[1.5px] border-[var(--home-rule-strong)]'
-                )}
-                aria-hidden
-              >
-                {on ? <span className="h-2 w-2 rounded-full bg-[var(--home-ink-fg)]" /> : null}
-              </span>
+              <Radio on={on} />
             </button>
           </div>
         ))}
       </div>
       {setTime ? (
-        <div className="mt-3">
+        <div className="qari-enter mt-3">
           <div className="ed-seg grid-cols-4">
             {([7, 30, 40, 'date'] as const).map((option) => (
               <button
                 key={option}
                 type="button"
-                onClick={() => setLength(option)}
+                onClick={() => {
+                  if (length !== option) tapFeedback()
+                  setLength(option)
+                }}
                 aria-pressed={length === option}
                 className="ed-seg__item ed-focus h-9 whitespace-nowrap text-[0.78125rem] font-semibold"
               >
@@ -533,7 +632,7 @@ function ScheduleSheet({
               max={addLocalDays(today, 366)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
               aria-label="Last day"
-              className="mt-2.5 h-11 w-full rounded-xl border border-[var(--home-rule)] bg-transparent px-3 text-sm text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
+              className="qari-enter mt-2.5 h-11 w-full rounded-xl border border-[var(--home-rule)] bg-transparent px-3 text-sm text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
             />
           ) : null}
           <p className="mt-2.5 text-[0.78125rem] text-[var(--home-muted)]">
@@ -541,9 +640,9 @@ function ScheduleSheet({
           </p>
         </div>
       ) : null}
-      <button type="button" disabled={busy} onClick={save} className={cn(primaryButton, 'mt-4')}>
+      <ActionButton busy={busy} onClick={save} className="mt-4">
         Save
-      </button>
+      </ActionButton>
     </SettingsSheet>
   )
 }
@@ -551,13 +650,13 @@ function ScheduleSheet({
 function FinishSheet({
   open,
   day,
-  busy,
+  pending,
   onClose,
   onSave,
 }: {
   open: boolean
   day: string | null
-  busy: boolean
+  pending: string | null
   onClose: () => void
   onSave: (day: string | null) => void
 }) {
@@ -566,6 +665,7 @@ function FinishSheet({
   useEffect(() => {
     if (open) setValue(day ?? '')
   }, [open, day])
+  const busy = pending !== null
   return (
     <SettingsSheet open={open} title="Finish the khatmah by" onClose={onClose}>
       <input
@@ -578,17 +678,12 @@ function FinishSheet({
         className="h-[52px] w-full rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 text-[0.9375rem] text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
       />
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onSave(null)}
-          className="ed-focus h-12 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] disabled:opacity-60"
-        >
+        <ActionButton kind="outline" busy={pending === 'finish-clear'} disabled={busy} onClick={() => onSave(null)} className="text-sm">
           No date
-        </button>
-        <button type="button" disabled={busy || !value} onClick={() => onSave(value)} className={primaryButton}>
+        </ActionButton>
+        <ActionButton busy={pending === 'finish-save'} disabled={busy || !value} onClick={() => onSave(value)}>
           Save
-        </button>
+        </ActionButton>
       </div>
     </SettingsSheet>
   )

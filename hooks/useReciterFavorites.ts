@@ -10,9 +10,12 @@ import {
 
 export function useReciterFavorites() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([])
+  /** False until the saved favourites are read, so a screen need not flash the empty state. */
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     setFavoriteIds(getFavoriteReciterIds())
+    setReady(true)
     const onChange = (e: Event) => {
       setFavoriteIds((e as CustomEvent<string[]>).detail ?? getFavoriteReciterIds())
     }
@@ -27,5 +30,5 @@ export function useReciterFavorites() {
 
   const atLimit = favoriteIds.length >= MAX_FAVORITE_RECITERS
 
-  return { favoriteIds, isFavorite, toggle, atLimit, maxFavorites: MAX_FAVORITE_RECITERS }
+  return { favoriteIds, isFavorite, toggle, atLimit, ready, maxFavorites: MAX_FAVORITE_RECITERS }
 }

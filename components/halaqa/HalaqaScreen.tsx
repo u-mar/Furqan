@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, type ReactNode } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { Check, ChevronLeft, CloudOff, Loader2, type LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/cn'
 
 /** The page around every halaqa screen: the same width and spacing as Settings. */
 export function HalaqaScreen({ children }: { children: ReactNode }) {
@@ -55,43 +56,114 @@ export function Skeleton({ className }: { className: string }) {
   return <div className={`qari-skeleton ${className}`} aria-hidden />
 }
 
-/** A short message along the bottom that fades on its own. */
-export function useToast() {
-  const [toast, setToast] = useState('')
-  useEffect(() => {
-    if (!toast) return
-    const id = window.setTimeout(() => setToast(''), 2600)
-    return () => window.clearTimeout(id)
-  }, [toast])
-  return { toast, showToast: setToast }
-}
-
-export function Toast({ message }: { message: string }) {
-  if (!message) return null
+/** Blocks that arrive together rise in one after another; `order` sets the beat. */
+export function Rise({ order = 0, className, children }: { order?: number; className?: string; children: ReactNode }) {
   return (
-    <div
-      className="qari-enter pointer-events-none fixed inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-[60] flex justify-center px-4"
-      role="status"
-    >
-      <p className="ed-ink max-w-sm rounded-full px-4 py-2.5 text-center text-sm font-semibold shadow-lg">{message}</p>
+    <div className={cn('fx-rise', className)} style={{ ['--i' as string]: order }}>
+      {children}
     </div>
   )
 }
 
-export function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void | Promise<unknown> }) {
+  const [retrying, setRetrying] = useState(false)
+  const retry = async () => {
+    if (!onRetry || retrying) return
+    setRetrying(true)
+    try {
+      await onRetry()
+    } finally {
+      setRetrying(false)
+    }
+  }
   return (
-    <div className="home-card mt-[18px] rounded-2xl px-4 py-5 text-center">
-      <p className="text-sm text-[var(--home-heading)]">{message}</p>
+    <div className="home-card fx-rise mt-[18px] flex flex-col items-center rounded-2xl px-4 py-6 text-center" role="alert">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_6%,transparent)] text-[var(--home-heading)]">
+        <CloudOff className="h-5 w-5" strokeWidth={1.9} />
+      </span>
+      <p className="mt-3 text-sm text-[var(--home-heading)]">{message}</p>
       {onRetry ? (
         <button
           type="button"
-          onClick={onRetry}
-          className="ed-focus mt-3 h-10 rounded-full px-5 text-sm font-semibold text-[var(--home-sage-deep)] hover:bg-[var(--home-track)]"
+          onClick={() => void retry()}
+          disabled={retrying}
+          className="ed-focus fx-press mt-3 flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-[var(--home-sage-deep)] hover:bg-[var(--home-track)]"
         >
-          Try again
+          {retrying ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
+          {retrying ? 'Trying again' : 'Try again'}
         </button>
       ) : null}
     </div>
+  )
+}
+
+type ActionKind = 'ink' | 'outline' | 'danger'
+
+/**
+ * The full-width buttons at the bottom of halaqa screens. While `busy` the
+ * icon becomes a spinner and the button holds still, so a second tap is not
+ * needed to know the first one landed.
+ */
+export function ActionButton({
+  kind = 'ink',
+  busy = false,
+  icon: Icon,
+  className,
+  children,
+  disabled,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { kind?: ActionKind; busy?: boolean; icon?: LucideIcon }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      className={cn(
+        'ed-focus fx-press flex h-12 w-full items-center justify-center gap-2 rounded-full text-[0.90625rem] font-semibold transition-[opacity,background-color]',
+        kind === 'ink' && 'ed-ink',
+        kind === 'outline' && 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]',
+        kind === 'danger' && 'bg-rose-600 text-white',
+        busy ? 'cursor-progress' : 'disabled:opacity-60',
+        className
+      )}
+    >
+      {busy ? (
+        <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={2.2} />
+      ) : Icon ? (
+        <Icon className="h-[17px] w-[17px]" strokeWidth={2.1} />
+      ) : null}
+      {children}
+    </button>
+  )
+}
+
+/** True for a moment after `flash()` — for "Copied" and other brief confirmations. */
+export function useFlash(ms = 1800): [boolean, () => void] {
+  const [on, setOn] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const flash = useCallback(() => {
+    setOn(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setOn(false), ms)
+  }, [ms])
+  return [on, flash]
+}
+
+/** "Copy" that turns into a drawn tick and "Copied" for a moment. */
+export function CopyLabel({ copied }: { copied: boolean }) {
+  const used = useRef(false)
+  if (copied) used.current = true
+  return copied ? (
+    <span key="copied" className="qari-swap flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--home-sage-deep)]">
+      <Check className="fx-draw h-4 w-4" strokeWidth={2.8} />
+      Copied
+    </span>
+  ) : (
+    <span key="copy" className={cn('shrink-0 text-sm font-semibold text-[var(--home-sage-deep)]', used.current && 'qari-swap')}>
+      Copy
+    </span>
   )
 }
 

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
-import { stopListenAudio } from '@/lib/listen-audio'
+import { stopListening } from '@/lib/listen-player'
 import { stopPlayback } from '@/lib/qari-player'
 
 /**
@@ -24,7 +24,7 @@ export default function ListenPlaybackGuard() {
 
   useEffect(() => {
     if (!pathname) return
-    if (SILENCES_LISTEN.some((route) => within(pathname, route))) stopListenAudio()
+    if (SILENCES_LISTEN.some((route) => within(pathname, route))) stopListening()
 
     // A Qari recitation is controlled from its row, so it stops when you move
     // to a screen where that row is gone — and never runs into a recording.

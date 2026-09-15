@@ -191,15 +191,21 @@ export function scheduleLabel(h: { startDay: string; endDay: string | null; dayN
 /* ------------------------------------------------------------------- api */
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-halaqa-key': halaqaKey(),
-      ...(init.headers ?? {}),
-    },
-    cache: 'no-store',
-  })
+  let res: Response
+  try {
+    res = await fetch(path, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-halaqa-key': halaqaKey(),
+        ...(init.headers ?? {}),
+      },
+      cache: 'no-store',
+    })
+  } catch {
+    // The request never reached the server: say so plainly, not "Failed to fetch".
+    throw new Error('No connection. Check your internet and try again.')
+  }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string }
   if (!res.ok) throw new Error(data.error || 'Something went wrong. Try again.')
   return data
@@ -284,6 +290,15 @@ export function readTodayOnThisPhone(): boolean {
 export async function markReadToday(source: 'app' | 'manual'): Promise<void> {
   await request('/api/halaqa/read', { method: 'POST', body: JSON.stringify({ today: localDay(), source }) })
   rememberReadToday()
+}
+
+/** The halaqa as it will look once today's tick is saved — shown before the server answers. */
+export function withMeRead(detail: HalaqaDetail): HalaqaDetail {
+  return {
+    ...detail,
+    me: { ...detail.me, readToday: true },
+    members: detail.members.map((member) => (member.isMe ? { ...member, readToday: true } : member)),
+  }
 }
 
 /* ------------------------------------------------------------- sharing */

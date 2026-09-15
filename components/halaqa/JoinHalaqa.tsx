@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BookOpen, CalendarCheck, ChevronLeft } from 'lucide-react'
-import { ErrorCard, HalaqaScreen, SectionLabel, Skeleton } from '@/components/halaqa/HalaqaScreen'
+import { ActionButton, ErrorCard, HalaqaScreen, Rise, SectionLabel, Skeleton } from '@/components/halaqa/HalaqaScreen'
 import { getSignedInUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
-import { successFeedback } from '@/lib/haptics'
+import { errorFeedback, successFeedback } from '@/lib/haptics'
 import { getJoinPreview, joinHalaqa, savedMemberName, type JoinPreview } from '@/lib/halaqa'
+import { errorMessage, toastSuccess } from '@/lib/toast'
 
 const TONES = ['halaqa-avatar--me', 'halaqa-avatar--1', 'halaqa-avatar--2', 'halaqa-avatar--0']
 
@@ -20,6 +21,8 @@ export default function JoinHalaqa({ code }: { code: string }) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [joinError, setJoinError] = useState('')
+  const [shake, setShake] = useState(0)
+  const input = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     try {
@@ -31,7 +34,7 @@ export default function JoinHalaqa({ code }: { code: string }) {
       setPreview(data)
       setError('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not open this invite.')
+      setError(errorMessage(err, 'Could not open this invite.'))
     }
   }, [code, router])
 
@@ -40,10 +43,16 @@ export default function JoinHalaqa({ code }: { code: string }) {
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (shake) input.current?.focus()
+  }, [shake])
+
   const join = async () => {
     if (!preview || busy) return
     if (!name.trim()) {
+      errorFeedback()
       setJoinError('Add your name so the others know who you are.')
+      setShake((n) => n + 1)
       return
     }
     setBusy(true)
@@ -51,9 +60,11 @@ export default function JoinHalaqa({ code }: { code: string }) {
     try {
       const { id } = await joinHalaqa(code, name)
       successFeedback()
+      toastSuccess(`Welcome to ${preview.name}`)
       router.replace(`/halaqa/${id}`)
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'Could not join right now.')
+      errorFeedback()
+      setJoinError(errorMessage(err, 'Could not join right now.'))
       setBusy(false)
     }
   }
@@ -64,23 +75,31 @@ export default function JoinHalaqa({ code }: { code: string }) {
         <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
       </Link>
 
-      {error ? <ErrorCard message={error} /> : null}
+      {error ? <ErrorCard message={error} onRetry={load} /> : null}
       {!preview && !error ? <Skeleton className="mt-6 h-[360px] rounded-2xl" /> : null}
 
       {preview ? (
         <>
-          <div className="mt-4 flex flex-col items-center text-center">
+          <Rise className="mt-4 flex flex-col items-center text-center">
             <div className="flex items-center">
               {preview.initials.map((letter, i) => (
                 <span
                   key={i}
-                  className={cn('halaqa-avatar h-11 w-11 border-[3px] border-[var(--app-bg)] text-[17px]', TONES[i % TONES.length], i && '-ml-3')}
+                  className={cn(
+                    'halaqa-avatar fx-pop-in h-11 w-11 border-[3px] border-[var(--app-bg)] text-[17px]',
+                    TONES[i % TONES.length],
+                    i && '-ml-3'
+                  )}
+                  style={{ animationDelay: `${i * 70}ms` }}
                 >
                   {letter}
                 </span>
               ))}
               {preview.memberCount > preview.initials.length ? (
-                <span className="-ml-3 flex h-11 min-w-11 items-center justify-center rounded-full border-[3px] border-[var(--app-bg)] bg-[var(--home-card-bg)] px-2 text-[13px] font-bold text-[var(--home-muted)] shadow-[var(--home-lift-sm)]">
+                <span
+                  className="fx-pop-in -ml-3 flex h-11 min-w-11 items-center justify-center rounded-full border-[3px] border-[var(--app-bg)] bg-[var(--home-card-bg)] px-2 text-[13px] font-bold text-[var(--home-muted)] shadow-[var(--home-lift-sm)]"
+                  style={{ animationDelay: `${preview.initials.length * 70}ms` }}
+                >
                   +{preview.memberCount - preview.initials.length}
                 </span>
               ) : null}
@@ -94,9 +113,9 @@ export default function JoinHalaqa({ code }: { code: string }) {
             <p className="mt-1 text-[0.84375rem] text-[var(--home-muted)]">
               {preview.memberCount} {preview.memberCount === 1 ? 'member' : 'members'} · {preview.endDay ? 'For a set time' : 'Every day'}
             </p>
-          </div>
+          </Rise>
 
-          <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
+          <Rise order={1} className="home-card mt-[22px] overflow-hidden rounded-2xl">
             <div className="set-row">
               <span className="set-row__icon" aria-hidden>
                 <CalendarCheck className="h-[17px] w-[17px]" strokeWidth={1.9} />
@@ -118,16 +137,18 @@ export default function JoinHalaqa({ code }: { code: string }) {
                 </div>
               </>
             ) : null}
-          </div>
+          </Rise>
 
           {preview.full ? (
-            <p className="home-card mt-[22px] rounded-2xl px-4 py-4 text-center text-sm text-[var(--home-heading)]">
+            <Rise order={2} className="home-card mt-[22px] rounded-2xl px-4 py-4 text-center text-sm text-[var(--home-heading)]">
               This halaqa is full.
-            </p>
+            </Rise>
           ) : (
-            <>
+            <Rise order={2}>
               <SectionLabel>Your name</SectionLabel>
               <input
+                ref={input}
+                key={shake}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
@@ -136,23 +157,22 @@ export default function JoinHalaqa({ code }: { code: string }) {
                 maxLength={40}
                 placeholder="How the others will see you"
                 aria-label="Your name"
-                className="block h-[52px] w-full rounded-2xl bg-[var(--home-card-bg)] px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] shadow-[var(--home-lift)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)] focus:ring-2 focus:ring-[var(--home-sage)]"
+                aria-invalid={shake > 0 && !name.trim() ? true : undefined}
+                className={cn(
+                  'block h-[52px] w-full rounded-2xl bg-[var(--home-card-bg)] px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] shadow-[var(--home-lift)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)] focus:ring-2 focus:ring-[var(--home-sage)]',
+                  shake > 0 && 'fx-shake'
+                )}
               />
               {joinError ? (
-                <p className="mt-3 text-center text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
+                <p key={joinError + shake} className="qari-enter mt-3 text-center text-sm font-medium text-rose-600 dark:text-rose-400" role="alert">
                   {joinError}
                 </p>
               ) : null}
-              <button
-                type="button"
-                onClick={() => void join()}
-                disabled={busy}
-                className="ed-ink ed-focus mt-[22px] flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
-              >
+              <ActionButton busy={busy} onClick={() => void join()} className="mt-[22px]">
                 {busy ? 'Joining…' : 'Join halaqa'}
-              </button>
+              </ActionButton>
               <p className="mt-3 text-center text-[0.78125rem] text-[var(--home-muted)]">No account needed.</p>
-            </>
+            </Rise>
           )}
         </>
       ) : null}

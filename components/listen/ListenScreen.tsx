@@ -1,647 +1,519 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import {
-  ChevronLeft,
-  Play,
-  Pause,
-  Square,
-  Loader2,
-  Download,
-  Check,
-  Headphones,
-  RotateCcw,
-  RotateCw,
-  Search,
-  Shuffle,
-  Heart,
-} from 'lucide-react'
-import { cn } from '@/lib/cn'
-import { setAppSettings } from '@/lib/app-settings'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronLeft, Download, Loader2, Pause, Play, Search, Shuffle, WifiOff, X } from 'lucide-react'
+import DownloadButton from '@/components/listen/DownloadButton'
+import HeartButton from '@/components/listen/HeartButton'
+import MiniPlayer from '@/components/listen/MiniPlayer'
+import NarrationSheet from '@/components/listen/NarrationSheet'
+import NowPlayingSheet from '@/components/listen/NowPlayingSheet'
+import { Equalizer } from '@/components/listen/PlayerControls'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import ReciterPickerSheet from '@/components/listen/ReciterPickerSheet'
-import { useReciterFavorites } from '@/hooks/useReciterFavorites'
-import {
-  getQiraat,
-  getReciterById,
-  getReciterVariants,
-  topReciters,
-  RECITERS,
-  type QiraatId,
-  type Reciter,
-} from '@/lib/reciters'
-import { filterChapters } from '@/lib/search-chapters'
-import { getChapters } from '@/lib/quran'
+import { SleepButton, SleepSheet } from '@/components/listen/SleepControls'
 import { useAppSettings } from '@/hooks/useAppSettings'
-import { useSurahPlayer } from '@/hooks/useSurahPlayer'
+import { useHydrated } from '@/hooks/useHydrated'
+import { useDownloadsVersion, useListenState } from '@/hooks/useListen'
+import { useReciterFavorites } from '@/hooks/useReciterFavorites'
+import { setAppSettings } from '@/lib/app-settings'
+import { cn } from '@/lib/cn'
+import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
+import { onDownloadFinished, surahDownload } from '@/lib/listen-downloads'
 import {
-  downloadSurahAudio,
-  isSurahAudioDownloaded,
-  OFFLINE_AUDIO_HINT,
-} from '@/lib/offline-audio'
+  changeReciter,
+  getListenState,
+  playSurah,
+  togglePlay,
+  type ListenStatus,
+} from '@/lib/listen-player'
+import { getChapters } from '@/lib/quran'
+import { getQiraat, getReciterById, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
+import { filterChapters } from '@/lib/search-chapters'
+import { toast, toastError, toastSuccess } from '@/lib/toast'
 import type { Chapter } from '@/types'
 
+type Filter = 'all' | 'downloaded'
+
 export default function ListenScreen() {
+  const hydrated = useHydrated()
   const settings = useAppSettings()
+  const reciter = getReciterById(settings.listenReciterId)
+  const listen = useListenState()
+  const downloadsVersion = useDownloadsVersion()
+  const { favoriteIds, ready: favoritesReady } = useReciterFavorites()
+
   const [chapters, setChapters] = useState<Chapter[]>([])
-  const [loadingChapters, setLoadingChapters] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<Filter>('all')
+  const [offline, setOffline] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [downloadingSurah, setDownloadingSurah] = useState<number | null>(null)
-  const [downloadProgress, setDownloadProgress] = useState(0)
-  const [downloaded, setDownloaded] = useState<Record<number, boolean>>({})
-  const [downloadedOnly, setDownloadedOnly] = useState(false)
-  const [isOffline, setIsOffline] = useState(false)
+  const [playerOpen, setPlayerOpen] = useState(false)
+  const [sleepOpen, setSleepOpen] = useState(false)
+  const [narrationOpen, setNarrationOpen] = useState(false)
 
-  const currentReciter = getReciterById(settings.listenReciterId)
-  const { favoriteIds, isFavorite, toggle: toggleFavorite, atLimit: favoritesAtLimit } =
-    useReciterFavorites()
-
-  const { state, playSurah, togglePlayPause, seekRelative, seekTo, stop, isActiveSurah } =
-    useSurahPlayer(currentReciter.id)
+  // Rows are memoised; they reach the current reciter through this.
+  const reciterId = useRef(reciter.id)
+  reciterId.current = reciter.id
 
   useEffect(() => {
-    const syncOnline = () => setIsOffline(!navigator.onLine)
-    syncOnline()
-    window.addEventListener('online', syncOnline)
-    window.addEventListener('offline', syncOnline)
+    const sync = () => {
+      const isOffline = !navigator.onLine
+      setOffline(isOffline)
+      if (isOffline) setFilter('downloaded')
+    }
+    sync()
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
     return () => {
-      window.removeEventListener('online', syncOnline)
-      window.removeEventListener('offline', syncOnline)
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
     }
   }, [])
 
   useEffect(() => {
     getChapters()
       .then(setChapters)
-      .catch(() => {})
-      .finally(() => setLoadingChapters(false))
+      .catch(() => toastError('The surah list could not load. Check your connection.'))
+      .finally(() => setLoading(false))
   }, [])
 
-  const filtered = useMemo(() => filterChapters(chapters, query), [chapters, query])
-  const visibleChapters = useMemo(
-    () => (downloadedOnly ? filtered.filter((chapter) => downloaded[chapter.id]) : filtered),
-    [downloadedOnly, downloaded, filtered]
+  useEffect(
+    () =>
+      onDownloadFinished((result) => {
+        if (result.ok) {
+          successFeedback()
+          toastSuccess(`${result.name} is saved for offline`)
+        } else {
+          errorFeedback()
+          toastError(`${result.name} could not be saved. Try again on Wi‑Fi.`)
+        }
+      }),
+    []
   )
 
-  const favoriteReciters = useMemo(
-    () =>
-      favoriteIds
-        .map((id) => RECITERS.find((r) => r.id === id))
-        .filter((r): r is NonNullable<typeof r> => Boolean(r)),
+  const lastError = useRef<string | null>(null)
+  useEffect(() => {
+    if (listen.error && listen.error !== lastError.current) {
+      errorFeedback()
+      toastError(listen.error)
+    }
+    lastError.current = listen.error
+  }, [listen.error])
+
+  const downloaded = useMemo(() => {
+    void downloadsVersion // recount whenever a download finishes
+    const ids = new Set<number>()
+    for (const chapter of chapters) {
+      if (surahDownload(reciter.id, chapter.id).state === 'done') ids.add(chapter.id)
+    }
+    return ids
+  }, [chapters, reciter.id, downloadsVersion])
+
+  const visible = useMemo(() => {
+    const matches = filterChapters(chapters, query)
+    return filter === 'downloaded' ? matches.filter((chapter) => downloaded.has(chapter.id)) : matches
+  }, [chapters, query, filter, downloaded])
+
+  const favorites = useMemo(
+    () => favoriteIds.map((id) => RECITERS.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => Boolean(r)),
     [favoriteIds]
   )
+  const picks = favorites.length ? favorites : topReciters()
 
-  const usingFavorites = favoriteReciters.length > 0
-  const quickPicks = useMemo(() => {
-    if (favoriteReciters.length > 0) return favoriteReciters
-    return topReciters()
-  }, [favoriteReciters])
-
-  /** Other narrations recorded by the same person, e.g. Hafs vs Susi. */
-  const reciterVariants = useMemo(() => getReciterVariants(currentReciter), [currentReciter])
-  const qiraatOptions = useMemo(() => {
-    const byQiraat = new Map<QiraatId, Reciter>()
-    for (const v of reciterVariants) {
-      const existing = byQiraat.get(v.qiraat)
-      if (!existing || (v.style === 'Murattal' && existing.style !== 'Murattal')) {
-        byQiraat.set(v.qiraat, v)
-      }
-    }
-    return [...byQiraat.values()].sort((a, b) => {
-      if (a.qiraat === 'hafs') return -1
-      if (b.qiraat === 'hafs') return 1
-      return getQiraat(a.qiraat).short.localeCompare(getQiraat(b.qiraat).short)
-    })
-  }, [reciterVariants])
-
-  useEffect(() => {
-    const next: Record<number, boolean> = {}
-    for (const chapter of chapters) {
-      next[chapter.id] = isSurahAudioDownloaded(currentReciter.id, chapter.id)
-    }
-    setDownloaded(next)
-  }, [chapters, currentReciter.id])
-
-  function selectReciter(id: string) {
+  const selectReciter = useCallback((id: string) => {
+    if (id === reciterId.current) return
+    tapFeedback()
     setAppSettings({ listenReciterId: id })
-  }
+    changeReciter(id)
+  }, [])
 
-  function handlePlaySurah(chapter: Chapter) {
-    if (isActiveSurah(chapter.id)) {
-      togglePlayPause()
+  const play = useCallback((chapter: Chapter) => {
+    tapFeedback()
+    const current = getListenState()
+    if (current.surah?.id === chapter.id && current.reciterId === reciterId.current) {
+      togglePlay()
       return
     }
-    if (isOffline && !downloaded[chapter.id]) return
-    playSurah(chapter.id, chapter.englishName, chapter.versesCount)
-  }
+    void playSurah(chapter, reciterId.current)
+  }, [])
 
-  function playRandom() {
-    if (visibleChapters.length === 0) return
-    const pick = visibleChapters[Math.floor(Math.random() * visibleChapters.length)]
-    playSurah(pick.id, pick.englishName, pick.versesCount)
-  }
-
-  async function handleDownloadSurah(chapter: Chapter) {
-    if (downloadingSurah === chapter.id) return
-    setDownloadingSurah(chapter.id)
-    setDownloadProgress(0)
-    try {
-      await downloadSurahAudio(currentReciter.id, chapter.id, chapter.versesCount, (p) =>
-        setDownloadProgress(p)
-      )
-      setDownloaded((prev) => ({ ...prev, [chapter.id]: true }))
-    } catch {
-      // keep silent; playback remains online
-    } finally {
-      setDownloadingSurah(null)
-      setDownloadProgress(0)
+  const shuffle = () => {
+    const pool = visible.filter((chapter) => !offline || downloaded.has(chapter.id))
+    const choices = pool.length > 1 ? pool.filter((chapter) => chapter.id !== listen.surah?.id) : pool
+    if (!choices.length) {
+      errorFeedback()
+      toast(offline ? 'Nothing downloaded to shuffle yet' : 'Nothing to shuffle here')
+      return
     }
+    tapFeedback()
+    void playSurah(choices[Math.floor(Math.random() * choices.length)], reciter.id)
   }
 
-  const playbackProgress =
-    state.duration > 0 ? Math.min(100, Math.round((state.currentTime / state.duration) * 100)) : 0
-
-  function formatTime(seconds: number): string {
-    if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${String(secs).padStart(2, '0')}`
-  }
+  const listening = Boolean(listen.surah)
 
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)] [overscroll-behavior-x:none] [touch-action:pan-y]">
-      {/* Ambient wash tinted by the current reciter — the Listen screen takes its
-          colour from whoever you're listening to, not the app's home palette. */}
+    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[52vh]"
+        className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
         style={{
-          background: `radial-gradient(120% 70% at 50% -10%, ${currentReciter.accent[0]}33, transparent 70%)`,
+          paddingBottom: listening
+            ? 'calc(7.25rem + env(safe-area-inset-bottom))'
+            : 'max(1.75rem, env(safe-area-inset-bottom))',
         }}
-        aria-hidden
-      />
-      <div className="relative mx-auto max-w-lg px-4 pb-[max(9rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        {/* Compact toolbar */}
-        <header className="reveal mb-6 flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[var(--home-heading)] transition-colors hover:bg-[var(--home-card-bg)]"
-            aria-label="Back to home"
-          >
-            <ChevronLeft className="h-6 w-6" />
+      >
+        <header className="flex items-center gap-3">
+          <Link href="/" className="home-round ed-focus" aria-label="Back">
+            <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
           </Link>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Headphones className="h-4 w-4 shrink-0 text-[var(--home-muted)]" />
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--home-muted)]">
-              Listen
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="shrink-0 rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 py-1.5 text-xs font-bold text-[var(--home-heading)]"
-          >
-            All reciters
-          </button>
+          <h1 className="home-serif min-w-0 flex-1 truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
+            Listen
+          </h1>
+          <SleepButton onOpen={() => setSleepOpen(true)} />
         </header>
 
-        {/* Now-reciting cover — album-art style, coloured by the reciter */}
-        <section className="reveal mb-7 flex items-center gap-4" style={{ animationDelay: '60ms' }}>
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            aria-label="Change reciter"
-            className="shrink-0 transition-transform active:scale-95"
-          >
-            <ReciterAvatar reciter={currentReciter} size={104} square />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--home-muted)]">
-              Reciting
-            </p>
-            <div className="flex items-start justify-between gap-2">
-              <h1 className="home-serif mt-0.5 text-[1.7rem] font-semibold leading-[1.15] text-[var(--home-heading)]">
-                {currentReciter.name}
-              </h1>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isFavorite(currentReciter.id) && favoritesAtLimit) return
-                  toggleFavorite(currentReciter.id)
-                }}
-                disabled={!isFavorite(currentReciter.id) && favoritesAtLimit}
-                className={cn(
-                  'mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
-                  isFavorite(currentReciter.id)
-                    ? 'text-rose-500'
-                    : favoritesAtLimit
-                      ? 'text-[var(--home-muted)] opacity-40'
-                      : 'text-[var(--home-muted)] hover:text-rose-400'
-                )}
-                aria-label={
-                  isFavorite(currentReciter.id)
-                    ? `Remove ${currentReciter.name} from favorites`
-                    : `Add ${currentReciter.name} to favorites`
-                }
-                aria-pressed={isFavorite(currentReciter.id)}
-              >
-                <Heart
-                  className={cn('h-5 w-5', isFavorite(currentReciter.id) && 'fill-current')}
-                />
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span
-                className="rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
-                style={{
-                  background: `linear-gradient(135deg, ${currentReciter.accent[0]}, ${currentReciter.accent[1]})`,
-                }}
-              >
-                {getQiraat(currentReciter.qiraat).short}
+        {offline ? (
+          <div className="home-card qari-enter mt-[18px] overflow-hidden rounded-2xl" role="status">
+            <div className="set-row" style={{ paddingBlock: 9 }}>
+              <span className="set-row__icon set-row__icon--neutral" aria-hidden>
+                <WifiOff className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              {currentReciter.style !== 'Murattal' && (
-                <span className="rounded-full border border-[var(--home-card-border)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--home-muted)]">
-                  {currentReciter.style}
-                </span>
-              )}
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-medium">You&apos;re offline</span>
+                <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">Your downloaded surahs still play.</span>
+              </span>
             </div>
-
-            {qiraatOptions.length > 1 && (
-              <div className="mt-2.5">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]">
-                  Also recites in
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {qiraatOptions.map((variant) => {
-                    const isCurrent = variant.id === currentReciter.id
-                    return (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => selectReciter(variant.id)}
-                        className={cn(
-                          'rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors',
-                          isCurrent
-                            ? 'text-white'
-                            : 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
-                        )}
-                        style={
-                          isCurrent
-                            ? {
-                                background: `linear-gradient(135deg, ${variant.accent[0]}, ${variant.accent[1]})`,
-                              }
-                            : undefined
-                        }
-                        aria-pressed={isCurrent}
-                      >
-                        {getQiraat(variant.qiraat).short}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            <p className="mt-2.5 text-[11px] text-[var(--home-muted)]">
-              {RECITERS.length} reciters · {new Set(RECITERS.map((r) => r.qiraat)).size} qira&apos;at
-            </p>
           </div>
-        </section>
-
-        {isOffline ? (
-          <p className="mb-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:text-amber-100">
-            {OFFLINE_AUDIO_HINT}
-          </p>
         ) : null}
 
-        {/* Quick pick reciters — your favorites once you have some, else a
-            curated bench of well-known reciters */}
-        <section className="reveal mb-5" style={{ animationDelay: '80ms' }}>
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--home-muted)]">
-              {usingFavorites && <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />}
-              {usingFavorites ? 'Your favorites' : 'Popular reciters'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              className="text-[11px] font-semibold text-[var(--home-sage-deep)]"
-            >
-              {usingFavorites ? 'Edit' : 'Browse all'}
-            </button>
+        {hydrated ? (
+          <ReciterCard reciter={reciter} onChoose={() => setPickerOpen(true)} onSelect={selectReciter} />
+        ) : (
+          <div className="home-card mt-[18px] flex items-center gap-3.5 rounded-[18px] px-3.5 py-3.5" aria-hidden>
+            <div className="qari-skeleton h-16 w-16 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <div className="qari-skeleton h-2.5 w-16 rounded-full" />
+              <div className="qari-skeleton h-4 w-40 rounded-full" />
+              <div className="qari-skeleton h-2.5 w-24 rounded-full" />
+            </div>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {quickPicks.map((r) => {
-              const active = r.id === currentReciter.id
-              return (
-                <div key={r.id} className="relative flex w-[68px] shrink-0 flex-col items-center gap-1.5">
+        )}
+
+        {favoritesReady ? (
+          <div className="home-fade">
+            <div className="mx-1 mb-2 mt-[22px] flex items-center justify-between gap-3">
+              <h2 className="home-label">{favorites.length ? 'Your favourites' : 'Popular reciters'}</h2>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="ed-focus rounded-md text-[0.78125rem] font-semibold text-[var(--home-sage-deep)]"
+              >
+                All reciters
+              </button>
+            </div>
+            <div
+              className={cn(
+                picks.length <= 5
+                  ? 'grid grid-cols-5 gap-1'
+                  : 'qari-no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1'
+              )}
+            >
+              {picks.map((r) => {
+                const active = r.id === reciter.id
+                return (
                   <button
+                    key={r.id}
                     type="button"
                     onClick={() => selectReciter(r.id)}
-                    className="flex flex-col items-center gap-1.5"
+                    aria-pressed={active}
+                    className="ed-focus fx-press flex w-full min-w-[64px] flex-col items-center gap-[7px] rounded-xl pt-0.5"
                   >
                     <ReciterAvatar reciter={r} size={56} ring={active} />
                     <span
                       className={cn(
-                        'line-clamp-2 text-center text-[10px] font-medium leading-tight',
-                        active ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
+                        'max-w-[66px] truncate text-xs',
+                        active ? 'font-bold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
                       )}
                     >
                       {r.name.split(' ').slice(-1)[0]}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (!isFavorite(r.id) && favoritesAtLimit) return
-                      toggleFavorite(r.id)
-                    }}
-                    disabled={!isFavorite(r.id) && favoritesAtLimit}
-                    className={cn(
-                      'absolute right-1 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--app-bg)] shadow-sm transition-colors active:scale-90',
-                      isFavorite(r.id)
-                        ? 'text-rose-500'
-                        : favoritesAtLimit
-                          ? 'text-[var(--home-muted)] opacity-40'
-                          : 'text-[var(--home-muted)]'
-                    )}
-                    aria-label={
-                      isFavorite(r.id) ? `Remove ${r.name} from favorites` : `Add ${r.name} to favorites`
-                    }
-                    aria-pressed={isFavorite(r.id)}
-                  >
-                    <Heart className={cn('h-3 w-3', isFavorite(r.id) && 'fill-current')} />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-
-        {/* Search + filters */}
-        <div className="reveal mb-3" style={{ animationDelay: '140ms' }}>
-          <div className="relative mb-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--home-muted)]" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search surah…"
-              className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-3 pl-9 pr-3 text-sm placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/30"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-[var(--home-muted)]">
-              {visibleChapters.length} surah{visibleChapters.length === 1 ? '' : 's'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={playRandom}
-                className="flex items-center gap-1.5 rounded-full border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--home-heading)]"
-              >
-                <Shuffle className="h-3.5 w-3.5" />
-                Shuffle
-              </button>
-              <button
-                type="button"
-                onClick={() => setDownloadedOnly((v) => !v)}
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                  downloadedOnly
-                    ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
-                    : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] text-[var(--home-muted)]'
-                )}
-              >
-                Offline
-              </button>
+                )
+              })}
             </div>
-          </div>
-        </div>
-
-        {loadingChapters ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--home-sage-deep)]" />
           </div>
         ) : (
-          <ul className="space-y-2">
-            {visibleChapters.map((chapter) => {
-              const active = isActiveSurah(chapter.id)
-              const isPlaying = active && state.playing && !state.loading
-
-              return (
-                <li key={chapter.id}>
-                  <div
-                    className={cn(
-                      'flex min-h-[64px] w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left shadow-[var(--home-card-shadow)] transition-all',
-                      active
-                        ? 'border-transparent'
-                        : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)] active:scale-[0.99]'
-                    )}
-                    style={
-                      active
-                        ? {
-                            background: `linear-gradient(135deg, ${currentReciter.accent[0]}18, ${currentReciter.accent[1]}0d)`,
-                            boxShadow: `0 0 0 1.5px ${currentReciter.accent[1]}55, 0 10px 24px -16px ${currentReciter.accent[1]}`,
-                          }
-                        : undefined
-                    }
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handlePlaySurah(chapter)}
-                      disabled={isOffline && !downloaded[chapter.id]}
-                      className={cn(
-                        'flex min-w-0 flex-1 items-center gap-3 text-left',
-                        isOffline && !downloaded[chapter.id] && 'cursor-not-allowed opacity-55'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-colors',
-                          !active && 'bg-[var(--app-surface)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]',
-                          active && 'text-white'
-                        )}
-                        style={
-                          active
-                            ? {
-                                background: `linear-gradient(135deg, ${currentReciter.accent[0]}, ${currentReciter.accent[1]})`,
-                                boxShadow: `0 8px 16px -8px ${currentReciter.accent[1]}`,
-                              }
-                            : undefined
-                        }
-                      >
-                        {isPlaying ? (
-                          <Pause className="h-[18px] w-[18px] fill-current" />
-                        ) : active && state.loading ? (
-                          <Loader2 className="h-[18px] w-[18px] animate-spin" />
-                        ) : (
-                          chapter.id
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-[var(--home-heading)]">
-                          {chapter.englishName}
-                        </span>
-                        <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-[var(--home-muted)]">
-                          <span className="amiri truncate">{chapter.name}</span>
-                          <span aria-hidden>·</span>
-                          <span className="shrink-0">{chapter.versesCount} ayahs</span>
-                        </span>
-                      </span>
-                      <span
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                        style={{
-                          color: active ? currentReciter.accent[1] : 'var(--home-muted)',
-                          background: active ? `${currentReciter.accent[1]}1a` : undefined,
-                        }}
-                      >
-                        {isPlaying ? (
-                          <span className="flex h-4 items-end gap-0.5" aria-hidden>
-                            <span className="w-0.5 animate-pulse bg-current" style={{ height: '60%' }} />
-                            <span className="w-0.5 animate-pulse bg-current" style={{ height: '100%', animationDelay: '120ms' }} />
-                            <span className="w-0.5 animate-pulse bg-current" style={{ height: '45%', animationDelay: '240ms' }} />
-                          </span>
-                        ) : (
-                          <Play className="h-4 w-4 fill-current" />
-                        )}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleDownloadSurah(chapter)}
-                      className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 transition-colors',
-                        downloadingSurah === chapter.id
-                          ? 'text-[var(--home-sage-deep)] ring-[var(--home-sage-deep)]/40'
-                          : downloaded[chapter.id]
-                            ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/30 dark:text-emerald-400'
-                            : 'text-[var(--home-muted)] ring-[var(--home-card-border)]'
-                      )}
-                      aria-label={
-                        downloaded[chapter.id] ? 'Downloaded for offline' : 'Download surah for offline'
-                      }
-                    >
-                      {downloadingSurah === chapter.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : downloaded[chapter.id] ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                  {downloadingSurah === chapter.id && (
-                    <p className="px-3 pt-1.5 text-[11px] text-[var(--home-sage-deep)]">
-                      Downloading… {downloadProgress}%
-                    </p>
-                  )}
-                </li>
-              )
-            })}
-            {visibleChapters.length === 0 && (
-              <li className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-4 py-5 text-center text-sm text-[var(--home-muted)]">
-                {downloadedOnly
-                  ? 'No downloaded surahs for this reciter yet.'
-                  : 'No surah matches your search.'}
-              </li>
-            )}
-          </ul>
+          <div className="mt-[52px] grid grid-cols-5 gap-1" aria-hidden>
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} className="flex flex-col items-center gap-2">
+                <div className="qari-skeleton h-14 w-14 rounded-full" />
+                <div className="qari-skeleton h-2.5 w-10 rounded-full" />
+              </div>
+            ))}
+          </div>
         )}
+
+        <h2 className="home-label mx-1 mb-2 mt-[22px] tabular-nums">
+          Surahs · {loading ? '114' : visible.length}
+        </h2>
+        <label className="home-card flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]">
+          <Search className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            inputMode="search"
+            enterKeyHint="search"
+            placeholder="Search surah"
+            aria-label="Search surahs"
+            className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+          />
+          {query ? (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="fx-press -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)]"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" strokeWidth={2.2} />
+            </button>
+          ) : null}
+        </label>
+
+        <div className="mt-2.5 flex items-center gap-2">
+          <div className="ed-seg min-w-0 flex-1 grid-cols-2">
+            {(['all', 'downloaded'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  if (filter !== value) tapFeedback()
+                  setFilter(value)
+                }}
+                aria-pressed={filter === value}
+                className="ed-seg__item ed-focus h-9 truncate px-1 text-[0.8125rem] font-semibold tabular-nums"
+              >
+                {value === 'all' ? 'All' : downloaded.size ? `Downloaded · ${downloaded.size}` : 'Downloaded'}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={shuffle}
+            className="home-card fx-press ed-focus flex h-11 shrink-0 items-center gap-[7px] rounded-2xl px-3.5 text-[0.8125rem] font-semibold text-[var(--home-heading)]"
+          >
+            <Shuffle className="h-4 w-4" strokeWidth={2} />
+            Shuffle
+          </button>
+        </div>
+
+        <div className="home-card mt-3 overflow-hidden rounded-2xl">
+          {loading ? (
+            <ListSkeleton />
+          ) : visible.length ? (
+            visible.map((chapter, i) => (
+              <Fragment key={chapter.id}>
+                {i ? <div className="set-row__divider" style={{ marginLeft: 62 }} aria-hidden /> : null}
+                <SurahRow
+                  chapter={chapter}
+                  reciterId={reciter.id}
+                  status={listen.surah?.id === chapter.id ? listen.status : null}
+                  unavailable={offline && !downloaded.has(chapter.id)}
+                  onPlay={play}
+                />
+              </Fragment>
+            ))
+          ) : (
+            <div className="home-fade flex flex-col items-center px-6 py-10 text-center">
+              {filter === 'downloaded' && !query.trim() ? (
+                <>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+                    <Download className="h-5 w-5" strokeWidth={1.9} />
+                  </span>
+                  <p className="mt-3 text-[0.9375rem] font-semibold text-[var(--home-heading)]">Nothing downloaded yet</p>
+                  <p className="mt-1 max-w-[260px] text-[0.8125rem] leading-relaxed text-[var(--home-muted)]">
+                    Tap the arrow beside a surah to keep {reciter.name}&apos;s recitation on this phone.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-[var(--home-muted)]">No surah matches “{query.trim()}”.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {offline && visible.length ? (
+          <p className="mx-1 mt-2.5 flex items-center gap-1.5 text-[0.78125rem] text-[var(--home-muted)]">
+            <Download className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+            On Wi‑Fi, tap the arrow on a surah to keep it.
+          </p>
+        ) : null}
       </div>
 
-      {/* Now playing bar */}
-      {state.surahId && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--home-card-border)] bg-[var(--app-surface)]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <div className="mx-auto max-w-lg">
-            <div className="mb-2.5 flex items-center gap-3">
-              <ReciterAvatar reciter={currentReciter} size={44} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-[var(--home-heading)]">
-                  {state.surahName}
-                </p>
-                <p className="truncate text-xs text-[var(--home-muted)]">
-                  {currentReciter.name}
-                  {state.error && <span className="ml-2 text-red-500">{state.error}</span>}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => seekRelative(-15)}
-                  className="flex h-10 w-10 flex-col items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--home-muted)] active:scale-95"
-                  aria-label="Rewind 15 seconds"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={togglePlayPause}
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-white"
-                  style={{
-                    background: `linear-gradient(135deg, ${currentReciter.accent[0]}, ${currentReciter.accent[1]})`,
-                    boxShadow: `0 10px 24px -10px ${currentReciter.accent[1]}`,
-                  }}
-                  aria-label={state.playing ? 'Pause' : 'Play'}
-                >
-                  {state.loading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : state.playing ? (
-                    <Pause className="h-5 w-5 fill-current" />
-                  ) : (
-                    <Play className="h-5 w-5 fill-current" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => seekRelative(15)}
-                  className="flex h-10 w-10 flex-col items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--home-muted)] active:scale-95"
-                  aria-label="Forward 15 seconds"
-                >
-                  <RotateCw className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={stop}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--home-card-border)] text-[var(--home-muted)]"
-                  aria-label="Stop"
-                >
-                  <Square className="h-3.5 w-3.5 fill-current" />
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <input
-                type="range"
-                min={0}
-                max={state.duration || 0}
-                step={0.1}
-                value={state.currentTime}
-                onChange={(e) => seekTo(Number(e.target.value))}
-                disabled={!state.duration}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-full disabled:cursor-not-allowed disabled:opacity-50"
-                style={{
-                  background: `linear-gradient(to right, ${currentReciter.accent[1]} ${playbackProgress}%, var(--home-track) ${playbackProgress}%)`,
-                }}
-                aria-label="Seek within surah"
-              />
-              <div className="flex justify-between text-[11px] font-medium tabular-nums text-[var(--home-muted)]">
-                <span>{formatTime(state.currentTime)}</span>
-                <span>{formatTime(state.duration)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <MiniPlayer onOpen={() => setPlayerOpen(true)} />
+      <NowPlayingSheet
+        open={playerOpen}
+        onClose={() => setPlayerOpen(false)}
+        onOpenSleep={() => setSleepOpen(true)}
+        onOpenNarration={() => setNarrationOpen(true)}
+      />
+      <SleepSheet open={sleepOpen} onClose={() => setSleepOpen(false)} />
+      <NarrationSheet
+        open={narrationOpen}
+        reciter={reciter}
+        onClose={() => setNarrationOpen(false)}
+        onSelect={selectReciter}
+      />
       <ReciterPickerSheet
         open={pickerOpen}
-        selectedId={currentReciter.id}
+        selectedId={reciter.id}
         onClose={() => setPickerOpen(false)}
         onSelect={selectReciter}
       />
     </main>
+  )
+}
+
+/** Who is reciting, and the other narrations they recorded. */
+function ReciterCard({
+  reciter,
+  onChoose,
+  onSelect,
+}: {
+  reciter: Reciter
+  onChoose: () => void
+  onSelect: (reciterId: string) => void
+}) {
+  const narrations = narrationChoices(reciter)
+  return (
+    <section className="home-card mt-[18px] rounded-[18px] px-3.5 pb-3 pt-3.5" aria-label="Reciting">
+      <div className="flex items-center gap-3.5">
+        <button type="button" onClick={onChoose} className="ed-focus fx-press shrink-0 rounded-full" aria-label="Choose a reciter">
+          <ReciterAvatar key={reciter.id} reciter={reciter} size={64} className="home-fade" />
+        </button>
+        <button type="button" onClick={onChoose} className="ed-focus min-w-0 flex-1 rounded-lg text-left">
+          <span className="home-label block">Reciting</span>
+          <span
+            key={reciter.id}
+            className="home-fade home-serif mt-0.5 block truncate text-[1.25rem] font-semibold leading-snug tracking-[-0.015em] text-[var(--home-heading)]"
+          >
+            {reciter.name}
+          </span>
+          <span className="mt-px block truncate text-[0.8125rem] text-[var(--home-muted)]">
+            {getQiraat(reciter.qiraat).short} · {reciter.style}
+          </span>
+        </button>
+        <HeartButton reciter={reciter} className="-mr-1 self-start" />
+      </div>
+
+      {narrations.length > 1 ? (
+        <div className="mt-3 border-t border-[var(--home-rule)] pt-2.5">
+          <p className="mb-[7px] text-xs font-semibold text-[var(--home-muted)]">Also recites in</p>
+          <div className="ed-seg" style={{ gridTemplateColumns: `repeat(${narrations.length}, minmax(0, 1fr))` }}>
+            {narrations.map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => onSelect(variant.id)}
+                aria-pressed={variant.qiraat === reciter.qiraat}
+                className="ed-seg__item ed-focus h-[34px] truncate px-1 text-[0.8125rem] font-semibold"
+              >
+                {getQiraat(variant.qiraat).short}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+const SurahRow = memo(function SurahRow({
+  chapter,
+  reciterId,
+  status,
+  unavailable,
+  onPlay,
+}: {
+  chapter: Chapter
+  reciterId: string
+  /** This surah's play state, or null when another one (or nothing) is loaded. */
+  status: ListenStatus | null
+  unavailable: boolean
+  onPlay: (chapter: Chapter) => void
+}) {
+  const active = status !== null
+  const playing = status === 'playing'
+  const loading = status === 'loading'
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-[60px] items-center pr-1.5 transition-colors duration-300',
+        active && 'bg-[color-mix(in_srgb,var(--home-sage)_7%,transparent)]'
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onPlay(chapter)}
+        disabled={unavailable}
+        aria-label={`${playing || loading ? 'Pause' : 'Play'} ${chapter.englishName}`}
+        className="ed-focus group flex min-w-0 flex-1 items-center gap-3 self-stretch py-2.5 pl-3.5 pr-2 text-left disabled:opacity-45"
+      >
+        <span
+          className={cn(
+            'home-serif flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-sm font-semibold tabular-nums transition-transform duration-150 group-active:scale-90',
+            active ? 'ed-ink' : 'bg-[color-mix(in_srgb,var(--home-heading)_6%,transparent)] text-[var(--home-heading)]'
+          )}
+        >
+          {active ? (
+            <span key={loading ? 'loading' : playing ? 'pause' : 'play'} className="qari-swap flex">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} />
+              ) : playing ? (
+                <Pause className="h-3.5 w-3.5 fill-current" strokeWidth={0} />
+              ) : (
+                <Play className="ml-0.5 h-3.5 w-3.5 fill-current" strokeWidth={1.5} />
+              )}
+            </span>
+          ) : (
+            chapter.id
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'block truncate text-[0.9375rem] font-semibold',
+              active ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-heading)]'
+            )}
+          >
+            {chapter.englishName}
+          </span>
+          <span className="mt-px flex min-w-0 items-center gap-1.5 text-[0.78125rem] text-[var(--home-muted)]">
+            <span className="amiri truncate text-[0.9375rem] leading-none">{chapter.name}</span>
+            <span aria-hidden>·</span>
+            <span className="shrink-0">{chapter.versesCount} ayahs</span>
+          </span>
+        </span>
+        {playing || status === 'paused' ? <Equalizer paused={!playing} /> : null}
+      </button>
+      <DownloadButton reciterId={reciterId} chapter={chapter} disabled={unavailable} />
+    </div>
+  )
+})
+
+function ListSkeleton() {
+  return (
+    <div aria-busy aria-label="Loading surahs">
+      {Array.from({ length: 7 }, (_, i) => (
+        <div key={i} className="flex h-[60px] items-center gap-3 px-3.5">
+          <div className="qari-skeleton h-9 w-9 rounded-[10px]" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="qari-skeleton h-3 w-28 rounded-full" />
+            <div className="qari-skeleton h-2.5 w-20 rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

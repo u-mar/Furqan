@@ -42,15 +42,14 @@ export default function ReciterAvatar({
     <span
       className={cn(
         'relative flex shrink-0 items-center justify-center overflow-hidden',
-        square ? 'rounded-[1.4rem]' : 'rounded-full',
+        square ? 'rounded-[1.75rem]' : 'rounded-full',
         className
       )}
       style={{
         width: size,
         height: size,
         background: `linear-gradient(145deg, ${from}, ${to})`,
-        boxShadow: square ? `0 18px 40px -16px ${to}` : `0 8px 20px -10px ${to}`,
-        outline: ring ? `2px solid ${from}` : undefined,
+        outline: ring ? '2px solid var(--home-heading)' : undefined,
         outlineOffset: ring ? 2 : undefined,
       }}
     >
@@ -61,6 +60,7 @@ export default function ReciterAvatar({
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           decoding="async"
+          loading="lazy"
           referrerPolicy="no-referrer"
           onError={() => setAttempt((a) => a + 1)}
         />

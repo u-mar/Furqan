@@ -27,7 +27,6 @@ function markSurahDownloaded(reciterId: string, surah: number): void {
 export async function downloadSurahAudio(
   reciterId: string,
   surah: number,
-  versesCount: number,
   onProgress?: (percent: number) => void
 ): Promise<void> {
   if (typeof caches === 'undefined') throw new Error('Audio cache is not supported in this browser.')
@@ -38,7 +37,25 @@ export async function downloadSurahAudio(
   if (!existing) {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Failed downloading surah ${surah}`)
-    await cache.put(url, res.clone())
+    const total = Number(res.headers.get('content-length')) || 0
+    if (onProgress && res.body && total > 0) {
+      // One copy of the stream goes straight into the cache, the other is
+      // only counted, so a long surah is never held in memory to show progress.
+      const [toCache, toCount] = res.body.tee()
+      const reader = toCount.getReader()
+      const stored = cache.put(url, new Response(toCache, { status: res.status, statusText: res.statusText, headers: res.headers }))
+      stored.catch(() => void reader.cancel())
+      let received = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        received += value.byteLength
+        onProgress(Math.min(99, Math.floor((received / total) * 100)))
+      }
+      await stored
+    } else {
+      await cache.put(url, res.clone())
+    }
   }
   onProgress?.(100)
   markSurahDownloaded(reciterId, surah)
@@ -116,9 +133,6 @@ export async function getPlayableAyahAudioUrl(
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null
   return onlineUrl
 }
-
-export const OFFLINE_AUDIO_HINT =
-  'You are offline. Tap the download icon on a surah while on Wi‑Fi to listen without internet.'
 
 export function revokePlayableAyahAudioUrl(url: string): void {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url)

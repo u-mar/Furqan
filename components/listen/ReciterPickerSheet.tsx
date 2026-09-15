@@ -1,17 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Check, Heart, Search, Sparkles, X } from 'lucide-react'
-import { cn } from '@/lib/cn'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Check, ChevronRight, Mic, Search, X } from 'lucide-react'
+import HeartButton from '@/components/listen/HeartButton'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
+import Radio from '@/components/settings/Radio'
+import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
-import {
-  availableQiraat,
-  getQiraat,
-  RECITERS,
-  type QiraatId,
-  type Reciter,
-} from '@/lib/reciters'
+import { cn } from '@/lib/cn'
+import { tapFeedback } from '@/lib/haptics'
+import { availableQiraat, getQiraat, RECITERS, type QiraatId, type Reciter } from '@/lib/reciters'
 
 interface ReciterPickerSheetProps {
   open: boolean
@@ -20,106 +18,111 @@ interface ReciterPickerSheetProps {
   onSelect: (id: string) => void
 }
 
-type ListMode = 'all' | 'favorites' | 'top'
+type ListMode = 'all' | 'top' | 'favorites'
 
-interface ReciterRowProps {
-  reciter: Reciter
-  active: boolean
-  favorite: boolean
-  favoriteDisabled: boolean
-  onSelect: () => void
-  onToggleFavorite: () => void
-}
+const MODES: Array<[ListMode, string]> = [
+  ['all', 'All'],
+  ['top', 'Top'],
+  ['favorites', 'Favourites'],
+]
 
 function ReciterRow({
   reciter,
   active,
-  favorite,
-  favoriteDisabled,
+  detail,
   onSelect,
-  onToggleFavorite,
-}: ReciterRowProps) {
+}: {
+  reciter: Reciter
+  active: boolean
+  detail: string
+  onSelect: () => void
+}) {
   return (
     <div
       className={cn(
-        'flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors',
-        active
-          ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)]'
-          : 'border-[var(--home-card-border)] bg-[var(--home-card-bg)]'
+        'flex min-h-[60px] items-center pr-1.5 transition-colors',
+        active && 'bg-[color-mix(in_srgb,var(--home-sage)_8%,transparent)]'
       )}
     >
-      <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-3">
-        <ReciterAvatar reciter={reciter} size={46} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-[var(--home-heading)]">
-            {reciter.name}
-          </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            {reciter.style !== 'Murattal' && (
-              <span className="rounded-full bg-[var(--app-surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]">
-                {reciter.style}
-              </span>
-            )}
-            <span className="text-[11px] text-[var(--home-muted)]">
-              {getQiraat(reciter.qiraat).short}
-            </span>
-          </span>
-        </span>
-        {active && <Check className="h-5 w-5 shrink-0 text-[var(--home-sage-deep)]" />}
-      </button>
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          if (favoriteDisabled) return
-          onToggleFavorite()
-        }}
-        disabled={favoriteDisabled}
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90',
-          favorite
-            ? 'text-rose-500'
-            : favoriteDisabled
-              ? 'text-[var(--home-muted)] opacity-40'
-              : 'text-[var(--home-muted)] hover:text-rose-400'
-        )}
-        aria-label={
-          favorite ? `Remove ${reciter.name} from favorites` : `Add ${reciter.name} to favorites`
-        }
-        aria-pressed={favorite}
+        onClick={onSelect}
+        aria-current={active || undefined}
+        className="ed-focus group flex min-w-0 flex-1 items-center gap-3 self-stretch py-2 pl-3.5 pr-1 text-left"
       >
-        <Heart className={cn('h-[18px] w-[18px]', favorite && 'fill-current')} />
+        <span className="flex transition-transform duration-150 group-active:scale-95">
+          <ReciterAvatar reciter={reciter} size={42} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">{reciter.name}</span>
+          <span className="mt-px block truncate text-[0.78125rem] text-[var(--home-muted)]">{detail}</span>
+        </span>
+        {active ? <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} /> : null}
       </button>
+      <HeartButton reciter={reciter} size={40} iconSize={19} />
     </div>
   )
 }
 
-export default function ReciterPickerSheet({
-  open,
+function ReciterCard({
+  reciters,
   selectedId,
-  onClose,
+  detail,
   onSelect,
-}: ReciterPickerSheetProps) {
+}: {
+  reciters: Reciter[]
+  selectedId: string
+  detail: (reciter: Reciter) => string
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="home-card overflow-hidden rounded-2xl">
+      {reciters.map((reciter, i) => (
+        <Fragment key={reciter.id}>
+          {i ? <div className="set-row__divider" style={{ marginLeft: 68 }} aria-hidden /> : null}
+          <ReciterRow
+            reciter={reciter}
+            active={reciter.id === selectedId}
+            detail={detail(reciter)}
+            onSelect={() => onSelect(reciter.id)}
+          />
+        </Fragment>
+      ))}
+    </div>
+  )
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <h3 className="home-label mx-1 mb-2 mt-[22px]">{children}</h3>
+}
+
+export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect }: ReciterPickerSheetProps) {
   const [query, setQuery] = useState('')
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
   const [mode, setMode] = useState<ListMode>('all')
-  const { favoriteIds, isFavorite, toggle, atLimit, maxFavorites } = useReciterFavorites()
+  const [narrationOpen, setNarrationOpen] = useState(false)
+  const { favoriteIds, atLimit, maxFavorites } = useReciterFavorites()
 
   useEffect(() => {
-    if (!open) {
-      setQuery('')
-      setQiraat('all')
-      setMode('all')
-    }
+    if (open) return
+    setQuery('')
+    setQiraat('all')
+    setMode('all')
+    setNarrationOpen(false)
   }, [open])
 
   useEffect(() => {
     if (!open) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener('keydown', onKey)
+    }
   }, [open, onClose])
 
   const filtered = useMemo(() => {
@@ -137,199 +140,172 @@ export default function ReciterPickerSheet({
     })
   }, [query, qiraat, mode, favoriteIds])
 
-  const favoriteReciters = useMemo(
-    () =>
-      favoriteIds
-        .map((id) => RECITERS.find((r) => r.id === id))
-        .filter((r): r is Reciter => Boolean(r)),
+  const favorites = useMemo(
+    () => favoriteIds.map((id) => RECITERS.find((r) => r.id === id)).filter((r): r is Reciter => Boolean(r)),
     [favoriteIds]
   )
 
-  /** Group by narration so the qira'at variety is visible. */
+  /** Grouped by narration, so the variety of qira'at is visible. */
   const grouped = useMemo(() => {
     const map = new Map<QiraatId, Reciter[]>()
-    for (const r of filtered) {
-      const list = map.get(r.qiraat) ?? []
-      list.push(r)
-      map.set(r.qiraat, list)
-    }
+    for (const r of filtered) map.set(r.qiraat, [...(map.get(r.qiraat) ?? []), r])
     return [...map.entries()]
   }, [filtered])
 
   if (!open) return null
 
-  const showFavoritesSection =
-    mode === 'all' && favoriteReciters.length > 0 && !query.trim() && qiraat === 'all'
+  const choose = (id: string) => {
+    tapFeedback()
+    onSelect(id)
+    onClose()
+  }
 
-  const emptyMessage =
-    mode === 'favorites'
-      ? 'No favorites yet — tap the heart on any reciter to save them here.'
-      : mode === 'top'
-        ? 'No top reciter matches that search.'
-        : 'No reciter matches that search.'
+  const showFavorites = mode === 'all' && favorites.length > 0 && !query.trim() && qiraat === 'all'
+  const empty =
+    mode === 'favorites' && !query.trim() && qiraat === 'all'
+      ? 'No favourites yet. Tap the heart on a reciter to keep them here.'
+      : 'No reciter matches that.'
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]">
-      {/* header */}
-      <div className="shrink-0 border-b border-[var(--home-card-border)] px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="home-serif text-xl font-semibold text-[var(--home-heading)]">
-              Choose a reciter
-            </h2>
-            <p className="text-xs text-[var(--home-muted)]">
-              {RECITERS.length} reciters · {favoriteIds.length}/{maxFavorites} favorites
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--home-card-bg)] text-[var(--home-heading)] ring-1 ring-[var(--home-card-border)]"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--home-muted)]" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search reciter or narration…"
-            className="w-full rounded-xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] py-2.5 pl-9 pr-3 text-sm text-[var(--app-text)] placeholder:text-[var(--home-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--home-sage-deep)]/30"
-          />
-        </div>
-
-        {/* qira'at filter chips + favorites/top toggles */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button
-            type="button"
-            onClick={() => setMode((m) => (m === 'top' ? 'all' : 'top'))}
-            className={cn(
-              'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-              mode === 'top'
-                ? 'bg-[var(--home-sage-deep)] text-white'
-                : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
-            )}
-            aria-pressed={mode === 'top'}
-          >
-            <Sparkles className={cn('h-3.5 w-3.5', mode === 'top' && 'fill-current')} />
-            Top
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode((m) => (m === 'favorites' ? 'all' : 'favorites'))}
-            className={cn(
-              'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-              mode === 'favorites'
-                ? 'bg-rose-500 text-white'
-                : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
-            )}
-            aria-pressed={mode === 'favorites'}
-          >
-            <Heart className={cn('h-3.5 w-3.5', mode === 'favorites' && 'fill-current')} />
-            Favorites
-          </button>
-          <button
-            type="button"
-            onClick={() => setQiraat('all')}
-            className={cn(
-              'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-              qiraat === 'all'
-                ? 'bg-[var(--home-sage-deep)] text-white'
-                : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
-            )}
-          >
-            All qira&apos;at
-          </button>
-          {availableQiraat().map((q) => (
-            <button
-              key={q.id}
-              type="button"
-              onClick={() => setQiraat(q.id)}
-              className={cn(
-                'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                qiraat === q.id
-                  ? 'bg-[var(--home-sage-deep)] text-white'
-                  : 'bg-[var(--home-card-bg)] text-[var(--home-muted)] ring-1 ring-[var(--home-card-border)]'
-              )}
-            >
-              {q.short}
+    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label="Choose a reciter">
+      <div className="shrink-0">
+        <div className="mx-auto w-full max-w-lg px-4 pb-1 pt-[max(1rem,env(safe-area-inset-top))]">
+          <header className="flex items-center gap-3">
+            <button type="button" onClick={onClose} className="home-round ed-focus" aria-label="Close">
+              <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
             </button>
-          ))}
+            <div className="min-w-0 flex-1">
+              <h2 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
+                Choose a reciter
+              </h2>
+              <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">
+                {RECITERS.length} reciters · {favoriteIds.length} of {maxFavorites} favourites
+              </p>
+            </div>
+          </header>
+
+          <label className="home-card mt-4 flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]">
+            <Search className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              inputMode="search"
+              enterKeyHint="search"
+              placeholder="Search reciter or narration"
+              aria-label="Search reciters"
+              className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+            />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="fx-press -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)]"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" strokeWidth={2.2} />
+              </button>
+            ) : null}
+          </label>
+
+          <div className="ed-seg mt-2.5 grid-cols-3">
+            {MODES.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  if (mode !== value) tapFeedback()
+                  setMode(value)
+                }}
+                aria-pressed={mode === value}
+                className="ed-seg__item ed-focus h-9 text-[0.8125rem] font-semibold"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="home-card mt-2.5 overflow-hidden rounded-2xl">
+            <button
+              type="button"
+              className="set-row"
+              onClick={() => {
+                tapFeedback()
+                setNarrationOpen(true)
+              }}
+            >
+              <span className="set-row__icon" aria-hidden>
+                <Mic className="h-[17px] w-[17px]" strokeWidth={1.9} />
+              </span>
+              <span className="set-row__label">Narration</span>
+              <span className="set-row__value">{qiraat === 'all' ? 'All' : getQiraat(qiraat).short}</span>
+              <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+            </button>
+          </div>
         </div>
-
-        {atLimit && mode !== 'favorites' && (
-          <p className="mt-2 text-[11px] text-[var(--home-muted)]">
-            You have {maxFavorites} favorites saved — remove one to add another.
-          </p>
-        )}
       </div>
 
-      {/* list */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3">
-        {grouped.length === 0 && (
-          <p className="py-12 text-center text-sm text-[var(--home-muted)]">{emptyMessage}</p>
-        )}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          {showFavorites ? (
+            <>
+              <Label>Your favourites</Label>
+              <ReciterCard
+                reciters={favorites}
+                selectedId={selectedId}
+                detail={(r) => `${getQiraat(r.qiraat).short} · ${r.style}`}
+                onSelect={choose}
+              />
+              {atLimit ? (
+                <p className="mx-1 mt-2 text-[0.78125rem] text-[var(--home-muted)]">
+                  You can keep {maxFavorites} favourites. Remove one to add another.
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
-        {showFavoritesSection && (
-          <section className="mb-5">
-            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-500">
-              <Heart className="h-3.5 w-3.5 fill-current" />
-              Your favorites
-              <span className="font-medium text-[var(--home-muted)]">{favoriteReciters.length}</span>
-            </h3>
-            <ul className="space-y-2">
-              {favoriteReciters.map((r) => (
-                <li key={`fav-${r.id}`}>
-                  <ReciterRow
-                    reciter={r}
-                    active={r.id === selectedId}
-                    favorite
-                    favoriteDisabled={false}
-                    onSelect={() => {
-                      onSelect(r.id)
-                      onClose()
-                    }}
-                    onToggleFavorite={() => toggle(r.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+          {grouped.map(([qid, list]) => (
+            <Fragment key={qid}>
+              <Label>
+                {getQiraat(qid).label} · {list.length}
+              </Label>
+              <ReciterCard reciters={list} selectedId={selectedId} detail={(r) => r.style} onSelect={choose} />
+            </Fragment>
+          ))}
 
-        {grouped.map(([qid, list]) => (
-          <section key={qid} className="mb-5">
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--home-sage-deep)]">
-              {getQiraat(qid).label}
-              <span className="ml-2 font-medium text-[var(--home-muted)]">{list.length}</span>
-            </h3>
-            <ul className="space-y-2">
-              {list.map((r) => {
-                const favorite = isFavorite(r.id)
-                return (
-                  <li key={r.id}>
-                    <ReciterRow
-                      reciter={r}
-                      active={r.id === selectedId}
-                      favorite={favorite}
-                      favoriteDisabled={!favorite && atLimit}
-                      onSelect={() => {
-                        onSelect(r.id)
-                        onClose()
-                      }}
-                      onToggleFavorite={() => toggle(r.id)}
-                    />
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        ))}
+          {grouped.length === 0 ? (
+            <p className="home-fade px-6 py-14 text-center text-sm text-[var(--home-muted)]">{empty}</p>
+          ) : null}
+        </div>
       </div>
+
+      <SettingsSheet open={narrationOpen} title="Narration" onClose={() => setNarrationOpen(false)}>
+        <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label="Narration">
+          {[{ id: 'all' as const, label: 'All narrations' }, ...availableQiraat()].map((option, i) => {
+            const on = qiraat === option.id
+            const count = option.id === 'all' ? RECITERS.length : RECITERS.filter((r) => r.qiraat === option.id).length
+            return (
+              <div key={option.id}>
+                {i ? <div className="set-row__divider" style={{ marginLeft: 14 }} aria-hidden /> : null}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => {
+                    tapFeedback()
+                    setQiraat(option.id)
+                    setNarrationOpen(false)
+                  }}
+                  className="set-row"
+                >
+                  <span className="set-row__label">{option.label}</span>
+                  <span className="set-row__value tabular-nums">{count}</span>
+                  <Radio on={on} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </SettingsSheet>
     </div>
   )
 }

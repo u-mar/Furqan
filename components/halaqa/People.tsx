@@ -10,19 +10,21 @@ function tone(name: string): number {
   return sum % 3
 }
 
-/** Someone's initial; a small tick sits on it once they have read today. */
+/** Someone's initial; a small tick sits on it once they have read today, popping in if `pop`. */
 export function MemberAvatar({
   name,
   size = 36,
   read = false,
   me = false,
   faded = false,
+  pop = false,
 }: {
   name: string
   size?: number
   read?: boolean
   me?: boolean
   faded?: boolean
+  pop?: boolean
 }) {
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
@@ -33,7 +35,7 @@ export function MemberAvatar({
         {(name.trim().charAt(0) || '?').toUpperCase()}
       </span>
       {read ? (
-        <span className="halaqa-tick" aria-hidden>
+        <span className={cn('halaqa-tick', pop && 'fx-pop-in')} style={pop ? { animationDelay: '180ms' } : undefined} aria-hidden>
           <Check className="h-[9px] w-[9px]" strokeWidth={4} />
         </span>
       ) : null}

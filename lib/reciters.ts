@@ -996,6 +996,21 @@ export function getReciterVariants(reciter: Reciter): Reciter[] {
   })
 }
 
+/**
+ * One recording per narration by this reciter, Hafs first — "Also recites in".
+ * Where a narration was recorded more than once, the murattal one stands for it.
+ */
+export function narrationChoices(reciter: Reciter): Reciter[] {
+  const byQiraat = new Map<QiraatId, Reciter>()
+  for (const variant of getReciterVariants(reciter)) {
+    const existing = byQiraat.get(variant.qiraat)
+    if (!existing || (variant.style === 'Murattal' && existing.style !== 'Murattal')) {
+      byQiraat.set(variant.qiraat, variant)
+    }
+  }
+  return [...byQiraat.values()]
+}
+
 /** Reciters marked as well-known/mainstream — the "Top" filter. */
 export function topReciters(): Reciter[] {
   return RECITERS.filter((r) => r.top)
