@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileText,
   Globe,
   Image as ImageIcon,
   Lock,
@@ -461,6 +462,12 @@ export default function SettingsPage() {
           <Link href="/privacy" className="set-row">
             <RowIcon icon={Lock} />
             <span className="set-row__label">Privacy Policy</span>
+            <RowChevron />
+          </Link>
+          <Divider />
+          <Link href="/terms" className="set-row">
+            <RowIcon icon={FileText} />
+            <span className="set-row__label">Terms of Service</span>
             <RowChevron />
           </Link>
         </div>

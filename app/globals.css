@@ -1194,6 +1194,8 @@ html.dark .mushaf-reader {
 
 .privacy-prose h2 {
   margin-top: 2.2rem;
+  /* Clears the top of the viewport when a table-of-contents link jumps here. */
+  scroll-margin-top: 1.25rem;
   font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
   font-size: 1.3rem;
   font-weight: 600;
@@ -1219,6 +1221,104 @@ html.dark .mushaf-reader {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* --- Legal pages (Privacy Policy, Terms of Service): a quick summary card
+   and a jump-to-section list, the way a policy on a real app reads. --- */
+
+.legal-summary {
+  border-radius: 1.15rem;
+  background: var(--home-sage-soft);
+  padding: 1.1rem 1.25rem 1.2rem;
+}
+
+.legal-summary__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--home-sage-deep);
+}
+
+html.dark .legal-summary__label {
+  color: var(--home-sage);
+}
+
+.legal-summary ul {
+  margin-top: 0.7rem;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.legal-summary li {
+  position: relative;
+  padding-left: 1.35rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--home-heading);
+}
+
+.legal-summary li::before {
+  content: '';
+  position: absolute;
+  left: 0.1rem;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--home-sage-deep);
+}
+
+html.dark .legal-summary li::before {
+  background: var(--home-sage);
+}
+
+.legal-toc {
+  border-radius: 1.15rem;
+  box-shadow: var(--home-lift-sm, var(--home-card-shadow));
+  background: var(--home-card-bg);
+  padding: 0.4rem;
+}
+
+.legal-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.legal-toc a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--home-heading);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.legal-toc a:hover {
+  background: var(--home-track);
+}
+
+.legal-toc__num {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--home-track);
+  color: var(--home-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Sign up and sign in --- */

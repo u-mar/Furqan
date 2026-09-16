@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Play, Square, Bookmark, Languages, Share2, X } from 'lucide-react'
+import { Play, Square, Bookmark, Languages, Share2, Volume2, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
 export interface AyahMenuAnchor {
@@ -208,12 +208,9 @@ export default function AyahContextMenu({
       />
 
       {/* header */}
-      <div className="flex items-center justify-between px-3.5 pt-2.5">
+      <div className="flex items-center px-3.5 pt-2.5">
         <span className="rounded-full bg-[var(--mushaf-popup-badge-bg)] px-2.5 py-0.5 text-[11px] font-bold tabular-nums text-[var(--mushaf-read-accent)]">
           {verseKey}
-        </span>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
-          Ayah actions
         </span>
       </div>
 
@@ -274,7 +271,7 @@ export default function AyahContextMenu({
             active={isSomaliVoicePlaying}
             onClick={isSomaliVoicePlaying ? () => onStopSomaliVoice?.() : onPlaySomaliVoice}
           >
-            <span className="text-xs font-bold">SO</span>
+            <Volume2 className="h-[18px] w-[18px]" />
           </ActionButton>
         ) : null}
 

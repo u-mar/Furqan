@@ -26,7 +26,9 @@ function QcfSegment({
 }) {
   const longPress = useLongPress(() => onLongPress?.(segment.verseKey))
   const isReciting = highlightedVerseKey === segment.verseKey
-  const isSelected = selectedVerseKey === segment.verseKey && !isReciting
+  // The ayah-number ornament never gets the selection wash — only the
+  // words themselves — so long-pressing an ayah doesn't light up its number.
+  const isSelected = selectedVerseKey === segment.verseKey && !isReciting && !segment.isEnd
 
   return (
     <span

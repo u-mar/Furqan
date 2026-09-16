@@ -16,7 +16,10 @@ export const APP_ICON_THEME_COLOR = '#000000'
 export const SUPPORT_EMAIL = 'support@example.com'
 
 /** Shown on the privacy policy. Update whenever the policy text changes. */
-export const PRIVACY_UPDATED = '15 September 2026'
+export const PRIVACY_UPDATED = '16 September 2026'
+
+/** Shown on the terms of service. Update whenever the terms text changes. */
+export const TERMS_UPDATED = '16 September 2026'
 
 /** Shared palette for OG ImageResponse icons. */
 export const appIconStyles = {

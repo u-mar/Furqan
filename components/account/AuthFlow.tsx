@@ -321,6 +321,10 @@ function Welcome({
         ) : null}
         <p className="px-4 pt-1 text-center text-[11px] leading-relaxed text-[var(--home-muted)]">
           By creating an account you agree to our{' '}
+          <Link href="/terms" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
           <Link href="/privacy" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
             Privacy Policy
           </Link>
