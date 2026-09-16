@@ -167,7 +167,7 @@ export default function TermsPage() {
       </p>
 
       <h2 id="law">Governing law</h2>
-      <p>These terms are governed by the laws that apply where {APP_NAME} is operated from.</p>
+      <p>These terms are governed by the laws of Kenya.</p>
 
       <h2 id="contact">Contact</h2>
       <p>
