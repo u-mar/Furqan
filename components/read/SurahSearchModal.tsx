@@ -69,7 +69,7 @@ export default function SurahSearchModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search surah by name or number…"
-              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-stone-500 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-stone-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
               autoComplete="off"
               enterKeyHint="search"
             />

@@ -13,6 +13,7 @@ import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapt
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
 import { getVerseByKey, getVersesByJuz } from '@/lib/quran'
 import { JUZ_STARTS, revelationLabel } from '@/lib/mushaf'
+import { loadPageFont } from '@/lib/mushaf-fonts'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
 import { versePageNumber } from '@/lib/qcf-page'
@@ -157,7 +158,13 @@ export default function ContentsDrawer({
 
   useEffect(() => {
     if (!open || bottomNav !== 'bookmarks') return
-    setBookmarks(getBookmarks())
+    const saved = getBookmarks()
+    setBookmarks(saved)
+    // Bookmarked ayat can be on a page that has never been read, so its QCF
+    // font may not be loaded yet — fetch each one that needs it.
+    for (const bookmark of saved) {
+      if (bookmark.qcfGlyphs) void loadPageFont(bookmark.page, bookmark.qcfGlyphs)
+    }
   }, [open, bottomNav])
 
   if (!open) return null
@@ -410,13 +417,29 @@ export default function ContentsDrawer({
                           <span className="block text-xs font-medium text-teal-400">
                             {bookmark.surahName} · Ayah {bookmark.ayah}
                           </span>
-                          <span
-                            className="arabic-text mt-1 line-clamp-2 block text-base leading-snug text-white"
-                            dir="rtl"
-                            lang="ar"
-                          >
-                            {bookmark.arabic}
-                          </span>
+                          {bookmark.qcfGlyphs && bookmark.qcfFontFamily ? (
+                            <span
+                              className="mt-1 line-clamp-2 block text-xl leading-snug text-white"
+                              dir="rtl"
+                              lang="ar"
+                              style={{
+                                fontFamily: `'${bookmark.qcfFontFamily}', serif`,
+                                fontFeatureSettings: 'normal',
+                                fontVariantLigatures: 'normal',
+                                fontKerning: 'none',
+                              }}
+                            >
+                              {bookmark.qcfGlyphs}
+                            </span>
+                          ) : (
+                            <span
+                              className="arabic-text mt-1 line-clamp-2 block text-base leading-snug text-white"
+                              dir="rtl"
+                              lang="ar"
+                            >
+                              {bookmark.arabic}
+                            </span>
+                          )}
                           <span className="mt-1 block text-xs text-stone-500">
                             {bookmark.verseKey} · Page {bookmark.page}
                           </span>

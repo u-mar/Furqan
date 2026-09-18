@@ -5,6 +5,14 @@ export interface AyahBookmark {
   page: number
   arabic: string
   createdAt: number
+  /**
+   * The ayah's QCF mushaf glyphs and the font-family they need, so the
+   * Bookmarks list can show the exact printed mushaf script instead of a
+   * plain Arabic font. Absent on bookmarks saved before this existed, or
+   * when the reader had no QCF data for that verse — falls back to `arabic`.
+   */
+  qcfGlyphs?: string
+  qcfFontFamily?: string
 }
 
 const STORAGE_KEY = 'muyassar_ayah_bookmarks'

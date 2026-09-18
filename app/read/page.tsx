@@ -68,7 +68,8 @@ import {
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
-import { getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
+import { getVerseQcfGlyphs, getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
+import { qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import {
   hasSomaliVoiceForVerse,
   loadSomaliVoiceManifest,
@@ -663,12 +664,14 @@ function ReadPageContent() {
     const surahId = Number(surahRaw) || 1
     const ayah = Number(ayahRaw) || 1
     const surahName = chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
+    const qcfGlyphs = verse ? getVerseQcfGlyphs(verse, currentPage) : ''
     const saved = toggleBookmark({
       verseKey: ayahMenu.verseKey,
       surahName,
       ayah,
       page: currentPage,
       arabic: verse ? getVerseArabicText(verse) : ayahMenu.arabic,
+      ...(qcfGlyphs ? { qcfGlyphs, qcfFontFamily: qcfPageFontFamily(currentPage) } : {}),
       createdAt: Date.now(),
     })
     setAyahMenuBookmarked(saved)
