@@ -152,10 +152,43 @@ export async function makeRecitationAudio(
 /* ------------------------------------------------------------------ video */
 
 /**
- * The look: plain black, the reciter's picture small in the middle, a waveform
- * that follows the voice's own frequencies, and the app's mark with the
- * reciter's name under it in the corner. Nothing else.
+ * The look: a plain black or a chosen photo behind, the reciter's picture
+ * small in the middle (optional), a waveform that follows the voice's own
+ * frequencies, and the app's mark with the reciter's name under it in the
+ * corner. Nothing else.
  */
+
+export interface VideoBackground {
+  id: string
+  /** Shown under the swatch in the picker. */
+  label: string
+  /** null for the plain black background. */
+  url: string | null
+}
+
+export const VIDEO_BACKGROUNDS: VideoBackground[] = [
+  { id: 'black', label: 'Black', url: null },
+  { id: 'desert-dunes', label: 'Dunes', url: '/qari/video-backgrounds/desert-dunes.avif' },
+  { id: 'canyon-pinnacles', label: 'Canyon', url: '/qari/video-backgrounds/canyon-pinnacles.avif' },
+  { id: 'mountain', label: 'Mountain', url: '/qari/video-backgrounds/mountain.avif' },
+  { id: 'valley', label: 'Valley', url: '/qari/video-backgrounds/valley.avif' },
+]
+
+export function findVideoBackground(id: string): VideoBackground {
+  return VIDEO_BACKGROUNDS.find((b) => b.id === id) ?? VIDEO_BACKGROUNDS[0]
+}
+
+export interface VideoOptions {
+  /** One of VIDEO_BACKGROUNDS' ids. */
+  backgroundId: string
+  /** Off skips the reciter's picture (and its ring) entirely. */
+  includeAvatar: boolean
+}
+
+export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
+  backgroundId: 'black',
+  includeAvatar: true,
+}
 
 /** Frequency bands; the bars mirror them, low voices in the middle and higher ones outwards. */
 const BANDS = 18
@@ -167,7 +200,10 @@ const AVATAR_SIZE = 148
 const WAVE_Y = 780
 
 interface Scene {
-  avatar: HTMLCanvasElement
+  /** null when the plain black background was chosen. */
+  background: HTMLImageElement | null
+  /** null when the reciter's picture was left out. */
+  avatar: HTMLCanvasElement | null
   badge: HTMLCanvasElement
   /** Band levels per frame, 0–1: frame f, band b is at f * BANDS + b. */
   bands: Float32Array
@@ -332,12 +368,16 @@ function analyse(buffer: AudioBuffer): { bands: Float32Array; level: Float32Arra
   return { bands, level, frames }
 }
 
-async function prepareScene(r: Recitation, buffer: AudioBuffer): Promise<Scene> {
+async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
+  const background = findVideoBackground(options.backgroundId)
 
-  const [picture] = await Promise.all([
-    loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`),
+  const [picture, backgroundImage] = await Promise.all([
+    options.includeAvatar
+      ? loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`)
+      : null,
+    background.url ? loadImage(background.url) : null,
     document.fonts
       ? Promise.all([
           document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
@@ -347,73 +387,89 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer): Promise<Scene> 
   ])
 
   /* The picture, small and round; the initial on deep blue when there is none */
-  const [avatar, actx] = makeCanvas(AVATAR_SIZE, AVATAR_SIZE)
-  actx.beginPath()
-  actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
-  actx.closePath()
-  actx.clip()
-  if (picture) {
-    const scale = Math.max(AVATAR_SIZE / picture.naturalWidth, AVATAR_SIZE / picture.naturalHeight)
-    const dw = picture.naturalWidth * scale
-    const dh = picture.naturalHeight * scale
-    actx.drawImage(picture, (AVATAR_SIZE - dw) / 2, (AVATAR_SIZE - dh) / 2, dw, dh)
-  } else {
-    const fill = actx.createLinearGradient(0, 0, AVATAR_SIZE, AVATAR_SIZE)
-    fill.addColorStop(0, '#4a86ad')
-    fill.addColorStop(1, '#16324f')
-    actx.fillStyle = fill
-    actx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE)
-    actx.fillStyle = '#ffffff'
-    actx.font = `600 64px ${serif}`
-    actx.textAlign = 'center'
-    actx.textBaseline = 'middle'
-    actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 4)
+  let avatar: HTMLCanvasElement | null = null
+  if (options.includeAvatar) {
+    const [avatarCanvas, actx] = makeCanvas(AVATAR_SIZE, AVATAR_SIZE)
+    actx.beginPath()
+    actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
+    actx.closePath()
+    actx.clip()
+    if (picture) {
+      const scale = Math.max(AVATAR_SIZE / picture.naturalWidth, AVATAR_SIZE / picture.naturalHeight)
+      const dw = picture.naturalWidth * scale
+      const dh = picture.naturalHeight * scale
+      actx.drawImage(picture, (AVATAR_SIZE - dw) / 2, (AVATAR_SIZE - dh) / 2, dw, dh)
+    } else {
+      const fill = actx.createLinearGradient(0, 0, AVATAR_SIZE, AVATAR_SIZE)
+      fill.addColorStop(0, '#4a86ad')
+      fill.addColorStop(1, '#16324f')
+      actx.fillStyle = fill
+      actx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE)
+      actx.fillStyle = '#ffffff'
+      actx.font = `600 64px ${serif}`
+      actx.textAlign = 'center'
+      actx.textBaseline = 'middle'
+      actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 4)
+    }
+    // A thin white edge keeps the picture crisp against the background.
+    actx.lineWidth = 6
+    actx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
+    actx.beginPath()
+    actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
+    actx.stroke()
+    avatar = avatarCanvas
   }
-  // A thin white edge keeps the picture crisp against the black.
-  actx.lineWidth = 6
-  actx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
-  actx.beginPath()
-  actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
-  actx.stroke()
 
   /* The app's mark with the reciter's name under it, for the bottom-left corner */
   const badgeWidth = 520
-  const mark = 48
-  const [badge, bctx] = makeCanvas(badgeWidth, 92)
+  const mark = 40
+  const [badge, bctx] = makeCanvas(badgeWidth, 74)
   drawBrandMark(bctx, 2, 2, mark, serif)
   bctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-  bctx.font = `600 22px ${sans}`
+  bctx.font = `600 16px ${sans}`
   bctx.textAlign = 'left'
   bctx.textBaseline = 'top'
   const fullName = r.userName || r.userUsername
   let name = fullName
   while (name.length > 1 && bctx.measureText(name).width > badgeWidth - 8) name = name.slice(0, -1)
   if (name !== fullName) name = `${name.trimEnd()}…`
-  bctx.fillText(name, 2, mark + 14)
+  bctx.fillText(name, 2, mark + 12)
 
   const { bands, level, frames } = analyse(buffer)
-  return { avatar, badge, bands, level, frames, seconds: buffer.duration }
+  return { background: backgroundImage, avatar, badge, bands, level, frames, seconds: buffer.duration }
 }
 
 function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
   ctx.fillStyle = '#000000'
   ctx.fillRect(0, 0, W, H)
 
+  if (scene.background) {
+    const scale = Math.max(W / scene.background.naturalWidth, H / scene.background.naturalHeight)
+    const dw = scene.background.naturalWidth * scale
+    const dh = scene.background.naturalHeight * scale
+    ctx.drawImage(scene.background, (W - dw) / 2, (H - dh) / 2, dw, dh)
+    // A dark wash so the waveform, picture and name stay legible on any photo.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+    ctx.fillRect(0, 0, W, H)
+  }
+
   const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
   const level = scene.level[f] ?? 0
 
-  // A soft ring breathing out from the picture with the voice.
-  const r = AVATAR_SIZE / 2
-  ctx.save()
-  ctx.strokeStyle = '#ffffff'
-  ctx.globalAlpha = 0.12 + level * 0.3
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(W / 2, AVATAR_Y, r + 12 + level * 16, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.restore()
+  if (scene.avatar) {
+    // A soft ring breathing out from the picture with the voice.
+    const r = AVATAR_SIZE / 2
+    ctx.save()
+    ctx.strokeStyle = '#ffffff'
+    ctx.globalAlpha = 0.12 + level * 0.3
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(W / 2, AVATAR_Y, r + 12 + level * 16, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.restore()
 
-  ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
+    ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
+  }
 
   // The waveform: mirrored bars with a faint glow, tallest in the middle.
   const count = BANDS * 2 - 1
@@ -447,7 +503,8 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
 export async function makeRecitationVideo(
   r: Recitation,
   onProgress: Progress,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: VideoOptions = DEFAULT_VIDEO_OPTIONS
 ): Promise<ShareMedia> {
   onProgress(0.03)
   const buffer = await renderRecitationAudio(r, signal)
@@ -466,7 +523,7 @@ export async function makeRecitationVideo(
   }
   throwIfCancelled(signal)
 
-  const scene = await prepareScene(r, buffer)
+  const scene = await prepareScene(r, buffer, options)
   throwIfCancelled(signal)
 
   const [canvas, ctx] = makeCanvas()

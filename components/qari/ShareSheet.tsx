@@ -8,19 +8,24 @@ import {
   canMakeVideo,
   canShareMedia,
   copyText,
+  DEFAULT_VIDEO_OPTIONS,
   makeRecitationAudio,
   makeRecitationVideo,
   recitationLink,
   saveMedia,
   shareMedia,
   ShareCancelled,
+  VIDEO_BACKGROUNDS,
   type ShareKind,
   type ShareMedia,
+  type VideoOptions,
 } from '@/lib/qari-share-media'
+import Switch from '@/components/qari/Switch'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
 
 type Stage =
   | { name: 'choose' }
+  | { name: 'customize' }
   | { name: 'working'; kind: ShareKind; progress: number }
   | { name: 'ready'; media: ShareMedia }
   | { name: 'error'; kind: ShareKind; message: string }
@@ -41,12 +46,14 @@ interface ShareSheetProps {
  */
 export default function ShareSheet({ recitation, open, onClose, onNotice }: ShareSheetProps) {
   const [stage, setStage] = useState<Stage>({ name: 'choose' })
+  const [videoOptions, setVideoOptions] = useState<VideoOptions>(DEFAULT_VIDEO_OPTIONS)
   const abortRef = useRef<AbortController | null>(null)
   const videoPossible = useMemo(() => (open ? canMakeVideo() : true), [open])
 
   useEffect(() => {
     if (!open) return
     setStage({ name: 'choose' })
+    setVideoOptions(DEFAULT_VIDEO_OPTIONS)
     // Start the download now; by the time an option is picked it is usually here.
     void prefetchRecitationAudio(recitation.id)
     return () => {
@@ -80,7 +87,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
       try {
         const media =
           kind === 'video'
-            ? await makeRecitationVideo(recitation, onProgress, controller.signal)
+            ? await makeRecitationVideo(recitation, onProgress, controller.signal, videoOptions)
             : await makeRecitationAudio(recitation, onProgress, controller.signal)
         if (controller.signal.aborted) return
         successFeedback()
@@ -99,7 +106,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
         })
       }
     },
-    [recitation]
+    [recitation, videoOptions]
   )
 
   const cancel = useCallback(() => {
@@ -187,7 +194,10 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
               title="Video"
               hint={videoPossible ? 'For TikTok, Instagram and Status' : 'Needs a newer Chrome or Safari'}
               disabled={!videoPossible}
-              onClick={() => void make('video')}
+              onClick={() => {
+                tapFeedback()
+                setStage({ name: 'customize' })
+              }}
             />
             <div className="set-row__divider" />
             <ShareOption
@@ -205,6 +215,15 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
               <span className="text-sm font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">Copy</span>
             </button>
           </div>
+        ) : null}
+
+        {stage.name === 'customize' ? (
+          <CustomizeVideo
+            options={videoOptions}
+            onChange={setVideoOptions}
+            onBack={() => setStage({ name: 'choose' })}
+            onMake={() => void make('video')}
+          />
         ) : null}
 
         {stage.name === 'working' ? (
@@ -308,6 +327,79 @@ function ShareOption({
       </span>
       <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
     </button>
+  )
+}
+
+function CustomizeVideo({
+  options,
+  onChange,
+  onBack,
+  onMake,
+}: {
+  options: VideoOptions
+  onChange: (options: VideoOptions) => void
+  onBack: () => void
+  onMake: () => void
+}) {
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--home-muted)]">Background</p>
+      <div className="qari-no-scrollbar mt-2 flex gap-2.5 overflow-x-auto pb-1">
+        {VIDEO_BACKGROUNDS.map((background) => {
+          const active = background.id === options.backgroundId
+          return (
+            <button
+              key={background.id}
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                onChange({ ...options, backgroundId: background.id })
+              }}
+              aria-pressed={active}
+              className="qari-press ed-focus flex shrink-0 flex-col items-center gap-1.5"
+            >
+              <span
+                className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-black bg-cover bg-center"
+                style={{
+                  backgroundImage: background.url ? `url(${background.url})` : undefined,
+                  boxShadow: active
+                    ? '0 0 0 2.5px var(--home-card-bg), 0 0 0 4.5px var(--home-sage)'
+                    : '0 0 0 1px var(--home-rule)',
+                }}
+              />
+              <span className="text-[11px] font-medium text-[var(--home-muted)]">{background.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="set-row mt-4 rounded-2xl border border-[var(--home-rule)]" style={{ paddingBlock: '0.5rem' }}>
+        <span className="set-row__label">Include profile picture</span>
+        <Switch
+          checked={options.includeAvatar}
+          onChange={(checked) => onChange({ ...options, includeAvatar: checked })}
+          label="Include profile picture"
+        />
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="ed-focus h-12 flex-1 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={onMake}
+          className="ed-ink ed-focus flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform active:scale-[0.98]"
+        >
+          <Film className="h-4 w-4" strokeWidth={2} />
+          Make video
+        </button>
+      </div>
+    </div>
   )
 }
 
