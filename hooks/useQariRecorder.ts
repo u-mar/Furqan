@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { buildVoiceShaping } from '@/lib/audio-space'
 import { tr } from '@/lib/i18n-core'
+import { polishRecording, type PolishStage } from '@/lib/qari-polish'
+import type { Quality } from '@/lib/qari-polish-dsp'
 
 /**
  * Recorder for Qari uploads.
@@ -11,19 +12,20 @@ import { tr } from '@/lib/i18n-core'
  * a minute of WAV is several megabytes, while Opus is well under one, which
  * matters when every recording is uploaded.
  *
- * What reaches the recorder is not the bare microphone but a cleaned, evened
- * voice (see lib/audio-space). That shaping has to happen on the way in —
- * re-encoding afterwards in the browser would mean replaying the whole take
- * in real time. The room tail is deliberately *not* baked in, so the space
- * can still be changed after the take; it is applied on playback instead.
+ * What is recorded is the bare microphone. When the reciter finishes it is
+ * polished once (lib/qari-polish): levelled, trimmed, cleaned of room noise,
+ * shaped, set to a standard loudness and saved as MP3. Doing it afterwards
+ * rather than on the way in is what allows the loudness to be measured over
+ * the whole take and the room noise to be judged before it is touched. The
+ * room tail is deliberately *not* baked in, so the space can still be changed
+ * after the take; it is applied on playback instead.
  */
 
 /**
- * Opus is transparent for a single voice well below this, and the ceiling
- * matters: with container overhead 128k put a full ten-minute take at ~11MB
- * against a 12MB upload limit. This leaves real headroom and sounds the same.
+ * The untouched take is only an intermediate step, so it is kept generous:
+ * it is decoded and processed straight away, and only the polished MP3 is uploaded.
  */
-const AUDIO_BITRATE = 96000
+const AUDIO_BITRATE = 160000
 
 /** In preference order; the first the browser supports wins. */
 const CANDIDATE_TYPES = [
@@ -99,6 +101,12 @@ export interface QariRecorderState {
    * processing can undo) or barely hears the reciter. Null when it is fine.
    */
   inputHint: 'loud' | 'quiet' | null
+  /** The take has ended and is being polished; blob follows. */
+  polishing: boolean
+  polishProgress: number
+  polishStage: PolishStage | null
+  /** How the finished take came out, for a tip when it could have been better. */
+  quality: Quality | null
   error: string | null
   blob: Blob | null
   mimeType: string
@@ -110,6 +118,10 @@ const idle: QariRecorderState = {
   elapsed: 0,
   level: 0,
   inputHint: null,
+  polishing: false,
+  polishProgress: 0,
+  polishStage: null,
+  quality: null,
   error: null,
   blob: null,
   mimeType: '',
@@ -126,6 +138,10 @@ export function useQariRecorder(maxSeconds = 600) {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const rafRef = useRef<number | null>(null)
   const startedAtRef = useRef(0)
+  /** Which take is being polished, so one that was thrown away cannot come back. */
+  const polishRun = useRef(0)
+  /** Set when the take is thrown away while recording, so its end is ignored. */
+  const discarded = useRef(false)
 
   const teardown = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -142,6 +158,7 @@ export function useQariRecorder(maxSeconds = 600) {
 
   const start = useCallback(async (prepared?: PreparedRecording) => {
     if (recorderRef.current) return
+    discarded.current = false
 
     try {
       // All three of these are tuned for phone calls. On a recitation they
@@ -163,20 +180,16 @@ export function useQariRecorder(maxSeconds = 600) {
       audioCtxRef.current = ctx
       if (ctx.state === 'suspended') await ctx.resume()
 
+      // The bare microphone: it drives the level meter and tells the reciter
+      // when it is too close (clipping) or too far away.
       const microphone = ctx.createMediaStreamSource(stream)
-      const voice = await buildVoiceShaping(ctx, microphone)
-
-      // The bare microphone, before any shaping, to tell the reciter when it
-      // is too close (clipping) or too far away.
       const raw = ctx.createAnalyser()
       raw.fftSize = 2048
       microphone.connect(raw)
       const rawBuffer = new Float32Array(raw.fftSize)
-      const sink = ctx.createMediaStreamDestination()
-      voice.connect(sink)
 
       const mimeType = pickMimeType()
-      const recorder = new MediaRecorder(sink.stream, {
+      const recorder = new MediaRecorder(stream, {
         ...(mimeType ? { mimeType } : {}),
         audioBitsPerSecond: AUDIO_BITRATE,
       })
@@ -188,25 +201,48 @@ export function useQariRecorder(maxSeconds = 600) {
       }
 
       recorder.onstop = () => {
+        if (discarded.current) return
         const type = recorder.mimeType || mimeType || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
+        const raw = new Blob(chunksRef.current, { type })
         const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
         teardown()
-        setState({
-          ...idle,
-          blob,
-          // Strip the codec suffix; the server only stores the base type.
-          mimeType: type.split(';')[0],
-          durationSec,
-          elapsed: durationSec,
-        })
+        const run = ++polishRun.current
+        setState({ ...idle, polishing: true, elapsed: durationSec })
+
+        // Polish it; if anything about that fails, the take itself is kept
+        // rather than lost.
+        polishRecording(raw, (fraction, stage) =>
+          setState((s) => (s.polishing && polishRun.current === run ? { ...s, polishProgress: fraction, polishStage: stage } : s))
+        )
+          .then((done) =>
+            polishRun.current === run &&
+            setState({
+              ...idle,
+              blob: done.blob,
+              mimeType: done.mimeType,
+              durationSec: done.durationSec,
+              elapsed: durationSec,
+              quality: done.quality,
+            })
+          )
+          .catch(() =>
+            polishRun.current === run &&
+            setState({
+              ...idle,
+              blob: raw,
+              // Strip the codec suffix; the server only stores the base type.
+              mimeType: type.split(';')[0],
+              durationSec,
+              elapsed: durationSec,
+            })
+          )
       }
 
-      /* Live level meter, tapped after the chain so it shows what is being
-         recorded rather than what the microphone happens to hear. */
+      /* Live level meter, from the microphone. It is quieter than the polished
+         take will be, so it is lifted to sit in the middle of the display. */
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 1024
-      voice.connect(analyser)
+      microphone.connect(analyser)
       analyserRef.current = analyser
 
       const buffer = new Uint8Array(analyser.frequencyBinCount)
@@ -220,6 +256,7 @@ export function useQariRecorder(maxSeconds = 600) {
         for (let i = 0; i < buffer.length; i += 1) {
           peak = Math.max(peak, Math.abs(buffer[i] - 128) / 128)
         }
+        peak = Math.min(1, peak * 2.2)
         const now = Date.now()
         const seconds = Math.floor((now - startedAtRef.current) / 1000)
 
@@ -263,6 +300,8 @@ export function useQariRecorder(maxSeconds = 600) {
   }, [])
 
   const reset = useCallback(() => {
+    polishRun.current += 1
+    discarded.current = true
     stop()
     teardown()
     setState(idle)

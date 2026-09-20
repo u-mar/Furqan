@@ -9,6 +9,7 @@ import HomeHero from '@/components/home/HomeHero'
 import HomeScreen from '@/components/home/HomeScreen'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getSignedInUser } from '@/lib/auth'
+import { isHalaqaMember, listHalaqas } from '@/lib/halaqa'
 import { useT } from '@/lib/i18n'
 
 const exploreTiles = [
@@ -54,6 +55,8 @@ export default function Home() {
   useEffect(() => {
     const syncName = () => setDisplayName(getSignedInUser()?.name ?? 'Guest')
     syncName()
+    // Halaqa opens instantly when its list is already on the phone.
+    if (isHalaqaMember()) void listHalaqas().catch(() => {})
     window.addEventListener('auth-user-changed', syncName)
     return () => window.removeEventListener('auth-user-changed', syncName)
   }, [])

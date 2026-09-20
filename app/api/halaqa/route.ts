@@ -39,23 +39,22 @@ export async function GET(request: NextRequest) {
       prisma.halaqaKhatmah.findMany({ where: { halaqaId: { in: ids } }, orderBy: { startedAt: 'desc' } }),
     ])
 
-    const readers = new Set(
-      (
-        await prisma.halaqaReadDay.findMany({
-          where: { memberKey: { in: [...new Set(members.map((m) => m.memberKey))] }, day: today },
-          select: { memberKey: true },
-        })
-      ).map((row) => row.memberKey)
-    )
-
     const latest = new Map<string, (typeof khatmahs)[number]>()
     for (const khatmah of khatmahs) if (!latest.has(khatmah.halaqaId)) latest.set(khatmah.halaqaId, khatmah)
-    const juzRows = latest.size
-      ? await prisma.halaqaJuz.findMany({
-          where: { khatmahId: { in: [...latest.values()].map((k) => k.id) } },
-          select: { khatmahId: true, doneAt: true },
-        })
-      : []
+    // Who read today and how far each khatmah is do not depend on each other.
+    const [readerRows, juzRows] = await Promise.all([
+      prisma.halaqaReadDay.findMany({
+        where: { memberKey: { in: [...new Set(members.map((m) => m.memberKey))] }, day: today },
+        select: { memberKey: true },
+      }),
+      latest.size
+        ? prisma.halaqaJuz.findMany({
+            where: { khatmahId: { in: [...latest.values()].map((k) => k.id) } },
+            select: { khatmahId: true, doneAt: true },
+          })
+        : Promise.resolve([]),
+    ])
+    const readers = new Set(readerRows.map((row) => row.memberKey))
 
     const byId = new Map(halaqas.map((h) => [h.id, h]))
     const list = memberships

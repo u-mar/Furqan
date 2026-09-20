@@ -212,12 +212,56 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data
 }
 
+/* What the phone saw last time, so a halaqa opens at once and the server only refreshes it. */
+const LIST_CACHE = 'muyassar_halaqa_list'
+const DETAIL_CACHE = 'muyassar_halaqa_detail_'
+
+function readCache<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as { day?: string; data?: T }
+    // Yesterday's "read today" would be wrong; only today's copy is shown.
+    return saved.day === localDay() && saved.data ? saved.data : null
+  } catch {
+    return null
+  }
+}
+
+function writeCache(key: string, data: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ day: localDay(), data }))
+  } catch {
+    // A full disk only costs the shortcut.
+  }
+}
+
+function dropCache(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Nothing to remove.
+  }
+}
+
+/** The list as last seen today, or an empty one for a phone that has never joined a halaqa. */
+export function peekHalaqaList(): { readToday: boolean; halaqas: HalaqaListItem[] } | null {
+  const cached = readCache<{ readToday: boolean; halaqas: HalaqaListItem[] }>(LIST_CACHE)
+  if (cached) return cached
+  return isHalaqaMember() ? null : { readToday: readTodayOnThisPhone(), halaqas: [] }
+}
+
+export function peekHalaqa(id: string): HalaqaDetail | null {
+  return readCache<HalaqaDetail>(DETAIL_CACHE + id)
+}
+
 export async function listHalaqas(): Promise<{ readToday: boolean; halaqas: HalaqaListItem[] }> {
   const data = await request<{ readToday: boolean; halaqas: HalaqaListItem[] }>(
     `/api/halaqa?today=${localDay()}`
   )
   setHalaqaMember(data.halaqas.length > 0)
   if (data.readToday) rememberReadToday()
+  writeCache(LIST_CACHE, data)
   return data
 }
 
@@ -235,6 +279,7 @@ export async function createHalaqa(input: {
   })
   setHalaqaMember(true)
   saveMemberName(input.memberName)
+  dropCache(LIST_CACHE)
   return data
 }
 
@@ -249,26 +294,37 @@ export async function joinHalaqa(code: string, name: string): Promise<{ id: stri
   })
   setHalaqaMember(true)
   saveMemberName(name)
+  dropCache(LIST_CACHE)
   return data
 }
 
-export function getHalaqa(id: string): Promise<HalaqaDetail> {
-  return request<HalaqaDetail>(`/api/halaqa/${encodeURIComponent(id)}?today=${localDay()}`)
+export async function getHalaqa(id: string): Promise<HalaqaDetail> {
+  const data = await request<HalaqaDetail>(`/api/halaqa/${encodeURIComponent(id)}?today=${localDay()}`)
+  writeCache(DETAIL_CACHE + id, data)
+  return data
 }
 
-export function halaqaAction(
+export async function halaqaAction(
   id: string,
   action: string,
   extra: Record<string, unknown> = {}
 ): Promise<{ ok: boolean; left?: boolean }> {
-  return request(`/api/halaqa/${encodeURIComponent(id)}`, {
+  const done = await request<{ ok: boolean; left?: boolean }>(`/api/halaqa/${encodeURIComponent(id)}`, {
     method: 'POST',
     body: JSON.stringify({ action, today: localDay(), ...extra }),
   })
+  if (done.left) {
+    dropCache(DETAIL_CACHE + id)
+    dropCache(LIST_CACHE)
+  }
+  return done
 }
 
-export function deleteHalaqa(id: string): Promise<{ ok: boolean }> {
-  return request(`/api/halaqa/${encodeURIComponent(id)}`, { method: 'DELETE' })
+export async function deleteHalaqa(id: string): Promise<{ ok: boolean }> {
+  const done = await request<{ ok: boolean }>(`/api/halaqa/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  dropCache(DETAIL_CACHE + id)
+  dropCache(LIST_CACHE)
+  return done
 }
 
 function rememberReadToday() {

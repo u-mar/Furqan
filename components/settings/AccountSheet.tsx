@@ -8,13 +8,15 @@ interface AccountSheetProps {
   open: boolean
   onClose: () => void
   onSuccess: () => void
+  /** Why an account is needed right now, when something asked for one. */
+  reason?: string
 }
 
 /**
  * Sign in or create an account from anywhere in the app — the same flow the
  * first launch uses, minus the option to skip, since opening it was a choice.
  */
-export default function AccountSheet({ open, onClose, onSuccess }: AccountSheetProps) {
+export default function AccountSheet({ open, onClose, onSuccess, reason }: AccountSheetProps) {
   const t = useT()
   // The page underneath should not scroll while this covers it.
   useEffect(() => {
@@ -33,6 +35,7 @@ export default function AccountSheet({ open, onClose, onSuccess }: AccountSheetP
       <div className="auth-screen__body">
         <AuthFlow
           start="welcome"
+          reason={reason}
           onClose={onClose}
           onDone={() => {
             window.dispatchEvent(new CustomEvent('auth-user-changed'))

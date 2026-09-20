@@ -29,7 +29,11 @@ const SET_LENGTHS = new Set([7, 30, 40])
 type Context = { params: Promise<{ id: string }> }
 
 async function detail(halaqa: Halaqa, me: HalaqaMember, today: string) {
-  const members = await prisma.halaqaMember.findMany({ where: { halaqaId: halaqa.id }, orderBy: { joinedAt: 'asc' } })
+  // Independent lookups go out together: each one is a round trip to the database.
+  const [members, currentKhatmah] = await Promise.all([
+    prisma.halaqaMember.findMany({ where: { halaqaId: halaqa.id }, orderBy: { joinedAt: 'asc' } }),
+    halaqa.khatmahEnabled ? latestKhatmah(halaqa.id) : Promise.resolve(null),
+  ])
   const keys = [...new Set(members.map((m) => m.memberKey))]
   const ended = Boolean(halaqa.endDay && today > halaqa.endDay)
 
@@ -37,7 +41,10 @@ async function detail(halaqa: Halaqa, me: HalaqaMember, today: string) {
   const periodStart = halaqa.endDay ? halaqa.startDay : windowStart
   const periodEnd = halaqa.endDay && ended ? halaqa.endDay : today
   const readFrom = periodStart < windowStart ? periodStart : windowStart
-  const read = await readDaysFor(keys, readFrom, today)
+  const [read, khatmahRows] = await Promise.all([
+    readDaysFor(keys, readFrom, today),
+    currentKhatmah ? prisma.halaqaJuz.findMany({ where: { khatmahId: currentKhatmah.id }, orderBy: { juz: 'asc' } }) : Promise.resolve([]),
+  ])
 
   const people = members.map((m) => {
     const days = read.get(m.memberKey)
@@ -66,9 +73,9 @@ async function detail(halaqa: Halaqa, me: HalaqaMember, today: string) {
 
   let khatmah = null
   if (halaqa.khatmahEnabled) {
-    const current = await latestKhatmah(halaqa.id)
+    const current = currentKhatmah
     if (current) {
-      const rows = await prisma.halaqaJuz.findMany({ where: { khatmahId: current.id }, orderBy: { juz: 'asc' } })
+      const rows = khatmahRows
       const names = new Map(members.map((m) => [m.id, m.name]))
       khatmah = {
         id: current.id,

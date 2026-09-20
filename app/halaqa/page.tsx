@@ -7,7 +7,7 @@ import { IconHalaqa } from '@/components/home/TileIcons'
 import { ErrorCard, HalaqaHeader, HalaqaScreen, Rise, SectionLabel, Skeleton } from '@/components/halaqa/HalaqaScreen'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback } from '@/lib/haptics'
-import { listHalaqas, markReadToday, scheduleLabel, type HalaqaListItem } from '@/lib/halaqa'
+import { listHalaqas, markReadToday, peekHalaqaList, scheduleLabel, type HalaqaListItem } from '@/lib/halaqa'
 import { errorMessage, toastError } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 
@@ -34,6 +34,9 @@ export default function HalaqaHomePage() {
   }, [])
 
   useEffect(() => {
+    // Open on what was seen last; the server then brings it up to date.
+    const cached = peekHalaqaList()
+    if (cached) setData(cached)
     void load()
     const onVisible = () => {
       if (document.visibilityState === 'visible') void load()

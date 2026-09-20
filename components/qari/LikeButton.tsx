@@ -6,6 +6,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { toggleLike, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
+import { askToSignIn } from '@/lib/account-prompt'
 
 /** The heart: fills at once, pops, and quietly corrects itself if the server disagrees. */
 export default function LikeButton({
@@ -32,7 +33,7 @@ export default function LikeButton({
 
   const handle = useCallback(async () => {
     if (!viewerId) {
-      onNotice?.(tr('Sign in to save recitations you love.'))
+      askToSignIn({ reason: tr('Create a free account to save the recitations you love.') })
       return
     }
     tapFeedback()

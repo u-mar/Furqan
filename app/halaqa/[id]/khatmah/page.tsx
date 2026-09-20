@@ -22,6 +22,7 @@ import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import {
   dayGap,
   getHalaqa,
+  peekHalaqa,
   halaqaAction,
   juzPages,
   localDay,
@@ -88,13 +89,15 @@ export default function KhatmahPage() {
   }, [id])
 
   useEffect(() => {
+    const cached = peekHalaqa(id)
+    if (cached) setDetail(cached)
     void load()
     const onVisible = () => {
       if (document.visibilityState === 'visible') void load()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [load])
+  }, [load, id])
 
   /** Taking, finishing and giving back show at once; the server confirms behind. */
   const change = async (action: JuzAction, juz: number, done: string) => {

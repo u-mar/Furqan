@@ -38,6 +38,7 @@ import {
   dayGap,
   deleteHalaqa,
   getHalaqa,
+  peekHalaqa,
   halaqaAction,
   inviteLink,
   localDay,
@@ -78,8 +79,10 @@ export default function HalaqaSettingsPage() {
   }, [id])
 
   useEffect(() => {
+    const cached = peekHalaqa(id)
+    if (cached) setDetail(cached)
     void load()
-  }, [load])
+  }, [load, id])
 
   const act = async (action: string, extra: Record<string, unknown> = {}, done?: string, key = action) => {
     setPendingAction(key)

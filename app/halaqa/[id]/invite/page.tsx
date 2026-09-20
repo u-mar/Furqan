@@ -15,7 +15,7 @@ import {
   useFlash,
 } from '@/components/halaqa/HalaqaScreen'
 import { errorFeedback, tapFeedback } from '@/lib/haptics'
-import { getHalaqa, inviteLink, inviteMessage, whatsAppLink, type HalaqaDetail } from '@/lib/halaqa'
+import { getHalaqa, peekHalaqa, inviteLink, inviteMessage, whatsAppLink, type HalaqaDetail } from '@/lib/halaqa'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 
@@ -36,8 +36,10 @@ export default function InvitePage() {
   }, [id])
 
   useEffect(() => {
+    const cached = peekHalaqa(id)
+    if (cached) setDetail(cached)
     void load()
-  }, [load])
+  }, [load, id])
 
   const halaqa = detail?.halaqa
   const message = halaqa ? inviteMessage(halaqa.name, halaqa.code) : ''

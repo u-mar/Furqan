@@ -25,6 +25,7 @@ import {
   deleteHalaqa,
   getHalaqa,
   halaqaAction,
+  peekHalaqa,
   markReadToday,
   scheduleLabel,
   shortDay,
@@ -60,13 +61,15 @@ export default function HalaqaPage() {
   }, [id])
 
   useEffect(() => {
+    const cached = peekHalaqa(id)
+    if (cached) setDetail(cached)
     void load()
     const onVisible = () => {
       if (document.visibilityState === 'visible') void load()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [load])
+  }, [load, id])
 
   // Shown as read straight away; put back if the server says no.
   const tick = async () => {

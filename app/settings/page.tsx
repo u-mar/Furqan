@@ -41,20 +41,14 @@ import {
   type TranslationLanguageId,
 } from '@/lib/translations'
 import {
-  downloadOfflineQuran,
-  hydrateOfflineFromDisk,
-  isOfflineReady,
-} from '@/lib/local-quran-store'
-import {
   areTranslationsCached,
   downloadOfflineTranslations,
 } from '@/lib/offline-translations'
-import { bootstrapOfflineReader } from '@/lib/offline-bootstrap'
 import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@/lib/i18n'
 
-type SheetName = 'mushaf' | 'translation' | 'offline' | 'feedback' | 'language'
+type SheetName = 'mushaf' | 'translation' | 'feedback' | 'language'
 
 /* Each dot depicts a theme, so its colour is fixed rather than a token. */
 const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
@@ -71,10 +65,6 @@ const MUSHAF_WIDTHS: { mode: MushafWidthMode; label: string; hint: string; inset
 const btnBase =
   'ed-focus flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-[transform,background-color,opacity] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50'
 const btnInk = cn(btnBase, 'ed-ink')
-const btnQuiet = cn(
-  btnBase,
-  'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
-)
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return <h2 className="home-label mx-1 mb-2 mt-[22px]">{children}</h2>
@@ -135,25 +125,21 @@ export default function SettingsPage() {
   const language = useLanguage()
   const [returnHref, setReturnHref] = useState('/')
   const [user, setUser] = useState<AppUser | null>(null)
-  const [theme, setTheme] = useState<ThemeMode>('dark')
-  const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('full')
+  const [theme, setTheme] = useState<ThemeMode>('light')
+  const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('spaced')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [translationEditionId, setTranslationEditionId] = useState<string>(
     DEFAULT_TRANSLATION_EDITION.en
   )
-  const [verseWallpapers, setVerseWallpapers] = useState(true)
-  const [offline, setOffline] = useState(false)
+  const [verseWallpapers, setVerseWallpapers] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
     so: false,
   })
-  const [downloading, setDownloading] = useState(false)
   const [downloadingTranslationLang, setDownloadingTranslationLang] =
     useState<TranslationLanguageId | null>(null)
   const [translationProgress, setTranslationProgress] = useState(0)
   const [translationProgressLabel, setTranslationProgressLabel] = useState('')
-  const [progress, setProgress] = useState(0)
-  const [progressLabel, setProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [sendingFeedback, setSendingFeedback] = useState(false)
@@ -180,20 +166,14 @@ export default function SettingsPage() {
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
     setVerseWallpapers(s.verseWallpapersEnabled)
-    setOffline(s.offlineDownloaded || isOfflineReady())
     setTranslationCached({
       en: areTranslationsCached('en'),
       so: areTranslationsCached('so'),
     })
     refreshProfile()
-    const onOfflineReady = () => {
-      setOffline(isOfflineReady() || getAppSettings().offlineDownloaded)
-    }
     window.addEventListener('auth-user-changed', refreshProfile)
-    window.addEventListener('offline-bootstrap-complete', onOfflineReady)
     return () => {
       window.removeEventListener('auth-user-changed', refreshProfile)
-      window.removeEventListener('offline-bootstrap-complete', onOfflineReady)
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
     }
   }, [refreshProfile])
@@ -242,25 +222,6 @@ export default function SettingsPage() {
     setAppSettings({ translationEditionId: next })
   }
 
-  async function handleDownload() {
-    setDownloading(true)
-    setError(null)
-    setProgress(0)
-    setProgressLabel('')
-    try {
-      await downloadOfflineQuran((p) => {
-        setProgress(p.percent)
-        setProgressLabel(p.label)
-      })
-      setAppSettings({ offlineDownloaded: true })
-      setOffline(true)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : tr('Download failed'))
-    } finally {
-      setDownloading(false)
-    }
-  }
-
   async function handleDownloadTranslation(lang: TranslationLanguageId) {
     setDownloadingTranslationLang(lang)
     setError(null)
@@ -280,39 +241,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleRetryOfflineBootstrap() {
-    setDownloading(true)
-    setError(null)
-    setProgress(0)
-    setProgressLabel(tr('Preparing offline reader…'))
-    try {
-      const ok = await bootstrapOfflineReader()
-      if (!ok) throw new Error(tr('Offline setup did not complete'))
-      setOffline(true)
-      setProgress(100)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : tr('Offline setup failed'))
-    } finally {
-      setDownloading(false)
-      setProgressLabel('')
-    }
-  }
-
-  async function handleUseBundled() {
-    setDownloading(true)
-    setError(null)
-    try {
-      await hydrateOfflineFromDisk()
-      setAppSettings({ offlineDownloaded: true })
-      setOffline(true)
-      setProgress(100)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : tr('Could not load offline data'))
-    } finally {
-      setDownloading(false)
-    }
-  }
-
   async function handleSendFeedback() {
     if (!feedbackMessage.trim() || sendingFeedback) return
     setSendingFeedback(true)
@@ -328,7 +256,7 @@ export default function SettingsPage() {
     }
   }
 
-  const busy = downloading || downloadingTranslationLang !== null
+  const busy = downloadingTranslationLang !== null
 
   return (
     <main
@@ -412,17 +340,6 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {/* Language */}
-        <SectionLabel>{t('Language')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
-          <button type="button" className="set-row" onClick={() => setSheet('language')}>
-            <RowIcon icon={Languages} />
-            <span className="set-row__label">{t('Language')}</span>
-            <span className="set-row__value">{APP_LANGUAGES.find((l) => l.id === language)?.name}</span>
-            <RowChevron />
-          </button>
-        </div>
-
         {/* Reading */}
         <SectionLabel>{t('Reading')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
@@ -449,27 +366,14 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* Offline */}
-        <SectionLabel>{t('Offline')}</SectionLabel>
+        {/* Language */}
+        <SectionLabel>{t('App language')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
-          <button type="button" className="set-row" onClick={() => setSheet('offline')}>
-            <RowIcon icon={Download} />
-            <span className="set-row__label">{t('Quran for offline')}</span>
-            {downloading ? (
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--home-sage-deep)]">
-                {progress}%
-              </span>
-            ) : offline ? (
-              <span className="flex shrink-0 items-center gap-[5px] text-sm font-semibold text-[var(--home-sage-deep)]">
-                <Check className="h-[15px] w-[15px]" strokeWidth={2.6} />
-                {t('Downloaded')}
-              </span>
-            ) : (
-              <>
-                <span className="set-row__value">{t('Not saved')}</span>
-                <RowChevron />
-              </>
-            )}
+          <button type="button" className="set-row" onClick={() => setSheet('language')}>
+            <RowIcon icon={Languages} />
+            <span className="set-row__label">{t('App language')}</span>
+            <span className="set-row__value">{APP_LANGUAGES.find((l) => l.id === language)?.name}</span>
+            <RowChevron />
           </button>
         </div>
 
@@ -687,68 +591,17 @@ export default function SettingsPage() {
         {error ? <ErrorNote>{error}</ErrorNote> : null}
       </SettingsSheet>
 
-      {/* Offline */}
-      <SettingsSheet open={sheet === 'offline'} title={t('Quran for offline')} onClose={closeSheet}>
-        {offline ? (
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-              <CheckCircle2 className="h-5 w-5" strokeWidth={2} />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-[var(--home-heading)]">{t('Quran saved')}</p>
-              <p className="text-xs text-[var(--home-muted)]">{t('The reader works without a connection.')}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm leading-relaxed text-[var(--home-muted)]">
-            {t('Install the app to your home screen and the Quran text and mushaf fonts download on their own. Open the installed app on Wi‑Fi and give it a minute.')}</p>
-        )}
-
-        {downloading ? (
-          <div className="mt-4">
-            <ProgressBar percent={progress} label={progressLabel} />
-          </div>
-        ) : null}
-
-        {error ? <ErrorNote>{error}</ErrorNote> : null}
-
-        <div className="mt-5 space-y-2.5">
-          {!offline ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleRetryOfflineBootstrap()}
-              className={btnInk}
-            >
-              <Download className="h-4 w-4" strokeWidth={2} />
-              {t('Set up offline reader now')}</button>
-          ) : null}
-          <button type="button" disabled={busy} onClick={() => void handleDownload()} className={btnQuiet}>
-            {offline ? t('Re-download Quran data') : t('Download manually (browser)')}
-          </button>
-          {!offline ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void handleUseBundled()}
-              className="ed-focus flex min-h-[44px] w-full items-center justify-center rounded-full text-xs font-medium text-[var(--home-muted)] underline-offset-4 hover:underline disabled:opacity-50"
-            >
-              {t('Load bundled file from server')}</button>
-          ) : null}
-        </div>
-      </SettingsSheet>
-
       {/* Language */}
       <SettingsSheet
         open={sheet === 'language'}
-        title={t('Language')}
+        title={t('App language')}
         description={t('The language of the app’s menus and buttons.')}
         onClose={closeSheet}
       >
         <div
           className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]"
           role="radiogroup"
-          aria-label={t('Language')}
+          aria-label={t('App language')}
         >
           {APP_LANGUAGES.map(({ id, name, hint }) => {
             const selected = language === id

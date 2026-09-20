@@ -6,7 +6,6 @@ import { ChevronLeft, Download, Loader2, Pause, Play, Search, Shuffle, WifiOff, 
 import DownloadButton from '@/components/listen/DownloadButton'
 import HeartButton from '@/components/listen/HeartButton'
 import MiniPlayer from '@/components/listen/MiniPlayer'
-import NarrationSheet from '@/components/listen/NarrationSheet'
 import NowPlayingSheet from '@/components/listen/NowPlayingSheet'
 import { Equalizer } from '@/components/listen/PlayerControls'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
@@ -53,7 +52,6 @@ export default function ListenScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [playerOpen, setPlayerOpen] = useState(false)
   const [sleepOpen, setSleepOpen] = useState(false)
-  const [narrationOpen, setNarrationOpen] = useState(false)
 
   // Rows are memoised; they reach the current reciter through this.
   const reciterId = useRef(reciter.id)
@@ -352,15 +350,8 @@ export default function ListenScreen() {
         open={playerOpen}
         onClose={() => setPlayerOpen(false)}
         onOpenSleep={() => setSleepOpen(true)}
-        onOpenNarration={() => setNarrationOpen(true)}
       />
       <SleepSheet open={sleepOpen} onClose={() => setSleepOpen(false)} />
-      <NarrationSheet
-        open={narrationOpen}
-        reciter={reciter}
-        onClose={() => setNarrationOpen(false)}
-        onSelect={selectReciter}
-      />
       <ReciterPickerSheet
         open={pickerOpen}
         selectedId={reciter.id}
@@ -383,6 +374,16 @@ function ReciterCard({
 }) {
   const t = useT()
   const narrations = narrationChoices(reciter)
+  const rail = useRef<HTMLDivElement>(null)
+
+  // Bring the chosen narration into view when the card opens or the reciter changes.
+  useEffect(() => {
+    const box = rail.current
+    const on = box?.querySelector<HTMLElement>('[aria-checked="true"]')
+    if (!box || !on) return
+    box.scrollTo({ left: Math.max(0, on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2), behavior: 'auto' })
+  }, [reciter.id])
+
   return (
     <section className="home-card mt-[18px] rounded-[18px] px-3.5 pb-3 pt-3.5" aria-label={t('Reciting')}>
       <div className="flex items-center gap-3.5">
@@ -405,20 +406,45 @@ function ReciterCard({
       </div>
 
       {narrations.length > 1 ? (
-        <div className="mt-3 border-t border-[var(--home-rule)] pt-2.5">
-          <p className="mb-[7px] text-xs font-semibold text-[var(--home-muted)]">{t('Also recites in')}</p>
-          <div className="ed-seg" style={{ gridTemplateColumns: `repeat(${narrations.length}, minmax(0, 1fr))` }}>
-            {narrations.map((variant) => (
-              <button
-                key={variant.id}
-                type="button"
-                onClick={() => onSelect(variant.id)}
-                aria-pressed={variant.qiraat === reciter.qiraat}
-                className="ed-seg__item ed-focus h-[34px] truncate px-1 text-[0.8125rem] font-semibold"
-              >
-                {getQiraat(variant.qiraat).short}
-              </button>
-            ))}
+        <div className="mt-3.5 border-t border-[var(--home-rule)] pt-3">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="home-label">{t('Narration')}</p>
+            <p className="text-xs text-[var(--home-muted)]">{t('{count} available', { count: narrations.length })}</p>
+          </div>
+          <div
+            ref={rail}
+            className="qari-no-scrollbar -mx-3.5 flex snap-x gap-2 overflow-x-auto px-3.5 pb-0.5"
+            role="radiogroup"
+            aria-label={t('Narration')}
+          >
+            {narrations.map((variant) => {
+              const info = getQiraat(variant.qiraat)
+              const on = variant.qiraat === reciter.qiraat
+              const via = info.label.includes(" 'an ") ? `'an ${info.label.split(" 'an ")[1]}` : info.label
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => {
+                    if (!on) {
+                      tapFeedback()
+                      onSelect(variant.id)
+                    }
+                  }}
+                  className={cn(
+                    'fx-press ed-focus relative min-w-[5.25rem] shrink-0 snap-start rounded-[14px] px-3.5 py-2 text-left transition-colors',
+                    on ? 'ed-ink' : 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+                  )}
+                >
+                  <span className="block text-[0.9375rem] font-semibold leading-tight">{info.short}</span>
+                  <span className={cn('mt-0.5 block whitespace-nowrap text-[0.6875rem] leading-tight', on ? 'opacity-70' : 'text-[var(--home-muted)]')}>
+                    {via}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       ) : null}

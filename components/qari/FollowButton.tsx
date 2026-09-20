@@ -7,6 +7,7 @@ import { setFollowing } from '@/lib/qari'
 import type { AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
+import { askToSignIn } from '@/lib/account-prompt'
 
 /** Follow / Following. Changes the moment it is tapped and settles when the server answers. */
 export default function FollowButton({
@@ -32,7 +33,7 @@ export default function FollowButton({
 
   const toggle = useCallback(async () => {
     if (!viewer) {
-      onNotice?.(tr('Sign in to follow qaris.'))
+      askToSignIn({ reason: tr('Create a free account to follow qaris.') })
       return
     }
     tapFeedback()

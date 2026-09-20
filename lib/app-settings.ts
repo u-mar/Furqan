@@ -52,8 +52,8 @@ import {
 } from '@/lib/translations'
 
 const defaults: AppSettings = {
-  theme: 'dark',
-  mushafWidth: 'full',
+  theme: 'light',
+  mushafWidth: 'spaced',
   offlineDownloaded: false,
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
@@ -61,7 +61,7 @@ const defaults: AppSettings = {
   verticalPages: false,
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
   translationEditionId: DEFAULT_TRANSLATION_EDITION[DEFAULT_TRANSLATION_LANGUAGE],
-  verseWallpapersEnabled: true,
+  verseWallpapersEnabled: false,
   language: 'en',
 }
 
@@ -71,8 +71,8 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
       ? parsed.reciterId
       : DEFAULT_RECITER_ID
   return {
-    theme: isThemeMode(parsed.theme) ? parsed.theme : 'dark',
-    mushafWidth: isWidthMode(parsed.mushafWidth) ? parsed.mushafWidth : 'full',
+    theme: isThemeMode(parsed.theme) ? parsed.theme : 'light',
+    mushafWidth: isWidthMode(parsed.mushafWidth) ? parsed.mushafWidth : 'spaced',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
     reciterId,
@@ -81,8 +81,8 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
         ? parsed.listenReciterId
         : reciterId,
     verticalPages: Boolean(parsed.verticalPages),
-    // Defaults on — only an explicit `false` turns wallpapers off.
-    verseWallpapersEnabled: parsed.verseWallpapersEnabled !== false,
+    // Off until someone turns it on.
+    verseWallpapersEnabled: parsed.verseWallpapersEnabled === true,
     language: parsed.language === 'so' || parsed.language === 'ar' ? parsed.language : 'en',
     ...parseTranslationChoice(parsed.translationLanguage, parsed.translationEditionId),
   }

@@ -11,6 +11,7 @@ export const MISC: Dict = {
     so: 'Tafsiirka aayaddan weli ma diyaar aha — waan ka shaqeynayaa.',
     ar: 'تفسير هذه الآية غير متاح بعد — أعمل على ذلك.',
   },
+  'App language': { so: 'Luuqadda app-ka', ar: 'لغة التطبيق' },
   English: { so: 'Ingiriis', ar: 'الإنجليزية' },
   'Stops in ': { so: 'Wuxuu istaagayaa ', ar: 'يتوقف بعد ' },
   '1 hour': { so: '1 saac', ar: 'ساعة' },

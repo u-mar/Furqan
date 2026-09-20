@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
-import WelcomeAccountDialog from '@/components/onboarding/WelcomeAccountDialog'
+import AccountPromptHost from '@/components/account/AccountPromptHost'
 import ToastHost from '@/components/feedback/ToastHost'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
@@ -67,13 +67,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${amiri.variable} ${homeSerif.variable} ${sans.variable}`}
+      className={`${amiri.variable} ${homeSerif.variable} ${sans.variable}`}
       suppressHydrationWarning
     >
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='light'||s.theme==='black')?s.theme:'dark';var d=document.documentElement;d.classList.remove('dark','black');if(s.language==='so'||s.language==='ar'){d.lang=s.language;if(s.language==='ar')d.dir='rtl';}if(t==='light'){d.style.colorScheme='light';}else{d.classList.add('dark');if(t==='black'){d.classList.add('black');}d.style.colorScheme='dark';}}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();`,
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='dark'||s.theme==='black')?s.theme:'light';var d=document.documentElement;d.classList.remove('dark','black');if(s.language==='so'||s.language==='ar'){d.lang=s.language;if(s.language==='ar')d.dir='rtl';}if(t==='light'){d.style.colorScheme='light';}else{d.classList.add('dark');if(t==='black'){d.classList.add('black');}d.style.colorScheme='dark';}}catch(e){document.documentElement.style.colorScheme='light';}})();`,
           }}
         />
       </head>
@@ -84,7 +84,7 @@ export default function RootLayout({
           <ListenPlaybackGuard />
           <PwaRegister />
           <OfflineBootstrap />
-          <WelcomeAccountDialog />
+          <AccountPromptHost />
           <ToastHost />
         </SettingsProvider>
       </body>

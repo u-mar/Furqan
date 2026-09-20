@@ -16,6 +16,7 @@ import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
+import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -81,33 +82,6 @@ async function renderRecitationAudio(r: Recitation, signal?: AbortSignal): Promi
   return ctx.startRendering()
 }
 
-function sliceBuffer(buffer: AudioBuffer, start: number, end: number): AudioBuffer {
-  const out = new AudioBuffer({
-    length: end - start,
-    numberOfChannels: buffer.numberOfChannels,
-    sampleRate: buffer.sampleRate,
-  })
-  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
-    out.copyToChannel(buffer.getChannelData(channel).subarray(start, end), channel)
-  }
-  return out
-}
-
-let mp3EncoderReady: Promise<void> | null = null
-
-/** Browsers almost never encode MP3 natively; a small bundled encoder covers them. */
-function ensureMp3Encoder(): Promise<void> {
-  if (!mp3EncoderReady) {
-    mp3EncoderReady = (async () => {
-      const { canEncodeAudio } = await import('mediabunny')
-      if (await canEncodeAudio('mp3')) return
-      const { registerMp3Encoder } = await import('@mediabunny/mp3-encoder')
-      registerMp3Encoder()
-    })()
-  }
-  return mp3EncoderReady
-}
-
 export async function makeRecitationAudio(
   r: Recitation,
   onProgress: Progress,
@@ -117,34 +91,16 @@ export async function makeRecitationAudio(
   const buffer = await renderRecitationAudio(r, signal)
   onProgress(0.25)
 
-  const mb = await import('mediabunny')
-  await ensureMp3Encoder()
   throwIfCancelled(signal)
-
-  const output = new mb.Output({ format: new mb.Mp3OutputFormat(), target: new mb.BufferTarget() })
-  // Medium is well past transparent for a voice, and keeps files quick to send.
-  const source = new mb.AudioBufferSource({ codec: 'mp3', quality: mb.QUALITY_MEDIUM })
-  output.addAudioTrack(source)
-  await output.start()
-
-  const chunk = buffer.sampleRate * 2
-  for (let start = 0; start < buffer.length; start += chunk) {
-    if (signal?.aborted) {
-      await output.cancel()
-      throw new ShareCancelled()
-    }
-    const end = Math.min(buffer.length, start + chunk)
-    await source.add(sliceBuffer(buffer, start, end))
-    onProgress(0.25 + 0.73 * (end / buffer.length))
-  }
-
-  await output.finalize()
-  const data = output.target.buffer
-  if (!data) throw new Error(tr('Could not prepare the audio.'))
+  const blob = await encodeMp3(buffer, {
+    onProgress: (fraction) => onProgress(0.25 + 0.73 * fraction),
+    isCancelled: () => Boolean(signal?.aborted),
+    onCancel: () => new ShareCancelled(),
+  })
   onProgress(1)
   return {
     kind: 'audio',
-    blob: new Blob([data], { type: 'audio/mpeg' }),
+    blob,
     fileName: `${fileStem(r)}.mp3`,
     mimeType: 'audio/mpeg',
   }

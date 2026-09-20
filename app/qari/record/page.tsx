@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { askToSignIn } from '@/lib/account-prompt'
+import { getSignedInUser } from '@/lib/auth'
 import {
   AudioLines,
   Check,
@@ -63,7 +65,17 @@ function clock(seconds: number): string {
 function RecordFlow() {
   const t = useT()
   const params = useSearchParams()
+  const router = useRouter()
   const viewer = useViewer()
+
+  // Opened straight from a link without an account: ask now, before a recitation is recorded.
+  useEffect(() => {
+    if (getSignedInUser()) return
+    askToSignIn({
+      reason: t('Create a free account to record and share your recitation.'),
+      onCancel: () => router.replace('/qari'),
+    })
+  }, [router, t])
   const recorder = useQariRecorder(MAX_SECONDS)
   const { state } = recorder
 
@@ -182,7 +194,11 @@ function RecordFlow() {
     measurePeaks(state.blob)
       .then(setPeaks)
       .catch(() => setPeaks([]))
-  }, [state.blob, step])
+    // Say so when the take could have been better, and how.
+    if (state.quality === 'noisy') qariNotice(tr('The room was a little noisy. A quieter room sounds better.'))
+    else if (state.quality === 'quiet') qariNotice(tr('The recording is quiet. Hold the phone closer next time.'))
+    else if (state.quality === 'clipped') qariNotice(tr('The recording was too loud in places. Hold the phone further away next time.'))
+  }, [state.blob, state.quality, step])
 
   useEffect(() => {
     if (!discardArmed) return
@@ -674,7 +690,29 @@ function RecordFlow() {
 
       {/* Stage */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
-        {countingDown ? (
+        {state.polishing ? (
+          <>
+            <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[var(--home-rule-strong)] border-t-[var(--home-heading)]" role="status" aria-label={t('Polishing your recitation…')} />
+            <div className="w-full max-w-[16rem] text-center">
+              <p className="home-serif text-[1.25rem] font-semibold text-[var(--home-heading)]">{t('Polishing your recitation…')}</p>
+              <p className="mt-1 text-[13px] text-[var(--home-muted)]" aria-live="polite">
+                {state.polishStage === 'cleaning'
+                  ? t('Removing room noise')
+                  : state.polishStage === 'shaping'
+                    ? t('Shaping the voice')
+                    : state.polishStage === 'saving'
+                      ? t('Saving')
+                      : t('Levelling the sound')}
+              </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
+                <div
+                  className="h-full rounded-full bg-[var(--home-heading)] transition-[width] duration-200"
+                  style={{ width: `${Math.round(Math.min(1, Math.max(0.03, state.polishProgress)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          </>
+        ) : countingDown ? (
           <>
             <span key={count} className="qari-count home-serif text-[7rem] font-medium leading-none tabular-nums text-[var(--home-heading)]">
               {count}
@@ -717,7 +755,7 @@ function RecordFlow() {
       </div>
 
       {/* Record / stop */}
-      <div className="flex flex-col items-center pb-2">
+      <div className={cn('flex flex-col items-center pb-2', state.polishing && 'invisible')}>
         <button
           type="button"
           onClick={() => {

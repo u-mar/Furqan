@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { House, Mic, UserRound } from 'lucide-react'
 import AccountSheet from '@/components/settings/AccountSheet'
 import { useViewer } from '@/hooks/useViewer'
 import { tapFeedback } from '@/lib/haptics'
+import { askToSignIn } from '@/lib/account-prompt'
+import { getSignedInUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -20,6 +22,7 @@ import { useT } from '@/lib/i18n'
 export default function QariTabBar() {
   const t = useT()
   const pathname = usePathname()
+  const router = useRouter()
   const viewer = useViewer()
   const [accountOpen, setAccountOpen] = useState(false)
 
@@ -42,7 +45,21 @@ export default function QariTabBar() {
             <House className="h-[21px] w-[21px]" strokeWidth={onFeed ? 2.3 : 1.9} />
             {t('Feed')}</Link>
 
-          <Link href="/qari/record" onClick={tapFeedback} className="qari-tabbar__add ed-focus">
+          <Link
+            href="/qari/record"
+            onClick={(e) => {
+              tapFeedback()
+              // Recording is the first thing that needs an account, so this is where it is asked for.
+              if (!getSignedInUser()) {
+                e.preventDefault()
+                askToSignIn({
+                  reason: t('Create a free account to record and share your recitation.'),
+                  onDone: () => router.push('/qari/record'),
+                })
+              }
+            }}
+            className="qari-tabbar__add ed-focus"
+          >
             <Mic className="h-[17px] w-[17px]" strokeWidth={2.2} />
             {t('Record')}</Link>
 

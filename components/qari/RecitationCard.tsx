@@ -24,6 +24,7 @@ import { seekPlayback, togglePlayback } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
+import { askToSignIn } from '@/lib/account-prompt'
 
 interface RecitationCardProps {
   recitation: Recitation
@@ -87,7 +88,7 @@ function RecitationCard({
 
   const handleReport = useCallback(async () => {
     if (!viewerId) {
-      onNotice?.(tr('Sign in to report a recitation.'))
+      askToSignIn({ reason: tr('Create a free account to report a recitation.') })
       return
     }
     try {

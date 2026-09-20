@@ -36,6 +36,7 @@ export const LISTEN: Dict = {
   Play: { so: 'Ciyaar', ar: 'تشغيل' },
   'Loading surahs': { so: 'Suuradaha waa la soo raadinayaa', ar: 'جارٍ تحميل السور' },
   'Open Now playing: {englishName}': { so: 'Fur wuxuu hadda ciyaarayo: {englishName}', ar: 'فتح قيد التشغيل: {englishName}' },
+  '{count} available': { so: '{count} la heli karo', ar: '{count} متاحة' },
   Narration: { so: 'Riwaayad', ar: 'الرواية' },
   '{name} recites in {length} narrations. You keep your place when you switch.': {
     so: '{name} wuxuu ku akhriyaa {length} riwaayadood. Meeshaada waad ku sii jirtaa marka aad beddesho.',

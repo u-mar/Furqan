@@ -20,6 +20,8 @@ interface AuthFlowProps {
   /** Offered only alongside the introduction — the app works without one. */
   onSkip?: () => void
   onClose?: () => void
+  /** Shown under the name in place of the tagline, e.g. "Create a free account to follow qaris." */
+  reason?: string
 }
 
 /**
@@ -32,7 +34,7 @@ interface AuthFlowProps {
  * it — the username is checked while it is typed, and the PIN is entered
  * twice so a slip does not lock someone out of an account they just made.
  */
-export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }: AuthFlowProps) {
+export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose, reason }: AuthFlowProps) {
   const t = useT()
   const first: Step = start === 'login' ? 'login-username' : start === 'signup' ? 'name' : 'welcome'
   const [step, setStep] = useState<Step>(first)
@@ -179,6 +181,7 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
             onCreate={() => go('name')}
             onLogin={() => go('login-username')}
             onSkip={onSkip}
+            reason={reason}
           />
         ) : null}
 
@@ -284,10 +287,12 @@ function Welcome({
   onCreate,
   onLogin,
   onSkip,
+  reason,
 }: {
   onCreate: () => void
   onLogin: () => void
   onSkip?: () => void
+  reason?: string
 }) {
   const t = useT()
   return (
@@ -297,7 +302,7 @@ function Welcome({
         <h1 className="home-serif text-[2.1rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
           {APP_NAME}
         </h1>
-        <p className="mt-2 text-[0.95rem] text-[var(--home-muted)]">{t('The Quran, wherever you are.')}</p>
+        <p className="mt-2 text-[0.95rem] text-[var(--home-muted)]">{reason ?? t('The Quran, wherever you are.')}</p>
 
         <ul className="mt-9 w-full max-w-[19rem] space-y-4 text-left">
           <Benefit Icon={BookOpen} text={t('Pick up exactly where you stopped reading')} />

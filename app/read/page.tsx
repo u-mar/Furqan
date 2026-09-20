@@ -895,12 +895,6 @@ function ReadPageContent() {
           className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white"
         >
           {t('Retry')}</button>
-        <Link
-          href="/settings"
-          onClick={() => setSettingsReturnTo(`/read?page=${currentPage}`)}
-          className="text-sm text-[var(--app-muted)] underline"
-        >
-          {t('Download offline in Settings')}</Link>
       </main>
     )
   }
