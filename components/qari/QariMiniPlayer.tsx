@@ -8,6 +8,7 @@ import QariAvatar from '@/components/qari/QariAvatar'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { tapFeedback } from '@/lib/haptics'
 import { hasNextRecitation, pausePlayback, resumePlayback, skipToNextRecitation } from '@/lib/qari-player'
+import { useT } from '@/lib/i18n'
 
 /** Whether the card for this recitation is on screen, above the tab bar. */
 function cardInView(id: string): boolean {
@@ -22,6 +23,7 @@ function cardInView(id: string): boolean {
  * player waits above the tab bar. Tap it to go back to the card.
  */
 export default function QariMiniPlayer() {
+  const t = useT()
   const player = useQariPlayer()
   const router = useRouter()
   const current = player.current
@@ -82,7 +84,7 @@ export default function QariMiniPlayer() {
           <button
             type="button"
             onClick={goToCard}
-            aria-label={`Go to ${current.title}`}
+            aria-label={t('Go to {title}', { title: current.title })}
             className="ed-focus flex min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left"
           >
             <QariAvatar username={current.userUsername} name={current.userName} size={38} />
@@ -110,7 +112,7 @@ export default function QariMiniPlayer() {
               tapFeedback()
               skipToNextRecitation()
             }}
-            aria-label="Next recitation"
+            aria-label={t('Next recitation')}
             className="qari-press ed-focus flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)] disabled:opacity-30"
           >
             <SkipForward className="h-[18px] w-[18px] fill-current" strokeWidth={2} />

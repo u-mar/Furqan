@@ -7,6 +7,7 @@ import {
   listenSurahAudioUrl,
   surahAudioUrl,
 } from '@/lib/reciters'
+import { tr } from '@/lib/i18n-core'
 
 const AUDIO_CACHE = 'muyassar-audio-v1'
 
@@ -29,14 +30,14 @@ export async function downloadSurahAudio(
   surah: number,
   onProgress?: (percent: number) => void
 ): Promise<void> {
-  if (typeof caches === 'undefined') throw new Error('Audio cache is not supported in this browser.')
+  if (typeof caches === 'undefined') throw new Error(tr('Audio cache is not supported in this browser.'))
   const cache = await caches.open(AUDIO_CACHE)
   const reciter = getReciterById(reciterId)
   const url = listenSurahAudioUrl(reciter, surah)
   const existing = await cache.match(url)
   if (!existing) {
     const res = await fetch(url)
-    if (!res.ok) throw new Error(`Failed downloading surah ${surah}`)
+    if (!res.ok) throw new Error(tr('Failed downloading surah {surah}', { surah }))
     const total = Number(res.headers.get('content-length')) || 0
     if (onProgress && res.body && total > 0) {
       // One copy of the stream goes straight into the cache, the other is

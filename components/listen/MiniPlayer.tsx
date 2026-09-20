@@ -7,9 +7,11 @@ import { useListenProgress, useListenState } from '@/hooks/useListen'
 import { cn } from '@/lib/cn'
 import { SKIP_SECONDS } from '@/lib/listen-player'
 import { getReciterById } from '@/lib/reciters'
+import { useT } from '@/lib/i18n'
 
 /** The player along the bottom of Listen. Tap it for Now playing. */
 export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
+  const t = useT()
   const { surah, reciterId, status, error } = useListenState()
   const showing = Boolean(surah && reciterId)
 
@@ -33,7 +35,7 @@ export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
           <button
             type="button"
             onClick={onOpen}
-            aria-label={`Open Now playing: ${surah.englishName}`}
+            aria-label={t('Open Now playing: {englishName}', { englishName: surah.englishName })}
             className="ed-focus flex min-w-0 flex-1 items-center gap-2.5 rounded-xl text-left"
           >
             <ReciterAvatar reciter={reciter} size={42} className="rounded-xl" />

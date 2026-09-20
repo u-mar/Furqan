@@ -1,5 +1,6 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
 import { resolveJuzPageRange, splitPageRange } from '@/lib/juz-pages'
+import { tr } from '@/lib/i18n-core'
 
 export type KhatmahDuration = '1week' | '1month' | '2months'
 
@@ -60,7 +61,7 @@ function createEvenPagePlan(duration: KhatmahDuration): KhatmahPlan {
 
   return {
     id: `khatmah-${Date.now()}`,
-    title: `Khatmah · ${DURATION_LABELS[duration]}`,
+    title: tr('Khatmah · {duration}', { duration: tr(DURATION_LABELS[duration]) }),
     duration,
     totalDays: days.length,
     createdAt: Date.now(),
@@ -85,7 +86,7 @@ async function createMonthlyJuzPlan(): Promise<KhatmahPlan> {
 
   return {
     id: `khatmah-${Date.now()}`,
-    title: `Khatmah · ${DURATION_LABELS['1month']}`,
+    title: tr('Khatmah · {duration}', { duration: tr(DURATION_LABELS['1month']) }),
     duration: '1month',
     totalDays: days.length,
     createdAt: Date.now(),
@@ -107,7 +108,7 @@ async function createTwoMonthJuzPlan(): Promise<KhatmahPlan> {
         startPage: part.startPage,
         endPage: part.endPage,
         completed: false,
-        juzLabel: `Juz ${juz} · ${half === 0 ? '1/2' : '2/2'}`,
+        juzLabel: tr('Juz {juz} · {half}', { juz, half: half === 0 ? '1/2' : '2/2' }),
       })
       day += 1
     }
@@ -115,7 +116,7 @@ async function createTwoMonthJuzPlan(): Promise<KhatmahPlan> {
 
   return {
     id: `khatmah-${Date.now()}`,
-    title: `Khatmah · ${DURATION_LABELS['2months']}`,
+    title: tr('Khatmah · {duration}', { duration: tr(DURATION_LABELS['2months']) }),
     duration: '2months',
     totalDays: days.length,
     createdAt: Date.now(),
@@ -138,13 +139,13 @@ async function createWeeklyJuzPlan(): Promise<KhatmahPlan> {
       startPage: startRange.startPage,
       endPage: endRange.endPage,
       completed: false,
-      juzLabel: firstJuz === lastJuz ? `Juz ${firstJuz}` : `Juz ${firstJuz}–${lastJuz}`,
+      juzLabel: firstJuz === lastJuz ? tr('Juz {juz}', { juz: firstJuz }) : tr('Juz {firstJuz}–{lastJuz}', { firstJuz, lastJuz }),
     })
   }
 
   return {
     id: `khatmah-${Date.now()}`,
-    title: `Khatmah · ${DURATION_LABELS['1week']}`,
+    title: tr('Khatmah · {duration}', { duration: tr(DURATION_LABELS['1week']) }),
     duration: '1week',
     totalDays: days.length,
     createdAt: Date.now(),
@@ -205,8 +206,8 @@ export function firstIncompleteDay(plan: KhatmahPlan): number {
 }
 
 export function dayScheduleLabel(dayNum: number, focusDay: number): string {
-  if (dayNum === focusDay) return 'Today'
-  if (dayNum === focusDay + 1) return 'Tomorrow'
-  if (dayNum < focusDay) return 'Earlier'
-  return 'Upcoming'
+  if (dayNum === focusDay) return tr('Today')
+  if (dayNum === focusDay + 1) return tr('Tomorrow')
+  if (dayNum < focusDay) return tr('Earlier')
+  return tr('Upcoming')
 }

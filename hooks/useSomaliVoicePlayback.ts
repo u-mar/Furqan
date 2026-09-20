@@ -6,6 +6,7 @@ import {
   TAFSIR_UNAVAILABLE_MESSAGE,
   type SomaliVoiceSegment,
 } from '@/lib/somali-voice'
+import { tr } from '@/lib/i18n-core'
 
 export interface SomaliVoicePlaybackState {
   playing: boolean
@@ -43,11 +44,11 @@ function waitForAudioCanPlay(audio: HTMLAudioElement, timeoutMs: number): Promis
     }
     const onFail = () => {
       cleanup()
-      reject(new Error('Audio failed to load'))
+      reject(new Error(tr('Audio failed to load')))
     }
     const onTimeout = () => {
       cleanup()
-      reject(new Error('Audio load timed out'))
+      reject(new Error(tr('Audio load timed out')))
     }
 
     const cleanup = () => {
@@ -74,7 +75,7 @@ function waitForSeek(audio: HTMLAudioElement, target: number): Promise<void> {
     }
     const onError = () => {
       cleanup()
-      reject(new Error('Seek failed'))
+      reject(new Error(tr('Seek failed')))
     }
     const cleanup = () => {
       audio.removeEventListener('seeked', onSeeked)
@@ -145,7 +146,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
       setState((s) => ({ ...s, playing: true, loading: false, paused: false, error: null }))
       return true
     } catch {
-      fail(session, 'Could not resume Somali voice.')
+      fail(session, tr('Could not resume Somali voice.'))
       return false
     }
   }, [fail])
@@ -159,7 +160,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
           loading: false,
           paused: false,
           verseKey: null,
-          error: TAFSIR_UNAVAILABLE_MESSAGE,
+          error: tr(TAFSIR_UNAVAILABLE_MESSAGE),
         })
         return false
       }
@@ -194,7 +195,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
           if (session !== sessionRef.current) return
           setState({ playing: true, loading: false, paused: false, verseKey, error: null })
         } catch {
-          fail(session, 'Could not play Somali voice.')
+          fail(session, tr('Could not play Somali voice.'))
         }
       }
 
@@ -212,7 +213,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
         if (session !== sessionRef.current) return false
         return true
       } catch {
-        fail(session, 'Could not load Somali voice audio.')
+        fail(session, tr('Could not load Somali voice audio.'))
         return false
       }
     },

@@ -17,8 +17,10 @@ import {
 import { errorFeedback, tapFeedback } from '@/lib/haptics'
 import { getHalaqa, inviteLink, inviteMessage, whatsAppLink, type HalaqaDetail } from '@/lib/halaqa'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
+import { tr, useT } from '@/lib/i18n'
 
 export default function InvitePage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [detail, setDetail] = useState<HalaqaDetail | null>(null)
   const [error, setError] = useState('')
@@ -29,7 +31,7 @@ export default function InvitePage() {
       setDetail(await getHalaqa(id))
       setError('')
     } catch (err) {
-      setError(errorMessage(err, 'Could not load this halaqa.'))
+      setError(errorMessage(err, tr('Could not load this halaqa.')))
     }
   }, [id])
 
@@ -47,7 +49,7 @@ export default function InvitePage() {
       flashCopied()
     } else {
       errorFeedback()
-      toastError('Could not copy the link.')
+      toastError(tr('Could not copy the link.'))
     }
   }
 
@@ -62,14 +64,14 @@ export default function InvitePage() {
       }
       return
     }
-    if (await copyText(message)) toastSuccess('Invite copied. Paste it anywhere.')
-    else toastError('Could not copy the invite.')
+    if (await copyText(message)) toastSuccess(tr('Invite copied. Paste it anywhere.'))
+    else toastError(tr('Could not copy the invite.'))
   }
 
   return (
     <HalaqaScreen>
       <div className="flex justify-end">
-        <Link href={`/halaqa/${id}`} className="home-round ed-focus" aria-label="Close">
+        <Link href={`/halaqa/${id}`} className="home-round ed-focus" aria-label={t('Close')}>
           <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
         </Link>
       </div>
@@ -87,24 +89,22 @@ export default function InvitePage() {
               className="home-serif fx-rise mt-5 text-[1.5625rem] font-semibold tracking-[-0.02em] text-[var(--home-heading)]"
               style={{ ['--i' as string]: 3 }}
             >
-              {halaqa.name} is ready
-            </h1>
+              {halaqa.name} {t('is ready')}</h1>
             <p
               className="fx-rise mt-2 max-w-[290px] text-[0.90625rem] leading-relaxed text-[var(--home-muted)] [text-wrap:pretty]"
               style={{ ['--i' as string]: 4 }}
             >
-              Now invite your family and friends. They only need their name to join.
-            </p>
+              {t('Now invite your family and friends. They only need their name to join.')}</p>
           </div>
 
           <Rise order={5}>
-            <h2 className="home-label mx-1 mb-2 mt-[38px]">Invite link</h2>
+            <h2 className="home-label mx-1 mb-2 mt-[38px]">{t('Invite link')}</h2>
             <div className="home-card overflow-hidden rounded-2xl">
               <button
                 type="button"
                 onClick={() => void copyLink()}
                 className="set-row"
-                aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
+                aria-label={copied ? t('Invite link copied') : t('Copy invite link')}
               >
                 <span className="set-row__icon" aria-hidden>
                   <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
@@ -124,18 +124,16 @@ export default function InvitePage() {
               className="ed-ink ed-focus fx-press flex h-12 items-center justify-center gap-2 rounded-full text-[0.90625rem] font-semibold"
             >
               <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
-              Share on WhatsApp
-            </a>
+              {t('Share on WhatsApp')}</a>
             <ActionButton kind="outline" icon={Share2} onClick={() => void shareElsewhere()}>
-              Share another way
-            </ActionButton>
+              {t('Share another way')}</ActionButton>
           </Rise>
           <Link
             href={`/halaqa/${id}`}
             className="ed-focus fx-rise mx-auto mt-4 block w-fit rounded-md px-2 py-1 text-sm font-semibold text-[var(--home-sage-deep)]"
             style={{ ['--i' as string]: 7 }}
           >
-            Go to {halaqa.name}
+            {t('Go to')} {halaqa.name}
           </Link>
         </>
       ) : null}

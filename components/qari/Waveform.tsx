@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 /** Squeeze or stretch a peak list to exactly `count` bars. */
 function resample(peaks: number[], count: number): number[] {
@@ -46,7 +47,7 @@ export default function Waveform({
   bars = 40,
   onSeek,
   className,
-  label = 'Position',
+  label,
 }: {
   peaks: number[]
   seed: string
@@ -57,6 +58,7 @@ export default function Waveform({
   className?: string
   label?: string
 }) {
+  const t = useT()
   const values = useMemo(
     () => resample(peaks.length > 0 ? peaks : placeholderPeaks(seed, bars), bars),
     [bars, peaks, seed]
@@ -77,7 +79,7 @@ export default function Waveform({
   return (
     <div
       role={onSeek ? 'slider' : undefined}
-      aria-label={onSeek ? label : undefined}
+      aria-label={onSeek ? (label ?? t('Position')) : undefined}
       aria-valuemin={onSeek ? 0 : undefined}
       aria-valuemax={onSeek ? 100 : undefined}
       aria-valuenow={onSeek ? Math.round(progress * 100) : undefined}

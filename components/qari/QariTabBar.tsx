@@ -8,6 +8,7 @@ import AccountSheet from '@/components/settings/AccountSheet'
 import { useViewer } from '@/hooks/useViewer'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 /**
  * The bar along the bottom of every Qari screen: the feed, a pill to record,
@@ -17,6 +18,7 @@ import { cn } from '@/lib/cn'
  * out, and the bar would only invite you to abandon a take mid-recitation.
  */
 export default function QariTabBar() {
+  const t = useT()
   const pathname = usePathname()
   const viewer = useViewer()
   const [accountOpen, setAccountOpen] = useState(false)
@@ -29,7 +31,7 @@ export default function QariTabBar() {
 
   return (
     <>
-      <nav className="qari-tabbar" aria-label="Qari">
+      <nav className="qari-tabbar" aria-label={t('Qari')}>
         <div className="qari-tabbar__inner">
           <Link
             href="/qari"
@@ -38,25 +40,22 @@ export default function QariTabBar() {
             className={cn('qari-tabbar__item ed-focus', onFeed && 'is-active')}
           >
             <House className="h-[21px] w-[21px]" strokeWidth={onFeed ? 2.3 : 1.9} />
-            Feed
-          </Link>
+            {t('Feed')}</Link>
 
           <Link href="/qari/record" onClick={tapFeedback} className="qari-tabbar__add ed-focus">
             <Mic className="h-[17px] w-[17px]" strokeWidth={2.2} />
-            Record
-          </Link>
+            {t('Record')}</Link>
 
           {viewer && myProfile ? (
             <Link
               href={myProfile}
               onClick={tapFeedback}
               aria-current={onMyProfile ? 'page' : undefined}
-              aria-label="Your profile"
+              aria-label={t('Your profile')}
               className={cn('qari-tabbar__item ed-focus', onMyProfile && 'is-active')}
             >
               <UserRound className="h-[21px] w-[21px]" strokeWidth={onMyProfile ? 2.3 : 1.9} />
-              You
-            </Link>
+              {t('You')}</Link>
           ) : (
             <button
               type="button"
@@ -64,12 +63,11 @@ export default function QariTabBar() {
                 tapFeedback()
                 setAccountOpen(true)
               }}
-              aria-label="Sign in"
+              aria-label={t('Sign in')}
               className="qari-tabbar__item ed-focus"
             >
               <UserRound className="h-[21px] w-[21px]" strokeWidth={1.9} />
-              You
-            </button>
+              {t('You')}</button>
           )}
         </div>
       </nav>

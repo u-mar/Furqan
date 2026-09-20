@@ -35,6 +35,8 @@ export interface AppSettings {
   translationEditionId: string
   /** Ayah wallpapers — when off, the Share action is hidden in the reader. */
   verseWallpapersEnabled: boolean
+  /** Language of the app's menus and buttons. */
+  language: 'en' | 'so' | 'ar'
 }
 
 const STORAGE_KEY = 'al_quran_settings'
@@ -60,6 +62,7 @@ const defaults: AppSettings = {
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
   translationEditionId: DEFAULT_TRANSLATION_EDITION[DEFAULT_TRANSLATION_LANGUAGE],
   verseWallpapersEnabled: true,
+  language: 'en',
 }
 
 function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }): AppSettings {
@@ -80,6 +83,7 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
     verticalPages: Boolean(parsed.verticalPages),
     // Defaults on — only an explicit `false` turns wallpapers off.
     verseWallpapersEnabled: parsed.verseWallpapersEnabled !== false,
+    language: parsed.language === 'so' || parsed.language === 'ar' ? parsed.language : 'en',
     ...parseTranslationChoice(parsed.translationLanguage, parsed.translationEditionId),
   }
 }

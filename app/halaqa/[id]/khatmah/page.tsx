@@ -31,6 +31,7 @@ import {
   type KhatmahJuzView,
 } from '@/lib/halaqa'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
+import { tr, useT } from '@/lib/i18n'
 
 type Pending = { kind: 'give-back' | 'free'; juz: KhatmahJuzView } | null
 type JuzAction = 'take' | 'done' | 'give-back' | 'free'
@@ -61,6 +62,7 @@ function applied(detail: HalaqaDetail, action: JuzAction, juz: number): HalaqaDe
 }
 
 export default function KhatmahPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const [detail, setDetail] = useState<HalaqaDetail | null>(null)
   const [error, setError] = useState('')
@@ -81,7 +83,7 @@ export default function KhatmahPage() {
       setDetail(next)
       setError('')
     } catch (err) {
-      if (mine === loads.current) setError(errorMessage(err, 'Could not load the khatmah.'))
+      if (mine === loads.current) setError(errorMessage(err, tr('Could not load the khatmah.')))
     }
   }, [id])
 
@@ -111,7 +113,7 @@ export default function KhatmahPage() {
     } catch (err) {
       setDetail(before)
       errorFeedback()
-      toastError(errorMessage(err, 'Could not do that right now.'))
+      toastError(errorMessage(err, tr('Could not do that right now.')))
       void load()
     }
   }
@@ -126,7 +128,7 @@ export default function KhatmahPage() {
       await load()
     } catch (err) {
       errorFeedback()
-      toastError(errorMessage(err, 'Could not do that right now.'))
+      toastError(errorMessage(err, tr('Could not do that right now.')))
     } finally {
       setBusy(false)
     }
@@ -135,7 +137,7 @@ export default function KhatmahPage() {
   if (!detail) {
     return (
       <HalaqaScreen>
-        <HalaqaHeader title="Khatmah" backHref={`/halaqa/${id}`} />
+        <HalaqaHeader title={t('Khatmah')} backHref={`/halaqa/${id}`} />
         {error ? (
           <ErrorCard message={error} onRetry={load} />
         ) : (
@@ -153,20 +155,19 @@ export default function KhatmahPage() {
   if (!halaqa.khatmahEnabled || !khatmah) {
     return (
       <HalaqaScreen>
-        <HalaqaHeader title="Khatmah" sub={halaqa.name} backHref={`/halaqa/${id}`} />
+        <HalaqaHeader title={t('Khatmah')} sub={halaqa.name} backHref={`/halaqa/${id}`} />
         <Rise className="home-card mt-[18px] rounded-2xl px-5 py-6 text-center">
-          <p className="text-[0.9375rem] font-semibold text-[var(--home-heading)]">This halaqa is not reading a khatmah</p>
+          <p className="text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('This halaqa is not reading a khatmah')}</p>
           <p className="mt-1.5 text-sm text-[var(--home-muted)]">
-            {me.isCreator ? 'Start one and split the 30 juz between everyone.' : 'The person who made the halaqa can start one.'}
+            {me.isCreator ? t('Start one and split the 30 juz between everyone.') : t('The person who made the halaqa can start one.')}
           </p>
           {me.isCreator ? (
             <ActionButton
               busy={busy}
-              onClick={() => void act('khatmah', { enabled: true }, 'The khatmah has started')}
+              onClick={() => void act('khatmah', { enabled: true }, tr('The khatmah has started'))}
               className="mx-auto mt-4 h-11 w-auto px-6 text-sm"
             >
-              Start a khatmah
-            </ActionButton>
+              {t('Start a khatmah')}</ActionButton>
           ) : null}
         </Rise>
       </HalaqaScreen>
@@ -174,7 +175,7 @@ export default function KhatmahPage() {
   }
 
   if (khatmah.completedAt) {
-    return <Complete detail={detail} busy={busy} onStartAnother={() => void act('new-khatmah', {}, 'A new khatmah has started')} />
+    return <Complete detail={detail} busy={busy} onStartAnother={() => void act('new-khatmah', {}, tr('A new khatmah has started'))} />
   }
 
   const byJuz = new Map(khatmah.juz.map((row) => [row.juz, row]))
@@ -184,7 +185,7 @@ export default function KhatmahPage() {
   const onCell = (juz: number) => {
     const row = byJuz.get(juz)
     if (!row) {
-      void change('take', juz, `Juz ${juz} is yours`)
+      void change('take', juz, tr('Juz {juz} is yours', { juz }))
       return
     }
     if (row.done) return
@@ -195,30 +196,30 @@ export default function KhatmahPage() {
 
   return (
     <HalaqaScreen>
-      <HalaqaHeader title="Khatmah" sub={halaqa.name} backHref={`/halaqa/${id}`} />
+      <HalaqaHeader title={t('Khatmah')} sub={halaqa.name} backHref={`/halaqa/${id}`} />
 
       <Rise className="home-card mt-[18px] rounded-[18px] p-4">
-        <section aria-label="Progress">
+        <section aria-label={t('Progress')}>
           <div className="flex items-baseline gap-2">
             <Count value={khatmah.done} className="home-serif text-[2.125rem] font-semibold leading-none tracking-[-0.02em] text-[var(--home-heading)]" />
-            <span className="text-sm text-[var(--home-muted)]">of 30 juz done</span>
+            <span className="text-sm text-[var(--home-muted)]">{t('of 30 juz done')}</span>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
             <div className="fx-bar h-full rounded-full bg-[var(--home-sage)]" style={{ width: `${Math.round((khatmah.done / 30) * 100)}%` }} />
           </div>
           {khatmah.finishBy ? (
             <div className="mt-2.5 flex justify-between text-[0.78125rem] text-[var(--home-muted)]">
-              <span>Finish by {shortDay(khatmah.finishBy)}</span>
+              <span>{t('Finish by')} {shortDay(khatmah.finishBy)}</span>
               <span>
                 {daysLeft === null
                   ? ''
                   : daysLeft > 1
-                    ? `${daysLeft} days left`
+                    ? t('{daysLeft} days left', { daysLeft })
                     : daysLeft === 1
-                      ? '1 day left'
+                      ? t('1 day left')
                       : daysLeft === 0
-                        ? 'Last day'
-                        : 'Past the date'}
+                        ? t('Last day')
+                        : t('Past the date')}
               </span>
             </div>
           ) : null}
@@ -227,7 +228,7 @@ export default function KhatmahPage() {
 
       {mine.length ? (
         <>
-          <SectionLabel>{mine.length === 1 ? 'Your juz' : 'Your juz · ' + mine.length}</SectionLabel>
+          <SectionLabel>{mine.length === 1 ? t('Your juz') : t('Your juz · ') + mine.length}</SectionLabel>
           <div className="space-y-2.5">
             {mine.map((row) => {
               const pages = juzPages(row.juz)
@@ -238,9 +239,9 @@ export default function KhatmahPage() {
                       {row.juz}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">Juz {row.juz}</span>
+                      <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Juz')} {row.juz}</span>
                       <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">
-                        Pages {pages.start} to {pages.end}
+                        {t('Pages')} {pages.start} {t('to')} {pages.end}
                       </span>
                     </span>
                   </div>
@@ -249,16 +250,14 @@ export default function KhatmahPage() {
                       href={`/read?page=${pages.start}`}
                       className="ed-ink ed-focus fx-press flex h-11 items-center justify-center rounded-full text-sm font-semibold"
                     >
-                      Start reading
-                    </Link>
+                      {t('Start reading')}</Link>
                     <button
                       type="button"
-                      onClick={() => void change('done', row.juz, `Juz ${row.juz} is done`)}
+                      onClick={() => void change('done', row.juz, tr('Juz {juz} is done', { juz: row.juz }))}
                       className="ed-focus fx-press flex h-11 items-center justify-center gap-1.5 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)]"
                     >
                       <Check className="h-4 w-4" strokeWidth={2.4} />
-                      Mark done
-                    </button>
+                      {t('Mark done')}</button>
                   </div>
                 </div>
               )
@@ -268,13 +267,13 @@ export default function KhatmahPage() {
       ) : null}
 
       <Rise order={1}>
-        <SectionLabel>All 30 juz</SectionLabel>
+        <SectionLabel>{t('All 30 juz')}</SectionLabel>
         <div className="flex flex-wrap gap-3.5 px-1 pb-3">
           {[
-            ['halaqa-juz--done', 'Done'],
-            ['halaqa-juz--taken', 'Taken'],
-            ['halaqa-juz--free', 'Free'],
-            ['halaqa-juz--mine', 'Yours'],
+            ['halaqa-juz--done', t('Done')],
+            ['halaqa-juz--taken', t('Taken')],
+            ['halaqa-juz--free', t('Free')],
+            ['halaqa-juz--mine', t('Yours')],
           ].map(([swatch, label]) => (
             <span key={label} className="inline-flex items-center gap-1.5 text-xs text-[var(--home-muted)]">
               <span className={cn('h-3 w-3 rounded', swatch)} aria-hidden />
@@ -288,12 +287,12 @@ export default function KhatmahPage() {
             const row = byJuz.get(juz)
             const state = !row ? 'free' : row.done ? 'done' : row.mine ? 'mine' : 'taken'
             const label = !row
-              ? `Juz ${juz}, free — take it`
+              ? tr('Juz {juz}, free — take it', { juz })
               : row.done
-                ? `Juz ${juz}, done`
+                ? tr('Juz {juz}, done', { juz })
                 : row.mine
-                  ? `Juz ${juz}, yours`
-                  : `Juz ${juz}, taken by ${row.memberName ?? 'someone'}`
+                  ? tr('Juz {juz}, yours', { juz })
+                  : tr('Juz {juz}, taken by {someone}', { juz, someone: row.memberName ?? 'someone' })
             const moved = changed.has(juz)
             return (
               <button
@@ -317,7 +316,7 @@ export default function KhatmahPage() {
                         state === 'mine' && 'opacity-75'
                       )}
                     >
-                      {state === 'free' ? 'Take' : state === 'mine' ? 'You' : row?.memberName ?? '—'}
+                      {state === 'free' ? t('Take') : state === 'mine' ? t('You') : row?.memberName ?? '—'}
                     </span>
                   )}
                 </span>
@@ -326,27 +325,27 @@ export default function KhatmahPage() {
           })}
         </div>
         <p className="mt-3.5 text-center text-[0.78125rem] text-[var(--home-muted)]">
-          {me.isCreator ? 'Tap a juz you took to give it back, or anyone’s to free it.' : 'Tap a juz you took to give it back.'}
+          {me.isCreator ? t('Tap a juz you took to give it back, or anyone’s to free it.') : t('Tap a juz you took to give it back.')}
         </p>
       </Rise>
 
       <SettingsSheet
         open={Boolean(pending)}
-        title={pending ? (pending.kind === 'give-back' ? `Give back Juz ${pending.juz.juz}?` : `Free Juz ${pending.juz.juz}?`) : ''}
+        title={pending ? (pending.kind === 'give-back' ? t('Give back Juz {juz}?', { juz: pending.juz.juz }) : t('Free Juz {juz}?', { juz: pending.juz.juz })) : ''}
         description={
           pending
             ? pending.kind === 'give-back'
-              ? 'Someone else will be able to take it.'
-              : `${pending.juz.memberName ?? 'Someone'} took it. Freeing it lets someone else take it.`
+              ? t('Someone else will be able to take it.')
+              : t('{Someone} took it. Freeing it lets someone else take it.', { Someone: pending.juz.memberName ?? 'Someone' })
             : undefined
         }
         onClose={() => setPending(null)}
       >
         <ActionButton
           icon={BookOpen}
-          onClick={() => pending && void change(pending.kind, pending.juz.juz, `Juz ${pending.juz.juz} is free again`)}
+          onClick={() => pending && void change(pending.kind, pending.juz.juz, tr('Juz {juz} is free again', { juz: pending.juz.juz }))}
         >
-          {pending?.kind === 'give-back' ? 'Give it back' : 'Free this juz'}
+          {pending?.kind === 'give-back' ? t('Give it back') : t('Free this juz')}
         </ActionButton>
       </SettingsSheet>
     </HalaqaScreen>
@@ -360,6 +359,7 @@ function Count({ value, className }: { value: number; className?: string }) {
 
 /** All 30 juz done: a quiet moment, what it took, and the dua. */
 function Complete({ detail, busy, onStartAnother }: { detail: HalaqaDetail; busy: boolean; onStartAnother: () => void }) {
+  const t = useT()
   const { halaqa, khatmah, me } = detail
   if (!khatmah?.completedAt) return null
   const days = Math.max(1, dayGap(khatmah.startedAt.slice(0, 10), khatmah.completedAt.slice(0, 10)) + 1)
@@ -368,7 +368,7 @@ function Complete({ detail, busy, onStartAnother }: { detail: HalaqaDetail; busy
   return (
     <HalaqaScreen>
       <div className="flex justify-end">
-        <Link href={`/halaqa/${halaqa.id}`} className="home-round ed-focus" aria-label="Close">
+        <Link href={`/halaqa/${halaqa.id}`} className="home-round ed-focus" aria-label={t('Close')}>
           <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
         </Link>
       </div>
@@ -377,11 +377,9 @@ function Complete({ detail, busy, onStartAnother }: { detail: HalaqaDetail; busy
           <IconOrnament className="h-[30px] w-[30px] text-[var(--home-sage)]" />
         </span>
         <h1 className="home-serif fx-rise mt-4 text-[1.9375rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]" style={{ ['--i' as string]: 2 }}>
-          Khatmah complete
-        </h1>
+          {t('Khatmah complete')}</h1>
         <p className="fx-rise mt-2 text-[0.9375rem] text-[var(--home-muted)]" style={{ ['--i' as string]: 3 }}>
-          {halaqa.name} read the whole Quran together.
-        </p>
+          {halaqa.name} {t('read the whole Quran together.')}</p>
       </div>
 
       <Rise order={4} className="home-card mt-6 grid grid-cols-3 rounded-2xl py-3.5">
@@ -402,16 +400,14 @@ function Complete({ detail, busy, onStartAnother }: { detail: HalaqaDetail; busy
           رَبَّنَا تَقَبَّلْ مِنَّا ۖ إِنَّكَ أَنتَ السَّمِيعُ الْعَلِيمُ
         </p>
         <p className="mt-1 text-sm leading-relaxed text-[var(--home-heading)] opacity-80 [text-wrap:balance]">
-          Our Lord, accept this from us. You are the All-Hearing, the All-Knowing.
-        </p>
-        <p className="mt-1.5 text-xs font-semibold text-[var(--home-muted)]">Al-Baqarah 2:127</p>
+          {t('Our Lord, accept this from us. You are the All-Hearing, the All-Knowing.')}</p>
+        <p className="mt-1.5 text-xs font-semibold text-[var(--home-muted)]">{t('Al-Baqarah 2:127')}</p>
       </Rise>
 
       <Rise order={6} className="mt-6 flex flex-col gap-2.5">
         {me.isCreator ? (
           <ActionButton busy={busy} onClick={onStartAnother}>
-            Start another khatmah
-          </ActionButton>
+            {t('Start another khatmah')}</ActionButton>
         ) : null}
         <a
           href={whatsAppLink(news)}
@@ -421,8 +417,7 @@ function Complete({ detail, busy, onStartAnother }: { detail: HalaqaDetail; busy
           className="ed-focus fx-press flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[0.90625rem] font-semibold text-[var(--home-heading)] hover:bg-[var(--home-track)]"
         >
           <Send className="h-[17px] w-[17px]" strokeWidth={2} />
-          Share the good news
-        </a>
+          {t('Share the good news')}</a>
       </Rise>
     </HalaqaScreen>
   )

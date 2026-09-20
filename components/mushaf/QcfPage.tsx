@@ -6,6 +6,7 @@ import QcfLine from '@/components/mushaf/QcfLine'
 import { buildQcfPageLayout, qcfPageFontClass, qcfPageFontFamily } from '@/lib/qcf-page'
 import { getQcfLineRevealState } from '@/lib/qcf-reveal'
 import type { Verse } from '@/types'
+import { useT } from '@/lib/i18n'
 
 export interface QcfPageProps {
   verses: Verse[]
@@ -39,6 +40,7 @@ function QcfPageComponent({
   ayahSelectMode = false,
   hifdhReveal,
 }: QcfPageProps) {
+  const t = useT()
   const layout = useMemo(() => buildQcfPageLayout(verses, pageNumber), [verses, pageNumber])
   const qcfFamily = qcfPageFontFamily(pageNumber)
   const pageClass = qcfPageFontClass(pageNumber)
@@ -61,7 +63,7 @@ function QcfPageComponent({
       data-qcf-font={qcfFamily}
       dir="rtl"
       lang="ar"
-      aria-label={`Quran page ${pageNumber}`}
+      aria-label={t('Quran page {pageNumber}', { pageNumber })}
     >
       <div className="mushaf-fit-grid mushaf-qcf-page-content">
         {layout.lines.map((line) => {

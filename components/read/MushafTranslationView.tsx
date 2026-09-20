@@ -22,6 +22,7 @@ import {
   type TranslationLanguageId,
 } from '@/lib/translations'
 import type { Chapter, Verse, VerseWord } from '@/types'
+import { useT } from '@/lib/i18n'
 
 interface MushafTranslationViewProps {
   verses: Verse[]
@@ -103,6 +104,7 @@ function TranslationAyahArticle({
   onAyahSelect,
   articleRef,
 }: TranslationAyahArticleProps) {
+  const t = useT()
   const longPress = useLongPress(() => onAyahLongPress?.(row.verse_key))
   const hasTranslation = Boolean(row.translation)
 
@@ -139,7 +141,7 @@ function TranslationAyahArticle({
             <button
               type="button"
               className="mushaf-tr-action"
-              aria-label={`Copy ayah ${row.verse_key}`}
+              aria-label={t('Copy ayah {key}', { key: row.verse_key })}
               onClick={(e) => {
                 e.stopPropagation()
                 void navigator.clipboard
@@ -152,7 +154,7 @@ function TranslationAyahArticle({
             <button
               type="button"
               className="mushaf-tr-action"
-              aria-label={`Share ayah ${row.verse_key}`}
+              aria-label={t('Share ayah {key}', { key: row.verse_key })}
               onClick={(e) => {
                 e.stopPropagation()
                 const text = `${row.text_uthmani}\n\n${row.translation}\n\n(${row.verse_key})`
@@ -173,7 +175,7 @@ function TranslationAyahArticle({
             className="mushaf-translation-basmalah mb-3 mt-1 text-center"
             dir="rtl"
             lang="ar"
-            aria-label="Basmalah"
+            aria-label={t('Basmalah')}
           >
             {BASMALAH_ORNAMENT}
           </p>
@@ -212,7 +214,7 @@ function TranslationAyahArticle({
         )}
 
         <p className="mushaf-translation-text">
-          {row.translation || (loading ? 'Loading…' : 'Translation unavailable.')}
+          {row.translation || (loading ? t('Loading…') : t('Translation unavailable.'))}
         </p>
 
         {hasTranslation && <p className="mushaf-tr-translator">— {translator}</p>}
@@ -267,6 +269,7 @@ export default function MushafTranslationView({
   onAyahSelect,
   ayahSelectMode = false,
 }: MushafTranslationViewProps) {
+  const t = useT()
   const chapterNameById = useMemo(
     () => Object.fromEntries(chapters.map((c) => [c.id, c.englishName || c.name])),
     [chapters]
@@ -352,7 +355,7 @@ export default function MushafTranslationView({
         const isSelected = selectedVerseKey === row.verse_key && !isReciting
         const showBasmalah = num === 1 && surahHasOpeningBasmalah(surah)
         const showGlyphAyah = useQcfGlyphs && row.qcfWords.length > 0
-        const surahLabel = num === 1 ? chapterNameById[surah] || `Surah ${surah}` : null
+        const surahLabel = num === 1 ? chapterNameById[surah] || t('Surah {surah}', { surah }) : null
 
         return (
           <TranslationAyahArticle

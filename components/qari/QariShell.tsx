@@ -1,33 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
 import { ChevronLeft, Search, X, type LucideIcon } from 'lucide-react'
 import QariMiniPlayer from '@/components/qari/QariMiniPlayer'
 import QariTabBar from '@/components/qari/QariTabBar'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 /** Re-exported so the Qari screens keep one import for their shared chrome. */
 export { useViewer } from '@/hooks/useViewer'
-
-let neutralScreens = 0
-
-/**
- * Turns the light theme neutral — white cards on grey — for as long as a Qari
- * screen is open. On <html>, so sheets and toasts portaled to <body> follow.
- */
-export function useQariNeutral() {
-  useEffect(() => {
-    neutralScreens += 1
-    document.documentElement.classList.add('qari-neutral')
-    return () => {
-      neutralScreens -= 1
-      if (neutralScreens === 0) document.documentElement.classList.remove('qari-neutral')
-    }
-  }, [])
-}
 
 /** Round back button, a serif title and whatever sits on the right. */
 export function QariHeader({
@@ -44,10 +27,11 @@ export function QariHeader({
   /** Replaces the back link, e.g. a close button. */
   back?: React.ReactNode
 }) {
+  const t = useT()
   return (
     <header className="flex items-center gap-3">
       {back ?? (
-        <Link href={backHref} className="home-round ed-focus" aria-label="Back">
+        <Link href={backHref} className="home-round ed-focus" aria-label={t('Back')}>
           <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
         </Link>
       )}
@@ -96,6 +80,7 @@ export function QariSearch({
   label: string
   className?: string
 }) {
+  const t = useT()
   return (
     <label
       className={cn(
@@ -120,7 +105,7 @@ export function QariSearch({
             tapFeedback()
             onChange('')
           }}
-          aria-label="Clear search"
+          aria-label={t('Clear search')}
           className="ed-focus -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-[var(--home-heading)]"
         >
           <X className="h-4 w-4" strokeWidth={2.2} />
@@ -177,7 +162,6 @@ export function QariSegmented<T extends string>({
 }
 
 export function QariScreen({ children, className }: { children: React.ReactNode; className?: string }) {
-  useQariNeutral()
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div

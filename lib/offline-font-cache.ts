@@ -5,6 +5,7 @@ import {
   SURAH_NAME_FONT_URL,
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
+import { tr } from '@/lib/i18n-core'
 
 /** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
 export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
@@ -148,7 +149,7 @@ export async function cacheAllMushafFonts(
   onProgress?: (p: FontCacheProgress) => void
 ): Promise<void> {
   if (typeof caches === 'undefined') {
-    throw new Error('Font caching is not supported in this browser.')
+    throw new Error(tr('Font caching is not supported in this browser.'))
   }
 
   const cache = await openCache()
@@ -192,7 +193,7 @@ export async function cacheAllMushafFonts(
   if (saved < 500) {
     clearOfflineFontsCachedFlag()
     throw new Error(
-      `Only ${saved} of ${TOTAL_MUSHAF_FONT_PAGES} mushaf fonts saved. Stay on Wi‑Fi and try again.`
+      tr('Only {saved} of {total} mushaf fonts saved. Stay on Wi‑Fi and try again.', { saved, total: TOTAL_MUSHAF_FONT_PAGES })
     )
   }
 

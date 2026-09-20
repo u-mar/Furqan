@@ -15,11 +15,13 @@ import {
   useViewer,
 } from '@/components/qari/QariShell'
 import { fetchQaris, type QariSummary } from '@/lib/qari'
+import { useT } from '@/lib/i18n'
 
 type Tab = 'all' | 'following'
 
 /** Find qaris and follow them. */
 export default function QarisPage() {
+  const t = useT()
   const viewer = useViewer()
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
@@ -55,18 +57,18 @@ export default function QarisPage() {
 
   return (
     <QariScreen>
-      <QariHeader title="Qaris" />
+      <QariHeader title={t('Qaris')} />
 
-      <QariSearch className="mt-4" value={search} onChange={setSearch} placeholder="Search qaris" label="Search qaris" />
+      <QariSearch className="mt-4" value={search} onChange={setSearch} placeholder={t('Search qaris')} label={t('Search qaris')} />
 
       <QariSegmented
         className="mt-2.5"
-        label="Which qaris"
+        label={t('Which qaris')}
         value={tab}
         onChange={setTab}
         options={[
           { id: 'all', label: 'All' },
-          { id: 'following', label: 'Following' },
+          { id: 'following', label: t('Following') },
         ]}
       />
 
@@ -87,20 +89,20 @@ export default function QarisPage() {
         ) : failed ? (
           <EmptyState
             Icon={UsersRound}
-            title="Could not load qaris"
-            body="Check your connection and try again."
-            action={{ label: 'Try again', onClick: () => void load() }}
+            title={t('Could not load qaris')}
+            body={t('Check your connection and try again.')}
+            action={{ label: t('Try again'), onClick: () => void load() }}
           />
         ) : items.length === 0 ? (
           tab === 'following' && !query ? (
             <EmptyState
               Icon={UsersRound}
-              title={viewer ? 'You are not following anyone yet' : 'Sign in to follow qaris'}
-              body="Follow qaris you like and you can hear their new recitations first."
-              action={viewer ? { label: 'See all qaris', onClick: () => setTab('all') } : undefined}
+              title={viewer ? t('You are not following anyone yet') : t('Sign in to follow qaris')}
+              body={t('Follow qaris you like and you can hear their new recitations first.')}
+              action={viewer ? { label: t('See all qaris'), onClick: () => setTab('all') } : undefined}
             />
           ) : (
-            <EmptyState Icon={SearchX} title="No qaris found" body={`Nobody matches “${query}”.`} />
+            <EmptyState Icon={SearchX} title={t('No qaris found')} body={t('Nobody matches “{query}”.', { query })} />
           )
         ) : (
           <div className="home-card overflow-hidden rounded-2xl">
@@ -126,7 +128,7 @@ export default function QarisPage() {
                       </span>
                     </Link>
                     {isMe ? (
-                      <span className="px-2 text-[13px] font-semibold text-[var(--home-muted)]">You</span>
+                      <span className="px-2 text-[13px] font-semibold text-[var(--home-muted)]">{t('You')}</span>
                     ) : (
                       <FollowButton
                         viewer={viewer}

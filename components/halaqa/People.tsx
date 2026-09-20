@@ -3,6 +3,7 @@
 import { Check, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { DayLine } from '@/lib/halaqa'
+import { tr, useT } from '@/lib/i18n'
 
 function tone(name: string): number {
   let sum = 0
@@ -64,7 +65,7 @@ export function DayDots({ days, size }: { days: number[]; size?: number }) {
 }
 
 export function daysLabel(line: DayLine): string {
-  return `Read on ${line.count} of ${line.possible} days`
+  return tr('Read on {count} of {possible} days', { count: line.count, possible: line.possible })
 }
 
 /** A person with the days they read — Halaqa settings and the end screen. */
@@ -79,13 +80,14 @@ export function ReadingDaysRow({
   line: DayLine
   onOpen?: () => void
 }) {
+  const t = useT()
   const body = (
     <>
       <MemberAvatar name={name} me={me} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
           {name}
-          {me ? <span className="font-medium text-[var(--home-muted)]"> (you)</span> : null}
+          {me ? <span className="font-medium text-[var(--home-muted)]"> {t('(you)')}</span> : null}
         </span>
         <span className="mt-[5px] block">
           <DayDots days={line.days} />

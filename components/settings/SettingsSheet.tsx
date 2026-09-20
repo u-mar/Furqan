@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 
 interface SettingsSheetProps {
   open: boolean
@@ -17,6 +18,7 @@ interface SettingsSheetProps {
  * choices, downloads and forms open here, over it.
  */
 export default function SettingsSheet({ open, title, description, onClose, children }: SettingsSheetProps) {
+  const t = useT()
   // Held in a ref so an inline onClose does not re-run the effect every render.
   const closeRef = useRef(onClose)
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function SettingsSheet({ open, title, description, onClose, child
             <button
               type="button"
               onClick={() => closeRef.current()}
-              aria-label="Close"
+              aria-label={t('Close')}
               className="ed-focus -mr-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--home-track)] hover:text-[var(--home-heading)]"
             >
               <X className="h-[18px] w-[18px]" strokeWidth={2} />

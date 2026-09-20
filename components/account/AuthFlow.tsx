@@ -7,6 +7,7 @@ import AppMark from '@/components/account/AppMark'
 import { APP_NAME } from '@/lib/app-brand'
 import { loginLocalUser, setSignedInUser, signupLocalUser, type AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import { tr, useT } from '@/lib/i18n'
 
 type Step = 'welcome' | 'name' | 'username' | 'pin' | 'confirm' | 'login-username' | 'login-pin'
 
@@ -32,6 +33,7 @@ interface AuthFlowProps {
  * twice so a slip does not lock someone out of an account they just made.
  */
 export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }: AuthFlowProps) {
+  const t = useT()
   const first: Step = start === 'login' ? 'login-username' : start === 'signup' ? 'name' : 'welcome'
   const [step, setStep] = useState<Step>(first)
   const [history, setHistory] = useState<Step[]>([])
@@ -111,18 +113,18 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
           return
         }
         if (mode === 'login') setPin('')
-        fail(data.error || 'Something went wrong. Please try again.')
+        fail(data.error || tr('Something went wrong. Please try again.'))
       } catch {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           try {
             useLocal()
             return
           } catch (err) {
-            fail(err instanceof Error ? err.message : 'Could not continue.')
+            fail(err instanceof Error ? err.message : tr('Could not continue.'))
             return
           }
         }
-        fail('Could not reach the server. Check your connection.')
+        fail(tr('Could not reach the server. Check your connection.'))
       } finally {
         setBusy(false)
       }
@@ -139,7 +141,7 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
           <button
             type="button"
             onClick={back}
-            aria-label="Back"
+            aria-label={t('Back')}
             className="ed-focus -ml-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
           >
             <ChevronLeft className="h-6 w-6" strokeWidth={1.8} />
@@ -163,7 +165,7 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('Close')}
             className="ed-focus -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--home-track)]"
           >
             <X className="h-5 w-5" strokeWidth={1.8} />
@@ -182,11 +184,11 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
 
         {step === 'name' ? (
           <TextStep
-            title="What should we call you?"
-            hint="This is the name people see on your recitations."
+            title={t('What should we call you?')}
+            hint={t('This is the name people see on your recitations.')}
             value={name}
             onChange={(v) => setName(v.slice(0, 40))}
-            placeholder="Your name"
+            placeholder={t('Your name')}
             autoComplete="name"
             error={error}
             shake={shake}
@@ -207,8 +209,8 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
 
         {step === 'pin' ? (
           <PinStep
-            title="Create a 4-digit PIN"
-            hint="You'll use it to sign in. Pick something you'll remember."
+            title={t('Create a 4-digit PIN')}
+            hint={t('You\'ll use it to sign in. Pick something you\'ll remember.')}
             value={pin}
             onChange={setPin}
             error={error}
@@ -219,8 +221,8 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
 
         {step === 'confirm' ? (
           <PinStep
-            title="Enter it once more"
-            hint="Just to be sure there was no slip."
+            title={t('Enter it once more')}
+            hint={t('Just to be sure there was no slip.')}
             value={confirm}
             onChange={(v) => {
               setConfirm(v)
@@ -232,7 +234,7 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
             onComplete={(entered) => {
               if (entered !== pin) {
                 setConfirm('')
-                fail("Those PINs don't match. Try again.")
+                fail(tr('Those PINs don\'t match. Try again.'))
                 return
               }
               void submit('signup', entered)
@@ -242,11 +244,11 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
 
         {step === 'login-username' ? (
           <TextStep
-            title="Welcome back"
-            hint="Enter the username you signed up with."
+            title={t('Welcome back')}
+            hint={t('Enter the username you signed up with.')}
             value={username}
             onChange={(v) => setUsername(v.toLowerCase().replace(/\s/g, '').slice(0, 20))}
-            placeholder="username"
+            placeholder={t('username')}
             autoComplete="username"
             prefix={<AtSign className="h-5 w-5" strokeWidth={2} />}
             error={error}
@@ -258,8 +260,8 @@ export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose }:
 
         {step === 'login-pin' ? (
           <PinStep
-            title="Enter your PIN"
-            hint={`Signing in as @${username}`}
+            title={t('Enter your PIN')}
+            hint={t('Signing in as @{username}', { username })}
             value={pin}
             onChange={(v) => {
               setPin(v)
@@ -287,6 +289,7 @@ function Welcome({
   onLogin: () => void
   onSkip?: () => void
 }) {
+  const t = useT()
   return (
     <div className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -294,40 +297,35 @@ function Welcome({
         <h1 className="home-serif text-[2.1rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
           {APP_NAME}
         </h1>
-        <p className="mt-2 text-[0.95rem] text-[var(--home-muted)]">The Quran, wherever you are.</p>
+        <p className="mt-2 text-[0.95rem] text-[var(--home-muted)]">{t('The Quran, wherever you are.')}</p>
 
         <ul className="mt-9 w-full max-w-[19rem] space-y-4 text-left">
-          <Benefit Icon={BookOpen} text="Pick up exactly where you stopped reading" />
-          <Benefit Icon={Sparkles} text="Save the recitations you love to Favourites" />
-          <Benefit Icon={Mic} text="Share your recitation with the Qari community" />
+          <Benefit Icon={BookOpen} text={t('Pick up exactly where you stopped reading')} />
+          <Benefit Icon={Sparkles} text={t('Save the recitations you love to Favourites')} />
+          <Benefit Icon={Mic} text={t('Share your recitation with the Qari community')} />
         </ul>
       </div>
 
       <div className="space-y-3">
         <button type="button" onClick={onCreate} className="auth-primary ed-focus">
-          Create account
-        </button>
+          {t('Create account')}</button>
         <button type="button" onClick={onLogin} className="auth-secondary ed-focus">
-          I already have an account
-        </button>
+          {t('I already have an account')}</button>
         {onSkip ? (
           <button
             type="button"
             onClick={onSkip}
             className="ed-focus w-full py-2.5 text-[0.92rem] font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
           >
-            Continue without an account
-          </button>
+            {t('Continue without an account')}</button>
         ) : null}
         <p className="px-4 pt-1 text-center text-[11px] leading-relaxed text-[var(--home-muted)]">
-          By creating an account you agree to our{' '}
+          {t('By creating an account you agree to our')}{' '}
           <Link href="/terms" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
+            {t('Terms of Service')}</Link>{' '}
+          {t('and')}{' '}
           <Link href="/privacy" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
-            Privacy Policy
-          </Link>
+            {t('Privacy Policy')}</Link>
           .
         </p>
       </div>
@@ -391,6 +389,7 @@ function TextStep({
   canContinue: boolean
   onContinue: () => void
 }) {
+  const t = useT()
   return (
     <form
       className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]"
@@ -418,8 +417,7 @@ function TextStep({
       <ErrorLine error={error} shake={shake} />
       <div className="flex-1" />
       <button type="submit" disabled={!canContinue} className="auth-primary ed-focus">
-        Continue
-      </button>
+        {t('Continue')}</button>
     </form>
   )
 }
@@ -439,6 +437,7 @@ function UsernameStep({
   shake: number
   onContinue: () => void
 }) {
+  const t = useT()
   const [status, setStatus] = useState<Availability>('idle')
   const latest = useRef(value)
 
@@ -470,12 +469,12 @@ function UsernameStep({
   const canContinue = status === 'available' || status === 'unknown'
 
   const note: Record<Availability, { text: string; tone: 'muted' | 'good' | 'bad' }> = {
-    idle: { text: '3–20 letters, numbers or underscores.', tone: 'muted' },
-    invalid: { text: 'Use 3–20 letters, numbers or underscores.', tone: 'bad' },
-    checking: { text: 'Checking…', tone: 'muted' },
+    idle: { text: t('3–20 letters, numbers or underscores.'), tone: 'muted' },
+    invalid: { text: t('Use 3–20 letters, numbers or underscores.'), tone: 'bad' },
+    checking: { text: t('Checking…'), tone: 'muted' },
     available: { text: `@${value} is yours if you want it.`, tone: 'good' },
     taken: { text: `@${value} is already taken.`, tone: 'bad' },
-    unknown: { text: "Couldn't check just now — we'll confirm when you finish.", tone: 'muted' },
+    unknown: { text: t('Couldn\'t check just now — we\'ll confirm when you finish.'), tone: 'muted' },
   }
 
   return (
@@ -486,14 +485,14 @@ function UsernameStep({
         if (canContinue) onContinue()
       }}
     >
-      <StepHeading title="Pick a username" hint="Your profile link. It can't be changed later." />
+      <StepHeading title={t('Pick a username')} hint={t('Your profile link. It can\'t be changed later.')} />
       <div className="auth-field mt-8">
         <AtSign className="h-5 w-5 text-[var(--home-muted)]" strokeWidth={2} />
         <input
           autoFocus
           value={value}
           onChange={(e) => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
-          placeholder="username"
+          placeholder={t('username')}
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
@@ -523,8 +522,7 @@ function UsernameStep({
       <ErrorLine error={error} shake={shake} />
       <div className="flex-1" />
       <button type="submit" disabled={!canContinue} className="auth-primary ed-focus">
-        Continue
-      </button>
+        {t('Continue')}</button>
     </form>
   )
 }
@@ -548,6 +546,7 @@ function PinStep({
   shake: number
   busy?: boolean
 }) {
+  const t = useT()
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   return (
@@ -558,7 +557,7 @@ function PinStep({
         type="button"
         onClick={() => inputRef.current?.focus()}
         disabled={busy}
-        aria-label="Enter your 4-digit PIN"
+        aria-label={t('Enter your 4-digit PIN')}
         className={cn('mt-10 flex justify-center gap-3', error && 'auth-shake')}
         key={`pin-${shake}`}
       >

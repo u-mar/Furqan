@@ -6,6 +6,7 @@ import { getPlayableListenSurahAudioUrl, isSurahAudioDownloaded } from '@/lib/of
 import { getChapters } from '@/lib/quran'
 import { getReciterById } from '@/lib/reciters'
 import type { Chapter } from '@/types'
+import { tr } from '@/lib/i18n-core'
 
 /**
  * What Listen is playing, kept outside React.
@@ -48,8 +49,6 @@ export const SKIP_SECONDS = 15
 /** Once the sleep time is up the recitation fades out over this long, then stops. */
 const FADE_MS = 8000
 const SLEEP_CHOICE_KEY = 'muyassar_sleep_choice'
-const PLAY_FAILED = 'This surah could not be played.'
-const OFFLINE_NOT_SAVED = 'You are offline, and this surah is not downloaded.'
 
 let state: ListenState = IDLE
 let progress: ListenProgress = NO_PROGRESS
@@ -144,7 +143,7 @@ function element(): HTMLAudioElement {
   el.addEventListener('ended', () => void onEnded())
   el.addEventListener('error', () => {
     if (!state.surah || switching || !el.getAttribute('src')) return
-    setState({ status: 'paused', error: PLAY_FAILED })
+    setState({ status: 'paused', error: tr('This surah could not be played.') })
   })
   return el
 }
@@ -170,7 +169,7 @@ export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0)
   if (!url) {
     switching = false
     unload(el)
-    setState({ status: 'paused', error: OFFLINE_NOT_SAVED })
+    setState({ status: 'paused', error: tr('You are offline, and this surah is not downloaded.') })
     return
   }
 
@@ -194,7 +193,7 @@ export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0)
       if (el.paused) setState({ status: 'paused' })
       return
     }
-    setState({ status: 'paused', error: PLAY_FAILED })
+    setState({ status: 'paused', error: tr('This surah could not be played.') })
   }
 }
 
@@ -215,7 +214,7 @@ export function resume(): void {
   if (state.error) setState({ error: null })
   el.play().catch((err: unknown) => {
     if (isAbort(err)) return
-    setState({ status: 'paused', error: PLAY_FAILED })
+    setState({ status: 'paused', error: tr('This surah could not be played.') })
   })
 }
 
@@ -402,8 +401,8 @@ function restoreVolume(el: HTMLAudioElement) {
 }
 
 export function sleepChoiceLabel(choice: SleepChoice): string {
-  if (choice === 'surah') return 'End of this surah'
-  return choice === 60 ? '1 hour' : `${choice} minutes`
+  if (choice === 'surah') return tr('End of this surah')
+  return choice === 60 ? tr('1 hour') : tr('{choice} minutes', { choice })
 }
 
 /** How long until sleep mode stops the recitation, or null if that is not known yet. */
@@ -416,10 +415,10 @@ export function sleepMsLeft(sleep: ListenSleep, now: number, at: ListenProgress)
 /** "28 min", "1 h 12 min" */
 export function formatMinutesLeft(ms: number): string {
   const minutes = Math.max(1, Math.ceil(ms / 60_000))
-  if (minutes < 60) return `${minutes} min`
+  if (minutes < 60) return tr('{minutes} min', { minutes })
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  return rest ? `${hours} h ${rest} min` : `${hours} h`
+  return rest ? tr('{hours} h {rest} min', { hours, rest }) : tr('{hours} h', { hours })
 }
 
 /** "4:05", "1:53:38" */

@@ -18,9 +18,11 @@ import {
 import { fetchFeed, fetchSheikhStats, type Recitation } from '@/lib/qari'
 import { onPlayerError } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
+import { useT } from '@/lib/i18n'
 
 /** Every imitation of one sheikh, from everyone. */
 export default function SheikhPage() {
+  const t = useT()
   const params = useParams<{ id: string }>()
   const sheikh = findSheikh(String(params?.id ?? ''))
   const viewer = useViewer()
@@ -59,15 +61,15 @@ export default function SheikhPage() {
   return (
     <QariScreen>
       <PullIndicator pull={pull} refreshing={refreshing} />
-      <QariHeader title={sheikh?.shortName ?? 'Imitations'} sub={sheikh ? 'Imitations' : undefined} />
+      <QariHeader title={sheikh?.shortName ?? t('Imitations')} sub={sheikh ? t('Imitations') : undefined} />
 
       {!sheikh ? (
         <div className="mt-6">
           <EmptyState
             Icon={MicVocal}
-            title="Sheikh not found"
-            body="This page may have moved. Search for the sheikh from Qari."
-            action={{ label: 'Back to Qari', href: '/qari' }}
+            title={t('Sheikh not found')}
+            body={t('This page may have moved. Search for the sheikh from Qari.')}
+            action={{ label: t('Back to Qari'), href: '/qari' }}
           />
         </div>
       ) : (
@@ -76,14 +78,14 @@ export default function SheikhPage() {
             <SheikhHeader sheikh={sheikh} count={stats?.count ?? null} people={stats?.people ?? null} />
           </div>
 
-          <QariLabel>Imitations</QariLabel>
+          <QariLabel>{t('Imitations')}</QariLabel>
           <QariSegmented
-            label="Sort imitations"
+            label={t('Sort imitations')}
             value={sort}
             onChange={setSort}
             options={[
-              { id: 'top', label: 'Most loved' },
-              { id: 'recent', label: 'Latest' },
+              { id: 'top', label: t('Most loved') },
+              { id: 'recent', label: t('Latest') },
             ]}
           />
 
@@ -93,8 +95,8 @@ export default function SheikhPage() {
             ) : items.length === 0 ? (
               <EmptyState
                 Icon={Mic}
-                title={`No one has imitated ${sheikh.shortName} yet`}
-                body="Be the first. Switch on Imitate when you record and pick him."
+                title={t('No one has imitated {shortName} yet', { shortName: sheikh.shortName })}
+                body={t('Be the first. Switch on Imitate when you record and pick him.')}
               />
             ) : (
               <RecitationCards>

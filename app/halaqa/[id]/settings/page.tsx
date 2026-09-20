@@ -46,10 +46,12 @@ import {
   type HalaqaMemberView,
 } from '@/lib/halaqa'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
+import { tr, useT } from '@/lib/i18n'
 
 type Sheet = 'rename' | 'schedule' | 'finish' | 'leave' | 'delete' | null
 
 export default function HalaqaSettingsPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [detail, setDetail] = useState<HalaqaDetail | null>(null)
@@ -71,7 +73,7 @@ export default function HalaqaSettingsPage() {
       setDetail(next)
       setError('')
     } catch (err) {
-      if (mine === loads.current) setError(errorMessage(err, 'Could not load this halaqa.'))
+      if (mine === loads.current) setError(errorMessage(err, tr('Could not load this halaqa.')))
     }
   }, [id])
 
@@ -85,7 +87,7 @@ export default function HalaqaSettingsPage() {
       const result = await halaqaAction(id, action, extra)
       successFeedback()
       if (result.left) {
-        toastSuccess(`You left ${detail?.halaqa.name ?? 'the halaqa'}`)
+        toastSuccess(tr('You left {halaqa}', { halaqa: detail?.halaqa.name ?? 'the halaqa' }))
         router.replace('/halaqa')
         return
       }
@@ -96,7 +98,7 @@ export default function HalaqaSettingsPage() {
       await load()
     } catch (err) {
       errorFeedback()
-      toastError(errorMessage(err, 'Could not do that right now.'))
+      toastError(errorMessage(err, tr('Could not do that right now.')))
     } finally {
       setPendingAction(null)
     }
@@ -107,7 +109,7 @@ export default function HalaqaSettingsPage() {
   if (!detail) {
     return (
       <HalaqaScreen>
-        <HalaqaHeader title="Halaqa settings" backHref={`/halaqa/${id}`} />
+        <HalaqaHeader title={t('Halaqa settings')} backHref={`/halaqa/${id}`} />
         {error ? (
           <ErrorCard message={error} onRetry={load} />
         ) : (
@@ -124,8 +126,8 @@ export default function HalaqaSettingsPage() {
   const { halaqa, khatmah, me } = detail
   const creator = detail.members.find((m) => m.isCreator)
   const scheduleValue = halaqa.endDay
-    ? `${dayGap(halaqa.startDay, halaqa.endDay) + 1} days · ends ${shortDay(halaqa.endDay)}`
-    : 'Every day'
+    ? t('{dayGap} days · ends {endDay}', { dayGap: dayGap(halaqa.startDay, halaqa.endDay) + 1, endDay: shortDay(halaqa.endDay) })
+    : t('Every day')
   const khatmahActive = halaqa.khatmahEnabled && khatmah && !khatmah.completedAt
   const memberJuz = member && khatmah ? khatmah.juz.filter((row) => row.memberId === member.id && !row.done) : []
   const busy = pendingAction !== null
@@ -136,7 +138,7 @@ export default function HalaqaSettingsPage() {
       flashCopied()
     } else {
       errorFeedback()
-      toastError('Could not copy the link.')
+      toastError(tr('Could not copy the link.'))
     }
   }
 
@@ -147,12 +149,12 @@ export default function HalaqaSettingsPage() {
     setDetail({ ...detail, halaqa: { ...halaqa, khatmahEnabled: enabled } })
     try {
       await halaqaAction(id, 'khatmah', { enabled })
-      toastSuccess(enabled ? 'Khatmah is on' : 'Khatmah is off')
+      toastSuccess(enabled ? tr('Khatmah is on') : tr('Khatmah is off'))
       await load()
     } catch (err) {
       setDetail(before)
       errorFeedback()
-      toastError(errorMessage(err, 'Could not change that right now.'))
+      toastError(errorMessage(err, tr('Could not change that right now.')))
     }
   }
 
@@ -165,7 +167,7 @@ export default function HalaqaSettingsPage() {
       router.replace('/halaqa')
     } catch (err) {
       errorFeedback()
-      toastError(errorMessage(err, 'Could not delete the halaqa.'))
+      toastError(errorMessage(err, tr('Could not delete the halaqa.')))
       setPendingAction(null)
     }
   }
@@ -177,7 +179,7 @@ export default function HalaqaSettingsPage() {
 
   return (
     <HalaqaScreen>
-      <HalaqaHeader title="Halaqa settings" backHref={`/halaqa/${id}`} />
+      <HalaqaHeader title={t('Halaqa settings')} backHref={`/halaqa/${id}`} />
 
       <Rise>
         <button
@@ -194,7 +196,7 @@ export default function HalaqaSettingsPage() {
               {halaqa.name}
             </span>
             <span className="mt-px block truncate text-[0.8125rem] text-[var(--home-muted)]">
-              {me.isCreator ? 'Created by you' : `Created by ${creator?.name ?? 'someone'}`} · {detail.members.length}{' '}
+              {me.isCreator ? t('Created by you') : t('Created by {someone}', { someone: creator?.name ?? 'someone' })} · {detail.members.length}{' '}
               {detail.members.length === 1 ? 'member' : 'members'}
             </span>
           </span>
@@ -203,13 +205,13 @@ export default function HalaqaSettingsPage() {
       </Rise>
 
       <Rise order={1}>
-        <SectionLabel>Halaqa</SectionLabel>
+        <SectionLabel>{t('Halaqa')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
           <button type="button" className="set-row" onClick={() => me.isCreator && open('schedule')} disabled={!me.isCreator}>
             <span className="set-row__icon" aria-hidden>
               {halaqa.endDay ? <Hourglass className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <InfinityIcon className="h-[17px] w-[17px]" strokeWidth={1.9} />}
             </span>
-            <span className="set-row__label">How long</span>
+            <span className="set-row__label">{t('How long')}</span>
             <span className="set-row__value">{scheduleValue}</span>
             {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
           </button>
@@ -219,16 +221,16 @@ export default function HalaqaSettingsPage() {
               <span className="set-row__icon" aria-hidden>
                 <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="set-row__label">Khatmah together</span>
-              <Switch checked={halaqa.khatmahEnabled} onChange={(enabled) => void setKhatmah(enabled)} label="Khatmah together" />
+              <span className="set-row__label">{t('Khatmah together')}</span>
+              <Switch checked={halaqa.khatmahEnabled} onChange={(enabled) => void setKhatmah(enabled)} label={t('Khatmah together')} />
             </label>
           ) : (
             <div className="set-row">
               <span className="set-row__icon" aria-hidden>
                 <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="set-row__label">Khatmah together</span>
-              <span className="set-row__value">{halaqa.khatmahEnabled ? 'On' : 'Off'}</span>
+              <span className="set-row__label">{t('Khatmah together')}</span>
+              <span className="set-row__value">{halaqa.khatmahEnabled ? t('On') : t('Off')}</span>
             </div>
           )}
           {khatmahActive ? (
@@ -238,8 +240,8 @@ export default function HalaqaSettingsPage() {
                 <span className="set-row__icon" aria-hidden>
                   <CalendarDays className="h-[17px] w-[17px]" strokeWidth={1.9} />
                 </span>
-                <span className="set-row__label">Finish by</span>
-                <span className="set-row__value">{khatmah?.finishBy ? shortDay(khatmah.finishBy) : 'No date'}</span>
+                <span className="set-row__label">{t('Finish by')}</span>
+                <span className="set-row__value">{khatmah?.finishBy ? shortDay(khatmah.finishBy) : t('No date')}</span>
                 {me.isCreator ? <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} /> : null}
               </button>
             </div>
@@ -248,18 +250,18 @@ export default function HalaqaSettingsPage() {
       </Rise>
 
       <Rise order={2}>
-        <SectionLabel>Invite</SectionLabel>
+        <SectionLabel>{t('Invite')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
           <button
             type="button"
             className="set-row"
             onClick={() => void copyLink()}
-            aria-label={copied ? 'Invite link copied' : 'Copy invite link'}
+            aria-label={copied ? t('Invite link copied') : t('Copy invite link')}
           >
             <span className="set-row__icon" aria-hidden>
               <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
             </span>
-            <span className="set-row__label">Invite link</span>
+            <span className="set-row__label">{t('Invite link')}</span>
             <CopyLabel copied={copied} />
           </button>
           {me.isCreator ? (
@@ -270,7 +272,7 @@ export default function HalaqaSettingsPage() {
                 className="set-row"
                 style={{ paddingBlock: 9 }}
                 disabled={busy}
-                onClick={() => void act('new-code', {}, 'New link made. The old one no longer works.')}
+                onClick={() => void act('new-code', {}, tr('New link made. The old one no longer works.'))}
               >
                 <span className="set-row__icon" aria-hidden>
                   {pendingAction === 'new-code' ? (
@@ -280,8 +282,8 @@ export default function HalaqaSettingsPage() {
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.9375rem] font-medium">Make a new link</span>
-                  <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">The old link stops working</span>
+                  <span className="block text-[0.9375rem] font-medium">{t('Make a new link')}</span>
+                  <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('The old link stops working')}</span>
                 </span>
               </button>
             </>
@@ -290,7 +292,7 @@ export default function HalaqaSettingsPage() {
       </Rise>
 
       <Rise order={3}>
-        <SectionLabel>Reading days · last {detail.windowDays} days</SectionLabel>
+        <SectionLabel>{t('Reading days · last')} {detail.windowDays} {t('days')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
           {people.map((person, i) => (
             <div key={person.id}>
@@ -318,7 +320,7 @@ export default function HalaqaSettingsPage() {
           <span className="set-row__icon set-row__icon--neutral" aria-hidden>
             <LogOut className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
-          <span className="set-row__label">Leave halaqa</span>
+          <span className="set-row__label">{t('Leave halaqa')}</span>
         </button>
         {me.isCreator ? (
           <>
@@ -327,7 +329,7 @@ export default function HalaqaSettingsPage() {
               <span className="set-row__icon set-row__icon--danger" aria-hidden>
                 <Trash className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="set-row__label">Delete halaqa</span>
+              <span className="set-row__label">{t('Delete halaqa')}</span>
             </button>
           </>
         ) : null}
@@ -338,7 +340,7 @@ export default function HalaqaSettingsPage() {
         name={halaqa.name}
         busy={pendingAction === 'rename'}
         onClose={() => setSheet(null)}
-        onSave={(name) => void act('rename', { name }, 'Name saved')}
+        onSave={(name) => void act('rename', { name }, tr('Name saved'))}
       />
       <ScheduleSheet
         open={sheet === 'schedule'}
@@ -346,48 +348,46 @@ export default function HalaqaSettingsPage() {
         startDay={halaqa.startDay}
         busy={pendingAction === 'schedule'}
         onClose={() => setSheet(null)}
-        onSave={(extra) => void act('schedule', extra, 'Saved')}
+        onSave={(extra) => void act('schedule', extra, tr('Saved'))}
       />
       <FinishSheet
         open={sheet === 'finish'}
         day={khatmah?.finishBy ?? null}
         pending={pendingAction}
         onClose={() => setSheet(null)}
-        onSave={(day) => void act('finish-by', { day }, day ? `Finish by ${shortDay(day)}` : 'No finish date', day ? 'finish-save' : 'finish-clear')}
+        onSave={(day) => void act('finish-by', { day }, day ? tr('Finish by {day}', { day: shortDay(day) }) : tr('No finish date'), day ? 'finish-save' : 'finish-clear')}
       />
 
       <SettingsSheet
         open={sheet === 'leave'}
-        title="Leave this halaqa?"
+        title={t('Leave this halaqa?')}
         description={
           me.isCreator && detail.members.length > 1
-            ? `You made this halaqa, so ${detail.members.find((p) => !p.isMe)?.name ?? 'the next member'} will look after it. You can join again with the invite link.`
+            ? t('You made this halaqa, so {member} will look after it. You can join again with the invite link.', { member: detail.members.find((p) => !p.isMe)?.name ?? 'the next member' })
             : me.isCreator
-              ? 'You are the only one in it, so it will be deleted.'
-              : 'Any juz you have not finished goes back for someone else. You can join again with the invite link.'
+              ? t('You are the only one in it, so it will be deleted.')
+              : t('Any juz you have not finished goes back for someone else. You can join again with the invite link.')
         }
         onClose={() => setSheet(null)}
       >
         <ActionButton kind="danger" busy={pendingAction === 'leave'} disabled={busy} onClick={() => void act('leave')}>
-          Leave
-        </ActionButton>
+          {t('Leave')}</ActionButton>
       </SettingsSheet>
 
       <SettingsSheet
         open={sheet === 'delete'}
-        title="Delete this halaqa?"
-        description="It will be removed for everyone in it, with its khatmah. This cannot be undone."
+        title={t('Delete this halaqa?')}
+        description={t('It will be removed for everyone in it, with its khatmah. This cannot be undone.')}
         onClose={() => setSheet(null)}
       >
         <ActionButton kind="danger" busy={pendingAction === 'delete'} disabled={busy} onClick={() => void removeHalaqa()}>
-          Delete halaqa
-        </ActionButton>
+          {t('Delete halaqa')}</ActionButton>
       </SettingsSheet>
 
       <SettingsSheet
         open={Boolean(member)}
         title={member?.name ?? ''}
-        description={member ? `Joined ${shortDay(localDay(new Date(member.joinedAt)))}` : undefined}
+        description={member ? t('Joined {joinedAt}', { joinedAt: shortDay(localDay(new Date(member.joinedAt))) }) : undefined}
         onClose={() => {
           setMember(null)
           setConfirmRemove(false)
@@ -399,7 +399,7 @@ export default function HalaqaSettingsPage() {
               <MemberAvatar name={member.name} size={40} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[0.78125rem] font-semibold text-[var(--home-muted)]">Reading days · last {detail.windowDays} days</span>
+                  <span className="text-[0.78125rem] font-semibold text-[var(--home-muted)]">{t('Reading days · last')} {detail.windowDays} {t('days')}</span>
                   <span className="text-[0.84375rem] font-semibold tabular-nums text-[var(--home-heading)]">
                     {member.recent.count}
                     <span className="font-medium text-[var(--home-muted)]">/{member.recent.possible}</span>
@@ -419,7 +419,7 @@ export default function HalaqaSettingsPage() {
                     className="set-row"
                     style={{ paddingBlock: 9 }}
                     disabled={busy}
-                    onClick={() => void act('free', { juz: row.juz }, `Juz ${row.juz} is free again`, `free-${row.juz}`)}
+                    onClick={() => void act('free', { juz: row.juz }, tr('Juz {juz} is free again', { juz: row.juz }), `free-${row.juz}`)}
                   >
                     <span className="set-row__icon" aria-hidden>
                       {pendingAction === `free-${row.juz}` ? (
@@ -429,8 +429,8 @@ export default function HalaqaSettingsPage() {
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[0.9375rem] font-medium">Free Juz {row.juz}</span>
-                      <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">Someone else can take it</span>
+                      <span className="block text-[0.9375rem] font-medium">{t('Free Juz')} {row.juz}</span>
+                      <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Someone else can take it')}</span>
                     </span>
                   </button>
                   <div className="set-row__divider" aria-hidden />
@@ -439,16 +439,14 @@ export default function HalaqaSettingsPage() {
               {confirmRemove ? (
                 <div className="qari-enter px-3.5 py-3">
                   <p className="text-sm text-[var(--home-heading)]">
-                    Remove {member.name}? Any juz they have not finished goes back.
-                  </p>
+                    {t('Remove {name}? Any juz they have not finished goes back.', { name: member.name })}</p>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setConfirmRemove(false)}
                       className="ed-focus fx-press h-11 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)]"
                     >
-                      Keep
-                    </button>
+                      {t('Keep')}</button>
                     <ActionButton
                       kind="danger"
                       busy={pendingAction === 'remove'}
@@ -456,8 +454,7 @@ export default function HalaqaSettingsPage() {
                       className="h-11 text-sm"
                       onClick={() => void act('remove', { memberId: member.id }, `${member.name} was removed`)}
                     >
-                      Remove
-                    </ActionButton>
+                      {t('Remove')}</ActionButton>
                   </div>
                 </div>
               ) : (
@@ -472,7 +469,7 @@ export default function HalaqaSettingsPage() {
                   <span className="set-row__icon set-row__icon--danger" aria-hidden>
                     <UserMinus className="h-[17px] w-[17px]" strokeWidth={1.9} />
                   </span>
-                  <span className="set-row__label">Remove from halaqa</span>
+                  <span className="set-row__label">{t('Remove from halaqa')}</span>
                 </button>
               )}
             </div>
@@ -496,6 +493,7 @@ function RenameSheet({
   onClose: () => void
   onSave: (name: string) => void
 }) {
+  const t = useT()
   const [value, setValue] = useState(name)
   const [shake, setShake] = useState(0)
   useEffect(() => {
@@ -510,7 +508,7 @@ function RenameSheet({
     onSave(value)
   }
   return (
-    <SettingsSheet open={open} title="Halaqa name" onClose={onClose}>
+    <SettingsSheet open={open} title={t('Halaqa name')} onClose={onClose}>
       <input
         key={shake}
         value={value}
@@ -519,7 +517,7 @@ function RenameSheet({
           if (e.key === 'Enter') save()
         }}
         maxLength={50}
-        aria-label="Halaqa name"
+        aria-label={t('Halaqa name')}
         className={cn(
           'block h-[52px] w-full rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 text-[0.9375rem] font-medium text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]',
           shake && 'fx-shake'
@@ -527,8 +525,7 @@ function RenameSheet({
         autoFocus={shake > 0}
       />
       <ActionButton busy={busy} onClick={save} className="mt-3">
-        Save
-      </ActionButton>
+        {t('Save')}</ActionButton>
     </SettingsSheet>
   )
 }
@@ -548,6 +545,7 @@ function ScheduleSheet({
   onClose: () => void
   onSave: (extra: Record<string, unknown>) => void
 }) {
+  const t = useT()
   const today = localDay()
   const currentLength = endDay ? dayGap(startDay, endDay) + 1 : 30
   const [setTime, setSetTime] = useState(Boolean(endDay))
@@ -572,14 +570,14 @@ function ScheduleSheet({
   return (
     <SettingsSheet
       open={open}
-      title="How long"
-      description={setTime ? 'A set time starts again from today.' : undefined}
+      title={t('How long')}
+      description={setTime ? t('A set time starts again from today.') : undefined}
       onClose={onClose}
     >
-      <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label="How long">
+      <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('How long')}>
         {[
-          { on: !setTime, Icon: InfinityIcon, title: 'Every day', hint: 'Keeps going, no end date', pick: () => setSetTime(false) },
-          { on: setTime, Icon: Hourglass, title: 'For a set time', hint: 'Ramadan, 30 days, 40 days', pick: () => setSetTime(true) },
+          { on: !setTime, Icon: InfinityIcon, title: t('Every day'), hint: t('Keeps going, no end date'), pick: () => setSetTime(false) },
+          { on: setTime, Icon: Hourglass, title: t('For a set time'), hint: t('Ramadan, 30 days, 40 days'), pick: () => setSetTime(true) },
         ].map(({ on, Icon, title, hint, pick }, i) => (
           <div key={title}>
             {i ? <div className="set-row__divider" aria-hidden /> : null}
@@ -620,7 +618,7 @@ function ScheduleSheet({
                 aria-pressed={length === option}
                 className="ed-seg__item ed-focus h-9 whitespace-nowrap text-[0.78125rem] font-semibold"
               >
-                {option === 'date' ? 'Pick date' : `${option} days`}
+                {option === 'date' ? t('Pick date') : t('{option} days', { option })}
               </button>
             ))}
           </div>
@@ -631,18 +629,17 @@ function ScheduleSheet({
               min={addLocalDays(today, 1)}
               max={addLocalDays(today, 366)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
-              aria-label="Last day"
+              aria-label={t('Last day')}
               className="qari-enter mt-2.5 h-11 w-full rounded-xl border border-[var(--home-rule)] bg-transparent px-3 text-sm text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
             />
           ) : null}
           <p className="mt-2.5 text-[0.78125rem] text-[var(--home-muted)]">
-            Ends {shortDay(length === 'date' ? date : addLocalDays(today, length - 1))}
+            {t('Ends')} {shortDay(length === 'date' ? date : addLocalDays(today, length - 1))}
           </p>
         </div>
       ) : null}
       <ActionButton busy={busy} onClick={save} className="mt-4">
-        Save
-      </ActionButton>
+        {t('Save')}</ActionButton>
     </SettingsSheet>
   )
 }
@@ -660,6 +657,7 @@ function FinishSheet({
   onClose: () => void
   onSave: (day: string | null) => void
 }) {
+  const t = useT()
   const today = localDay()
   const [value, setValue] = useState(day ?? '')
   useEffect(() => {
@@ -667,23 +665,21 @@ function FinishSheet({
   }, [open, day])
   const busy = pending !== null
   return (
-    <SettingsSheet open={open} title="Finish the khatmah by" onClose={onClose}>
+    <SettingsSheet open={open} title={t('Finish the khatmah by')} onClose={onClose}>
       <input
         type="date"
         value={value}
         min={today}
         max={addLocalDays(today, 366)}
         onChange={(e) => setValue(e.target.value)}
-        aria-label="Finish by"
+        aria-label={t('Finish by')}
         className="h-[52px] w-full rounded-2xl border border-[var(--home-rule-strong)] bg-transparent px-4 text-[0.9375rem] text-[var(--home-heading)] outline-none focus:border-[var(--home-sage)]"
       />
       <div className="mt-3 grid grid-cols-2 gap-2">
         <ActionButton kind="outline" busy={pending === 'finish-clear'} disabled={busy} onClick={() => onSave(null)} className="text-sm">
-          No date
-        </ActionButton>
+          {t('No date')}</ActionButton>
         <ActionButton busy={pending === 'finish-save'} disabled={busy || !value} onClick={() => onSave(value)}>
-          Save
-        </ActionButton>
+          {t('Save')}</ActionButton>
       </div>
     </SettingsSheet>
   )

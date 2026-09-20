@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { filterChapters } from '@/lib/search-chapters'
 import type { Chapter } from '@/types'
+import { useT } from '@/lib/i18n'
 
 interface SurahSearchModalProps {
   open: boolean
@@ -21,6 +22,7 @@ export default function SurahSearchModal({
   onClose,
   onSelectSurah,
 }: SurahSearchModalProps) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -51,14 +53,14 @@ export default function SurahSearchModal({
       <button
         type="button"
         className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
-        aria-label="Close search"
+        aria-label={t('Close search')}
         onClick={onClose}
       />
       <div
         className="fixed inset-x-0 top-0 z-50 mx-auto flex max-h-[100dvh] w-full max-w-lg flex-col bg-[#0d0d0d] shadow-2xl lg:inset-x-auto lg:left-1/2 lg:top-[8vh] lg:max-h-[84vh] lg:w-[min(100%,480px)] lg:-translate-x-1/2 lg:rounded-2xl lg:border lg:border-white/10"
         role="dialog"
         aria-modal="true"
-        aria-label="Search surah"
+        aria-label={t('Search surah')}
       >
         <div className="flex items-center gap-2 border-b border-white/10 px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:rounded-t-2xl lg:pt-3">
           <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#1a1a1a] px-3 py-2.5">
@@ -68,7 +70,7 @@ export default function SurahSearchModal({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search surah by name or number…"
+              placeholder={t('Search surah by name or number…')}
               className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-stone-500 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
               autoComplete="off"
               enterKeyHint="search"
@@ -78,7 +80,7 @@ export default function SurahSearchModal({
                 type="button"
                 onClick={() => setQuery('')}
                 className="rounded-full p-1 text-stone-500 hover:bg-white/10 hover:text-stone-300"
-                aria-label="Clear search"
+                aria-label={t('Clear search')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -89,17 +91,15 @@ export default function SurahSearchModal({
             onClick={onClose}
             className="shrink-0 rounded-lg px-2 py-2 text-sm font-medium text-teal-400 hover:bg-white/5"
           >
-            Cancel
-          </button>
+            {t('Cancel')}</button>
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
           {chapters.length === 0 ? (
-            <p className="px-4 py-12 text-center text-sm text-stone-500">Loading surahs…</p>
+            <p className="px-4 py-12 text-center text-sm text-stone-500">{t('Loading surahs…')}</p>
           ) : results.length === 0 ? (
             <p className="px-4 py-12 text-center text-sm text-stone-500">
-              No surah found for &ldquo;{query}&rdquo;
-            </p>
+              {t('No surah found for “{query}”', { query })}</p>
           ) : (
             <ul>
               {results.map((chapter) => {
@@ -134,8 +134,7 @@ export default function SurahSearchModal({
                         </span>
                       </span>
                       <span className="shrink-0 text-xs text-stone-500">
-                        {chapter.versesCount} ayahs
-                      </span>
+                        {chapter.versesCount} {t('ayahs')}</span>
                     </button>
                   </li>
                 )

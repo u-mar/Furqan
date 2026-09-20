@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Check, ChevronLeft, CloudOff, Loader2, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 /** The page around every halaqa screen: the same width and spacing as Settings. */
 export function HalaqaScreen({ children }: { children: ReactNode }) {
@@ -27,9 +28,10 @@ export function HalaqaHeader({
   backHref?: string
   right?: ReactNode
 }) {
+  const t = useT()
   return (
     <header className="flex items-center gap-3">
-      <Link href={backHref} className="home-round ed-focus" aria-label="Back">
+      <Link href={backHref} className="home-round ed-focus" aria-label={t('Back')}>
         <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
       </Link>
       <div className="min-w-0 flex-1">
@@ -66,6 +68,7 @@ export function Rise({ order = 0, className, children }: { order?: number; class
 }
 
 export function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void | Promise<unknown> }) {
+  const t = useT()
   const [retrying, setRetrying] = useState(false)
   const retry = async () => {
     if (!onRetry || retrying) return
@@ -90,7 +93,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry?: () 
           className="ed-focus fx-press mt-3 flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-[var(--home-sage-deep)] hover:bg-[var(--home-track)]"
         >
           {retrying ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
-          {retrying ? 'Trying again' : 'Try again'}
+          {retrying ? t('Trying again') : t('Try again')}
         </button>
       ) : null}
     </div>
@@ -153,17 +156,16 @@ export function useFlash(ms = 1800): [boolean, () => void] {
 
 /** "Copy" that turns into a drawn tick and "Copied" for a moment. */
 export function CopyLabel({ copied }: { copied: boolean }) {
+  const t = useT()
   const used = useRef(false)
   if (copied) used.current = true
   return copied ? (
     <span key="copied" className="qari-swap flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--home-sage-deep)]">
       <Check className="fx-draw h-4 w-4" strokeWidth={2.8} />
-      Copied
-    </span>
+      {t('Copied')}</span>
   ) : (
     <span key="copy" className={cn('shrink-0 text-sm font-semibold text-[var(--home-sage-deep)]', used.current && 'qari-swap')}>
-      Copy
-    </span>
+      {t('Copy')}</span>
   )
 }
 

@@ -4,6 +4,7 @@ import { Loader2, Pause, Play, RotateCcw, RotateCw } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { seekBy, togglePlay, type ListenStatus } from '@/lib/listen-player'
+import { useT } from '@/lib/i18n'
 
 /** The ink play/pause button; its icon trades places instead of snapping. */
 export function PlayPauseButton({
@@ -15,6 +16,7 @@ export function PlayPauseButton({
   size: number
   className?: string
 }) {
+  const t = useT()
   const loading = status === 'loading'
   const playing = status === 'playing' || loading
   const icon = Math.round(size * 0.36)
@@ -25,7 +27,7 @@ export function PlayPauseButton({
         tapFeedback()
         togglePlay()
       }}
-      aria-label={playing ? 'Pause' : 'Play'}
+      aria-label={playing ? t('Pause') : t('Play')}
       className={cn('ed-ink ed-focus fx-press flex shrink-0 items-center justify-center rounded-full', className)}
       style={{ width: size, height: size }}
     >
@@ -48,6 +50,7 @@ export function PlayPauseButton({
 
 /** Back or forward a few seconds: the circular arrow with the number inside it. */
 export function SkipButton({ seconds, size, raised = false }: { seconds: number; size: number; raised?: boolean }) {
+  const t = useT()
   const back = seconds < 0
   const Icon = back ? RotateCcw : RotateCw
   const icon = Math.round(size * (raised ? 0.5 : 0.58))
@@ -58,7 +61,7 @@ export function SkipButton({ seconds, size, raised = false }: { seconds: number;
         tapFeedback()
         seekBy(seconds)
       }}
-      aria-label={back ? `Back ${-seconds} seconds` : `Forward ${seconds} seconds`}
+      aria-label={back ? t('Back {seconds} seconds', { seconds: -seconds }) : t('Forward {seconds} seconds', { seconds })}
       className={cn(
         'ed-focus fx-press relative flex shrink-0 items-center justify-center rounded-full text-[var(--home-heading)]',
         raised && 'bg-[var(--home-card-bg)] shadow-[var(--home-lift-sm)]'

@@ -20,6 +20,7 @@ import {
 } from '@/lib/listen-player'
 import { getQiraat, getReciterById, narrationChoices, type Reciter } from '@/lib/reciters'
 import type { Chapter } from '@/types'
+import { useT } from '@/lib/i18n'
 
 const CLOSE_MS = 260
 
@@ -38,6 +39,7 @@ export default function NowPlayingSheet({
   onOpenSleep: () => void
   onOpenNarration: () => void
 }) {
+  const t = useT()
   const { surah, reciterId, status, error } = useListenState()
   const [drag, setDrag] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -108,7 +110,7 @@ export default function NowPlayingSheet({
   const settle = dragging ? 'none' : `transform ${CLOSE_MS}ms cubic-bezier(0.2, 0.8, 0.25, 1)`
 
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Now playing">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t('Now playing')}>
       <div
         className="listen-np-scrim absolute inset-0 bg-black/50"
         style={{
@@ -136,10 +138,10 @@ export default function NowPlayingSheet({
           >
             <div className="mx-auto mb-3 mt-1.5 h-1 w-10 rounded-full bg-[var(--home-rule-strong)]" aria-hidden />
             <div className="flex items-center justify-between">
-              <button type="button" onClick={dismiss} className="home-round ed-focus" aria-label="Close Now playing">
+              <button type="button" onClick={dismiss} className="home-round ed-focus" aria-label={t('Close Now playing')}>
                 <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
               </button>
-              <span className="home-label">Now playing</span>
+              <span className="home-label">{t('Now playing')}</span>
               <HeartButton reciter={reciter} size={42} iconSize={19} className="home-round" />
             </div>
 
@@ -198,7 +200,7 @@ export default function NowPlayingSheet({
               <span className="set-row__icon set-row__icon--neutral" aria-hidden>
                 <Square className="h-[14px] w-[14px] fill-current" strokeWidth={0} />
               </span>
-              <span className="set-row__label">Stop listening</span>
+              <span className="set-row__label">{t('Stop listening')}</span>
             </button>
           </div>
         </div>
@@ -209,6 +211,7 @@ export default function NowPlayingSheet({
 }
 
 function SeekBar() {
+  const t = useT()
   const { position, duration } = useListenProgress()
   const [scrub, setScrub] = useState<number | null>(null)
   const value = Math.min(scrub ?? position, duration || 0)
@@ -233,7 +236,7 @@ function SeekBar() {
         onPointerUp={commit}
         onKeyUp={commit}
         onBlur={commit}
-        aria-label="Position in the surah"
+        aria-label={t('Position in the surah')}
         aria-valuetext={`${formatClock(value)} of ${formatClock(duration)}`}
         className="listen-seek"
         style={{ ['--fill' as string]: `${played}%` }}
@@ -247,6 +250,7 @@ function SeekBar() {
 }
 
 function SleepRow({ onOpen }: { onOpen: () => void }) {
+  const t = useT()
   const { sleep } = useListenState()
   return (
     <div className="set-row" style={{ paddingBlock: 9 }}>
@@ -262,22 +266,23 @@ function SleepRow({ onOpen }: { onOpen: () => void }) {
           <Moon className="h-[17px] w-[17px]" strokeWidth={1.9} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.9375rem] font-medium">Sleep mode</span>
+          <span className="block text-[0.9375rem] font-medium">{t('Sleep mode')}</span>
           <span className="mt-px block text-[0.78125rem] tabular-nums text-[var(--home-muted)]">
-            {sleep ? <SleepLeft prefix="Stops in " fallback="Stops at the end of this surah" /> : 'Off'}
+            {sleep ? <SleepLeft prefix={t('Stops in ')} fallback={t('Stops at the end of this surah')} /> : t('Off')}
           </span>
         </span>
       </button>
       <Switch
         checked={Boolean(sleep)}
         onChange={(on) => (on ? turnOnSleep(lastSleepChoice()) : turnOffSleep())}
-        label="Sleep mode"
+        label={t('Sleep mode')}
       />
     </div>
   )
 }
 
 function NarrationRow({ reciter, onOpen }: { reciter: Reciter; onOpen: () => void }) {
+  const t = useT()
   const short = getQiraat(reciter.qiraat).short
   const icon = (
     <span className="set-row__icon" aria-hidden>
@@ -288,7 +293,7 @@ function NarrationRow({ reciter, onOpen }: { reciter: Reciter; onOpen: () => voi
     return (
       <div className="set-row">
         {icon}
-        <span className="set-row__label">Narration</span>
+        <span className="set-row__label">{t('Narration')}</span>
         <span className="set-row__value">{short}</span>
       </div>
     )
@@ -303,7 +308,7 @@ function NarrationRow({ reciter, onOpen }: { reciter: Reciter; onOpen: () => voi
       }}
     >
       {icon}
-      <span className="set-row__label">Narration</span>
+      <span className="set-row__label">{t('Narration')}</span>
       <span className="set-row__value">{short}</span>
       <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
     </button>
@@ -311,6 +316,7 @@ function NarrationRow({ reciter, onOpen }: { reciter: Reciter; onOpen: () => voi
 }
 
 function SaveRow({ reciterId, surah }: { reciterId: string; surah: Chapter }) {
+  const t = useT()
   const download = useSurahDownload(reciterId, surah.id)
   const icon = (
     <span className="set-row__icon" aria-hidden>
@@ -322,8 +328,8 @@ function SaveRow({ reciterId, surah }: { reciterId: string; surah: Chapter }) {
     return (
       <div className="set-row">
         {icon}
-        <span className="set-row__label">Saved for offline</span>
-        <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} aria-label="Saved" />
+        <span className="set-row__label">{t('Saved for offline')}</span>
+        <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} aria-label={t('Saved')} />
       </div>
     )
   }
@@ -332,7 +338,7 @@ function SaveRow({ reciterId, surah }: { reciterId: string; surah: Chapter }) {
     return (
       <div className="set-row">
         {icon}
-        <span className="set-row__label">{download.state === 'queued' ? 'Waiting to save' : 'Saving for offline'}</span>
+        <span className="set-row__label">{download.state === 'queued' ? t('Waiting to save') : t('Saving for offline')}</span>
         <DownloadRing percent={download.percent} waiting={download.state === 'queued' || download.percent === 0} />
       </div>
     )
@@ -341,7 +347,7 @@ function SaveRow({ reciterId, surah }: { reciterId: string; surah: Chapter }) {
   return (
     <div className="set-row" style={{ paddingRight: 6 }}>
       {icon}
-      <span className="set-row__label">Save for offline</span>
+      <span className="set-row__label">{t('Save for offline')}</span>
       <DownloadButton reciterId={reciterId} chapter={surah} />
     </div>
   )

@@ -1,5 +1,6 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
 import { translationLanguageLabel, type TranslationLanguageId } from '@/lib/translations'
+import { tr } from '@/lib/i18n-core'
 
 export interface TranslationRow {
   verse_key: string
@@ -75,7 +76,7 @@ export async function downloadOfflineTranslations(
   onProgress?: (p: TranslationDownloadProgress) => void
 ): Promise<void> {
   if (typeof caches === 'undefined') {
-    throw new Error('Translation caching is not supported in this browser.')
+    throw new Error(tr('Translation caching is not supported in this browser.'))
   }
 
   const label = translationLanguageLabel(lang)
@@ -93,7 +94,7 @@ export async function downloadOfflineTranslations(
     })
   }
 
-  report(`${label} · starting…`)
+  report(tr('{label} · starting…', { label }))
 
   for (let page = 1; page <= TOTAL_MUSHAF_PAGES; page += 1) {
     const key = cacheKey(lang, page)
@@ -116,13 +117,13 @@ export async function downloadOfflineTranslations(
     }
 
     done += 1
-    report(`${label} · page ${page}/${TOTAL_MUSHAF_PAGES}`)
+    report(tr('{label} · page {page}/{total}', { label, page, total: TOTAL_MUSHAF_PAGES }))
   }
 
   if (saved < total * 0.85) {
     clearTranslationsCachedFlag(lang)
     throw new Error(
-      `Only ${saved} of ${total} pages saved for ${label}. Stay on Wi‑Fi and try again.`
+      tr('Only {saved} of {total} pages saved for {label}. Stay on Wi‑Fi and try again.', { saved, total, label })
     )
   }
 

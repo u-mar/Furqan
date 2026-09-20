@@ -7,6 +7,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { queueDownload, type DownloadState } from '@/lib/listen-downloads'
 import { useSurahDownload } from '@/hooks/useListen'
 import type { Chapter } from '@/types'
+import { useT } from '@/lib/i18n'
 
 const R = 11
 const CIRCUMFERENCE = 2 * Math.PI * R
@@ -47,6 +48,7 @@ export default function DownloadButton({
   chapter: Chapter
   disabled?: boolean
 }) {
+  const t = useT()
   const download = useSurahDownload(reciterId, chapter.id)
   const previous = useRef<DownloadState>(download.state)
   const justSaved = download.state === 'done' && previous.current !== 'done' && previous.current !== 'none'
@@ -57,7 +59,7 @@ export default function DownloadButton({
 
   if (download.state === 'done') {
     return (
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center" role="img" aria-label="Downloaded">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center" role="img" aria-label={t('Downloaded')}>
         <span
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]',
@@ -75,7 +77,7 @@ export default function DownloadButton({
       <span
         className="flex h-11 w-11 shrink-0 items-center justify-center"
         role="progressbar"
-        aria-label={`Downloading ${chapter.englishName}`}
+        aria-label={t('Downloading {englishName}', { englishName: chapter.englishName })}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={download.percent}
@@ -93,7 +95,7 @@ export default function DownloadButton({
         tapFeedback()
         queueDownload(reciterId, chapter)
       }}
-      aria-label={`Download ${chapter.englishName}`}
+      aria-label={t('Download {englishName}', { englishName: chapter.englishName })}
       className="ed-focus fx-press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)] disabled:opacity-40"
     >
       <Download className="h-[18px] w-[18px]" strokeWidth={1.9} />

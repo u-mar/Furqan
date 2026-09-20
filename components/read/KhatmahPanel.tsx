@@ -24,6 +24,7 @@ import {
   type KhatmahDuration,
   type KhatmahPlan,
 } from '@/lib/khatmah'
+import { tr, useT } from '@/lib/i18n'
 
 interface KhatmahPanelProps {
   onGoToPage: (page: number) => void
@@ -56,7 +57,7 @@ const KhatmahContext = createContext<KhatmahContextValue | null>(null)
 
 function useKhatmah(): KhatmahContextValue {
   const ctx = useContext(KhatmahContext)
-  if (!ctx) throw new Error('useKhatmah must be used within KhatmahProvider')
+  if (!ctx) throw new Error(tr('useKhatmah must be used within KhatmahProvider'))
   return ctx
 }
 
@@ -133,7 +134,7 @@ function KhatmahProvider({
 
   const handleDelete = useCallback(() => {
     if (!activePlan) return
-    if (!confirm('Delete this khatmah plan?')) return
+    if (!confirm(tr('Delete this khatmah plan?'))) return
     deleteKhatmahPlan(activePlan.id)
     refreshPlans()
     setScreen('day')
@@ -180,19 +181,19 @@ function KhatmahProvider({
 }
 
 function KhatmahNewScreen() {
+  const t = useT()
   const { plans, handleCreate, creating, setShowNew, showNew } = useKhatmah()
 
   if (!showNew && plans.length > 0) return null
 
   return (
     <div className="flex h-full flex-col px-5 pb-8">
-      <h1 className="pt-4 text-3xl font-semibold text-white">Khatmah</h1>
+      <h1 className="pt-4 text-3xl font-semibold text-white">{t('Khatmah')}</h1>
       <p className="mt-3 text-sm leading-relaxed text-stone-500">
-        Create a plan to finish the Quran on schedule.
-      </p>
+        {t('Create a plan to finish the Quran on schedule.')}</p>
 
       <div className="mt-10 rounded-2xl bg-[#1c1c1e] p-5">
-        <p className="mb-4 text-sm text-stone-400">Choose duration</p>
+        <p className="mb-4 text-sm text-stone-400">{t('Choose duration')}</p>
         <div className="flex flex-col gap-3">
           {(['1week', '1month', '2months'] as KhatmahDuration[]).map((d) => (
             <button
@@ -202,7 +203,7 @@ function KhatmahNewScreen() {
               onClick={() => void handleCreate(d)}
               className="rounded-xl bg-teal-500/15 py-3.5 text-sm font-medium text-teal-400 disabled:opacity-50"
             >
-              {creating ? 'Creating plan…' : durationLabel(d)}
+              {creating ? t('Creating plan…') : t(durationLabel(d))}
             </button>
           ))}
         </div>
@@ -214,14 +215,14 @@ function KhatmahNewScreen() {
           onClick={() => setShowNew(false)}
           className="mt-6 text-sm text-stone-500"
         >
-          Cancel
-        </button>
+          {t('Cancel')}</button>
       )}
     </div>
   )
 }
 
 function KhatmahAllDaysScreen() {
+  const t = useT()
   const { activePlan, focusDay, screen, setScreen, setSelectedDay, selectedDay } = useKhatmah()
 
   if (screen !== 'allDays' || !activePlan) return null
@@ -234,9 +235,9 @@ function KhatmahAllDaysScreen() {
         className="flex shrink-0 items-center gap-2 px-5 pt-4 text-teal-400"
       >
         <ChevronLeft className="h-5 w-5" />
-        <span className="text-sm font-medium">Back</span>
+        <span className="text-sm font-medium">{t('Back')}</span>
       </button>
-      <h1 className="shrink-0 px-5 pt-4 text-2xl font-semibold text-white">All Days</h1>
+      <h1 className="shrink-0 px-5 pt-4 text-2xl font-semibold text-white">{t('All Days')}</h1>
       <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-8 pt-6">
         {activePlan.days.map((day) => (
           <li key={day.day}>
@@ -252,7 +253,7 @@ function KhatmahAllDaysScreen() {
               )}
             >
               <div>
-                <span className="font-medium text-white">Day {day.day}</span>
+                <span className="font-medium text-white">{t('Day')} {day.day}</span>
                 <span className="mt-1 block text-xs text-stone-500">
                   {day.juzLabel ? `${day.juzLabel} · ` : ''}p.{day.startPage}–{day.endPage}
                 </span>
@@ -278,6 +279,7 @@ function ayahPreview(text: string | undefined): string {
 }
 
 function KhatmahDayContent() {
+  const t = useT()
   const {
     activePlan,
     currentDay,
@@ -300,7 +302,7 @@ function KhatmahDayContent() {
   return (
   <div className="shrink-0 px-5 pb-4 pt-4">
         <div className="flex items-start justify-between">
-          <h1 className="text-3xl font-semibold text-white">Khatmah</h1>
+          <h1 className="text-3xl font-semibold text-white">{t('Khatmah')}</h1>
           {plans.length > 1 && (
             <select
               value={activePlan.id}
@@ -329,19 +331,19 @@ function KhatmahDayContent() {
               disabled={selectedDay <= 1}
               onClick={() => setSelectedDay(selectedDay - 1)}
               className="rounded-lg p-2 text-teal-400 disabled:opacity-30"
-              aria-label="Previous day"
+              aria-label={t('Previous day')}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <span className="min-w-[5rem] text-center text-base font-medium text-white">
-              Day {currentDay.day}
+              {t('Day')} {currentDay.day}
             </span>
             <button
               type="button"
               disabled={selectedDay >= activePlan.totalDays}
               onClick={() => setSelectedDay(selectedDay + 1)}
               className="rounded-lg p-2 text-teal-400 disabled:opacity-30"
-              aria-label="Next day"
+              aria-label={t('Next day')}
             >
               <ChevronLeft className="h-5 w-5 rotate-180" />
             </button>
@@ -355,7 +357,7 @@ function KhatmahDayContent() {
 
         <div className="mt-5 grid grid-cols-2 gap-2.5">
           <section className="rounded-xl bg-[#1c1c1e] px-3 py-2.5">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">From</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">{t('From')}</p>
             <p className="mt-0.5 text-xs text-stone-300">
               {bounds ? `${bounds.from.surahName} ${bounds.from.ayah}` : '…'}
               <span className="text-stone-500"> · p.{currentDay.startPage}</span>
@@ -369,7 +371,7 @@ function KhatmahDayContent() {
           </section>
 
           <section className="rounded-xl bg-[#1c1c1e] px-3 py-2.5">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">To</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">{t('To')}</p>
             <p className="mt-0.5 text-xs text-stone-300">
               {bounds ? `${bounds.to.surahName} ${bounds.to.ayah}` : '…'}
               <span className="text-stone-500"> · p.{currentDay.endPage}</span>
@@ -387,6 +389,7 @@ function KhatmahDayContent() {
 }
 
 export function KhatmahActionBar() {
+  const t = useT()
   const { activePlan, currentDay, handleComplete, onClose, onGoToPage, screen } = useKhatmah()
 
   if (screen !== 'day' || !activePlan || !currentDay) return null
@@ -407,7 +410,7 @@ export function KhatmahActionBar() {
         )}
       >
         <CheckCircle2 className="h-5 w-5" />
-        {currentDay.completed ? 'Completed' : 'Complete This Day'}
+        {currentDay.completed ? t('Completed') : t('Complete This Day')}
       </button>
 
       {!currentDay.completed && (
@@ -419,14 +422,14 @@ export function KhatmahActionBar() {
           }}
           className="mt-3 w-full py-2 text-center text-sm font-medium text-teal-400"
         >
-          Start reading
-        </button>
+          {t('Start reading')}</button>
       )}
     </div>
   )
 }
 
 function KhatmahFooterActions() {
+  const t = useT()
   const { activePlan, handleDelete, screen, setScreen, setShowNew } = useKhatmah()
 
   if (screen !== 'day' || !activePlan) return null
@@ -439,7 +442,7 @@ function KhatmahFooterActions() {
           onClick={() => setScreen('allDays')}
           className="flex w-full items-center justify-between rounded-2xl bg-[#1c1c1e] px-5 py-4 text-left"
         >
-          <span className="font-medium text-white">All Days</span>
+          <span className="font-medium text-white">{t('All Days')}</span>
           <span className="text-lg text-stone-500">{activePlan.totalDays}</span>
         </button>
 
@@ -448,8 +451,7 @@ function KhatmahFooterActions() {
           onClick={handleDelete}
           className="w-full rounded-2xl bg-[#1c1c1e] px-5 py-4 text-center font-medium text-rose-400"
         >
-          Delete Khatmah
-        </button>
+          {t('Delete Khatmah')}</button>
 
         <button
           type="button"
@@ -457,8 +459,7 @@ function KhatmahFooterActions() {
           className="flex w-full items-center justify-center gap-2 py-4 text-sm text-stone-500"
         >
           <Plus className="h-4 w-4" />
-          New plan
-        </button>
+          {t('New plan')}</button>
       </div>
     </div>
   )

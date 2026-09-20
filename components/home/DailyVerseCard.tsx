@@ -24,6 +24,7 @@ import {
 } from '@/lib/weekly-verse-cache'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import type { Verse } from '@/types'
+import { tr, useT } from '@/lib/i18n'
 
 interface WeeklyConfig {
   verseKey: string
@@ -86,6 +87,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function DailyVerseCard() {
+  const t = useT()
   const { translationLanguage, translationEditionId } = useAppSettings()
   const [config, setConfig] = useState<WeeklyConfig | null>(null)
   const [verse, setVerse] = useState<Verse | null>(null)
@@ -294,7 +296,7 @@ export default function DailyVerseCard() {
     const text = [`${surahLabel} ${config.verseKey}`, arabicText, translation].filter(Boolean).join('\n\n')
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Weekly verse', text })
+        await navigator.share({ title: tr('Weekly verse'), text })
       } catch {
         // Cancelled.
       }
@@ -329,15 +331,14 @@ export default function DailyVerseCard() {
   const ready = config !== null && verse !== null && !waitingForFont
 
   return (
-    <section aria-label="Weekly verse">
-      <h2 className="home-label mb-[9px]">Weekly verse</h2>
+    <section aria-label={t('Weekly verse')}>
+      <h2 className="home-label mb-[9px]">{t('Weekly verse')}</h2>
 
       <div className="home-card rounded-[18px] px-5 pb-3 pt-3" aria-busy={!ready}>
         {!ready ? (
           verseFailed ? (
             <p className="py-8 text-center text-[0.8125rem] text-[var(--home-muted)]">
-              This week&apos;s verse will show when you&apos;re back online.
-            </p>
+              {t('This week\'s verse will show when you\'re back online.')}</p>
           ) : (
             <VerseSkeleton />
           )
@@ -349,13 +350,13 @@ export default function DailyVerseCard() {
                 <span className="ml-1.5 font-medium text-[var(--home-muted)]">{config.verseKey}</span>
               </p>
               <div className="-mr-2.5 flex shrink-0 items-center">
-                <IconButton label={saved ? 'Remove bookmark' : 'Bookmark verse'} pressed={saved} onClick={toggleSave}>
+                <IconButton label={saved ? t('Remove bookmark') : t('Bookmark verse')} pressed={saved} onClick={toggleSave}>
                   <Bookmark
                     className={cn('h-[17px] w-[17px]', saved && 'fill-current text-[var(--home-sage-deep)]')}
                     strokeWidth={1.9}
                   />
                 </IconButton>
-                <IconButton label={copied ? 'Copied' : 'Share verse'} onClick={() => void handleShare()}>
+                <IconButton label={copied ? t('Copied') : t('Share verse')} onClick={() => void handleShare()}>
                   {copied ? (
                     <Check className="h-[17px] w-[17px] text-[var(--home-sage-deep)]" strokeWidth={2.4} />
                   ) : (
@@ -397,7 +398,7 @@ export default function DailyVerseCard() {
             {translation === null ? (
               <TranslationSkeleton />
             ) : translation ? (
-              <p className="weekly-verse__translation home-fade mx-auto mt-1 max-w-[34ch] text-center text-[0.875rem] leading-[1.65]">
+              <p dir="auto" className="weekly-verse__translation home-fade mx-auto mt-1 max-w-[34ch] text-center text-[0.875rem] leading-[1.65]">
                 {translation}
               </p>
             ) : null}
@@ -408,19 +409,19 @@ export default function DailyVerseCard() {
                 className="ed-focus -my-1.5 flex items-center gap-1.5 rounded-md py-1.5 text-[0.78125rem] font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
               >
                 <BookOpen className="h-3.5 w-3.5" strokeWidth={2} />
-                Page {page}
+                {t('Page')} {page}
               </Link>
               <button
                 type="button"
                 onClick={togglePlay}
-                aria-label={playing ? 'Stop recitation' : 'Listen to this verse'}
+                aria-label={playing ? t('Stop recitation') : t('Listen to this verse')}
                 className={cn(
                   'ed-focus flex h-8 shrink-0 items-center gap-1.5 rounded-full pl-2.5 pr-3.5 text-[0.8125rem] font-semibold transition-[transform,background-color,color] active:scale-95',
                   playing ? 'ed-ink' : 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
                 )}
               >
                 {playing ? <Square className="h-3 w-3 fill-current" /> : <Play className="h-3 w-3 fill-current" />}
-                {playing ? 'Stop' : 'Listen'}
+                {playing ? t('Stop') : t('Listen')}
               </button>
             </div>
           </div>

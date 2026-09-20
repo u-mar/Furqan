@@ -77,8 +77,10 @@ import {
 } from '@/lib/somali-voice'
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
+import { tr, useT } from '@/lib/i18n'
 
 function ReadPageContent() {
+  const t = useT()
   const searchParams = useSearchParams()
   const initialPage = Number(searchParams.get('page') || '0')
 
@@ -248,7 +250,7 @@ function ReadPageContent() {
         applyPage(next, verses)
       } catch (err) {
         if (seq !== pageLoadSeqRef.current) return
-        const message = err instanceof Error ? err.message : 'Failed to load page'
+        const message = err instanceof Error ? err.message : tr('Failed to load page')
         console.error('Failed to load page:', err)
         setLoadError(message)
       } finally {
@@ -398,7 +400,7 @@ function ReadPageContent() {
         setPageSlide({ direction, incomingVerses, incomingPage: next })
       } catch (err) {
         if (slideSeq !== pageLoadSeqRef.current) return
-        const message = err instanceof Error ? err.message : 'Failed to load page'
+        const message = err instanceof Error ? err.message : tr('Failed to load page')
         console.error('Failed to load page:', err)
         setLoadError(message)
         setPageLoading(false)
@@ -465,7 +467,7 @@ function ReadPageContent() {
       const page = await getVisualPageForVerse(first.verse_key, first.page_number || 1)
       await loadPage(page)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not open surah'
+      const message = err instanceof Error ? err.message : tr('Could not open surah')
       setLoadError(message)
     }
   }
@@ -489,7 +491,7 @@ function ReadPageContent() {
     [chapters]
   )
   const surahTitle =
-    chapters.find((c) => c.id === currentSurahNum)?.englishName || `Surah ${currentSurahNum}`
+    chapters.find((c) => c.id === currentSurahNum)?.englishName || t('Surah {currentSurahNum}', { currentSurahNum })
   /**
    * Juz shown in the page header. Taken from the verses actually on this page
    * (`juz_number`), not from the surah — a surah can span several juz, so the
@@ -538,7 +540,7 @@ function ReadPageContent() {
     stopRecitation()
     const firstVerseKey = await findNextSomaliVerse(null)
     if (!firstVerseKey) {
-      setSomaliNotice(TAFSIR_UNAVAILABLE_MESSAGE)
+      setSomaliNotice(tr(TAFSIR_UNAVAILABLE_MESSAGE))
       return
     }
 
@@ -663,7 +665,7 @@ function ReadPageContent() {
     const [surahRaw, ayahRaw] = ayahMenu.verseKey.split(':')
     const surahId = Number(surahRaw) || 1
     const ayah = Number(ayahRaw) || 1
-    const surahName = chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
+    const surahName = chapters.find((c) => c.id === surahId)?.englishName || tr('Surah {surahId}', { surahId })
     const qcfGlyphs = verse ? getVerseQcfGlyphs(verse, currentPage) : ''
     const saved = toggleBookmark({
       verseKey: ayahMenu.verseKey,
@@ -694,7 +696,7 @@ function ReadPageContent() {
 
     setShareTarget({
       verseKey,
-      surahName: chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`,
+      surahName: chapters.find((c) => c.id === surahId)?.englishName || tr('Surah {surahId}', { surahId }),
       page,
       qcfWords: verse ? getVerseQcfGlyphWords(verse, page).slice(0, plainWords.length) : [],
       plainWords,
@@ -874,9 +876,9 @@ function ReadPageContent() {
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500"
           role="status"
-          aria-label="Loading"
+          aria-label={t('Loading')}
         />
-        <p className="text-sm text-stone-500">Loading page…</p>
+        <p className="text-sm text-stone-500">{t('Loading page…')}</p>
       </main>
     )
   }
@@ -886,22 +888,19 @@ function ReadPageContent() {
       <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--app-bg)] px-6 text-center">
         <p className="text-sm text-red-400">{loadError}</p>
         <p className="text-xs text-stone-500">
-          Check your Wi‑Fi connection. The first load can take up to a minute.
-        </p>
+          {t('Check your Wi‑Fi connection. The first load can take up to a minute.')}</p>
         <button
           type="button"
           onClick={() => loadPage(currentPage)}
           className="rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-semibold text-white"
         >
-          Retry
-        </button>
+          {t('Retry')}</button>
         <Link
           href="/settings"
           onClick={() => setSettingsReturnTo(`/read?page=${currentPage}`)}
           className="text-sm text-[var(--app-muted)] underline"
         >
-          Download offline in Settings
-        </Link>
+          {t('Download offline in Settings')}</Link>
       </main>
     )
   }
@@ -913,7 +912,7 @@ function ReadPageContent() {
         <div
           className="absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden bg-teal-900/30"
           role="status"
-          aria-label="Loading page"
+          aria-label={t('Loading page')}
         >
           <div className="h-full w-1/3 animate-pulse bg-teal-500" />
         </div>
@@ -931,7 +930,7 @@ function ReadPageContent() {
             {surahTitle}
           </span>
           <span className="text-[15px] font-semibold text-[var(--mushaf-read-meta)]">
-            Juz {juzPart}
+            {t('Juz')} {juzPart}
           </span>
         </div>
       ) : (
@@ -946,6 +945,7 @@ function ReadPageContent() {
       {/* Mushaf body — fixed fit when reading; scroll when translation */}
       <div
         ref={contentScrollRef}
+        dir="ltr"
         className={cn(
           'relative min-h-0 flex-1',
           showTranslation
@@ -1040,27 +1040,27 @@ function ReadPageContent() {
           type="button"
           onClick={() => setDrawerOpen(true)}
           className="mushaf-read-chrome-btn rounded-lg p-2"
-          aria-label="Open contents"
+          aria-label={t('Open contents')}
         >
           <Menu className="h-6 w-6" />
         </button>
         <div className="min-w-0 flex-1 px-2 text-center">
           <p className="mushaf-read-chrome-title truncate text-sm">{surahTitle}</p>
-          <p className="mushaf-read-chrome-subtitle text-xs">Juz {juzPart}</p>
+          <p className="mushaf-read-chrome-subtitle text-xs">{t('Juz')} {juzPart}</p>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={openSearch}
             className="mushaf-read-chrome-btn rounded-lg p-2"
-            aria-label="Search surah"
+            aria-label={t('Search surah')}
           >
             <Search className="h-5 w-5" />
           </button>
           <Link
             href="/settings"
             className="mushaf-read-chrome-btn rounded-lg p-2"
-            aria-label="Settings"
+            aria-label={t('Settings')}
             onClick={(e) => {
               e.stopPropagation()
               setSettingsReturnTo(`/read?page=${currentPage}`)
@@ -1099,7 +1099,7 @@ function ReadPageContent() {
                 ? 'bg-[var(--mushaf-read-accent-soft)]'
                 : undefined
             )}
-            aria-label={somaliAutoPlaying || isSomaliVoiceActive ? 'Stop Somali voice' : 'Play Somali voice'}
+            aria-label={somaliAutoPlaying || isSomaliVoiceActive ? t('Stop Somali voice') : t('Play Somali voice')}
           >
             {somaliVoiceState.loading ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
@@ -1108,7 +1108,7 @@ function ReadPageContent() {
             ) : (
               <Volume2 className="h-4 w-4" />
             )}
-            <span>Somali</span>
+            <span>{t('Somali')}</span>
           </button>
           <ReciterPicker reciterId={reciterId} />
           <button
@@ -1117,7 +1117,7 @@ function ReadPageContent() {
             disabled={pageVerses.length === 0}
             className="mushaf-read-chrome-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
             aria-label={
-              isActive ? 'Pause recitation' : isPaused ? 'Resume recitation' : 'Play page recitation'
+              isActive ? t('Pause recitation') : isPaused ? t('Resume recitation') : t('Play page recitation')
             }
           >
             {recitation.loading ? (
@@ -1136,7 +1136,7 @@ function ReadPageContent() {
             onClick={goPrevPage}
             disabled={currentPage <= 1}
             className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
-            aria-label="Previous page"
+            aria-label={t('Previous page')}
           >
             {verticalPages ? (
               <ChevronUp className="h-6 w-6" />
@@ -1147,8 +1147,7 @@ function ReadPageContent() {
 
           <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
             <span className="mushaf-read-chrome-subtitle text-[11px] font-medium uppercase tracking-wider">
-              Page
-            </span>
+              {t('Page')}</span>
             <input
               type="range"
               min={1}
@@ -1164,7 +1163,7 @@ function ReadPageContent() {
                 setNavSelectedVerseKey(null)
               }}
               className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
-              aria-label="Page slider"
+              aria-label={t('Page slider')}
             />
             <span className="mushaf-read-chrome-title text-sm font-semibold tabular-nums">
               {currentPage}
@@ -1177,7 +1176,7 @@ function ReadPageContent() {
             onClick={goNextPage}
             disabled={currentPage >= TOTAL_MUSHAF_PAGES}
             className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
-            aria-label="Next page"
+            aria-label={t('Next page')}
           >
             {verticalPages ? (
               <ChevronDown className="h-6 w-6" />
@@ -1199,7 +1198,7 @@ function ReadPageContent() {
               'mushaf-read-chrome-btn rounded-lg p-2',
               showTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
             )}
-            aria-label={showTranslation ? 'Hide translation' : 'Show translation'}
+            aria-label={showTranslation ? t('Hide translation') : t('Show translation')}
             aria-pressed={showTranslation}
           >
             <MessageSquareText className="h-5 w-5" />
@@ -1295,8 +1294,7 @@ function ReadPageContent() {
           className="mushaf-read-chrome-panel absolute left-4 top-16 z-20 rounded-full px-3 py-1 text-xs text-[var(--mushaf-read-meta)]"
           onClick={(e) => e.stopPropagation()}
         >
-          Home
-        </Link>
+          {t('Home')}</Link>
       )}
     </main>
   )

@@ -7,6 +7,7 @@ import { errorFeedback, tapFeedback } from '@/lib/haptics'
 import { toastError } from '@/lib/toast'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import type { Reciter } from '@/lib/reciters'
+import { tr, useT } from '@/lib/i18n'
 
 const ROSE = '#f43f5e'
 
@@ -25,6 +26,7 @@ export default function HeartButton({
   iconSize?: number
   className?: string
 }) {
+  const t = useT()
   const { isFavorite, toggle, atLimit, maxFavorites } = useReciterFavorites()
   const [motion, setMotion] = useState<{ kind: 'pop' | 'shake'; n: number } | null>(null)
   const on = isFavorite(reciter.id)
@@ -33,7 +35,7 @@ export default function HeartButton({
     if (!on && atLimit) {
       errorFeedback()
       setMotion((m) => ({ kind: 'shake', n: (m?.n ?? 0) + 1 }))
-      toastError(`You can keep ${maxFavorites} favourites. Remove one first.`)
+      toastError(tr('You can keep {maxFavorites} favourites. Remove one first.', { maxFavorites }))
       return
     }
     tapFeedback()
@@ -45,7 +47,7 @@ export default function HeartButton({
       type="button"
       onClick={press}
       aria-pressed={on}
-      aria-label={on ? `Remove ${reciter.name} from favourites` : `Add ${reciter.name} to favourites`}
+      aria-label={on ? t('Remove {name} from favourites', { name: reciter.name }) : t('Add {name} to favourites', { name: reciter.name })}
       className={cn('ed-focus flex shrink-0 items-center justify-center rounded-full transition-colors', className)}
       style={{ width: size, height: size, color: on ? ROSE : 'var(--home-muted)' }}
     >

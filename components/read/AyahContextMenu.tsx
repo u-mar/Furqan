@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Play, Square, Bookmark, Languages, Share2, Volume2, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 export interface AyahMenuAnchor {
   top: number
@@ -95,6 +96,7 @@ export default function AyahContextMenu({
   onStopSomaliVoice,
   onStopRecitation,
 }: AyahContextMenuProps) {
+  const t = useT()
   const [showTranslation, setShowTranslation] = useState(false)
   const [mounted, setMounted] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -188,7 +190,7 @@ export default function AyahContextMenu({
         backdropFilter: 'blur(8px)',
       }}
       role="dialog"
-      aria-label={`Ayah ${verseKey} actions`}
+      aria-label={t('Ayah {verseKey} actions', { verseKey })}
     >
       {/* pointer caret */}
       <span
@@ -217,10 +219,9 @@ export default function AyahContextMenu({
       {showTranslation && (
         <div className="mx-3.5 mt-2 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3 py-2.5">
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent)]">
-            Translation
-          </p>
+            {t('Translation')}</p>
           <p className="max-h-[min(30vh,11.5rem)] overflow-y-auto overscroll-contain text-left text-[13px] leading-relaxed text-[var(--mushaf-read-popup-text)]">
-            {translationLoading ? 'Loading…' : translation || 'Translation unavailable.'}
+            {translationLoading ? t('Loading…') : translation || t('Translation unavailable.')}
           </p>
         </div>
       )}
@@ -229,10 +230,10 @@ export default function AyahContextMenu({
       <div
         className="flex items-stretch justify-around px-1.5 pb-2 pt-1.5"
         role="toolbar"
-        aria-label={`Ayah ${verseKey} actions`}
+        aria-label={t('Ayah {verseKey} actions', { verseKey })}
       >
         <ActionButton
-          label={isReciting ? 'Stop' : 'Play'}
+          label={isReciting ? t('Stop') : t('Play')}
           primary
           onClick={isReciting ? () => onStopRecitation?.() : onPlay}
         >
@@ -244,7 +245,7 @@ export default function AyahContextMenu({
         </ActionButton>
 
         <ActionButton
-          label={isBookmarked ? 'Saved' : 'Save'}
+          label={isBookmarked ? t('Saved') : t('Save')}
           active={isBookmarked}
           onClick={onToggleBookmark}
         >
@@ -252,7 +253,7 @@ export default function AyahContextMenu({
         </ActionButton>
 
         <ActionButton
-          label="Translate"
+          label={t('Translate')}
           active={showTranslation}
           onClick={() => setShowTranslation((v) => !v)}
         >
@@ -260,14 +261,14 @@ export default function AyahContextMenu({
         </ActionButton>
 
         {onShare ? (
-          <ActionButton label="Share" onClick={onShare}>
+          <ActionButton label={t('Share')} onClick={onShare}>
             <Share2 className="h-[18px] w-[18px]" />
           </ActionButton>
         ) : null}
 
         {somaliVoiceAvailable && onPlaySomaliVoice ? (
           <ActionButton
-            label="Somali"
+            label={t('Somali')}
             active={isSomaliVoicePlaying}
             onClick={isSomaliVoicePlaying ? () => onStopSomaliVoice?.() : onPlaySomaliVoice}
           >
@@ -275,7 +276,7 @@ export default function AyahContextMenu({
           </ActionButton>
         ) : null}
 
-        <ActionButton label="Close" onClick={onClose}>
+        <ActionButton label={t('Close')} onClick={onClose}>
           <X className="h-[18px] w-[18px]" />
         </ActionButton>
       </div>

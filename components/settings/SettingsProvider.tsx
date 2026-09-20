@@ -6,6 +6,7 @@ import {
   getAppSettings,
   type AppSettings,
 } from '@/lib/app-settings'
+import { applyLanguageToDocument } from '@/lib/i18n'
 import { hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
 
 /*
@@ -20,6 +21,7 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     const settings = getAppSettings()
     applyThemeToDocument(settings.theme)
+    applyLanguageToDocument(settings.language)
 
     /* Warm the offline Quran for the reader, but only once the first screen has
        drawn and settled: parsing it freezes the page for a moment, and doing
@@ -41,6 +43,7 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
     const onChange = (e: Event) => {
       const detail = (e as CustomEvent<AppSettings>).detail
       applyThemeToDocument(detail.theme)
+      applyLanguageToDocument(detail.language)
     }
 
     window.addEventListener('app-settings-changed', onChange)

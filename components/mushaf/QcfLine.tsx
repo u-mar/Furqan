@@ -6,6 +6,7 @@ import { useLongPress } from '@/hooks/useLongPress'
 import { BASMALAH_ARABIC, BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
 import type { QcfPageLine, QcfPageSegment } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
+import { useT } from '@/lib/i18n'
 
 function QcfSegment({
   segment,
@@ -183,6 +184,7 @@ function QcfLineComponent({
   nextVerseKey = null,
   onReveal,
 }: QcfLineProps) {
+  const t = useT()
   const glyphStyle = { fontFamily: `"${qcfFontFamily}", serif` } as const
   const segmentLongPress =
     onLineLongPress && line.kind !== 'empty' && line.kind !== 'surah-header'
@@ -238,7 +240,7 @@ function QcfLineComponent({
         dir="rtl"
         lang="ar"
         onClick={() => onReveal(nextVerseKey)}
-        aria-label={`Reveal ayah ${nextVerseKey}`}
+        aria-label={t('Reveal ayah {nextVerseKey}', { nextVerseKey })}
       >
         {content}
       </button>

@@ -7,6 +7,7 @@ import {
   isOfflineReady,
   prefetchMushafPages,
 } from '@/lib/local-quran-store'
+import { tr } from '@/lib/i18n-core'
 
 interface QuranData {
   chapters: Chapter[]
@@ -38,14 +39,14 @@ export async function loadQuranData(): Promise<QuranData> {
   try {
     const response = await fetch('/quran-data.json', { cache: 'force-cache' })
     if (!response.ok) {
-      throw new Error(`Failed to load Quran data: ${response.statusText}`)
+      throw new Error(tr('Failed to load Quran data: {statusText}', { statusText: response.statusText }))
     }
     const data = (await response.json()) as QuranData
     cachedQuranData = data
     return data
   } catch {
     throw new Error(
-      'Quran data not found. Download the Quran in Settings or run `npm run download-quran`.'
+      tr('Quran data not found. Download the Quran in Settings or run `npm run download-quran`.')
     )
   }
 }
@@ -129,7 +130,7 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
 
   const online = typeof navigator !== 'undefined' ? navigator.onLine : true
   if (!online) {
-    throw new Error('This page is not available offline. Download the Quran in Settings.')
+    throw new Error(tr('This page is not available offline. Download the Quran in Settings.'))
   }
 
   const controller = new AbortController()
@@ -141,11 +142,11 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     })
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error || `Failed to load page (${response.status})`)
+      throw new Error(body.error || tr('Failed to load page ({status})', { status: response.status }))
     }
     const verses = (await response.json()) as Verse[]
     if (verses.length === 0) {
-      throw new Error('No verses returned for this page')
+      throw new Error(tr('No verses returned for this page'))
     }
     prefetchMushafPages(pageNumber, 1)
     return verses
@@ -179,7 +180,7 @@ export async function getVisualPageForVerse(verseKey: string, fallbackPage: numb
   try {
     const response = await fetch(`/api/ayah?type=visual-page&verseKey=${encodeURIComponent(verseKey)}`)
     if (!response.ok) {
-      throw new Error(`Failed to load visual page: ${response.statusText}`)
+      throw new Error(tr('Failed to load visual page: {statusText}', { statusText: response.statusText }))
     }
 
     const data = (await response.json()) as { page?: number }
@@ -200,7 +201,7 @@ export async function getVisualPagesForScope(scope: {
 
     const response = await fetch(`/api/ayah?${params.toString()}`)
     if (!response.ok) {
-      throw new Error(`Failed to load visual pages: ${response.statusText}`)
+      throw new Error(tr('Failed to load visual pages: {statusText}', { statusText: response.statusText }))
     }
 
     const data = (await response.json()) as { pages?: Record<string, number> }
@@ -224,7 +225,7 @@ export async function getVerseByKey(verseKey: string): Promise<Verse> {
   const data = await loadQuranData()
   const verse = data.verses.find((v) => v.verse_key === verseKey)
   if (!verse) {
-    throw new Error(`Verse not found: ${verseKey}`)
+    throw new Error(tr('Verse not found: {verseKey}', { verseKey }))
   }
   return verse
 }

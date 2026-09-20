@@ -7,6 +7,7 @@ import { RECITERS } from '@/lib/reciters'
 import { sheikhLetter, type Sheikh } from '@/lib/sheikhs'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 export function plural(count: number, word: string, many = `${word}s`) {
   return `${count} ${count === 1 ? word : many}`
@@ -96,6 +97,7 @@ export function SheikhHeader({
   count: number | null
   people: number | null
 }) {
+  const t = useT()
   return (
     <section className="qari-enter home-card rounded-[18px] p-4">
       <div className="flex items-center gap-3.5">
@@ -106,8 +108,8 @@ export function SheikhHeader({
             {count === null
               ? ''
               : count === 0
-                ? 'No imitations yet'
-                : `${plural(count, 'imitation')} from ${plural(people ?? 0, 'person', 'people')}`}
+                ? t('No imitations yet')
+                : t('{imitation} from {people}', { imitation: plural(count, 'imitation'), people: plural(people ?? 0, 'person', 'people') })}
           </p>
         </div>
       </div>
@@ -117,7 +119,7 @@ export function SheikhHeader({
         className="ed-ink ed-focus qari-press mt-3.5 flex h-12 items-center justify-center gap-2 rounded-full text-[14.5px] font-semibold"
       >
         <Mic className="h-[17px] w-[17px]" strokeWidth={2.1} />
-        Imitate {sheikh.shortName}
+        {t('Imitate')} {sheikh.shortName}
       </Link>
     </section>
   )

@@ -1,3 +1,5 @@
+import { tr } from '@/lib/i18n-core'
+
 export interface AppUser {
   id: string
   username: string
@@ -73,7 +75,7 @@ export function signupLocalUser(username: string, name: string, pin: string): Ap
   const cleanPin = pin.trim()
   const users = readLocalUsers()
   if (users.some((u) => u.username === cleanUsername)) {
-    throw new Error('Username already exists.')
+    throw new Error(tr('Username already exists.'))
   }
   const user: LocalAuthUser = {
     id: `local_${cleanUsername}`,
@@ -90,6 +92,6 @@ export function loginLocalUser(username: string, pin: string): AppUser {
   const cleanUsername = username.trim().toLowerCase()
   const cleanPin = pin.trim()
   const user = readLocalUsers().find((u) => u.username === cleanUsername && u.pin === cleanPin)
-  if (!user) throw new Error('Invalid username or PIN.')
+  if (!user) throw new Error(tr('Invalid username or PIN.'))
   return { id: user.id, username: user.username, name: user.name }
 }

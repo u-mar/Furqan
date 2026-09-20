@@ -17,6 +17,7 @@ import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { Verse, VerseWord } from '@/types'
+import { tr, useT } from '@/lib/i18n'
 
 interface QuranPageViewProps {
   verses: Verse[]
@@ -63,14 +64,14 @@ interface PageLine {
 
 function formatSurahHeaderLabel(name: string): string {
   const trimmed = name.trim()
-  if (!trimmed) return 'Surah'
+  if (!trimmed) return tr('Surah')
   const hasArabic = /[\u0600-\u06FF]/.test(trimmed)
   if (hasArabic) {
     if (/^سورة\s+/u.test(trimmed)) return trimmed
     return `سورة ${trimmed}`
   }
   if (/^surah\s+/iu.test(trimmed)) return trimmed
-  return `Surah ${trimmed}`
+  return tr('Surah {trimmed}', { trimmed })
 }
 
 function surahAyahFromKey(verseKey: string): { surah: number; ayah: number } {
@@ -272,6 +273,7 @@ export default function QuranPageView({
   ayahSelectMode = false,
   suppressHighlightScroll = false,
 }: QuranPageViewProps) {
+  const t = useT()
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
   const hifdhRevealMode = readMode && hideRevealBoxes && !readOnly
   /** QCF mushaf for read and hifdh test; unicode path is legacy fallback only. */
@@ -390,7 +392,7 @@ export default function QuranPageView({
   if (startIndex === -1) {
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center text-red-500">
-        <p>Starting verse not found on this page.</p>
+        <p>{t('Starting verse not found on this page.')}</p>
       </div>
     )
   }
@@ -401,7 +403,7 @@ export default function QuranPageView({
         className="mx-auto w-full max-w-[980px] px-0 py-2 sm:px-2"
         dir="rtl"
         lang="ar"
-        aria-label="Quran page"
+        aria-label={t('Quran page')}
       >
         <div ref={gridRef} className="mushaf-unicode-page-wrap">
           <UnicodeMushafPage
@@ -427,9 +429,7 @@ export default function QuranPageView({
         >
           <div className="flex h-full items-center justify-center px-6 text-center">
             <p className="text-sm text-[var(--mushaf-read-meta)]">
-              Mushaf glyph data is missing for this page. Connect to the internet or download the Quran
-              bundle in Settings.
-            </p>
+              {t('Mushaf glyph data is missing for this page. Connect to the internet or download the Quran bundle in Settings.')}</p>
           </div>
         </div>
       )
@@ -441,10 +441,10 @@ export default function QuranPageView({
           className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
           dir="rtl"
           lang="ar"
-          aria-label="Loading mushaf font"
+          aria-label={t('Loading mushaf font')}
         >
           <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-[var(--mushaf-read-meta)]">Loading mushaf font…</p>
+            <p className="text-sm text-[var(--mushaf-read-meta)]">{t('Loading mushaf font…')}</p>
           </div>
         </div>
       )
@@ -459,9 +459,7 @@ export default function QuranPageView({
         >
           <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
             <p className="text-sm text-[var(--mushaf-read-meta)]">
-              Could not load the mushaf page font (QCF_P{pageNumber}). Stay on Wi‑Fi or download the
-              full offline package in Settings (includes all page fonts).
-            </p>
+              {t('Could not load the mushaf page font (QCF_P')}{pageNumber}{t('). Stay on Wi‑Fi or download the full offline package in Settings (includes all page fonts).')}</p>
             <button
               type="button"
               className="rounded-lg bg-teal-600 px-4 py-2 text-sm text-white"
@@ -471,8 +469,7 @@ export default function QuranPageView({
                 })
               }}
             >
-              Retry font load
-            </button>
+              {t('Retry font load')}</button>
           </div>
         </div>
       )
@@ -484,7 +481,7 @@ export default function QuranPageView({
           className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
           dir="rtl"
           lang="ar"
-          aria-label="Quran page"
+          aria-label={t('Quran page')}
         >
           <MushafPageView
             verses={verses}
@@ -518,10 +515,10 @@ export default function QuranPageView({
         className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
         dir="rtl"
         lang="ar"
-        aria-label="Loading mushaf font"
+        aria-label={t('Loading mushaf font')}
       >
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-[var(--mushaf-read-meta)]">Loading mushaf font…</p>
+          <p className="text-sm text-[var(--mushaf-read-meta)]">{t('Loading mushaf font…')}</p>
         </div>
       </div>
     )
@@ -532,7 +529,7 @@ export default function QuranPageView({
       className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
       dir="rtl"
       lang="ar"
-      aria-label="Quran page"
+      aria-label={t('Quran page')}
     >
       <div
         ref={gridRef}
@@ -681,7 +678,7 @@ export default function QuranPageView({
                           ? 'inline-block min-w-[0.2em] align-baseline'
                           : 'min-h-[1.4em] min-w-[2.5rem] rounded bg-stone-200/90 ring-1 ring-teal-600/35 dark:bg-stone-700/60 dark:ring-teal-400/40')
                     )}
-                    aria-label={`Reveal verse ${word.verseKey}`}
+                    aria-label={t('Reveal verse {verseKey}', { verseKey: word.verseKey })}
                     dangerouslySetInnerHTML={{ __html: wordHtml }}
                   />
                 )

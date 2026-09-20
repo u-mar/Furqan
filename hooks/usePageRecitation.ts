@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
 import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 import type { Verse } from '@/types'
+import { tr } from '@/lib/i18n-core'
 
 export interface PageRecitationState {
   playing: boolean
@@ -54,7 +55,7 @@ function waitForAudioReady(audio: HTMLAudioElement): Promise<void> {
     }
     const onFail = () => {
       cleanup()
-      reject(new Error('Audio preload failed'))
+      reject(new Error(tr('Audio preload failed')))
     }
     const cleanup = () => {
       audio.removeEventListener('canplaythrough', onReady)
@@ -254,7 +255,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
           ...s,
           playing: false,
           loading: false,
-          error: 'Audio unavailable offline. Download this surah in Listen first.',
+          error: tr('Audio unavailable offline. Download this surah in Listen first.'),
         }))
         return
       }
@@ -282,7 +283,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
           loading: false,
           playing: false,
           highlightedVerseKey: null,
-          error: `Could not play ayah ${parsed.ayah}`,
+          error: tr('Could not play ayah {ayah}', { ayah: parsed.ayah }),
         }))
       }
     },
@@ -334,7 +335,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
       highlightedVerseKey: verse?.verse_key ?? s.highlightedVerseKey,
     }))
     void audio.play().catch(() => {
-      setState((s) => ({ ...s, playing: false, error: 'Playback failed' }))
+      setState((s) => ({ ...s, playing: false, error: tr('Playback failed') }))
     })
   }, [start])
 

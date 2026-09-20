@@ -117,6 +117,10 @@ body {
   background: var(--app-bg);
   color: var(--app-text);
   overflow-x: hidden;
+  /* Clips the same way, but does not turn <body> into a scroll container,
+     which would stop position: sticky from ever sticking. Older browsers
+     ignore it and keep the line above. */
+  overflow-x: clip;
   overscroll-behavior-x: none;
 }
 
@@ -2569,41 +2573,11 @@ html.dark .set-row--danger {
    compact recitation cards, a mini player and a labelled tab bar.
    ====================================================================== */
 
-/* Set on <html> while a Qari screen is open, so sheets and toasts portaled
-   to <body> turn neutral too. The dark themes are already neutral. */
-html.qari-neutral:not(.dark) {
-  --app-bg: #f2f2f5;
-  --app-surface: #ffffff;
-  --app-border: rgba(22, 23, 27, 0.1);
-  --app-text: #16171b;
-  --app-muted: #6b6f78;
-  --home-glow: none;
-  --home-card-bg: #ffffff;
-  --home-card-border: rgba(22, 23, 27, 0.07);
-  --home-track: #e6e7eb;
-  --home-heading: #16171b;
-  --home-muted: #6b6f78;
-  --home-ink: #16171b;
-  --home-ink-fg: #ffffff;
-  --home-rule: rgba(22, 23, 27, 0.1);
-  --home-rule-strong: rgba(22, 23, 27, 0.2);
-  --home-lift: 0 1px 2px rgba(22, 23, 27, 0.05), 0 8px 24px -14px rgba(22, 23, 27, 0.16);
-  --home-lift-sm: 0 1px 2px rgba(22, 23, 27, 0.06), 0 4px 12px -6px rgba(22, 23, 27, 0.14);
-}
-
-html.qari-neutral:not(.dark) body {
-  background: var(--app-bg);
-}
-
 /* The tab bar: Feed, a Record pill, You. */
 .qari-tabbar {
   background: color-mix(in srgb, var(--app-bg) 92%, transparent);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
   backdrop-filter: saturate(1.4) blur(14px);
-}
-
-html.qari-neutral:not(.dark) .qari-tabbar {
-  background: rgba(255, 255, 255, 0.94);
 }
 
 .qari-tabbar__inner {
@@ -2693,4 +2667,14 @@ html.dark .qari-chip {
 
 html.dark .qari-monogram {
   color: var(--home-sage);
+}
+
+/* Arabic reads right to left: arrows that mean "back" and "next" turn with it. */
+[dir='rtl'] svg.lucide-chevron-left:not([class*='rotate']),
+[dir='rtl'] svg.lucide-chevron-right:not([class*='rotate']),
+[dir='rtl'] svg.lucide-arrow-left:not([class*='rotate']),
+[dir='rtl'] svg.lucide-arrow-right:not([class*='rotate']),
+[dir='rtl'] svg.lucide-chevrons-left:not([class*='rotate']),
+[dir='rtl'] svg.lucide-chevrons-right:not([class*='rotate']) {
+  transform: scaleX(-1);
 }

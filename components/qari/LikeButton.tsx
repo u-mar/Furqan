@@ -5,6 +5,7 @@ import { Heart } from 'lucide-react'
 import { tapFeedback } from '@/lib/haptics'
 import { toggleLike, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
+import { tr, useT } from '@/lib/i18n'
 
 /** The heart: fills at once, pops, and quietly corrects itself if the server disagrees. */
 export default function LikeButton({
@@ -18,6 +19,7 @@ export default function LikeButton({
   onNotice?: (message: string) => void
   compact?: boolean
 }) {
+  const t = useT()
   const [liked, setLiked] = useState(recitation.liked)
   const [count, setCount] = useState(recitation.likeCount)
   const [popKey, setPopKey] = useState(0)
@@ -30,7 +32,7 @@ export default function LikeButton({
 
   const handle = useCallback(async () => {
     if (!viewerId) {
-      onNotice?.('Sign in to save recitations you love.')
+      onNotice?.(tr('Sign in to save recitations you love.'))
       return
     }
     tapFeedback()
@@ -45,7 +47,7 @@ export default function LikeButton({
     } catch {
       setLiked(liked)
       setCount(recitation.likeCount)
-      onNotice?.('Could not save that. Check your connection.')
+      onNotice?.(tr('Could not save that. Check your connection.'))
     }
   }, [liked, onNotice, recitation.id, recitation.likeCount, viewerId])
 
@@ -54,7 +56,7 @@ export default function LikeButton({
       type="button"
       onClick={() => void handle()}
       aria-pressed={liked}
-      aria-label={liked ? 'Remove from favourites' : 'Add to favourites'}
+      aria-label={liked ? t('Remove from favourites') : t('Add to favourites')}
       className={cn(
         'ed-focus flex shrink-0 items-center gap-1 rounded-full font-semibold transition-colors',
         compact ? 'h-8 px-1 text-xs' : 'h-11 min-w-11 justify-center px-1.5 text-[12.5px]',

@@ -6,6 +6,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { setFollowing } from '@/lib/qari'
 import type { AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import { tr, useT } from '@/lib/i18n'
 
 /** Follow / Following. Changes the moment it is tapped and settles when the server answers. */
 export default function FollowButton({
@@ -23,6 +24,7 @@ export default function FollowButton({
   onNotice?: (message: string) => void
   size?: 'sm' | 'lg'
 }) {
+  const t = useT()
   const [on, setOn] = useState(following)
   const [busy, setBusy] = useState(false)
 
@@ -30,7 +32,7 @@ export default function FollowButton({
 
   const toggle = useCallback(async () => {
     if (!viewer) {
-      onNotice?.('Sign in to follow qaris.')
+      onNotice?.(tr('Sign in to follow qaris.'))
       return
     }
     tapFeedback()
@@ -45,7 +47,7 @@ export default function FollowButton({
     } catch (err) {
       setOn(!next)
       onChange?.({ following: !next, followers: null })
-      onNotice?.(err instanceof Error ? err.message : 'Could not update that.')
+      onNotice?.(err instanceof Error ? err.message : tr('Could not update that.'))
     } finally {
       setBusy(false)
     }
@@ -69,7 +71,7 @@ export default function FollowButton({
       ) : size === 'lg' ? (
         <UserPlus key="off" className="h-[17px] w-[17px]" strokeWidth={2.1} />
       ) : null}
-      {on ? 'Following' : 'Follow'}
+      {on ? t('Following') : t('Follow')}
     </button>
   )
 }

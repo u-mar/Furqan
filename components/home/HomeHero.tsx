@@ -5,23 +5,27 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { IconCrescent } from '@/components/home/TileIcons'
 import { formatHijri } from '@/lib/hijri'
+import { useLanguage, useT } from '@/lib/i18n'
 
 /** e.g. "Sun 13 Sep" — the Hijri date leads, so this one stays short. Built
  *  from parts because en-GB now abbreviates September as "Sept". */
-function formatGregorian(date: Date): string {
-  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-US', options).format(date)
+function formatGregorian(date: Date, language: string): string {
+  const locale = language === 'ar' ? 'ar' : language === 'so' ? 'so' : 'en-US'
+  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, options).format(date)
   return `${part({ weekday: 'short' })} ${date.getDate()} ${part({ month: 'short' })}`
 }
 
 export default function HomeHero({ displayName }: { displayName: string }) {
+  const t = useT()
+  const language = useLanguage()
   const [hijri, setHijri] = useState('')
   const [gregorian, setGregorian] = useState('')
 
   useEffect(() => {
     const now = new Date()
     setHijri(formatHijri(now))
-    setGregorian(formatGregorian(now))
-  }, [])
+    setGregorian(formatGregorian(now, language))
+  }, [language])
 
   return (
     <header className="reveal flex items-start justify-between gap-3">
@@ -39,7 +43,7 @@ export default function HomeHero({ displayName }: { displayName: string }) {
         </p>
       </div>
 
-      <Link href="/settings" className="home-round ed-focus" aria-label="Open settings">
+      <Link href="/settings" className="home-round ed-focus" aria-label={t('Open settings')}>
         <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </Link>
     </header>

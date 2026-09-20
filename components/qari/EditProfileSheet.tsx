@@ -5,6 +5,7 @@ import { Camera, Trash2, X } from 'lucide-react'
 import QariAvatar, { removeAvatar, uploadAvatar } from '@/components/qari/QariAvatar'
 import { renameQari } from '@/lib/qari'
 import { renameLocalUser, setSignedInUser, type AppUser } from '@/lib/auth'
+import { tr, useT } from '@/lib/i18n'
 
 interface EditProfileSheetProps {
   open: boolean
@@ -31,6 +32,7 @@ export default function EditProfileSheet({
   onSaved,
   onNotice,
 }: EditProfileSheetProps) {
+  const t = useT()
   const [name, setName] = useState(viewer.name)
   const [saving, setSaving] = useState(false)
   const [busyPhoto, setBusyPhoto] = useState(false)
@@ -47,9 +49,9 @@ export default function EditProfileSheet({
       try {
         await uploadAvatar(file, viewer)
         onSaved({ avatarChanged: true })
-        onNotice('Profile picture updated.')
+        onNotice(tr('Profile picture updated.'))
       } catch (err) {
-        onNotice(err instanceof Error ? err.message : 'Could not save that picture.')
+        onNotice(err instanceof Error ? err.message : tr('Could not save that picture.'))
       } finally {
         setBusyPhoto(false)
       }
@@ -62,9 +64,9 @@ export default function EditProfileSheet({
     try {
       await removeAvatar(viewer)
       onSaved({ avatarChanged: true })
-      onNotice('Picture removed.')
+      onNotice(tr('Picture removed.'))
     } catch {
-      onNotice('Could not remove that picture.')
+      onNotice(tr('Could not remove that picture.'))
     } finally {
       setBusyPhoto(false)
     }
@@ -73,7 +75,7 @@ export default function EditProfileSheet({
   const handleSave = useCallback(async () => {
     const next = name.trim()
     if (!next) {
-      onNotice('Your name cannot be empty.')
+      onNotice(tr('Your name cannot be empty.'))
       return
     }
     if (next === viewer.name) {
@@ -88,10 +90,10 @@ export default function EditProfileSheet({
       if (viewer.id.startsWith('local_')) renameLocalUser(viewer.username, saved)
       setSignedInUser({ ...viewer, name: saved })
       onSaved({ name: saved })
-      onNotice('Name updated.')
+      onNotice(tr('Name updated.'))
       onClose()
     } catch (err) {
-      onNotice(err instanceof Error ? err.message : 'Could not save that name.')
+      onNotice(err instanceof Error ? err.message : tr('Could not save that name.'))
     } finally {
       setSaving(false)
     }
@@ -114,7 +116,7 @@ export default function EditProfileSheet({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('Close')}
           className="ed-focus absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--app-surface)]"
         >
           <X className="h-4 w-4" strokeWidth={2} />
@@ -124,8 +126,7 @@ export default function EditProfileSheet({
           id="qari-edit-title"
           className="home-serif pr-10 text-xl font-semibold text-[var(--home-heading)]"
         >
-          Edit profile
-        </h2>
+          {t('Edit profile')}</h2>
 
         {/* Picture */}
         <div className="mt-5 flex items-center gap-4">
@@ -133,7 +134,7 @@ export default function EditProfileSheet({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busyPhoto}
-            aria-label="Change profile picture"
+            aria-label={t('Change profile picture')}
             className="ed-focus relative shrink-0 rounded-full transition-transform active:scale-95 disabled:opacity-60"
           >
             <QariAvatar
@@ -161,8 +162,7 @@ export default function EditProfileSheet({
               disabled={busyPhoto}
               className="ed-focus block text-sm font-semibold text-[var(--home-heading)] hover:underline disabled:opacity-60"
             >
-              Change photo
-            </button>
+              {t('Change photo')}</button>
             {hasAvatar ? (
               <button
                 type="button"
@@ -171,10 +171,9 @@ export default function EditProfileSheet({
                 className="ed-focus mt-1 flex items-center gap-1.5 text-xs font-medium text-[var(--home-muted)] transition-colors hover:text-rose-500 disabled:opacity-60"
               >
                 <Trash2 className="h-3 w-3" strokeWidth={2} />
-                Remove photo
-              </button>
+                {t('Remove photo')}</button>
             ) : (
-              <p className="mt-1 text-xs text-[var(--home-muted)]">JPEG, PNG or WebP.</p>
+              <p className="mt-1 text-xs text-[var(--home-muted)]">{t('JPEG, PNG or WebP.')}</p>
             )}
           </div>
         </div>
@@ -196,21 +195,17 @@ export default function EditProfileSheet({
           htmlFor="qari-name"
           className="mb-1.5 mt-6 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
         >
-          Name
-        </label>
+          {t('Name')}</label>
         <input
           id="qari-name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 40))}
-          placeholder="Your name"
+          placeholder={t('Your name')}
           className="ed-focus h-11 w-full rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--home-heading)] placeholder:font-normal placeholder:text-[var(--home-muted)]"
         />
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--home-muted)]">
-          Shown on everything you publish. Your handle{' '}
-          <span className="font-semibold text-[var(--home-heading)]">@{viewer.username}</span> stays
-          the same — links to your profile keep working.
-        </p>
+          {t('Shown on everything you publish. Your handle @{username} stays the same — links to your profile keep working.', { username: viewer.username })}</p>
 
         <div className="mt-5 flex gap-2">
           <button
@@ -218,8 +213,7 @@ export default function EditProfileSheet({
             onClick={onClose}
             className="ed-focus h-11 flex-1 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
           >
-            Cancel
-          </button>
+            {t('Cancel')}</button>
           <button
             type="button"
             onClick={() => void handleSave()}
@@ -229,7 +223,7 @@ export default function EditProfileSheet({
             {saving ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : null}
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('Saving…') : t('Save')}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
+import { tr } from '@/lib/i18n-core'
 
 export function avatarUrl(username: string, version?: number): string {
   const base = `/api/qari/avatar/${encodeURIComponent(username.toLowerCase())}`
@@ -126,7 +127,7 @@ export async function prepareAvatar(file: File, size = 256): Promise<Blob> {
   canvas.height = size
 
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Could not process that image.')
+  if (!ctx) throw new Error(tr('Could not process that image.'))
 
   // Centre-crop to a square, then scale down.
   ctx.drawImage(
@@ -144,7 +145,7 @@ export async function prepareAvatar(file: File, size = 256): Promise<Blob> {
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not process that image.'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(tr('Could not process that image.')))),
       'image/jpeg',
       0.85
     )
@@ -164,12 +165,12 @@ export async function uploadAvatar(
   const res = await fetch('/api/qari/avatar', { method: 'POST', body: form })
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string }
-    throw new Error(data.error || 'Could not save that picture.')
+    throw new Error(data.error || tr('Could not save that picture.'))
   }
 }
 
 export async function removeAvatar(user: { id: string; username: string }): Promise<void> {
   const params = new URLSearchParams({ username: user.username, userId: user.id })
   const res = await fetch(`/api/qari/avatar?${params.toString()}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('Could not remove that picture.')
+  if (!res.ok) throw new Error(tr('Could not remove that picture.'))
 }

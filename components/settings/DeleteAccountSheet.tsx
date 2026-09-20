@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2, TriangleAlert, X } from 'lucide-react'
 import { clearSignedInUser, deleteLocalUser, loginLocalUser, type AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import { tr, useT } from '@/lib/i18n'
 
 interface DeleteAccountSheetProps {
   open: boolean
@@ -21,6 +22,7 @@ interface DeleteAccountSheetProps {
  * the button rather than after it.
  */
 export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: DeleteAccountSheetProps) {
+  const t = useT()
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -53,7 +55,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
       } catch {
         setBusy(false)
         setPin('')
-        setError('That PIN is not right.')
+        setError(tr('That PIN is not right.'))
         return
       }
     }
@@ -67,14 +69,14 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
         setPin('')
-        setError(data.error || 'Could not delete the account. Please try again.')
+        setError(data.error || tr('Could not delete the account. Please try again.'))
         return
       }
       if (isLocal) deleteLocalUser(user.username)
       clearSignedInUser()
       onDeleted()
     } catch {
-      setError('Could not reach the server. Check your connection and try again.')
+      setError(tr('Could not reach the server. Check your connection and try again.'))
     } finally {
       setBusy(false)
     }
@@ -96,7 +98,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
           type="button"
           onClick={onClose}
           disabled={busy}
-          aria-label="Close"
+          aria-label={t('Close')}
           className="ed-focus absolute right-3.5 top-3.5 flex h-9 w-9 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--app-surface)]"
         >
           <X className="h-4 w-4" strokeWidth={2} />
@@ -110,30 +112,25 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
           id="delete-account-title"
           className="home-serif mt-4 text-[1.45rem] font-semibold leading-tight text-[var(--home-heading)]"
         >
-          Delete your account?
-        </h2>
+          {t('Delete your account?')}</h2>
         <p className="mt-2 text-[0.9rem] leading-relaxed text-[var(--home-muted)]">
-          This permanently removes <span className="font-semibold text-[var(--home-heading)]">@{user.username}</span>{' '}
-          and cannot be undone:
-        </p>
+          {t('This permanently removes @{username} and cannot be undone:', { username: user.username })}</p>
         <ul className="mt-3 space-y-1.5 text-[0.88rem] text-[var(--home-heading)]">
-          <li>• Every recitation you published, and its audio</li>
-          <li>• Your profile picture</li>
-          <li>• The recitations you saved to favourites</li>
+          <li>{t('• Every recitation you published, and its audio')}</li>
+          <li>{t('• Your profile picture')}</li>
+          <li>{t('• The recitations you saved to favourites')}</li>
         </ul>
         <p className="mt-3 text-[0.8rem] leading-relaxed text-[var(--home-muted)]">
-          Bookmarks and reading progress stored on this phone stay on this phone.
-        </p>
+          {t('Bookmarks and reading progress stored on this phone stay on this phone.')}</p>
 
         <label htmlFor="delete-pin" className="mt-5 block text-[0.8rem] font-semibold text-[var(--home-heading)]">
-          Enter your PIN to confirm
-        </label>
+          {t('Enter your PIN to confirm')}</label>
         <button
           type="button"
           onClick={() => inputRef.current?.focus()}
           disabled={busy}
           className={cn('mt-2.5 flex w-full justify-center gap-2.5', error && 'auth-shake')}
-          aria-label="Enter your 4-digit PIN"
+          aria-label={t('Enter your 4-digit PIN')}
         >
           {[0, 1, 2, 3].map((i) => {
             const filled = pin.length > i
@@ -185,15 +182,14 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
             disabled={busy}
             className="ed-focus h-12 rounded-2xl border border-[var(--home-rule-strong)] text-[0.92rem] font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] disabled:opacity-50"
           >
-            Keep account
-          </button>
+            {t('Keep account')}</button>
           <button
             type="button"
             onClick={() => void confirmDelete()}
             disabled={busy || pin.length !== 4}
             className="ed-focus flex h-12 items-center justify-center rounded-2xl bg-rose-600 text-[0.92rem] font-semibold text-white transition-opacity disabled:opacity-40"
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Delete'}
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t('Delete')}
           </button>
         </div>
       </div>

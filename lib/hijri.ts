@@ -6,6 +6,8 @@
  * like "March 22, 1448". This algorithm is deterministic everywhere.
  */
 
+import { currentLanguage, tr } from '@/lib/i18n-core'
+
 const HIJRI_MONTHS = [
   'Muharram',
   'Safar',
@@ -69,8 +71,9 @@ export function toHijri(date: Date): HijriDate {
   return { day, month, year, monthName: HIJRI_MONTHS[month - 1] || '' }
 }
 
-/** e.g. "Rabi' I 21, 1448 AH" */
+/** e.g. "Rabi' I 21, 1448 AH" ("21 ربيع الأول 1448 هـ" in Arabic) */
 export function formatHijri(date: Date): string {
   const { day, year, monthName } = toHijri(date)
-  return `${monthName} ${day}, ${year} AH`
+  const month = tr(monthName)
+  return currentLanguage() === 'ar' ? `${day} ${month} ${year} هـ` : `${month} ${day}, ${year} AH`
 }

@@ -15,6 +15,7 @@
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
+import { tr } from '@/lib/i18n-core'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -60,7 +61,7 @@ function fileStem(r: Pick<Recitation, 'title' | 'userName'>): string {
 /** The recording with its room put back: exactly what a listener hears in the app. */
 async function renderRecitationAudio(r: Recitation, signal?: AbortSignal): Promise<AudioBuffer> {
   const blob = await prefetchRecitationAudio(r.id)
-  if (!blob || blob.size === 0) throw new Error('Could not download that recitation.')
+  if (!blob || blob.size === 0) throw new Error(tr('Could not download that recitation.'))
   throwIfCancelled(signal)
 
   // An offline context decodes without ever asking for the speaker.
@@ -139,7 +140,7 @@ export async function makeRecitationAudio(
 
   await output.finalize()
   const data = output.target.buffer
-  if (!data) throw new Error('Could not prepare the audio.')
+  if (!data) throw new Error(tr('Could not prepare the audio.'))
   onProgress(1)
   return {
     kind: 'audio',
@@ -190,6 +191,31 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   includeAvatar: true,
 }
 
+const VIDEO_OPTIONS_KEY = 'muyassar_qari_video_options'
+
+/** The choices from the last video made, so sharing again starts where you left off. */
+export function loadVideoOptions(): VideoOptions {
+  try {
+    const raw = localStorage.getItem(VIDEO_OPTIONS_KEY)
+    if (!raw) return DEFAULT_VIDEO_OPTIONS
+    const saved = JSON.parse(raw) as Partial<VideoOptions>
+    return {
+      backgroundId: findVideoBackground(String(saved.backgroundId)).id,
+      includeAvatar: saved.includeAvatar !== false,
+    }
+  } catch {
+    return DEFAULT_VIDEO_OPTIONS
+  }
+}
+
+export function saveVideoOptions(options: VideoOptions): void {
+  try {
+    localStorage.setItem(VIDEO_OPTIONS_KEY, JSON.stringify(options))
+  } catch {
+    // Remembering is a nicety.
+  }
+}
+
 /** Frequency bands; the bars mirror them, low voices in the middle and higher ones outwards. */
 const BANDS = 18
 const BAR_WIDTH = 6
@@ -232,7 +258,7 @@ function makeCanvas(width = W, height = H): [HTMLCanvasElement, CanvasRenderingC
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Could not draw the video on this device.')
+  if (!ctx) throw new Error(tr('Could not draw the video on this device.'))
   return [canvas, ctx]
 }
 
@@ -512,7 +538,7 @@ export async function makeRecitationVideo(
 
   const mb = await import('mediabunny')
   if (!(await mb.canEncodeVideo('avc', { width: W, height: H }))) {
-    throw new Error('This browser cannot make videos yet. Update it, or share the audio instead.')
+    throw new Error(tr('This browser cannot make videos yet. Update it, or share the audio instead.'))
   }
   // AAC is what every app expects inside an MP4. Where the browser has no AAC
   // encoder, MP3 inside the MP4 plays just as widely.
@@ -568,7 +594,7 @@ export async function makeRecitationVideo(
   }
 
   const data = output.target.buffer
-  if (!data) throw new Error('Could not make the video.')
+  if (!data) throw new Error(tr('Could not make the video.'))
   onProgress(1)
   return {
     kind: 'video',

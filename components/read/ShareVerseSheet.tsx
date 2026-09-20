@@ -11,6 +11,7 @@ import {
   shareVerseBlob,
 } from '@/lib/verse-image'
 import { getWordTranslations } from '@/lib/word-translations'
+import { tr, useT } from '@/lib/i18n'
 
 export interface ShareVerseTarget {
   verseKey: string
@@ -42,6 +43,7 @@ export default function ShareVerseSheet({
   translationLanguage,
   onClose,
 }: ShareVerseSheetProps) {
+  const t = useT()
   const [mounted, setMounted] = useState(false)
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID)
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
@@ -160,7 +162,7 @@ export default function ShareVerseSheet({
         previewUrlRef.current = url
         setPreviewUrl(url)
       } catch (err) {
-        if (!cancelled) setNotice(err instanceof Error ? err.message : 'Could not build the card.')
+        if (!cancelled) setNotice(err instanceof Error ? err.message : tr('Could not build the card.'))
       } finally {
         if (!cancelled) setRendering(false)
       }
@@ -227,10 +229,10 @@ export default function ShareVerseSheet({
         surahName: target.surahName,
       })
       if (result === 'shared') onClose()
-      else setNotice('Saved to your downloads.')
+      else setNotice(tr('Saved to your downloads.'))
     } catch (err) {
       console.error('Share verse failed:', err)
-      setNotice(err instanceof Error ? err.message : 'Could not share the card.')
+      setNotice(err instanceof Error ? err.message : tr('Could not share the card.'))
     } finally {
       setBusy(false)
     }
@@ -245,7 +247,7 @@ export default function ShareVerseSheet({
     document.body.appendChild(link)
     link.click()
     link.remove()
-    setNotice('Saved to your downloads.')
+    setNotice(tr('Saved to your downloads.'))
   }, [target])
 
   if (!open || !mounted || !target) return null
@@ -257,14 +259,14 @@ export default function ShareVerseSheet({
     <div className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t('Close')}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
 
       <div
         role="dialog"
-        aria-label={`Share ayah ${target.verseKey}`}
+        aria-label={t('Share ayah {verseKey}', { verseKey: target.verseKey })}
         className="relative flex max-h-[94dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-t text-[var(--mushaf-read-popup-text)] sm:rounded-3xl sm:border"
         style={{
           background: 'var(--mushaf-read-popup-bg)',
@@ -273,16 +275,16 @@ export default function ShareVerseSheet({
       >
         <div className="flex shrink-0 items-center justify-between px-5 pb-1 pt-3.5">
           <div>
-            <p className="text-sm font-semibold">Share this ayah</p>
+            <p className="text-sm font-semibold">{t('Share this ayah')}</p>
             <p className="text-[11px] text-[var(--mushaf-popup-meta)]">
               {target.surahName} · {target.verseKey}
-              {selection.partial ? ' · part' : ''}
+              {selection.partial ? t(' · part') : ''}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('Close')}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--mushaf-popup-badge-bg)] transition-transform active:scale-90"
           >
             <X className="h-4 w-4" />
@@ -297,7 +299,7 @@ export default function ShareVerseSheet({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={`Verse card for ${target.verseKey}`}
+                  alt={t('Verse card for {verseKey}', { verseKey: target.verseKey })}
                   className={cn(
                     'max-h-[34dvh] w-auto rounded-xl shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-opacity duration-200',
                     rendering && 'opacity-60'
@@ -321,7 +323,7 @@ export default function ShareVerseSheet({
             <div className="mb-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
-                  {range ? `${selEnd - selStart + 1} of ${pickerWords.length} words` : 'Drag across to share part'}
+                  {range ? t('{selEnd} of {length} words', { selEnd: selEnd - selStart + 1, length: pickerWords.length }) : t('Drag across to share part')}
                 </p>
                 {range ? (
                   <button
@@ -330,8 +332,7 @@ export default function ShareVerseSheet({
                     className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[var(--mushaf-read-accent)]"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    Whole ayah
-                  </button>
+                    {t('Whole ayah')}</button>
                 ) : null}
               </div>
               <div
@@ -386,14 +387,14 @@ export default function ShareVerseSheet({
               className="mb-3 flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3 py-2.5 text-left"
             >
               <span>
-                <span className="block text-xs font-semibold">Include translation</span>
+                <span className="block text-xs font-semibold">{t('Include translation')}</span>
                 {selection.partial ? (
                   <span className="block text-[10px] text-[var(--mushaf-popup-meta)]">
                     {glossesLoading
-                      ? 'Loading word meanings…'
+                      ? t('Loading word meanings…')
                       : glossesMissing
-                        ? 'Word meanings unavailable offline'
-                        : 'Word-by-word, for the selected words only'}
+                        ? t('Word meanings unavailable offline')
+                        : t('Word-by-word, for the selected words only')}
                   </span>
                 ) : null}
               </span>
@@ -416,8 +417,7 @@ export default function ShareVerseSheet({
 
           {/* Backgrounds */}
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
-            Background
-          </p>
+            {t('Background')}</p>
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
             {VERSE_IMAGE_BACKGROUNDS.map((bg) => {
               const selected = bg.id === backgroundId
@@ -426,7 +426,7 @@ export default function ShareVerseSheet({
                   key={bg.id}
                   type="button"
                   onClick={() => setBackgroundId(bg.id)}
-                  aria-label={bg.label}
+                  aria-label={t(bg.label)}
                   aria-pressed={selected}
                   className={cn(
                     'relative h-12 w-12 shrink-0 overflow-hidden rounded-xl transition-transform active:scale-95',
@@ -449,8 +449,7 @@ export default function ShareVerseSheet({
 
           {translationLoading && !translation ? (
             <p className="pt-2 text-[11px] text-[var(--mushaf-popup-meta)]">
-              Loading the translation…
-            </p>
+              {t('Loading the translation…')}</p>
           ) : null}
           {notice ? (
             <p className="pt-2 text-[11px] font-medium text-[var(--mushaf-read-accent)]">{notice}</p>
@@ -464,7 +463,7 @@ export default function ShareVerseSheet({
             onClick={handleDownload}
             disabled={!previewUrl || rendering}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--mushaf-popup-badge-bg)] transition-transform active:scale-95 disabled:opacity-50"
-            aria-label="Save image"
+            aria-label={t('Save image')}
           >
             <Download className="h-[18px] w-[18px]" />
           </button>
@@ -475,8 +474,7 @@ export default function ShareVerseSheet({
             className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--mushaf-read-accent)] text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-            Share
-          </button>
+            {t('Share')}</button>
         </div>
       </div>
     </div>

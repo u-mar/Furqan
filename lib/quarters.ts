@@ -2,6 +2,7 @@ import quarterStarts from '@/lib/quarter-starts.json'
 import { JUZ_STARTS } from '@/lib/mushaf'
 import type { ChapterMeta } from '@/lib/chapters-meta'
 import { estimatePageForVerse } from '@/lib/chapters-meta'
+import { tr } from '@/lib/i18n-core'
 
 export interface QuarterMarker {
   id: string
@@ -47,7 +48,7 @@ export function buildQuarterMarkers(meta: ChapterMeta[]): QuarterMarker[] {
         ayah,
         page,
         verseKey,
-        surahName: nameById[surah] || `Surah ${surah}`,
+        surahName: nameById[surah] || tr('Surah {surah}', { surah }),
       })
     }
   }

@@ -13,6 +13,7 @@
 import { APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
 import { countPlay, recitationAudioUrl, type Recitation } from '@/lib/qari'
+import { tr } from '@/lib/i18n-core'
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused'
 
@@ -92,7 +93,7 @@ function ensureAudio(): HTMLAudioElement {
     if (!playNext()) emit({ status: 'paused', position: 0 })
   })
   el.addEventListener('error', () => {
-    if (el.src) fail('That recitation could not be played.')
+    if (el.src) fail(tr('That recitation could not be played.'))
   })
   audio = el
   return el
@@ -173,7 +174,7 @@ export function playRecitation(
     .catch((err: unknown) => {
       // A newer play() superseding this one is not a failure.
       if (err instanceof DOMException && err.name === 'AbortError') return
-      fail('That recitation could not be played.')
+      fail(tr('That recitation could not be played.'))
     })
 }
 

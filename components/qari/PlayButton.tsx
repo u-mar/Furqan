@@ -3,6 +3,7 @@
 import { Pause, Play } from 'lucide-react'
 import type { PlayerStatus } from '@/lib/qari-player'
 import { cn } from '@/lib/cn'
+import { useT } from '@/lib/i18n'
 
 /**
  * Round play control in ink; `accent` makes the idle state the accent, for a
@@ -23,6 +24,7 @@ export default function PlayButton({
   accent?: boolean
   className?: string
 }) {
+  const t = useT()
   const active = status === 'playing' || status === 'loading'
   const iconClass = size >= 48 ? 'h-5 w-5' : size >= 40 ? 'h-4 w-4' : 'h-[15px] w-[15px]'
 
@@ -30,7 +32,7 @@ export default function PlayButton({
     <button
       type="button"
       onClick={onClick}
-      aria-label={active ? `Pause ${label}` : `Play ${label}`}
+      aria-label={active ? t('Pause {label}', { label }) : t('Play {label}', { label })}
       className={cn(
         'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full',
         accent && !active ? 'bg-[var(--home-sage)] text-white' : 'ed-ink',

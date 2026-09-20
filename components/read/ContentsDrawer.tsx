@@ -18,6 +18,7 @@ import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
 import { versePageNumber } from '@/lib/qcf-page'
 import type { Chapter, Verse } from '@/types'
+import { useT } from '@/lib/i18n'
 
 type TopTab = 'chapters' | 'quarters'
 type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
@@ -73,6 +74,7 @@ export default function ContentsDrawer({
   onSelectSurah,
   onGoToPage,
 }: ContentsDrawerProps) {
+  const t = useT()
   const [topTab, setTopTab] = useState<TopTab>('chapters')
   const [bottomNav, setBottomNav] = useState<BottomNav>('chapters')
   const [meta, setMeta] = useState<ChapterMeta[]>([])
@@ -176,13 +178,13 @@ export default function ContentsDrawer({
       <button
         type="button"
         className="fixed inset-0 z-40 bg-black/60"
-        aria-label="Close contents"
+        aria-label={t('Close contents')}
         onClick={onClose}
       />
       <aside
         className="fixed inset-y-0 left-0 z-50 flex w-[min(100%,360px)] flex-col bg-[#0d0d0d] text-white shadow-2xl"
         role="dialog"
-        aria-label="Contents"
+        aria-label={t('Contents')}
       >
         {showContentsHeader && (
           <div className="flex items-center justify-end px-4 pt-4">
@@ -197,8 +199,7 @@ export default function ContentsDrawer({
                     : 'border-stone-600 text-stone-300'
                 )}
               >
-                CHAPTERS
-              </button>
+                {t('CHAPTERS')}</button>
               <button
                 type="button"
                 onClick={() => setTopTab('quarters')}
@@ -209,14 +210,13 @@ export default function ContentsDrawer({
                     : 'border-stone-600 text-stone-300'
                 )}
               >
-                QUARTERS
-              </button>
+                {t('QUARTERS')}</button>
             </div>
             <button
               type="button"
               onClick={onClose}
               className="rounded-full p-2 text-stone-400 hover:bg-white/10"
-              aria-label="Close"
+              aria-label={t('Close')}
             >
               <X className="h-5 w-5" />
             </button>
@@ -228,17 +228,17 @@ export default function ContentsDrawer({
               type="button"
               onClick={onClose}
               className="rounded-full p-2 text-stone-400 hover:bg-white/10"
-              aria-label="Close"
+              aria-label={t('Close')}
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         )}
-        {showContentsHeader && <h2 className="px-4 pt-2 text-2xl font-semibold">Contents</h2>}
+        {showContentsHeader && <h2 className="px-4 pt-2 text-2xl font-semibold">{t('Contents')}</h2>}
         {bottomNav === 'bookmarks' && (
           <div className="px-4 pt-1">
-            <h2 className="text-2xl font-semibold">Bookmarks</h2>
-            <p className="mt-1 text-xs text-stone-500">Long-press an ayah to save it here.</p>
+            <h2 className="text-2xl font-semibold">{t('Bookmarks')}</h2>
+            <p className="mt-1 text-xs text-stone-500">{t('Long-press an ayah to save it here.')}</p>
           </div>
         )}
 
@@ -277,10 +277,10 @@ export default function ContentsDrawer({
                   }}
                   className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500 hover:text-teal-400"
                 >
-                  Juz {part}
+                  {t('Juz')} {part}
                 </button>
                 {partChapters.length === 0 && (
-                  <p className="px-2 pb-1 text-xs text-stone-500">Continues from previous surah</p>
+                  <p className="px-2 pb-1 text-xs text-stone-500">{t('Continues from previous surah')}</p>
                 )}
                 <ul>
                   {partChapters.map((chapter) => {
@@ -311,8 +311,8 @@ export default function ContentsDrawer({
                               {chapter.englishName}
                             </span>
                             <span className="mt-0.5 block text-xs text-stone-500">
-                              Page {startPage} · {chapter.versesCount} verses ·{' '}
-                              {revelationLabel(chapter.id)}
+                              {t('Page')} {startPage} · {chapter.versesCount} {t('verses ·')}{' '}
+                              {t(revelationLabel(chapter.id))}
                             </span>
                           </span>
                         </button>
@@ -327,7 +327,7 @@ export default function ContentsDrawer({
             quartersByPart.map(([part, partQuarters]) => (
               <div key={part} className="mb-4">
                 <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500">
-                  Juz {part}
+                  {t('Juz')} {part}
                 </p>
                 <ul>
                   {partQuarters.map((q, idx) => {
@@ -358,7 +358,7 @@ export default function ContentsDrawer({
                         >
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-teal-400">
-                              Quarter {q.indexInJuz} starts at {q.verseKey}
+                              {t('Quarter')} {q.indexInJuz} {t('starts at')} {q.verseKey}
                             </p>
                             {previewVerse[q.verseKey] ? (
                               <QuarterAyahPreview
@@ -374,7 +374,7 @@ export default function ContentsDrawer({
                               </p>
                             )}
                             <p className="mt-1 text-xs text-stone-500">
-                              {q.surahName} · Ayah {q.ayah} · Page {q.page}
+                              {q.surahName} {t('· Ayah')} {q.ayah} {t('· Page')} {q.page}
                             </p>
                           </div>
                           {showRing ? (
@@ -396,8 +396,7 @@ export default function ContentsDrawer({
             <div className="px-2 pt-3">
               {bookmarks.length === 0 ? (
                 <p className="px-4 py-12 text-center text-sm text-stone-500">
-                  No bookmarks yet. Long-press an ayah, then tap Bookmark.
-                </p>
+                  {t('No bookmarks yet. Long-press an ayah, then tap Bookmark.')}</p>
               ) : (
                 <ul className="space-y-1">
                   {bookmarks.map((bookmark) => (
@@ -415,7 +414,7 @@ export default function ContentsDrawer({
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-xs font-medium text-teal-400">
-                            {bookmark.surahName} · Ayah {bookmark.ayah}
+                            {bookmark.surahName} {t('· Ayah')} {bookmark.ayah}
                           </span>
                           {bookmark.qcfGlyphs && bookmark.qcfFontFamily ? (
                             <span
@@ -441,7 +440,7 @@ export default function ContentsDrawer({
                             </span>
                           )}
                           <span className="mt-1 block text-xs text-stone-500">
-                            {bookmark.verseKey} · Page {bookmark.page}
+                            {bookmark.verseKey} {t('· Page')} {bookmark.page}
                           </span>
                         </span>
                       </button>
@@ -467,7 +466,7 @@ export default function ContentsDrawer({
                 )}
               >
                 <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 1.75} />
-                {label}
+                {t(label)}
               </button>
             )
           })}

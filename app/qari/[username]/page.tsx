@@ -2,31 +2,31 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Heart, Mic, Pause, Pencil, Play, Share2 } from 'lucide-react'
+import { Heart, Mic, Pause, Play } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
-import QariAvatar from '@/components/qari/QariAvatar'
+import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import {
-  QariHeader,
-  QariLabel,
   QariScreen,
-  QariSegmented,
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { tapFeedback } from '@/lib/haptics'
-import { compactNumber, fetchFeed, fetchFollowState, type Recitation } from '@/lib/qari'
+import { cn } from '@/lib/cn'
+import { fetchFeed, fetchFollowState, type Recitation } from '@/lib/qari'
 import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
+import { tr, useT } from '@/lib/i18n'
 
 type Tab = 'recitations' | 'favourites'
 
 export default function QariProfilePage() {
+  const t = useT()
   const params = useParams<{ username: string }>()
   const username = decodeURIComponent(String(params?.username ?? ''))
   const viewer = useViewer()
@@ -129,7 +129,7 @@ export default function QariProfilePage() {
       if (err instanceof DOMException && err.name === 'AbortError') return
     }
     const ok = await copyText(url)
-    qariNotice(ok ? 'Profile link copied.' : 'Could not share that.')
+    qariNotice(ok ? tr('Profile link copied.') : tr('Could not share that.'))
   }, [displayName, username])
 
   const totals = useMemo(() => {
@@ -139,6 +139,12 @@ export default function QariProfilePage() {
       plays: list.reduce((sum, r) => sum + r.playCount, 0),
       loved: list.reduce((sum, r) => sum + r.likeCount, 0),
     }
+  }, [recitations])
+
+  const sheikhIds = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const r of recitations ?? []) if (r.imitating) counts.set(r.imitating, (counts.get(r.imitating) ?? 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
   }, [recitations])
 
   const list = tab === 'recitations' ? recitations : favourites
@@ -164,8 +170,8 @@ export default function QariProfilePage() {
 
   const tabs = isMe
     ? [
-        { id: 'recitations' as const, label: 'Recitations' },
-        { id: 'favourites' as const, label: 'Favourites' },
+        { id: 'recitations' as const, label: t('Recitations') },
+        { id: 'favourites' as const, label: t('Favourites') },
       ]
     : null
 
@@ -173,155 +179,130 @@ export default function QariProfilePage() {
     <QariScreen>
       <PullIndicator pull={pull} refreshing={refreshing} />
 
-      <QariHeader
-        action={
-          <button type="button" onClick={() => void handleShare()} className="home-round ed-focus" aria-label="Share profile">
-            <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
-          </button>
-        }
-      />
+      <ProfileTopBar username={username} name={displayName} avatarVersion={avatarVersion} onShare={() => void handleShare()} />
 
-      {/* Identity */}
-      <section className="qari-enter mt-1.5 flex flex-col items-center text-center">
-        <div className="relative">
-          <div className="rounded-full shadow-[0_16px_34px_-18px_rgba(22,23,27,0.5)]">
-            <QariAvatar username={username} name={displayName} size={96} version={avatarVersion} />
-          </div>
-          {isMe ? (
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                setEditOpen(true)
-              }}
-              aria-label="Edit profile picture"
-              className="qari-press ed-focus ed-ink absolute -right-0.5 bottom-0 flex h-8 w-8 items-center justify-center rounded-full border-[3px] border-[var(--app-bg)]"
-            >
-              <Pencil className="h-[13px] w-[13px]" strokeWidth={2.4} />
-            </button>
-          ) : null}
-        </div>
-
-        <h1 className="home-serif mt-3.5 max-w-full truncate text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-          {displayName}
-        </h1>
-        <p className="mt-0.5 text-sm text-[var(--home-muted)]">@{username}</p>
-      </section>
-
-      <div className="home-card mt-4 grid grid-cols-3 rounded-2xl py-3">
-        <Stat value={recitations === null ? null : totals.count} label={totals.count === 1 ? 'recitation' : 'recitations'} />
-        <Stat value={recitations === null ? null : totals.plays} label={totals.plays === 1 ? 'play' : 'plays'} divided />
-        <Stat value={recitations === null ? null : totals.loved} label="loved" divided />
-      </div>
-
-      <div className="mt-3.5 grid grid-cols-2 gap-2">
-        {isMe ? (
-          <button
-            type="button"
-            onClick={() => {
-              tapFeedback()
-              setEditOpen(true)
-            }}
-            className="qari-press ed-focus flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[14.5px] font-semibold text-[var(--home-heading)]"
-          >
-            <Pencil className="h-4 w-4" strokeWidth={2} />
-            Edit profile
-          </button>
-        ) : (
-          <FollowButton
-            size="lg"
-            viewer={viewer}
-            target={username}
-            following={follow?.following ?? false}
-            onNotice={qariNotice}
-            onChange={(state) =>
-              setFollow((prev) => ({
-                following: state.following,
-                followers:
-                  state.followers ??
-                  Math.max(0, (prev?.followers ?? 0) + (state.following === prev?.following ? 0 : state.following ? 1 : -1)),
-              }))
-            }
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => void handleShare()}
-          className="qari-press ed-focus flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[14.5px] font-semibold text-[var(--home-heading)]"
-        >
-          <Share2 className="h-4 w-4" strokeWidth={2} />
-          Share profile
-        </button>
+      <div className="mt-1">
+        <ProfileHero
+          username={username}
+          name={displayName}
+          isMe={isMe}
+          avatarVersion={avatarVersion}
+          stats={{
+            followers: follow === null ? null : follow.followers,
+            plays: recitations === null ? null : totals.plays,
+            loved: recitations === null ? null : totals.loved,
+          }}
+          sheikhIds={sheikhIds}
+          onShare={() => void handleShare()}
+          onEditPicture={() => setEditOpen(true)}
+          actions={
+            isMe ? (
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  setEditOpen(true)
+                }}
+                className="qari-press ed-focus flex h-11 w-full items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_8%,transparent)] text-[14.5px] font-semibold text-[var(--home-heading)]"
+              >
+                {t('Edit profile')}</button>
+            ) : (
+              <FollowButton
+                size="lg"
+                viewer={viewer}
+                target={username}
+                following={follow?.following ?? false}
+                onNotice={qariNotice}
+                onChange={(state) =>
+                  setFollow((prev) => ({
+                    following: state.following,
+                    followers:
+                      state.followers ??
+                      Math.max(0, (prev?.followers ?? 0) + (state.following === prev?.following ? 0 : state.following ? 1 : -1)),
+                  }))
+                }
+              />
+            )
+          }
+        />
       </div>
 
       {/* Tabs and play all */}
-      {tabs ? (
-        <div className="mt-[22px] flex items-center gap-2.5">
-          <QariSegmented label="Profile sections" options={tabs} value={tab} onChange={setTab} className="min-w-0 flex-1" />
+      <div className="mt-6 flex items-center justify-between border-b border-[var(--home-rule)]">
+        <div className="flex gap-6" role="tablist" aria-label={t('Profile sections')}>
+          {(tabs ?? [{ id: 'recitations' as const, label: t('Recitations') }]).map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => {
+                if (tab === id) return
+                tapFeedback()
+                setTab(id)
+              }}
+              className={cn(
+                'ed-focus relative h-11 text-[14.5px] font-semibold transition-colors',
+                tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
+              )}
+            >
+              {label}
+              {id === 'recitations' && recitations ? (
+                <span className="ml-1.5 text-[12.5px] font-medium text-[var(--home-muted)]">{recitations.length}</span>
+              ) : null}
+              <span
+                className={cn(
+                  'absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-[var(--home-heading)] transition-opacity',
+                  tab === id ? 'opacity-100' : 'opacity-0'
+                )}
+              />
+            </button>
+          ))}
+        </div>
+        {list && list.length > 0 ? (
           <button
             type="button"
             onClick={playAll}
-            disabled={!list || list.length === 0}
-            aria-label={playingNow ? 'Pause' : 'Play all'}
-            className="qari-press ed-focus ed-ink flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+            aria-label={playingNow ? t('Pause') : t('Play all')}
+            className="ed-ink qari-press ed-focus mb-1 flex h-[34px] items-center gap-1.5 rounded-full pl-2.5 pr-[13px] text-[13px] font-semibold"
           >
             {playingNow ? (
-              <Pause key="pause" className="qari-swap h-4 w-4 fill-current" strokeWidth={0} />
+              <Pause key="pause" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
             ) : (
-              <Play key="play" className="qari-swap ml-0.5 h-4 w-4 fill-current" strokeWidth={0} />
+              <Play key="play" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
             )}
+            {playingNow ? t('Pause') : t('Play all')}
           </button>
-        </div>
-      ) : (
-        <QariLabel
-          action={
-            list && list.length > 0 ? (
-              <button
-                type="button"
-                onClick={playAll}
-                className="qari-press ed-focus ed-ink flex h-[34px] items-center gap-1.5 rounded-full pl-2.5 pr-[13px] text-[13px] font-semibold"
-              >
-                {playingNow ? (
-                  <Pause key="pause" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
-                ) : (
-                  <Play key="play" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
-                )}
-                {playingNow ? 'Pause' : 'Play all'}
-              </button>
-            ) : null
-          }
-        >
-          {recitations === null ? 'Recitations' : `Recitations · ${recitations.length}`}
-        </QariLabel>
-      )}
+        ) : null}
+      </div>
 
-      <div className={tabs ? 'mt-3' : undefined}>
+      <div className="mt-3">
         {list === null ? (
           <RecitationSkeletons count={3} />
         ) : failed && tab === 'recitations' ? (
           <EmptyState
             Icon={Mic}
-            title="Could not load this profile"
-            body="Check your connection and try again."
-            action={{ label: 'Try again', onClick: () => void loadRecitations() }}
+            title={t('Could not load this profile')}
+            body={t('Check your connection and try again.')}
+            action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
         ) : list.length === 0 ? (
           tab === 'favourites' ? (
             <EmptyState
               Icon={Heart}
-              title="Nothing saved yet"
-              body="Tap the heart on a recitation and it will be waiting here."
-              action={{ label: 'Explore Qari', href: '/qari' }}
+              title={t('Nothing saved yet')}
+              body={t('Tap the heart on a recitation and it will be waiting here.')}
+              action={{ label: t('Explore Qari'), href: '/qari' }}
             />
           ) : isMe ? (
             <EmptyState
               Icon={Mic}
-              title="No recitations yet"
-              body="Record a few ayahs and they will appear here."
-              action={{ label: 'Record one', href: '/qari/record', Icon: Mic }}
+              title={t('No recitations yet')}
+              body={t('Record a few ayahs and they will appear here.')}
+              action={{ label: t('Record one'), href: '/qari/record', Icon: Mic }}
             />
           ) : (
-            <EmptyState Icon={Mic} title="Nothing published yet" body={`${displayName} hasn't published anything yet.`} />
+            <EmptyState Icon={Mic} title={t('Nothing published yet')} body={`${displayName} hasn't published anything yet.`} />
           )
         ) : (
           <RecitationCards>
@@ -354,17 +335,5 @@ export default function QariProfilePage() {
         />
       ) : null}
     </QariScreen>
-  )
-}
-
-/** One total in the stats card: a serif number over its word. */
-function Stat({ value, label, divided = false }: { value: number | null; label: string; divided?: boolean }) {
-  return (
-    <div className={divided ? 'border-l border-[var(--home-rule)] text-center' : 'text-center'}>
-      <div className="home-serif flex h-7 items-center justify-center text-[1.375rem] font-semibold tabular-nums text-[var(--home-heading)]">
-        {value === null ? <span className="qari-skeleton block h-5 w-8 rounded-md" /> : compactNumber(value)}
-      </div>
-      <p className="mt-px text-xs text-[var(--home-muted)]">{label}</p>
-    </div>
   )
 }

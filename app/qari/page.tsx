@@ -23,10 +23,12 @@ import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
 import { tapFeedback } from '@/lib/haptics'
 import type { AppUser } from '@/lib/auth'
+import { tr, useT } from '@/lib/i18n'
 
 type Sort = 'recent' | 'top' | 'following'
 
 function QariHomeContent() {
+  const t = useT()
   const viewer = useViewer()
   const params = useSearchParams()
   const urlQuery = params.get('q') ?? ''
@@ -122,7 +124,7 @@ function QariHomeContent() {
       setItems((prev) => [...prev, ...page.items.filter((r) => !prev.some((p) => p.id === r.id))])
       setHasMore(page.hasMore)
     } catch {
-      qariNotice('Could not load more.')
+      qariNotice(tr('Could not load more.'))
     } finally {
       setLoadingMore(false)
     }
@@ -142,11 +144,11 @@ function QariHomeContent() {
 
   const sortOptions = useMemo(
     () => [
-      { id: 'recent' as const, label: 'Latest' },
-      { id: 'top' as const, label: 'Most loved' },
-      ...(viewer ? [{ id: 'following' as const, label: 'Following' }] : []),
+      { id: 'recent' as const, label: t('Latest') },
+      { id: 'top' as const, label: t('Most loved') },
+      ...(viewer ? [{ id: 'following' as const, label: t('Following') }] : []),
     ],
-    [viewer]
+    [viewer, t]
   )
 
   return (
@@ -154,10 +156,10 @@ function QariHomeContent() {
       <PullIndicator pull={pull} refreshing={refreshing} />
 
       <QariHeader
-        title="Qari"
+        title={t('Qari')}
         backHref="/"
         action={
-          <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label="Qaris">
+          <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label={t('Qaris')}>
             <Users className="h-[19px] w-[19px]" strokeWidth={1.9} />
           </Link>
         }
@@ -170,8 +172,8 @@ function QariHomeContent() {
           setSearch(value)
           if (!value) setQuery('')
         }}
-        placeholder="Search a qari, recitation or #tag"
-        label="Search recitations"
+        placeholder={t('Search a qari, recitation or #tag')}
+        label={t('Search recitations')}
       />
 
       {searching ? (
@@ -197,7 +199,7 @@ function QariHomeContent() {
 
           {sheikhs.length > 0 ? (
             <section>
-              <QariLabel action={<SeeAll href="/qari/sheikhs" />}>Imitations</QariLabel>
+              <QariLabel action={<SeeAll href="/qari/sheikhs" />}>{t('Imitations')}</QariLabel>
               {sheikhs.length <= 2 ? (
                 <div className="flex gap-2.5">
                   {sheikhs.map(({ sheikh, count }, i) => (
@@ -216,7 +218,7 @@ function QariHomeContent() {
 
           {discover && discover.lovedQaris.length > 0 ? (
             <section>
-              <QariLabel action={<SeeAll href="/qari/qaris" />}>Most loved qaris</QariLabel>
+              <QariLabel action={<SeeAll href="/qari/qaris" />}>{t('Most loved qaris')}</QariLabel>
               <div className="qari-no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-1 overflow-x-auto px-4 pb-1">
                 {discover.lovedQaris.map((qari, i) => (
                   <Link
@@ -237,8 +239,8 @@ function QariHomeContent() {
           ) : null}
 
           <section id="all-recitations" className="scroll-mt-4">
-            <QariLabel>Recitations</QariLabel>
-            <QariSegmented label="Sort recitations" options={sortOptions} value={sort} onChange={setSort} />
+            <QariLabel>{t('Recitations')}</QariLabel>
+            <QariSegmented label={t('Sort recitations')} options={sortOptions} value={sort} onChange={setSort} />
 
             <div className="mt-3">
               {loading ? (
@@ -246,24 +248,24 @@ function QariHomeContent() {
               ) : failed ? (
                 <EmptyState
                   Icon={RotateCw}
-                  title="Could not load recitations"
-                  body="Check your connection and try again."
-                  action={{ label: 'Try again', onClick: () => void loadFeed(), Icon: RotateCw }}
+                  title={t('Could not load recitations')}
+                  body={t('Check your connection and try again.')}
+                  action={{ label: t('Try again'), onClick: () => void loadFeed(), Icon: RotateCw }}
                 />
               ) : items.length === 0 ? (
                 sort === 'following' ? (
                   <EmptyState
                     Icon={UsersRound}
-                    title="Nothing from people you follow"
-                    body="Follow qaris you like and their new recitations will show up here."
-                    action={{ label: 'Find qaris', href: '/qari/qaris', Icon: Users }}
+                    title={t('Nothing from people you follow')}
+                    body={t('Follow qaris you like and their new recitations will show up here.')}
+                    action={{ label: t('Find qaris'), href: '/qari/qaris', Icon: Users }}
                   />
                 ) : (
                   <EmptyState
                     Icon={Mic}
-                    title="No recitations yet"
-                    body="Be the first. Record a few ayahs and share them with everyone here."
-                    action={{ label: 'Record the first one', href: '/qari/record', Icon: Mic }}
+                    title={t('No recitations yet')}
+                    body={t('Be the first. Record a few ayahs and share them with everyone here.')}
+                    action={{ label: t('Record the first one'), href: '/qari/record', Icon: Mic }}
                   />
                 )
               ) : (
@@ -290,7 +292,7 @@ function QariHomeContent() {
                       className="qari-press ed-focus mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] disabled:opacity-70"
                     >
                       {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
-                      {loadingMore ? 'Loading' : 'Show more'}
+                      {loadingMore ? t('Loading') : t('Show more')}
                     </button>
                   ) : null}
                 </>
@@ -304,19 +306,20 @@ function QariHomeContent() {
 }
 
 function SeeAll({ href }: { href: string }) {
+  const t = useT()
   return (
     <Link
       href={href}
       onClick={tapFeedback}
       className="ed-focus rounded text-[12.5px] font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]"
     >
-      See all
-    </Link>
+      {t('See all')}</Link>
   )
 }
 
 /** A search: a sheikh's imitations first when the query names one, then everything else it matches. */
 function SearchResults({ query, viewer }: { query: string; viewer: AppUser | null }) {
+  const t = useT()
   const sheikh = useMemo(() => matchSheikh(query), [query])
   const viewerId = viewer?.id ?? null
   const [sort, setSort] = useState<'recent' | 'top'>('top')
@@ -388,14 +391,14 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
       {sheikh ? (
         <>
           <SheikhHeader sheikh={sheikh} count={stats?.count ?? null} people={stats?.people ?? null} />
-          <QariLabel>Imitations</QariLabel>
+          <QariLabel>{t('Imitations')}</QariLabel>
           <QariSegmented
-            label="Sort imitations"
+            label={t('Sort imitations')}
             value={sort}
             onChange={setSort}
             options={[
-              { id: 'top', label: 'Most loved' },
-              { id: 'recent', label: 'Latest' },
+              { id: 'top', label: t('Most loved') },
+              { id: 'recent', label: t('Latest') },
             ]}
           />
           <div className="mt-3">
@@ -403,8 +406,7 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
               <RecitationSkeletons count={2} />
             ) : imitations.length === 0 ? (
               <p className="qari-enter home-card rounded-2xl px-4 py-3.5 text-sm leading-relaxed text-[var(--home-muted)]">
-                No one has imitated {sheikh.shortName} yet. Be the first.
-              </p>
+                {t('No one has imitated {name} yet. Be the first.', { name: sheikh.shortName })}</p>
             ) : (
               cards(imitations)
             )}
@@ -417,15 +419,15 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
       ) : others.length > 0 ? (
         <>
           <QariLabel className={sheikh ? undefined : 'mt-1'}>
-            {sheikh ? 'More results' : `Results for “${query}”`}
+            {sheikh ? t('More results') : t('Results for “{query}”', { query })}
           </QariLabel>
           {cards(others)}
         </>
       ) : !sheikh ? (
         <EmptyState
           Icon={SearchX}
-          title="Nothing found"
-          body={`Nothing matches “${query}”. Try a qari's name, a title or a #tag.`}
+          title={t('Nothing found')}
+          body={t('Nothing matches “{query}”. Try a qari\'s name, a title or a #tag.', { query })}
         />
       ) : null}
     </div>

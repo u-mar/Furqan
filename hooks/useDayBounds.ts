@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { getChapters, getMushafPage } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { Chapter, Verse } from '@/types'
+import { tr } from '@/lib/i18n-core'
 
 export interface VerseBound {
   verseKey: string
@@ -21,7 +22,7 @@ export interface DayBounds {
 function boundFromVerse(verse: Verse, chapters: Chapter[]): VerseBound {
   const surahId = Number(verse.verse_key.split(':')[0])
   const ayah = Number(verse.verse_key.split(':')[1])
-  const surahName = chapters.find((c) => c.id === surahId)?.englishName || `Surah ${surahId}`
+  const surahName = chapters.find((c) => c.id === surahId)?.englishName || tr('Surah {surahId}', { surahId })
   return {
     verseKey: verse.verse_key,
     surahName,

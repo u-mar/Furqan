@@ -8,9 +8,11 @@ import { QariHeader, QariScreen } from '@/components/qari/QariShell'
 import { tapFeedback } from '@/lib/haptics'
 import { fetchDiscover } from '@/lib/qari'
 import { SHEIKHS } from '@/lib/sheikhs'
+import { useT } from '@/lib/i18n'
 
 /** Every sheikh you can imitate, the most imitated first. */
 export default function SheikhsPage() {
+  const t = useT()
   const [counts, setCounts] = useState<Map<string, number> | null>(null)
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function SheikhsPage() {
 
   return (
     <QariScreen>
-      <QariHeader title="Sheikhs" sub="Hear everyone who imitated him" />
+      <QariHeader title={t('Sheikhs')} sub={t('Hear everyone who imitated him')} />
 
       <div className="home-card mt-[18px] overflow-hidden rounded-2xl">
         {ordered.map((sheikh, i) => {
@@ -47,7 +49,7 @@ export default function SheikhsPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold">{sheikh.name}</span>
                   <span className="mt-px block min-h-4 text-[12.5px] text-[var(--home-muted)]">
-                    {counts === null ? '' : count === 0 ? 'No imitations yet' : plural(count, 'imitation')}
+                    {counts === null ? '' : count === 0 ? t('No imitations yet') : plural(count, 'imitation')}
                   </span>
                 </span>
                 <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />

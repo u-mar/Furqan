@@ -15,6 +15,7 @@
 
 import { APP_NAME } from '@/lib/app-brand'
 import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
+import { tr } from '@/lib/i18n-core'
 
 const W = 1080
 const H = 1350
@@ -118,7 +119,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Could not load the background image'))
+    img.onerror = () => reject(new Error(tr('Could not load the background image')))
     img.src = src
   })
 }
@@ -238,7 +239,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas is not available on this device')
+  if (!ctx) throw new Error(tr('Canvas is not available on this device'))
 
   paintBackground(ctx, bgImage)
 
@@ -339,7 +340,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Could not render the verse image'))),
+      (blob) => (blob ? resolve(blob) : reject(new Error(tr('Could not render the verse image')))),
       'image/jpeg',
       0.92
     )

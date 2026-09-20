@@ -9,10 +9,12 @@ import {
   canShareMedia,
   copyText,
   DEFAULT_VIDEO_OPTIONS,
+  loadVideoOptions,
   makeRecitationAudio,
   makeRecitationVideo,
   recitationLink,
   saveMedia,
+  saveVideoOptions,
   shareMedia,
   ShareCancelled,
   VIDEO_BACKGROUNDS,
@@ -22,6 +24,7 @@ import {
 } from '@/lib/qari-share-media'
 import Switch from '@/components/qari/Switch'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
+import { tr, useT } from '@/lib/i18n'
 
 type Stage =
   | { name: 'choose' }
@@ -45,6 +48,7 @@ interface ShareSheetProps {
  * its share sheet inside a fresh tap, and making a video takes a few seconds.
  */
 export default function ShareSheet({ recitation, open, onClose, onNotice }: ShareSheetProps) {
+  const t = useT()
   const [stage, setStage] = useState<Stage>({ name: 'choose' })
   const [videoOptions, setVideoOptions] = useState<VideoOptions>(DEFAULT_VIDEO_OPTIONS)
   const abortRef = useRef<AbortController | null>(null)
@@ -53,7 +57,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
   useEffect(() => {
     if (!open) return
     setStage({ name: 'choose' })
-    setVideoOptions(DEFAULT_VIDEO_OPTIONS)
+    setVideoOptions(loadVideoOptions())
     // Start the download now; by the time an option is picked it is usually here.
     void prefetchRecitationAudio(recitation.id)
     return () => {
@@ -84,6 +88,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
         if (!controller.signal.aborted) setStage({ name: 'working', kind, progress })
       }
 
+      if (kind === 'video') saveVideoOptions(videoOptions)
       try {
         const media =
           kind === 'video'
@@ -101,8 +106,8 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
             err instanceof Error && err.message
               ? err.message
               : kind === 'video'
-                ? 'Could not make the video.'
-                : 'Could not prepare the audio.',
+                ? tr('Could not make the video.')
+                : tr('Could not prepare the audio.'),
         })
       }
     },
@@ -126,14 +131,14 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
       try {
         const result = await shareMedia(media, recitation)
         if (result === 'saved') {
-          onNotice?.(media.kind === 'video' ? 'Video saved to your phone.' : 'Audio saved to your phone.')
+          onNotice?.(media.kind === 'video' ? tr('Video saved to your phone.') : tr('Audio saved to your phone.'))
         } else {
           close()
         }
       } catch {
         // The sheet refused this file — saving always works.
         saveMedia(media)
-        onNotice?.('Saved to your phone instead.')
+        onNotice?.(tr('Saved to your phone instead.'))
       }
     },
     [close, onNotice, recitation]
@@ -142,7 +147,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
   const handleCopy = useCallback(async () => {
     tapFeedback()
     const ok = await copyText(`${recitation.userName} — ${recitation.title}\n${recitationLink(recitation)}`)
-    onNotice?.(ok ? 'Link copied.' : 'Could not copy the link.')
+    onNotice?.(ok ? tr('Link copied.') : tr('Could not copy the link.'))
     if (ok) close()
   }, [close, onNotice, recitation])
 
@@ -169,9 +174,9 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
             <h2 id="qari-share-title" className="home-serif text-[1.3125rem] font-semibold leading-tight text-[var(--home-heading)]">
               {stage.name === 'ready'
                 ? stage.media.kind === 'video'
-                  ? 'Your video is ready'
-                  : 'Your audio is ready'
-                : 'Share recitation'}
+                  ? t('Your video is ready')
+                  : t('Your audio is ready')
+                : t('Share recitation')}
             </h2>
             <p className="mt-0.5 truncate text-[0.82rem] text-[var(--home-muted)]">
               {recitation.title} · {recitation.userName}
@@ -180,7 +185,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
           <button
             type="button"
             onClick={close}
-            aria-label="Close"
+            aria-label={t('Close')}
             className="ed-focus -mr-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--home-track)] hover:text-[var(--home-heading)]"
           >
             <X className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -191,8 +196,8 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
             <ShareOption
               icon={Film}
-              title="Video"
-              hint={videoPossible ? 'For TikTok, Instagram and Status' : 'Needs a newer Chrome or Safari'}
+              title={t('Video')}
+              hint={videoPossible ? t('For TikTok, Instagram and Status') : t('Needs a newer Chrome or Safari')}
               disabled={!videoPossible}
               onClick={() => {
                 tapFeedback()
@@ -202,8 +207,8 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
             <div className="set-row__divider" />
             <ShareOption
               icon={Music2}
-              title="Audio"
-              hint="An MP3 for WhatsApp or Telegram"
+              title={t('Audio')}
+              hint={t('An MP3 for WhatsApp or Telegram')}
               onClick={() => void make('audio')}
             />
             <div className="set-row__divider" />
@@ -211,8 +216,8 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
               <span className="set-row__icon">
                 <Link2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="set-row__label">Copy link</span>
-              <span className="text-sm font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">Copy</span>
+              <span className="set-row__label">{t('Copy link')}</span>
+              <span className="text-sm font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">{t('Copy')}</span>
             </button>
           </div>
         ) : null}
@@ -230,7 +235,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
           <div className="mt-6 pb-1">
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-semibold text-[var(--home-heading)]">
-                {stage.kind === 'video' ? 'Making your video…' : 'Preparing the audio…'}
+                {stage.kind === 'video' ? t('Making your video…') : t('Preparing the audio…')}
               </p>
               <span className="text-sm font-semibold tabular-nums text-[var(--home-sage)]">
                 {Math.round(stage.progress * 100)}%
@@ -243,15 +248,13 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
               />
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[var(--home-muted)]">
-              Keep the app open. Longer recitations take a little longer.
-            </p>
+              {t('Keep the app open. Longer recitations take a little longer.')}</p>
             <button
               type="button"
               onClick={cancel}
               className="ed-focus mt-4 h-11 w-full rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
             >
-              Cancel
-            </button>
+              {t('Cancel')}</button>
           </div>
         ) : null}
 
@@ -265,8 +268,8 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
               saveMedia(stage.media)
               onNotice?.(
                 stage.media.kind === 'video'
-                  ? 'Saved. Upload it to TikTok from your gallery.'
-                  : 'Audio saved to your phone.'
+                  ? tr('Saved. Upload it to TikTok from your gallery.')
+                  : tr('Audio saved to your phone.')
               )
             }}
             onBack={() => setStage({ name: 'choose' })}
@@ -284,16 +287,14 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
                 onClick={() => setStage({ name: 'choose' })}
                 className="ed-focus h-11 flex-1 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
               >
-                Back
-              </button>
+                {t('Back')}</button>
               <button
                 type="button"
                 onClick={() => void make(stage.kind)}
                 className="ed-ink ed-focus flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform active:scale-[0.98]"
               >
                 <RotateCcw className="h-4 w-4" strokeWidth={2} />
-                Try again
-              </button>
+                {t('Try again')}</button>
             </div>
           </div>
         ) : null}
@@ -341,9 +342,10 @@ function CustomizeVideo({
   onBack: () => void
   onMake: () => void
 }) {
+  const t = useT()
   return (
     <div className="mt-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--home-muted)]">Background</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--home-muted)]">{t('Background')}</p>
       <div className="qari-no-scrollbar mt-2 flex gap-2.5 overflow-x-auto pb-1">
         {VIDEO_BACKGROUNDS.map((background) => {
           const active = background.id === options.backgroundId
@@ -367,18 +369,18 @@ function CustomizeVideo({
                     : '0 0 0 1px var(--home-rule)',
                 }}
               />
-              <span className="text-[11px] font-medium text-[var(--home-muted)]">{background.label}</span>
+              <span className="text-[11px] font-medium text-[var(--home-muted)]">{t(background.label)}</span>
             </button>
           )
         })}
       </div>
 
       <div className="set-row mt-4 rounded-2xl border border-[var(--home-rule)]" style={{ paddingBlock: '0.5rem' }}>
-        <span className="set-row__label">Include profile picture</span>
+        <span className="set-row__label">{t('Include profile picture')}</span>
         <Switch
           checked={options.includeAvatar}
           onChange={(checked) => onChange({ ...options, includeAvatar: checked })}
-          label="Include profile picture"
+          label={t('Include profile picture')}
         />
       </div>
 
@@ -388,16 +390,14 @@ function CustomizeVideo({
           onClick={onBack}
           className="ed-focus h-12 flex-1 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
         >
-          Back
-        </button>
+          {t('Back')}</button>
         <button
           type="button"
           onClick={onMake}
           className="ed-ink ed-focus flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform active:scale-[0.98]"
         >
           <Film className="h-4 w-4" strokeWidth={2} />
-          Make video
-        </button>
+          {t('Make video')}</button>
       </div>
     </div>
   )
@@ -416,6 +416,7 @@ function ReadyView({
   onSave: () => void
   onBack: () => void
 }) {
+  const t = useT()
   const shareable = canShareMedia(media)
 
   return (
@@ -442,8 +443,7 @@ function ReadyView({
             className="ed-focus flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
           >
             <Download className="h-4 w-4" strokeWidth={2} />
-            Save
-          </button>
+            {t('Save')}</button>
         ) : null}
         <button
           type="button"
@@ -451,26 +451,25 @@ function ReadyView({
           className="ed-ink ed-focus flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform active:scale-[0.98]"
         >
           {shareable ? <Share2 className="h-4 w-4" strokeWidth={2} /> : <Download className="h-4 w-4" strokeWidth={2} />}
-          {shareable ? 'Share' : 'Save to phone'}
+          {shareable ? t('Share') : t('Save to phone')}
         </button>
       </div>
 
       <p className="mt-3 text-center text-xs leading-relaxed text-[var(--home-muted)]">
         {shareable
           ? media.kind === 'video'
-            ? 'Pick TikTok in the share list, or save it and upload it from your gallery.'
-            : 'Pick WhatsApp, Telegram or any app in the share list.'
+            ? t('Pick TikTok in the share list, or save it and upload it from your gallery.')
+            : t('Pick WhatsApp, Telegram or any app in the share list.')
           : media.kind === 'video'
-            ? 'Save it, then upload it to TikTok or Instagram from your gallery.'
-            : 'Save it, then send it from your downloads in any app.'}
+            ? t('Save it, then upload it to TikTok or Instagram from your gallery.')
+            : t('Save it, then send it from your downloads in any app.')}
       </p>
       <button
         type="button"
         onClick={onBack}
         className="ed-focus mx-auto mt-1 block h-10 px-4 text-xs font-semibold text-[var(--home-muted)] hover:text-[var(--home-heading)]"
       >
-        Make something else
-      </button>
+        {t('Make something else')}</button>
     </div>
   )
 }

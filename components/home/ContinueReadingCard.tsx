@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { LAST_READ_PAGE_KEY, LAST_READ_POSITION_KEY } from '@/lib/mushaf'
 import { IconRead } from '@/components/home/TileIcons'
+import { tr, useT } from '@/lib/i18n'
 
 interface ContinueState {
   surahName: string
@@ -35,6 +36,7 @@ function readPosition(): { page: number; surah: number | null; ayah: number | nu
 }
 
 export default function ContinueReadingCard() {
+  const t = useT()
   const [state, setState] = useState<ContinueState | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -54,11 +56,11 @@ export default function ContinueReadingCard() {
         const chapter = surah
           ? chapters.find((c) => c.id === surah)
           : chapters.find((c) => c.pages[0] <= page && page <= c.pages[1])
-        setState({ surahName: chapter?.name_simple ?? `Page ${page}`, ayah, page, progress })
+        setState({ surahName: chapter?.name_simple ?? tr('Page {page}', { page }), ayah, page, progress })
       })
       .catch(() => {
         if (!cancelled) {
-          setState({ surahName: surah ? `Surah ${surah}` : 'Continue reading', ayah, page, progress })
+          setState({ surahName: surah ? tr('Surah {surah}', { surah }) : tr('Continue reading'), ayah, page, progress })
         }
       })
       .finally(() => {
@@ -72,8 +74,8 @@ export default function ContinueReadingCard() {
 
   if (loading) {
     return (
-      <section aria-label="Continue reading">
-        <h2 className="home-label mb-[9px]">Continue reading</h2>
+      <section aria-label={t('Continue reading')}>
+        <h2 className="home-label mb-[9px]">{t('Continue reading')}</h2>
         <div className="h-[70px] animate-pulse rounded-2xl bg-[var(--home-track)]" />
       </section>
     )
@@ -82,13 +84,13 @@ export default function ContinueReadingCard() {
   if (!state) return null
 
   return (
-    <section aria-label="Continue reading">
-      <h2 className="home-label mb-[9px]">Continue reading</h2>
+    <section aria-label={t('Continue reading')}>
+      <h2 className="home-label mb-[9px]">{t('Continue reading')}</h2>
 
       <Link
         href={`/read?page=${state.page}`}
         className="home-card home-press ed-focus flex items-center gap-3 rounded-2xl px-3.5 py-3"
-        aria-label={`Continue reading ${state.surahName}, page ${state.page}`}
+        aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
           <IconRead className="h-6 w-6" />
@@ -98,8 +100,7 @@ export default function ContinueReadingCard() {
             {state.surahName}
           </span>
           <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">
-            {state.ayah ? `Ayah ${state.ayah} · ` : ''}Page {state.page} of 604
-          </span>
+            {state.ayah ? t('Ayah {ayah} · ', { ayah: state.ayah }) : ''}{t('Page')} {state.page} {t('of 604')}</span>
           <span className="mt-[7px] block h-[3px] overflow-hidden rounded-sm bg-[var(--home-track)]">
             <span
               className="block h-full min-w-1 bg-[var(--home-sage)]"

@@ -23,6 +23,7 @@ import {
 import { seekPlayback, togglePlayback } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
+import { tr, useT } from '@/lib/i18n'
 
 interface RecitationCardProps {
   recitation: Recitation
@@ -53,6 +54,7 @@ function RecitationCard({
   onRemoved,
   onNotice,
 }: RecitationCardProps) {
+  const t = useT()
   const player = useQariPlayer()
   const [shareOpen, setShareOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -76,23 +78,23 @@ function RecitationCard({
     try {
       await deleteRecitation(recitation.id, viewerId)
       onRemoved?.(recitation.id)
-      onNotice?.('Recitation deleted.')
+      onNotice?.(tr('Recitation deleted.'))
     } catch {
       setRemoving(false)
-      onNotice?.('Could not delete that recitation.')
+      onNotice?.(tr('Could not delete that recitation.'))
     }
   }, [onNotice, onRemoved, recitation.id, viewerId])
 
   const handleReport = useCallback(async () => {
     if (!viewerId) {
-      onNotice?.('Sign in to report a recitation.')
+      onNotice?.(tr('Sign in to report a recitation.'))
       return
     }
     try {
-      await reportRecitation(recitation.id, viewerId, 'Reported from Qari')
-      onNotice?.('Thank you. It has been sent for review.')
+      await reportRecitation(recitation.id, viewerId, tr('Reported from Qari'))
+      onNotice?.(tr('Thank you. It has been sent for review.'))
     } catch {
-      onNotice?.('Could not send that report.')
+      onNotice?.(tr('Could not send that report.'))
     }
   }, [onNotice, recitation.id, viewerId])
 
@@ -113,7 +115,7 @@ function RecitationCard({
         href={`/qari/sheikh/${sheikh.id}`}
         className="ed-focus font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]"
       >
-        Imitating {sheikh.shortName}
+        {t('Imitating')} {sheikh.shortName}
       </Link>
     )
   }
@@ -136,7 +138,7 @@ function RecitationCard({
       )}
     >
       {recitation.isPrivate ? (
-        <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--home-muted)]" strokeWidth={2.4} aria-label="Only you" />
+        <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--home-muted)]" strokeWidth={2.4} aria-label={t('Only you')} />
       ) : null}
       <span className="truncate">{recitation.title}</span>
     </p>
@@ -161,7 +163,7 @@ function RecitationCard({
         {hideAuthor ? null : (
           <Link
             href={profileHref}
-            aria-label={`${recitation.userName}’s profile`}
+            aria-label={t('{userName}’s profile', { userName: recitation.userName })}
             className="qari-press ed-focus shrink-0 rounded-full"
           >
             <QariAvatar username={recitation.userUsername} name={recitation.userName} size={36} />
@@ -189,7 +191,7 @@ function RecitationCard({
           bars={36}
           onSeek={isCurrent ? seekPlayback : undefined}
           className="h-7 min-w-0 flex-1"
-          label={`Position in ${recitation.title}`}
+          label={t('Position in {title}', { title: recitation.title })}
         />
         <span className="shrink-0 text-[11.5px] tabular-nums text-[var(--home-muted)]">
           {isCurrent && player.position > 0 ? formatDuration(player.position) : formatDuration(duration)}
@@ -201,7 +203,7 @@ function RecitationCard({
         {recitation.playCount > 0 ? (
           <span
             className="flex h-8 items-center gap-1 px-1.5 text-xs font-semibold tabular-nums"
-            aria-label={`${recitation.playCount} plays`}
+            aria-label={t('{playCount} plays', { playCount: recitation.playCount })}
           >
             <Play className="h-3 w-3 fill-current" strokeWidth={0} />
             {compactNumber(recitation.playCount)}
@@ -220,7 +222,7 @@ function RecitationCard({
             tapFeedback()
             setShareOpen(true)
           }}
-          aria-label="Share"
+          aria-label={t('Share')}
           className="qari-press ed-focus -mr-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:text-[var(--home-heading)]"
         >
           <Share2 className="h-[17px] w-[17px]" strokeWidth={2} />

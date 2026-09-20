@@ -1,4 +1,5 @@
-/** Client-side access to the Qari recitation feed. */
+
+import { tr } from '@/lib/i18n-core'/** Client-side access to the Qari recitation feed. */
 
 export interface Recitation {
   id: string
@@ -94,7 +95,7 @@ export async function fetchFeed(options: {
   if (options.take) params.set('take', String(options.take))
 
   const res = await fetch(`/api/qari?${params.toString()}`, { cache: 'no-store' })
-  if (!res.ok) throw new Error('Could not load recitations.')
+  if (!res.ok) throw new Error(tr('Could not load recitations.'))
   return (await res.json()) as FeedPage
 }
 
@@ -104,7 +105,7 @@ async function post(id: string, body: Record<string, unknown>) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed.')
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || tr('Request failed.'))
   return res.json()
 }
 
@@ -128,7 +129,7 @@ export async function deleteRecitation(id: string, userId: string): Promise<void
   const res = await fetch(`/api/qari/${id}?userId=${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   })
-  if (!res.ok) throw new Error('Could not delete that recitation.')
+  if (!res.ok) throw new Error(tr('Could not delete that recitation.'))
 }
 
 export interface PublishInput {
@@ -167,7 +168,7 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
 
   const res = await fetch('/api/qari', { method: 'POST', body: form })
   const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string }
-  if (!res.ok || !data.id) throw new Error(data.error || 'Could not publish.')
+  if (!res.ok || !data.id) throw new Error(data.error || tr('Could not publish.'))
   return data.id
 }
 
@@ -187,7 +188,7 @@ export async function renameQari(user: {
     body: JSON.stringify({ username: user.username, userId: user.id, name }),
   })
   const data = (await res.json().catch(() => ({}))) as { name?: string; error?: string }
-  if (!res.ok || !data.name) throw new Error(data.error || 'Could not save that name.')
+  if (!res.ok || !data.name) throw new Error(data.error || tr('Could not save that name.'))
   return data.name
 }
 
@@ -265,7 +266,7 @@ export interface Discover {
 
 export async function fetchDiscover(): Promise<Discover> {
   const res = await fetch('/api/qari/discover', { cache: 'no-store' })
-  if (!res.ok) throw new Error('Could not load Qari.')
+  if (!res.ok) throw new Error(tr('Could not load Qari.'))
   return (await res.json()) as Discover
 }
 
@@ -298,7 +299,7 @@ export async function fetchQaris(options: {
   if (options.query) params.set('q', options.query)
   if (options.onlyFollowing) params.set('following', '1')
   const res = await fetch(`/api/qari/qaris?${params.toString()}`, { cache: 'no-store' })
-  if (!res.ok) throw new Error('Could not load qaris.')
+  if (!res.ok) throw new Error(tr('Could not load qaris.'))
   return ((await res.json()) as { items: QariSummary[] }).items
 }
 
@@ -317,7 +318,7 @@ export async function setFollowing(
     followers?: number
     error?: string
   }
-  if (!res.ok) throw new Error(data.error || 'Could not update that.')
+  if (!res.ok) throw new Error(data.error || tr('Could not update that.'))
   return { following: Boolean(data.following), followers: data.followers ?? 0 }
 }
 

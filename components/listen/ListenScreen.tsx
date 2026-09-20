@@ -32,10 +32,12 @@ import { getQiraat, getReciterById, narrationChoices, RECITERS, topReciters, typ
 import { filterChapters } from '@/lib/search-chapters'
 import { toast, toastError, toastSuccess } from '@/lib/toast'
 import type { Chapter } from '@/types'
+import { tr, useT } from '@/lib/i18n'
 
 type Filter = 'all' | 'downloaded'
 
 export default function ListenScreen() {
+  const t = useT()
   const hydrated = useHydrated()
   const settings = useAppSettings()
   const reciter = getReciterById(settings.listenReciterId)
@@ -75,7 +77,7 @@ export default function ListenScreen() {
   useEffect(() => {
     getChapters()
       .then(setChapters)
-      .catch(() => toastError('The surah list could not load. Check your connection.'))
+      .catch(() => toastError(tr('The surah list could not load. Check your connection.')))
       .finally(() => setLoading(false))
   }, [])
 
@@ -87,7 +89,7 @@ export default function ListenScreen() {
           toastSuccess(`${result.name} is saved for offline`)
         } else {
           errorFeedback()
-          toastError(`${result.name} could not be saved. Try again on Wi‑Fi.`)
+          toastError(tr('{name} could not be saved. Try again on Wi‑Fi.', { name: result.name }))
         }
       }),
     []
@@ -144,7 +146,7 @@ export default function ListenScreen() {
     const choices = pool.length > 1 ? pool.filter((chapter) => chapter.id !== listen.surah?.id) : pool
     if (!choices.length) {
       errorFeedback()
-      toast(offline ? 'Nothing downloaded to shuffle yet' : 'Nothing to shuffle here')
+      toast(offline ? tr('Nothing downloaded to shuffle yet') : tr('Nothing to shuffle here'))
       return
     }
     tapFeedback()
@@ -164,12 +166,11 @@ export default function ListenScreen() {
         }}
       >
         <header className="flex items-center gap-3">
-          <Link href="/" className="home-round ed-focus" aria-label="Back">
+          <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>
             <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
           </Link>
           <h1 className="home-serif min-w-0 flex-1 truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-            Listen
-          </h1>
+            {t('Listen')}</h1>
           <SleepButton onOpen={() => setSleepOpen(true)} />
         </header>
 
@@ -180,8 +181,8 @@ export default function ListenScreen() {
                 <WifiOff className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-medium">You&apos;re offline</span>
-                <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">Your downloaded surahs still play.</span>
+                <span className="block text-[0.9375rem] font-medium">{t('You\'re offline')}</span>
+                <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Your downloaded surahs still play.')}</span>
               </span>
             </div>
           </div>
@@ -203,14 +204,13 @@ export default function ListenScreen() {
         {favoritesReady ? (
           <div className="home-fade">
             <div className="mx-1 mb-2 mt-[22px] flex items-center justify-between gap-3">
-              <h2 className="home-label">{favorites.length ? 'Your favourites' : 'Popular reciters'}</h2>
+              <h2 className="home-label">{favorites.length ? t('Your favourites') : t('Popular reciters')}</h2>
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
                 className="ed-focus rounded-md text-[0.78125rem] font-semibold text-[var(--home-sage-deep)]"
               >
-                All reciters
-              </button>
+                {t('All reciters')}</button>
             </div>
             <div
               className={cn(
@@ -255,7 +255,7 @@ export default function ListenScreen() {
         )}
 
         <h2 className="home-label mx-1 mb-2 mt-[22px] tabular-nums">
-          Surahs · {loading ? '114' : visible.length}
+          {t('Surahs ·')} {loading ? '114' : visible.length}
         </h2>
         <label className="home-card flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]">
           <Search className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
@@ -264,8 +264,8 @@ export default function ListenScreen() {
             onChange={(e) => setQuery(e.target.value)}
             inputMode="search"
             enterKeyHint="search"
-            placeholder="Search surah"
-            aria-label="Search surahs"
+            placeholder={t('Search surah')}
+            aria-label={t('Search surahs')}
             className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
           />
           {query ? (
@@ -273,7 +273,7 @@ export default function ListenScreen() {
               type="button"
               onClick={() => setQuery('')}
               className="fx-press -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)]"
-              aria-label="Clear search"
+              aria-label={t('Clear search')}
             >
               <X className="h-4 w-4" strokeWidth={2.2} />
             </button>
@@ -293,7 +293,7 @@ export default function ListenScreen() {
                 aria-pressed={filter === value}
                 className="ed-seg__item ed-focus h-9 truncate px-1 text-[0.8125rem] font-semibold tabular-nums"
               >
-                {value === 'all' ? 'All' : downloaded.size ? `Downloaded · ${downloaded.size}` : 'Downloaded'}
+                {value === 'all' ? t('All') : downloaded.size ? t('Downloaded · {size}', { size: downloaded.size }) : t('Downloaded')}
               </button>
             ))}
           </div>
@@ -303,8 +303,7 @@ export default function ListenScreen() {
             className="home-card fx-press ed-focus flex h-11 shrink-0 items-center gap-[7px] rounded-2xl px-3.5 text-[0.8125rem] font-semibold text-[var(--home-heading)]"
           >
             <Shuffle className="h-4 w-4" strokeWidth={2} />
-            Shuffle
-          </button>
+            {t('Shuffle')}</button>
         </div>
 
         <div className="home-card mt-3 overflow-hidden rounded-2xl">
@@ -330,13 +329,12 @@ export default function ListenScreen() {
                   <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
                     <Download className="h-5 w-5" strokeWidth={1.9} />
                   </span>
-                  <p className="mt-3 text-[0.9375rem] font-semibold text-[var(--home-heading)]">Nothing downloaded yet</p>
+                  <p className="mt-3 text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Nothing downloaded yet')}</p>
                   <p className="mt-1 max-w-[260px] text-[0.8125rem] leading-relaxed text-[var(--home-muted)]">
-                    Tap the arrow beside a surah to keep {reciter.name}&apos;s recitation on this phone.
-                  </p>
+                    {t('Tap the arrow beside a surah to keep {name}’s recitation on this phone.', { name: reciter.name })}</p>
                 </>
               ) : (
-                <p className="text-sm text-[var(--home-muted)]">No surah matches “{query.trim()}”.</p>
+                <p className="text-sm text-[var(--home-muted)]">{t('No surah matches “{query}”.', { query: query.trim() })}</p>
               )}
             </div>
           )}
@@ -345,8 +343,7 @@ export default function ListenScreen() {
         {offline && visible.length ? (
           <p className="mx-1 mt-2.5 flex items-center gap-1.5 text-[0.78125rem] text-[var(--home-muted)]">
             <Download className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-            On Wi‑Fi, tap the arrow on a surah to keep it.
-          </p>
+            {t('On Wi‑Fi, tap the arrow on a surah to keep it.')}</p>
         ) : null}
       </div>
 
@@ -384,15 +381,16 @@ function ReciterCard({
   onChoose: () => void
   onSelect: (reciterId: string) => void
 }) {
+  const t = useT()
   const narrations = narrationChoices(reciter)
   return (
-    <section className="home-card mt-[18px] rounded-[18px] px-3.5 pb-3 pt-3.5" aria-label="Reciting">
+    <section className="home-card mt-[18px] rounded-[18px] px-3.5 pb-3 pt-3.5" aria-label={t('Reciting')}>
       <div className="flex items-center gap-3.5">
-        <button type="button" onClick={onChoose} className="ed-focus fx-press shrink-0 rounded-full" aria-label="Choose a reciter">
+        <button type="button" onClick={onChoose} className="ed-focus fx-press shrink-0 rounded-full" aria-label={t('Choose a reciter')}>
           <ReciterAvatar key={reciter.id} reciter={reciter} size={64} className="home-fade" />
         </button>
         <button type="button" onClick={onChoose} className="ed-focus min-w-0 flex-1 rounded-lg text-left">
-          <span className="home-label block">Reciting</span>
+          <span className="home-label block">{t('Reciting')}</span>
           <span
             key={reciter.id}
             className="home-fade home-serif mt-0.5 block truncate text-[1.25rem] font-semibold leading-snug tracking-[-0.015em] text-[var(--home-heading)]"
@@ -408,7 +406,7 @@ function ReciterCard({
 
       {narrations.length > 1 ? (
         <div className="mt-3 border-t border-[var(--home-rule)] pt-2.5">
-          <p className="mb-[7px] text-xs font-semibold text-[var(--home-muted)]">Also recites in</p>
+          <p className="mb-[7px] text-xs font-semibold text-[var(--home-muted)]">{t('Also recites in')}</p>
           <div className="ed-seg" style={{ gridTemplateColumns: `repeat(${narrations.length}, minmax(0, 1fr))` }}>
             {narrations.map((variant) => (
               <button
@@ -442,6 +440,7 @@ const SurahRow = memo(function SurahRow({
   unavailable: boolean
   onPlay: (chapter: Chapter) => void
 }) {
+  const t = useT()
   const active = status !== null
   const playing = status === 'playing'
   const loading = status === 'loading'
@@ -457,7 +456,7 @@ const SurahRow = memo(function SurahRow({
         type="button"
         onClick={() => onPlay(chapter)}
         disabled={unavailable}
-        aria-label={`${playing || loading ? 'Pause' : 'Play'} ${chapter.englishName}`}
+        aria-label={`${playing || loading ? t('Pause') : t('Play')} ${chapter.englishName}`}
         className="ed-focus group flex min-w-0 flex-1 items-center gap-3 self-stretch py-2.5 pl-3.5 pr-2 text-left disabled:opacity-45"
       >
         <span
@@ -492,7 +491,7 @@ const SurahRow = memo(function SurahRow({
           <span className="mt-px flex min-w-0 items-center gap-1.5 text-[0.78125rem] text-[var(--home-muted)]">
             <span className="amiri truncate text-[0.9375rem] leading-none">{chapter.name}</span>
             <span aria-hidden>·</span>
-            <span className="shrink-0">{chapter.versesCount} ayahs</span>
+            <span className="shrink-0">{chapter.versesCount} {t('ayahs')}</span>
           </span>
         </span>
         {playing || status === 'paused' ? <Equalizer paused={!playing} /> : null}
@@ -503,8 +502,9 @@ const SurahRow = memo(function SurahRow({
 })
 
 function ListSkeleton() {
+  const t = useT()
   return (
-    <div aria-busy aria-label="Loading surahs">
+    <div aria-busy aria-label={t('Loading surahs')}>
       {Array.from({ length: 7 }, (_, i) => (
         <div key={i} className="flex h-[60px] items-center gap-3 px-3.5">
           <div className="qari-skeleton h-9 w-9 rounded-[10px]" />

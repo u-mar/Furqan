@@ -10,6 +10,7 @@ import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { availableQiraat, getQiraat, RECITERS, type QiraatId, type Reciter } from '@/lib/reciters'
+import { useT } from '@/lib/i18n'
 
 interface ReciterPickerSheetProps {
   open: boolean
@@ -97,6 +98,7 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect }: ReciterPickerSheetProps) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
   const [mode, setMode] = useState<ListMode>('all')
@@ -163,24 +165,22 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
   const showFavorites = mode === 'all' && favorites.length > 0 && !query.trim() && qiraat === 'all'
   const empty =
     mode === 'favorites' && !query.trim() && qiraat === 'all'
-      ? 'No favourites yet. Tap the heart on a reciter to keep them here.'
-      : 'No reciter matches that.'
+      ? t('No favourites yet. Tap the heart on a reciter to keep them here.')
+      : t('No reciter matches that.')
 
   return (
-    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label="Choose a reciter">
+    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label={t('Choose a reciter')}>
       <div className="shrink-0">
         <div className="mx-auto w-full max-w-lg px-4 pb-1 pt-[max(1rem,env(safe-area-inset-top))]">
           <header className="flex items-center gap-3">
-            <button type="button" onClick={onClose} className="home-round ed-focus" aria-label="Close">
+            <button type="button" onClick={onClose} className="home-round ed-focus" aria-label={t('Close')}>
               <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
             </button>
             <div className="min-w-0 flex-1">
               <h2 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-                Choose a reciter
-              </h2>
+                {t('Choose a reciter')}</h2>
               <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">
-                {RECITERS.length} reciters · {favoriteIds.length} of {maxFavorites} favourites
-              </p>
+                {t('{count} reciters · {saved} of {max} favourites', { count: RECITERS.length, saved: favoriteIds.length, max: maxFavorites })}</p>
             </div>
           </header>
 
@@ -191,8 +191,8 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               onChange={(e) => setQuery(e.target.value)}
               inputMode="search"
               enterKeyHint="search"
-              placeholder="Search reciter or narration"
-              aria-label="Search reciters"
+              placeholder={t('Search reciter or narration')}
+              aria-label={t('Search reciters')}
               className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
             />
             {query ? (
@@ -200,7 +200,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
                 type="button"
                 onClick={() => setQuery('')}
                 className="fx-press -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)]"
-                aria-label="Clear search"
+                aria-label={t('Clear search')}
               >
                 <X className="h-4 w-4" strokeWidth={2.2} />
               </button>
@@ -219,7 +219,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
                 aria-pressed={mode === value}
                 className="ed-seg__item ed-focus h-9 text-[0.8125rem] font-semibold"
               >
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
@@ -236,8 +236,8 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               <span className="set-row__icon" aria-hidden>
                 <Mic className="h-[17px] w-[17px]" strokeWidth={1.9} />
               </span>
-              <span className="set-row__label">Narration</span>
-              <span className="set-row__value">{qiraat === 'all' ? 'All' : getQiraat(qiraat).short}</span>
+              <span className="set-row__label">{t('Narration')}</span>
+              <span className="set-row__value">{qiraat === 'all' ? t('All') : getQiraat(qiraat).short}</span>
               <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
             </button>
           </div>
@@ -248,7 +248,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
         <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           {showFavorites ? (
             <>
-              <Label>Your favourites</Label>
+              <Label>{t('Your favourites')}</Label>
               <ReciterCard
                 reciters={favorites}
                 selectedId={selectedId}
@@ -257,8 +257,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               />
               {atLimit ? (
                 <p className="mx-1 mt-2 text-[0.78125rem] text-[var(--home-muted)]">
-                  You can keep {maxFavorites} favourites. Remove one to add another.
-                </p>
+                  {t('You can keep {max} favourites. Remove one to add another.', { max: maxFavorites })}</p>
               ) : null}
             </>
           ) : null}
@@ -278,9 +277,9 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
         </div>
       </div>
 
-      <SettingsSheet open={narrationOpen} title="Narration" onClose={() => setNarrationOpen(false)}>
-        <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label="Narration">
-          {[{ id: 'all' as const, label: 'All narrations' }, ...availableQiraat()].map((option, i) => {
+      <SettingsSheet open={narrationOpen} title={t('Narration')} onClose={() => setNarrationOpen(false)}>
+        <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Narration')}>
+          {[{ id: 'all' as const, label: t('All narrations') }, ...availableQiraat()].map((option, i) => {
             const on = qiraat === option.id
             const count = option.id === 'all' ? RECITERS.length : RECITERS.filter((r) => r.qiraat === option.id).length
             return (

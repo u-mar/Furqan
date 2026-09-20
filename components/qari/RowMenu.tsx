@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Ellipsis, Flag, Trash2 } from 'lucide-react'
+import { useT } from '@/lib/i18n'
 
 /** The quieter actions on a recitation: report someone else's, delete your own. */
 export default function RowMenu({
@@ -13,6 +14,7 @@ export default function RowMenu({
   onReport: () => void
   onDelete: () => void
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
@@ -34,7 +36,7 @@ export default function RowMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="More"
+        aria-label={t('More')}
         aria-expanded={open}
         className="ed-focus flex h-9 w-9 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
       >
@@ -56,7 +58,7 @@ export default function RowMenu({
               className="qari-dropdown__item ed-focus text-rose-500"
             >
               <Trash2 className="h-4 w-4" strokeWidth={2} />
-              {confirming ? 'Tap again to delete' : 'Delete recitation'}
+              {confirming ? t('Tap again to delete') : t('Delete recitation')}
             </button>
           ) : (
             <button
@@ -68,8 +70,7 @@ export default function RowMenu({
               className="qari-dropdown__item ed-focus"
             >
               <Flag className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
-              Report
-            </button>
+              {t('Report')}</button>
           )}
         </div>
       ) : null}

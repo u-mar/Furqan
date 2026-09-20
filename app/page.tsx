@@ -9,6 +9,7 @@ import HomeHero from '@/components/home/HomeHero'
 import HomeScreen from '@/components/home/HomeScreen'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getSignedInUser } from '@/lib/auth'
+import { useT } from '@/lib/i18n'
 
 const exploreTiles = [
   {
@@ -46,6 +47,7 @@ const exploreTiles = [
 ] as const
 
 export default function Home() {
+  const t = useT()
   useAppSettings()
   const [displayName, setDisplayName] = useState('Guest')
 
@@ -58,7 +60,7 @@ export default function Home() {
 
   return (
     <HomeScreen className="max-w-lg mx-auto">
-      <HomeHero displayName={displayName} />
+      <HomeHero displayName={displayName === 'Guest' ? t('Guest') : displayName} />
 
       <div className="reveal mt-[22px]" style={{ animationDelay: '80ms' }}>
         <DailyVerseCard />
@@ -67,8 +69,8 @@ export default function Home() {
         <ContinueReadingCard />
       </div>
 
-      <section aria-label="Explore" className="reveal mt-[22px]" style={{ animationDelay: '240ms' }}>
-        <h2 className="home-label mb-[9px]">Explore</h2>
+      <section aria-label={t('Explore')} className="reveal mt-[22px]" style={{ animationDelay: '240ms' }}>
+        <h2 className="home-label mb-[9px]">{t('Explore')}</h2>
         <div className="grid grid-cols-2 gap-2.5">
           {exploreTiles.map((tile) => {
             const { Icon } = tile
@@ -82,10 +84,10 @@ export default function Home() {
                   <Icon className="h-6 w-6" />
                 </span>
                 <span className="home-serif mt-3 block text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">
-                  {tile.label}
+                  {t(tile.label)}
                 </span>
                 <span className="mt-px block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
-                  {tile.hint}
+                  {t(tile.hint)}
                 </span>
               </Link>
             )

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { buildVoiceShaping } from '@/lib/audio-space'
+import { tr } from '@/lib/i18n-core'
 
 /**
  * Recorder for Qari uploads.
@@ -80,11 +81,11 @@ export function releasePrepared(prepared: PreparedRecording | null): void {
 export function microphoneError(err: unknown): string {
   if (err instanceof DOMException) {
     if (err.name === 'NotAllowedError') {
-      return 'Microphone access was blocked. Allow it in your browser settings to record.'
+      return tr('Microphone access was blocked. Allow it in your browser settings to record.')
     }
-    if (err.name === 'NotFoundError') return 'No microphone was found on this device.'
+    if (err.name === 'NotFoundError') return tr('No microphone was found on this device.')
   }
-  return 'Could not start recording on this device.'
+  return tr('Could not start recording on this device.')
 }
 
 export interface QariRecorderState {

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import AuthFlow from '@/components/account/AuthFlow'
+import { useT } from '@/lib/i18n'
 
 interface AccountSheetProps {
   open: boolean
@@ -14,6 +15,7 @@ interface AccountSheetProps {
  * first launch uses, minus the option to skip, since opening it was a choice.
  */
 export default function AccountSheet({ open, onClose, onSuccess }: AccountSheetProps) {
+  const t = useT()
   // The page underneath should not scroll while this covers it.
   useEffect(() => {
     if (!open) return
@@ -27,7 +29,7 @@ export default function AccountSheet({ open, onClose, onSuccess }: AccountSheetP
   if (!open) return null
 
   return (
-    <div className="auth-screen" role="dialog" aria-modal="true" aria-label="Account">
+    <div className="auth-screen" role="dialog" aria-modal="true" aria-label={t('Account')}>
       <div className="auth-screen__body">
         <AuthFlow
           start="welcome"

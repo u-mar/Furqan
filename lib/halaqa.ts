@@ -1,6 +1,7 @@
 'use client'
 
 import { APP_NAME } from '@/lib/app-brand'
+import { tr } from '@/lib/i18n-core'
 
 const KEY_STORAGE = 'muyassar_halaqa_key'
 const MEMBER_FLAG = 'muyassar_halaqa_member'
@@ -182,10 +183,10 @@ export function longDay(day: string): string {
 
 /** "Every day", "Day 12 of 40", or "Finished" once a set time is over. */
 export function scheduleLabel(h: { startDay: string; endDay: string | null; dayNumber: number }): string {
-  if (!h.endDay) return 'Every day'
+  if (!h.endDay) return tr('Every day')
   const total = dayGap(h.startDay, h.endDay) + 1
-  if (h.dayNumber > total) return 'Finished'
-  return `Day ${Math.max(h.dayNumber, 1)} of ${total}`
+  if (h.dayNumber > total) return tr('Finished')
+  return tr('Day {day} of {total}', { day: Math.max(h.dayNumber, 1), total })
 }
 
 /* ------------------------------------------------------------------- api */
@@ -204,10 +205,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     })
   } catch {
     // The request never reached the server: say so plainly, not "Failed to fetch".
-    throw new Error('No connection. Check your internet and try again.')
+    throw new Error(tr('No connection. Check your internet and try again.'))
   }
   const data = (await res.json().catch(() => ({}))) as T & { error?: string }
-  if (!res.ok) throw new Error(data.error || 'Something went wrong. Try again.')
+  if (!res.ok) throw new Error(data.error || tr('Something went wrong. Try again.'))
   return data
 }
 
@@ -308,17 +309,18 @@ export function inviteLink(code: string): string {
 }
 
 export function inviteMessage(name: string, code: string): string {
-  return `Join "${name}" on ${APP_NAME} and read the Quran with us:\n${inviteLink(code)}`
+  return tr('Join "{name}" on {app} and read the Quran with us:', { name, app: APP_NAME }) + `
+${inviteLink(code)}`
 }
 
 /** What "Share today's check-in" posts: who has read, who has not, and where to tick. */
 export function checkInMessage(detail: HalaqaDetail): string {
   const read = detail.members.filter((m) => m.readToday).map((m) => m.name)
   const notYet = detail.members.filter((m) => !m.readToday).map((m) => m.name)
-  const lines = [`📖 ${detail.halaqa.name} — ${shortDay(localDay())}`, 'Have you read today?', '']
-  if (read.length) lines.push(`✅ Read (${read.length}): ${read.join(', ')}`)
-  if (notYet.length) lines.push(`⏳ Not yet (${notYet.length}): ${notYet.join(', ')}`)
-  lines.push('', 'Tick yours here:', inviteLink(detail.halaqa.code))
+  const lines = [`📖 ${detail.halaqa.name} — ${shortDay(localDay())}`, tr('Have you read today?'), '']
+  if (read.length) lines.push(tr('✅ Read ({count}): {names}', { count: read.length, names: read.join(', ') }))
+  if (notYet.length) lines.push(tr('⏳ Not yet ({count}): {names}', { count: notYet.length, names: notYet.join(', ') }))
+  lines.push('', tr('Tick yours here:'), inviteLink(detail.halaqa.code))
   return lines.join('\n')
 }
 

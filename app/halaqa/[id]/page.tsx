@@ -34,8 +34,10 @@ import {
   type HalaqaMemberView,
 } from '@/lib/halaqa'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
+import { tr, useT } from '@/lib/i18n'
 
 export default function HalaqaPage() {
+  const t = useT()
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [detail, setDetail] = useState<HalaqaDetail | null>(null)
@@ -53,7 +55,7 @@ export default function HalaqaPage() {
       setDetail(next)
       setError('')
     } catch (err) {
-      if (mine === loads.current) setError(errorMessage(err, 'Could not load this halaqa.'))
+      if (mine === loads.current) setError(errorMessage(err, tr('Could not load this halaqa.')))
     }
   }, [id])
 
@@ -81,7 +83,7 @@ export default function HalaqaPage() {
       setDetail(before)
       setJustRead(false)
       errorFeedback()
-      toastError(errorMessage(err, 'Could not save that. Try again.'))
+      toastError(errorMessage(err, tr('Could not save that. Try again.')))
     }
   }
 
@@ -92,7 +94,7 @@ export default function HalaqaPage() {
   if (!detail) {
     return (
       <HalaqaScreen>
-        <HalaqaHeader title="Halaqa" />
+        <HalaqaHeader title={t('Halaqa')} />
         {error ? (
           <ErrorCard message={error} onRetry={load} />
         ) : (
@@ -108,7 +110,7 @@ export default function HalaqaPage() {
 
   const { halaqa, khatmah } = detail
   const settingsButton = (
-    <Link href={`/halaqa/${id}/settings`} className="home-round ed-focus" aria-label="Halaqa settings">
+    <Link href={`/halaqa/${id}/settings`} className="home-round ed-focus" aria-label={t('Halaqa settings')}>
       <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2.2} />
     </Link>
   )
@@ -158,8 +160,8 @@ export default function HalaqaPage() {
             <MessageCircle className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-medium">Share today&apos;s check-in</span>
-            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">Post who has read to your WhatsApp group</span>
+            <span className="block text-[0.9375rem] font-medium">{t('Share today\'s check-in')}</span>
+            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Post who has read to your WhatsApp group')}</span>
           </span>
           <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
         </button>
@@ -169,8 +171,8 @@ export default function HalaqaPage() {
             <UserPlus className="h-[17px] w-[17px]" strokeWidth={1.9} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-medium">Invite people</span>
-            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">Anyone with the link can join</span>
+            <span className="block text-[0.9375rem] font-medium">{t('Invite people')}</span>
+            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Anyone with the link can join')}</span>
           </span>
           <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
         </Link>
@@ -179,14 +181,14 @@ export default function HalaqaPage() {
       <Rise order={2}>
         {read.length ? (
           <>
-            <SectionLabel>Read today · {read.length}</SectionLabel>
+            <SectionLabel>{t('Read today ·')} {read.length}</SectionLabel>
             <PeopleList people={read} justRead={justRead} />
           </>
         ) : null}
 
         {notYet.length ? (
           <>
-            <SectionLabel>Not yet · {notYet.length}</SectionLabel>
+            <SectionLabel>{t('Not yet ·')} {notYet.length}</SectionLabel>
             <PeopleList people={notYet} faded />
           </>
         ) : null}
@@ -194,7 +196,7 @@ export default function HalaqaPage() {
 
       {halaqa.khatmahEnabled && khatmah ? (
         <Rise order={3}>
-          <SectionLabel>Khatmah</SectionLabel>
+          <SectionLabel>{t('Khatmah')}</SectionLabel>
           <div className="home-card overflow-hidden rounded-2xl">
             <Link href={`/halaqa/${id}/khatmah`} className="block px-3.5 pb-[13px] pt-3 transition-colors active:bg-[color-mix(in_srgb,var(--home-heading)_5%,transparent)]">
               <span className="flex items-center gap-3">
@@ -202,10 +204,10 @@ export default function HalaqaPage() {
                   <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
                 </span>
                 <span className="flex-1 text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                  {khatmah.completedAt ? 'Khatmah complete' : <JuzDone done={khatmah.done} />}
+                  {khatmah.completedAt ? t('Khatmah complete') : <JuzDone done={khatmah.done} />}
                 </span>
                 {khatmah.finishBy && !khatmah.completedAt ? (
-                  <span className="text-[0.8125rem] text-[var(--home-muted)]">by {shortDay(khatmah.finishBy)}</span>
+                  <span className="text-[0.8125rem] text-[var(--home-muted)]">{t('by')} {shortDay(khatmah.finishBy)}</span>
                 ) : null}
               </span>
               <span className="ml-[42px] mt-2.5 block h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
@@ -228,8 +230,8 @@ export default function HalaqaPage() {
                       <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
                     </span>
                   )}
-                  <span className="set-row__label">{myJuz ? 'Your juz' : 'Take a juz'}</span>
-                  <span className="set-row__value">{myJuz ? `Juz ${myJuz.juz}` : `${30 - khatmah.juz.length} free`}</span>
+                  <span className="set-row__label">{myJuz ? t('Your juz') : t('Take a juz')}</span>
+                  <span className="set-row__value">{myJuz ? t('Juz {juz}', { juz: myJuz.juz }) : t('{count} free', { count: 30 - khatmah.juz.length })}</span>
                   <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
                 </Link>
               </>
@@ -244,11 +246,11 @@ export default function HalaqaPage() {
 }
 
 function JuzDone({ done }: { done: number }) {
+  const t = useT()
   const shown = useCountUp(done)
   return (
     <span className="tabular-nums">
-      {shown} of 30 juz done
-    </span>
+      {shown} {t('of 30 juz done')}</span>
   )
 }
 
@@ -262,6 +264,7 @@ function PeopleList({
   /** You ticked a moment ago: your row arrives here with a little motion. */
   justRead?: boolean
 }) {
+  const t = useT()
   return (
     <div className="home-card overflow-hidden rounded-2xl">
       {people.map((person, i) => {
@@ -279,7 +282,7 @@ function PeopleList({
               />
               <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
                 {person.name}
-                {person.isMe ? <span className="font-medium text-[var(--home-muted)]"> (you)</span> : null}
+                {person.isMe ? <span className="font-medium text-[var(--home-muted)]"> {t('(you)')}</span> : null}
               </span>
             </div>
           </div>
@@ -290,9 +293,10 @@ function PeopleList({
 }
 
 function ShareCheckIn({ open, detail, onClose }: { open: boolean; detail: HalaqaDetail; onClose: () => void }) {
+  const t = useT()
   const message = open ? checkInMessage(detail) : ''
   return (
-    <SettingsSheet open={open} title="Today's check-in" description="Post it in your WhatsApp group." onClose={onClose}>
+    <SettingsSheet open={open} title={t('Today\'s check-in')} description={t('Post it in your WhatsApp group.')} onClose={onClose}>
       <div className="halaqa-bubble qari-enter whitespace-pre-line px-3.5 py-3 text-[0.90625rem] leading-relaxed text-[var(--home-heading)]">
         {message}
       </div>
@@ -308,24 +312,22 @@ function ShareCheckIn({ open, detail, onClose }: { open: boolean; detail: Halaqa
           className="ed-ink ed-focus fx-press flex h-12 items-center justify-center gap-2 rounded-full text-[0.90625rem] font-semibold"
         >
           <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
-          Share on WhatsApp
-        </a>
+          {t('Share on WhatsApp')}</a>
         <ActionButton
           kind="outline"
           icon={Copy}
           onClick={async () => {
             if (await copyText(message)) {
               tapFeedback()
-              toastSuccess('Check-in copied')
+              toastSuccess(tr('Check-in copied'))
               onClose()
             } else {
               errorFeedback()
-              toastError('Could not copy it.')
+              toastError(tr('Could not copy it.'))
             }
           }}
         >
-          Copy message
-        </ActionButton>
+          {t('Copy message')}</ActionButton>
       </div>
     </SettingsSheet>
   )
@@ -343,6 +345,7 @@ function Ended({
   onChanged: () => Promise<void>
   onClosed: () => void
 }) {
+  const t = useT()
   const { halaqa, summary, me } = detail
   const [busy, setBusy] = useState<'again' | 'close' | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -360,7 +363,7 @@ function Ended({
       await onChanged()
     } catch (err) {
       errorFeedback()
-      toastError(errorMessage(err, 'Could not start it again.'))
+      toastError(errorMessage(err, tr('Could not start it again.')))
     } finally {
       setBusy(null)
     }
@@ -371,11 +374,11 @@ function Ended({
     try {
       if (me.isCreator) await deleteHalaqa(halaqa.id)
       else await halaqaAction(halaqa.id, 'leave')
-      toastSuccess(me.isCreator ? `${halaqa.name} was closed` : `You left ${halaqa.name}`)
+      toastSuccess(me.isCreator ? `${halaqa.name} was closed` : tr('You left {name}', { name: halaqa.name }))
       onClosed()
     } catch (err) {
       errorFeedback()
-      toastError(errorMessage(err, 'Could not do that right now.'))
+      toastError(errorMessage(err, tr('Could not do that right now.')))
       setBusy(null)
     }
   }
@@ -385,17 +388,15 @@ function Ended({
       <HalaqaHeader title={halaqa.name} right={settingsButton} />
 
       <Rise className="mt-[26px] px-1">
-        <p className="home-label">Ended {halaqa.endDay ? shortDay(halaqa.endDay) : ''}</p>
+        <p className="home-label">{t('Ended')} {halaqa.endDay ? shortDay(halaqa.endDay) : ''}</p>
         <h2 className="home-serif mt-1.5 text-[1.9375rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-          {summary.total} days, done
-        </h2>
+          {t('{total} days, done', { total: summary.total })}</h2>
         <p className="mt-1.5 text-[0.90625rem] leading-relaxed text-[var(--home-muted)]">
-          Everyone in the halaqa read on {summary.everyoneDays} of the {summary.total} days.
-        </p>
+          {t('Everyone in the halaqa read on {days} of the {total} days.', { days: summary.everyoneDays, total: summary.total })}</p>
       </Rise>
 
       <Rise order={1}>
-        <SectionLabel>Reading days</SectionLabel>
+        <SectionLabel>{t('Reading days')}</SectionLabel>
         <div className="home-card overflow-hidden rounded-2xl">
           {people.map((person, i) => {
             const line = lines.get(person.id)
@@ -413,8 +414,7 @@ function Ended({
       <Rise order={2}>
         {me.isCreator ? (
           <ActionButton icon={RefreshCw} busy={busy === 'again'} disabled={busy !== null} onClick={() => void runAgain()} className="mt-6">
-            Run it again
-          </ActionButton>
+            {t('Run it again')}</ActionButton>
         ) : null}
         <button
           type="button"
@@ -425,22 +425,22 @@ function Ended({
           disabled={busy !== null}
           className="ed-focus mx-auto mt-3.5 block rounded-md px-3 py-1.5 text-sm font-semibold text-[var(--home-muted)] hover:text-[var(--home-heading)]"
         >
-          {me.isCreator ? 'Close the halaqa' : 'Leave the halaqa'}
+          {me.isCreator ? t('Close the halaqa') : t('Leave the halaqa')}
         </button>
       </Rise>
 
       <SettingsSheet
         open={confirmClose}
-        title={me.isCreator ? 'Close this halaqa?' : 'Leave this halaqa?'}
+        title={me.isCreator ? t('Close this halaqa?') : t('Leave this halaqa?')}
         description={
           me.isCreator
-            ? 'It will be removed for everyone in it. This cannot be undone.'
-            : 'You can join again with the invite link.'
+            ? t('It will be removed for everyone in it. This cannot be undone.')
+            : t('You can join again with the invite link.')
         }
         onClose={() => setConfirmClose(false)}
       >
         <ActionButton kind="danger" busy={busy === 'close'} onClick={() => void close()}>
-          {me.isCreator ? 'Close the halaqa' : 'Leave'}
+          {me.isCreator ? t('Close the halaqa') : t('Leave')}
         </ActionButton>
       </SettingsSheet>
     </HalaqaScreen>
