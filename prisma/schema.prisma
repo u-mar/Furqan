@@ -218,3 +218,25 @@ model HalaqaJuz {
 
   @@index([khatmahId])
 }
+
+/// Something that happened to a qari that they should hear about: a like on a
+/// recitation, or a new follower. Keyed by the recipient's username, since
+/// accounts can be local-only (`local_<username>` ids) as well as database-backed.
+/// Repeats are guarded in code (no unique index on this connection): liking,
+/// unliking and liking again must not notify twice.
+model Notification {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  /// Lower-case username of the person being told.
+  recipientUsername String
+  /// "like" | "follow"
+  type              String
+  actorUsername     String
+  actorName         String
+  /// For a like: which recitation, and its title as it was then.
+  recitationId      String?
+  recitationTitle   String?
+  createdAt         DateTime  @default(now())
+  readAt            DateTime?
+
+  @@index([recipientUsername, createdAt])
+}

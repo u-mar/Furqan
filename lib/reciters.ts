@@ -1056,19 +1056,37 @@ export function mp3quranSurahUrl(serverBase: string, surah: number): string {
   return `${base}/${surahPadded}.mp3`
 }
 
+/**
+ * Source recordings that are faulty, replaced by a corrected copy, keyed
+ * "reciterId:surah". Idris Abkar's Ya-Sin on MP3Quran has its two stereo
+ * channels in opposite polarity: played on a phone speaker or in mono they
+ * cancel each other, leaving a thin, quiet voice that sounds doubled. The copy
+ * mixes the channels the right way round, and lives in the same R2 bucket as
+ * Hassan Al-Wajdi's audio.
+ */
+const CORRECTED_SURAH_FILES: Record<string, string> = {
+  'idris_abkar:36': `${HASSAN_AL_WAJDI_AUDIO}/abkar-036.mp3`,
+}
+
+function correctedSurahFile(reciter: Reciter, surah: number): string | undefined {
+  return CORRECTED_SURAH_FILES[`${reciter.id}:${surah}`]
+}
+
 /** Full-surah URL for Listen (always mp3quran). */
 export function listenSurahAudioUrl(reciter: Reciter, surah: number): string {
-  return mp3quranSurahUrl(reciter.mp3quranBase, surah)
+  return correctedSurahFile(reciter, surah) ?? mp3quranSurahUrl(reciter.mp3quranBase, surah)
 }
 
 export function ayahAudioUrl(reciter: Reciter, surah: number, ayah: number): string {
   if (reciter.source === 'mp3quran') {
-    return mp3quranSurahUrl(reciter.folder, surah)
+    return correctedSurahFile(reciter, surah) ?? mp3quranSurahUrl(reciter.folder, surah)
   }
   return everyAyahAudioUrl(resolveReciterFolder(reciter.folder), surah, ayah)
 }
 
 export function surahAudioUrl(reciter: Reciter, surah: number): string {
+  const corrected = correctedSurahFile(reciter, surah)
+  if (corrected) return corrected
   if (reciter.source === 'mp3quran') {
     return mp3quranSurahUrl(reciter.folder, surah)
   }

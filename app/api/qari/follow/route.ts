@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
+import { notifyFollow } from '@/lib/notify'
 
 export const runtime = 'nodejs'
 
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
           followingUsername: caller.target,
         },
       })
+      await notifyFollow(caller.target, caller.userId)
     }
     return NextResponse.json(await state(caller.target, caller.userId))
   } catch (err) {

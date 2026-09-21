@@ -17,6 +17,7 @@
     "@mediabunny/mp3-encoder": "^1.56.2",
     "@prisma/client": "^6.19.3",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
+    "adhan": "^4.4.6",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
     "mediabunny": "^1.56.2",

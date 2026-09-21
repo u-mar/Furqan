@@ -13,7 +13,7 @@
  * feed/story crops and Twitter previews without cutting the text.
  */
 
-import { APP_NAME } from '@/lib/app-brand'
+import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 import { tr } from '@/lib/i18n-core'
 
@@ -208,7 +208,7 @@ function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): 
 }
 
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
-  const { words, page, isQcf, translation, surahName, verseKey, partial } = input
+  const { words, page, isQcf, translation } = input
 
   const background =
     VERSE_IMAGE_BACKGROUNDS.find((b) => b.id === input.backgroundId) ?? VERSE_IMAGE_BACKGROUNDS[0]
@@ -230,6 +230,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
       ? Promise.all([
           document.fonts.load(`600 34px ${fonts.serif}`, 'Sample'),
           document.fonts.load(`500 24px ${fonts.sans}`, 'Sample'),
+          document.fonts.load(`700 30px ${fonts.serif}`, APP_ICON_LETTER),
           document.fonts.ready,
         ]).catch(() => null)
       : null,
@@ -254,7 +255,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
 
   /* ---- Measure both blocks, then centre the pair in the open space ---- */
   const contentTop = 240
-  const contentBottom = H - 300
+  const contentBottom = H - 200
   const available = contentBottom - contentTop
 
   const arabicBlock = fitBlock(ctx, arabicWords, {
@@ -316,26 +317,30 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
     })
   }
 
-  /* ---- Reference ---- */
+  /* ---- The app, small, at the bottom left ---- */
+  const margin = 64
+  const markSize = 46
+  const baseline = H - 64
   withShadow(() => {
+    ctx.beginPath()
+    ctx.roundRect(margin, baseline - markSize + 6, markSize, markSize, markSize * 0.24)
+    ctx.fillStyle = '#000000'
+    ctx.fill()
+    ctx.lineWidth = 1.5
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
+    ctx.stroke()
+    ctx.fillStyle = '#f5ecd8'
+    ctx.font = `700 ${Math.round(markSize * 0.62)}px ${fonts.serif}`
     ctx.direction = 'ltr'
     ctx.textAlign = 'center'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = background.accent
-    ctx.font = `600 27px ${fonts.serif}`
-    ctx.fillText(`Surah ${surahName} · ${verseKey}${partial ? ' (part)' : ''}`, W / 2, H - 218)
-  })
+    ctx.textBaseline = 'middle'
+    ctx.fillText(APP_ICON_LETTER, margin + markSize / 2, baseline - markSize / 2 + 6 + markSize * 0.04)
 
-  /* ---- Wordmark ---- */
-  withShadow(() => {
-    ctx.direction = 'ltr'
-    ctx.textAlign = 'center'
+    ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
     ctx.fillStyle = MUTED
-    ctx.font = `600 34px ${fonts.serif}`
-    ctx.letterSpacing = '6px'
-    ctx.fillText(APP_NAME, W / 2, H - 110)
-    ctx.letterSpacing = '0px'
+    ctx.font = `600 26px ${fonts.serif}`
+    ctx.fillText(APP_NAME, margin + markSize + 16, baseline - 8)
   })
 
   return new Promise<Blob>((resolve, reject) => {

@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useSearchParams } from 'next/navigation'
 import { Loader2, Mic, RotateCw, SearchX, Users, UsersRound } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
+import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
@@ -159,9 +160,12 @@ function QariHomeContent() {
         title={t('Qari')}
         backHref="/"
         action={
-          <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label={t('Qaris')}>
-            <Users className="h-[19px] w-[19px]" strokeWidth={1.9} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <NotificationsBell />
+            <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label={t('Qaris')}>
+              <Users className="h-[19px] w-[19px]" strokeWidth={1.9} />
+            </Link>
+          </div>
         }
       />
 

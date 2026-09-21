@@ -741,7 +741,9 @@ function RecordFlow() {
               aria-live="polite"
             >
               {recording
-                ? state.inputHint === 'loud'
+                ? state.paused
+                  ? t('Paused')
+                  : state.inputHint === 'loud'
                   ? t('Too loud — hold the phone a little further away')
                   : state.inputHint === 'quiet'
                     ? t('We can barely hear you — come a little closer')
@@ -756,23 +758,52 @@ function RecordFlow() {
 
       {/* Record / stop */}
       <div className={cn('flex flex-col items-center pb-2', state.polishing && 'invisible')}>
-        <button
-          type="button"
-          onClick={() => {
-            if (recording) {
-              recorder.stop()
-            } else if (!countingDown) {
-              void begin()
-            }
-          }}
-          disabled={countingDown}
-          aria-label={recording ? t('Finish recording') : t('Start recording')}
-          className={cn('qari-rec ed-focus disabled:opacity-60', recording && 'is-recording')}
-        >
-          <span className="qari-rec__core" />
-        </button>
+        <div className="flex items-center justify-center gap-7">
+          {/* Pause holds the take, so a reciter can breathe, cough or look something up. */}
+          {recording ? (
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                if (state.paused) recorder.resume()
+                else recorder.pause()
+              }}
+              aria-label={state.paused ? t('Resume recording') : t('Pause recording')}
+              aria-pressed={state.paused}
+              className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)]"
+            >
+              {state.paused ? (
+                <Play className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
+              ) : (
+                <Pause className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
+              )}
+            </button>
+          ) : (
+            <span className="h-12 w-12" aria-hidden />
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (recording) {
+                recorder.stop()
+              } else if (!countingDown) {
+                void begin()
+              }
+            }}
+            disabled={countingDown}
+            aria-label={recording ? t('Finish recording') : t('Start recording')}
+            className={cn('qari-rec ed-focus disabled:opacity-60', recording && !state.paused && 'is-recording')}
+          >
+            <span className="qari-rec__core" />
+          </button>
+          <span className="h-12 w-12" aria-hidden />
+        </div>
         <p className="mt-3.5 text-[12.5px] text-[var(--home-muted)]">
-          {recording ? t('Tap to finish') : t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
+          {recording
+            ? state.paused
+              ? t('Paused. Tap play to carry on, or the square to finish.')
+              : t('Tap to finish')
+            : t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
         </p>
       </div>
     </Screen>

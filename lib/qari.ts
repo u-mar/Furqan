@@ -59,7 +59,7 @@ export function timeAgo(iso: string): string {
   if (Number.isNaN(then)) return ''
   const diff = Date.now() - then
   const min = Math.floor(diff / 60000)
-  if (min < 1) return 'just now'
+  if (min < 1) return tr('just now')
   if (min < 60) return `${min}m`
   const hours = Math.floor(min / 60)
   if (hours < 24) return `${hours}h`

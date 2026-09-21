@@ -122,6 +122,10 @@ body {
      ignore it and keep the line above. */
   overflow-x: clip;
   overscroll-behavior-x: none;
+  /* No double-tap zoom, and no text resizing when an iPhone is turned. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @font-face {
@@ -559,7 +563,7 @@ html:not(.dark) .mushaf-boundary-toast-card {
 .mushaf-reader-immersive .mushaf-read-scroll-lock {
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: pan-x pinch-zoom;
+  touch-action: pan-x pan-y;
 }
 
 .mushaf-reader-immersive .mushaf-read-scroll-lock .mushaf-unicode-page-wrap {

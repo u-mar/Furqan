@@ -24,6 +24,23 @@ export function IconRead({ className }: { className?: string }) {
   )
 }
 
+/** A mosque: a dome with its crescent, and a minaret beside it. */
+export function IconPrayer({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="currentColor" aria-hidden>
+      <path d="M14 42V27.5C14 21 18.6 16.4 24 13c5.4 3.4 10 8 10 14.5V42H14z" opacity="0.35" />
+      <path d="M24 5.2a3.4 3.4 0 0 1 2.4 5.8 2.7 2.7 0 1 0 0-4.6 3.4 3.4 0 0 0-2.4-1.2z" />
+      <rect x="22.9" y="11.5" width="2.2" height="4" rx="1" />
+      <path d="M24 17.6c-4.4 2.9-8 6.4-8 11.2V42h16V28.8c0-4.8-3.6-8.3-8-11.2z" />
+      <rect x="6" y="20" width="5" height="22" rx="1.2" opacity="0.7" />
+      <path d="M8.5 11.5l3 5.8h-6l3-5.8z" opacity="0.7" />
+      <rect x="37" y="20" width="5" height="22" rx="1.2" opacity="0.7" />
+      <path d="M39.5 11.5l3 5.8h-6l3-5.8z" opacity="0.7" />
+      <rect x="21" y="34" width="6" height="8" rx="3" fill="var(--home-card-bg, #fff)" />
+    </svg>
+  )
+}
+
 /** A halaqa seen from above: six people sitting around an open mushaf. */
 export function IconHalaqa({ className }: { className?: string }) {
   return (

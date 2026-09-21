@@ -92,6 +92,8 @@ export function microphoneError(err: unknown): string {
 
 export interface QariRecorderState {
   recording: boolean
+  /** Recording is held: the clock and the microphone are stopped until resumed. */
+  paused: boolean
   /** Seconds elapsed in the current take. */
   elapsed: number
   /** 0–1, for the live level meter. */
@@ -115,6 +117,7 @@ export interface QariRecorderState {
 
 const idle: QariRecorderState = {
   recording: false,
+  paused: false,
   elapsed: 0,
   level: 0,
   inputHint: null,
@@ -138,6 +141,14 @@ export function useQariRecorder(maxSeconds = 600) {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const rafRef = useRef<number | null>(null)
   const startedAtRef = useRef(0)
+  /** Time spent paused, so the clock and the length count only what was recorded. */
+  const pausedMsRef = useRef(0)
+  const pausedAtRef = useRef<number | null>(null)
+  const resumedAtRef = useRef(0)
+  const activeMs = useCallback((now: number) => {
+    const heldNow = pausedAtRef.current === null ? 0 : now - pausedAtRef.current
+    return Math.max(0, now - startedAtRef.current - pausedMsRef.current - heldNow)
+  }, [])
   /** Which take is being polished, so one that was thrown away cannot come back. */
   const polishRun = useRef(0)
   /** Set when the take is thrown away while recording, so its end is ignored. */
@@ -159,6 +170,8 @@ export function useQariRecorder(maxSeconds = 600) {
   const start = useCallback(async (prepared?: PreparedRecording) => {
     if (recorderRef.current) return
     discarded.current = false
+    pausedMsRef.current = 0
+    pausedAtRef.current = null
 
     try {
       // All three of these are tuned for phone calls. On a recitation they
@@ -204,7 +217,7 @@ export function useQariRecorder(maxSeconds = 600) {
         if (discarded.current) return
         const type = recorder.mimeType || mimeType || 'audio/webm'
         const raw = new Blob(chunksRef.current, { type })
-        const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
+        const durationSec = Math.max(1, Math.round(activeMs(Date.now()) / 1000))
         teardown()
         const run = ++polishRun.current
         setState({ ...idle, polishing: true, elapsed: durationSec })
@@ -258,7 +271,9 @@ export function useQariRecorder(maxSeconds = 600) {
         }
         peak = Math.min(1, peak * 2.2)
         const now = Date.now()
-        const seconds = Math.floor((now - startedAtRef.current) / 1000)
+        const seconds = Math.floor(activeMs(now) / 1000)
+        const held = pausedAtRef.current !== null
+        if (resumedAtRef.current > lastVoice) lastVoice = resumedAtRef.current
 
         raw.getFloatTimeDomainData(rawBuffer)
         let rawPeak = 0
@@ -266,15 +281,16 @@ export function useQariRecorder(maxSeconds = 600) {
         if (rawPeak >= 0.97) lastClip = now
         // Anything above about -30dB counts as the reciter being heard.
         if (rawPeak >= 0.03) lastVoice = now
-        const inputHint: QariRecorderState['inputHint'] =
-          now - lastClip < 1500
+        const inputHint: QariRecorderState['inputHint'] = held
+          ? null
+          : now - lastClip < 1500
             ? 'loud'
-            : now - startedAtRef.current > 4000 && now - lastVoice > 4000
+            : activeMs(now) > 4000 && now - lastVoice > 4000
               ? 'quiet'
               : null
 
         setState((s) =>
-          s.recording ? { ...s, level: peak, elapsed: seconds, inputHint } : s
+          s.recording ? { ...s, level: held ? 0 : peak, elapsed: seconds, inputHint } : s
         )
         if (seconds >= maxSeconds) {
           recorderRef.current?.stop()
@@ -292,11 +308,30 @@ export function useQariRecorder(maxSeconds = 600) {
       teardown()
       setState({ ...idle, error: microphoneError(err) })
     }
-  }, [maxSeconds, teardown])
+  }, [maxSeconds, teardown, activeMs])
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current
     if (recorder && recorder.state !== 'inactive') recorder.stop()
+  }, [])
+
+  const pause = useCallback(() => {
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state !== 'recording') return
+    recorder.pause()
+    pausedAtRef.current = Date.now()
+    setState((s) => (s.recording ? { ...s, paused: true, level: 0 } : s))
+  }, [])
+
+  const resume = useCallback(() => {
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state !== 'paused') return
+    recorder.resume()
+    const now = Date.now()
+    if (pausedAtRef.current !== null) pausedMsRef.current += now - pausedAtRef.current
+    pausedAtRef.current = null
+    resumedAtRef.current = now
+    setState((s) => (s.recording ? { ...s, paused: false } : s))
   }, [])
 
   const reset = useCallback(() => {
@@ -307,5 +342,5 @@ export function useQariRecorder(maxSeconds = 600) {
     setState(idle)
   }, [stop, teardown])
 
-  return { state, start, stop, reset, supported: typeof MediaRecorder !== 'undefined' }
+  return { state, start, stop, pause, resume, reset, supported: typeof MediaRecorder !== 'undefined' }
 }

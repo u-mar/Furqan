@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { removeAudio } from '@/lib/qari-storage'
+import { notifyLike } from '@/lib/notify'
 
 export const runtime = 'nodejs'
 
@@ -58,6 +59,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           data: { likeCount: { increment: 1 } },
           select: { likeCount: true },
         })
+        // Tell the reciter. A private recording can only be liked by its owner, so it is skipped.
+        if (!recitation.isPrivate) await notifyLike(recitation, userId)
         return NextResponse.json({ liked: true, likeCount: updated.likeCount })
       }
 

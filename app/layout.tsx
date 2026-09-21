@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
+import AdhanHost from '@/components/prayer/AdhanHost'
+import ViewportLock from '@/components/ViewportLock'
 import AccountPromptHost from '@/components/account/AccountPromptHost'
 import ToastHost from '@/components/feedback/ToastHost'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
@@ -37,6 +39,9 @@ const sans = Plus_Jakarta_Sans({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // The app is laid out for the phone's own width; zooming it only ever breaks the layout.
+  maximumScale: 1,
+  userScalable: false,
   themeColor: APP_ICON_THEME_COLOR,
 }
 
@@ -83,6 +88,8 @@ export default function RootLayout({
           <AdminRuntime />
           <ListenPlaybackGuard />
           <PwaRegister />
+          <ViewportLock />
+          <AdhanHost />
           <OfflineBootstrap />
           <AccountPromptHost />
           <ToastHost />
