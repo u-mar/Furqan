@@ -15,7 +15,7 @@ import {
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
-import { fetchFeed, fetchSheikhStats, type Recitation } from '@/lib/qari'
+import { fetchFeed, fetchSheikhStats, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
 import { useT } from '@/lib/i18n'
@@ -48,7 +48,7 @@ export default function SheikhPage() {
   }, [sheikh, sort, viewerId])
 
   useEffect(() => {
-    setItems(null)
+    setItems(sheikh ? (peekFeed({ imitating: sheikh.id, sort, viewerId, take: 50 })?.items ?? null) : null)
     void load()
   }, [load])
 

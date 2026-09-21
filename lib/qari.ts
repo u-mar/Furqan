@@ -1,5 +1,7 @@
 
-import { tr } from '@/lib/i18n-core'/** Client-side access to the Qari recitation feed. */
+import { tr } from '@/lib/i18n-core'
+
+/** Client-side access to the Qari recitation feed. */
 
 export interface Recitation {
   id: string
@@ -68,6 +70,63 @@ export function timeAgo(iso: string): string {
   return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
+/* ------------------------------------------------------------------ memory */
+
+/*
+ * What each screen last showed is kept on the phone, so it opens at once with
+ * that and the server only brings it up to date. Waiting on a database for a
+ * list that was there a minute ago is what made these screens open on a skeleton.
+ */
+const MEMORY_PREFIX = 'muyassar_qari_'
+const MEMORY_DAYS = 7
+
+function remember(key: string, data: unknown) {
+  try {
+    localStorage.setItem(MEMORY_PREFIX + key, JSON.stringify({ at: Date.now(), data }))
+  } catch {
+    // A full disk only costs the shortcut.
+  }
+}
+
+function recall<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(MEMORY_PREFIX + key)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as { at?: number; data?: T }
+    if (!saved.at || Date.now() - saved.at > MEMORY_DAYS * 86_400_000) return null
+    return saved.data ?? null
+  } catch {
+    return null
+  }
+}
+
+type FeedOptions = Parameters<typeof fetchFeed>[0]
+
+/** Only a plain first page is kept: a search or "load more" is never worth remembering. */
+function feedKey(o: FeedOptions): string | null {
+  if (o.query || o.skip) return null
+  return [
+    'feed',
+    o.sort ?? 'recent',
+    o.user ?? '',
+    o.likedBy ? 'liked' : '',
+    o.imitating ?? '',
+    o.following ? 'following' : '',
+    o.take ?? '',
+    o.viewerId ?? 'anon',
+  ].join(':')
+}
+
+/** The first page as it was last seen, or null. */
+export function peekFeed(options: FeedOptions): FeedPage | null {
+  const key = feedKey(options)
+  return key ? recall<FeedPage>(key) : null
+}
+
+export function peekDiscover(): Discover | null {
+  return recall<Discover>('discover')
+}
+
 export async function fetchFeed(options: {
   sort?: FeedSort
   user?: string
@@ -96,7 +155,10 @@ export async function fetchFeed(options: {
 
   const res = await fetch(`/api/qari?${params.toString()}`, { cache: 'no-store' })
   if (!res.ok) throw new Error(tr('Could not load recitations.'))
-  return (await res.json()) as FeedPage
+  const page = (await res.json()) as FeedPage
+  const key = feedKey(options)
+  if (key) remember(key, page)
+  return page
 }
 
 async function post(id: string, body: Record<string, unknown>) {
@@ -267,7 +329,9 @@ export interface Discover {
 export async function fetchDiscover(): Promise<Discover> {
   const res = await fetch('/api/qari/discover', { cache: 'no-store' })
   if (!res.ok) throw new Error(tr('Could not load Qari.'))
-  return (await res.json()) as Discover
+  const discover = (await res.json()) as Discover
+  remember('discover', discover)
+  return discover
 }
 
 /** How many people imitated one sheikh, and from how many different qaris. */

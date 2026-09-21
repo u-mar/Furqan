@@ -19,7 +19,7 @@ import {
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
-import { fetchDiscover, fetchFeed, fetchSheikhStats, type Discover, type Recitation } from '@/lib/qari'
+import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
 import { tapFeedback } from '@/lib/haptics'
@@ -99,12 +99,22 @@ function QariHomeContent() {
 
   useEffect(() => {
     if (searching) return
+    // Open on what was seen last; the server then brings it up to date.
+    const remembered = peekDiscover()
+    if (remembered) setDiscover((prev) => prev ?? remembered)
     void loadDiscover()
   }, [loadDiscover, searching])
 
   useEffect(() => {
     if (searching) return
-    setLoading(true)
+    const remembered = peekFeed({ sort: sort === 'top' ? 'top' : 'recent', following: sort === 'following', viewerId })
+    if (remembered) {
+      setItems(remembered.items)
+      setHasMore(remembered.hasMore)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     void loadFeed()
   }, [loadFeed, searching])
 

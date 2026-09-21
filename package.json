@@ -19,6 +19,7 @@
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "adhan": "^4.4.6",
     "clsx": "^2.1.1",
+    "geomagnetism": "^0.2.0",
     "lucide-react": "^1.14.0",
     "mediabunny": "^1.56.2",
     "mongodb": "^7.6.0",
@@ -26,12 +27,14 @@
     "prisma": "^6.19.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.19",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",

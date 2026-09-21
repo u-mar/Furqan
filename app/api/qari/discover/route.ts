@@ -11,6 +11,13 @@ const PUBLIC = { hidden: false, isPrivate: false }
 const SAMPLE = 800
 
 /**
+ * The sections change slowly and cost two large reads, so a minute-old answer is
+ * reused instead of asking the database again for every visitor.
+ */
+const REUSE_MS = 60_000
+let reusable: { at: number; body: unknown } | null = null
+
+/**
  * GET /api/qari/discover — the sections at the top of Qari home.
  * GET /api/qari/discover?sheikh=id — how many imitations one sheikh has.
  */
@@ -30,6 +37,8 @@ export async function GET(request: NextRequest) {
         people: new Set(rows.map((r) => r.userUsername)).size,
       })
     }
+
+    if (reusable && Date.now() - reusable.at < REUSE_MS) return NextResponse.json(reusable.body)
 
     const [recent, loved] = await Promise.all([
       prisma.recitation.findMany({
@@ -67,11 +76,13 @@ export async function GET(request: NextRequest) {
       else qaris.set(key, { username: row.userUsername, name: row.userName || row.userUsername, likes: row.likeCount })
     }
 
-    return NextResponse.json({
+    const body = {
       tags: [...tagCounts].map(([tag, count]) => ({ tag, count })).sort(byCount).slice(0, 12),
       sheikhs: [...sheikhCounts].map(([id, count]) => ({ id, count })).sort(byCount).slice(0, 8),
       lovedQaris: [...qaris.values()].sort((a, b) => b.likes - a.likes || a.name.localeCompare(b.name)).slice(0, 15),
-    })
+    }
+    reusable = { at: Date.now(), body }
+    return NextResponse.json(body)
   } catch (err) {
     console.error('[qari] discover failed:', err)
     return NextResponse.json({ error: 'Could not load Qari.' }, { status: 500 })

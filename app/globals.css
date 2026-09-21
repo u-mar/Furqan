@@ -2680,3 +2680,167 @@ html.dark .qari-monogram {
 [dir='rtl'] svg.lucide-chevrons-right:not([class*='rotate']) {
   transform: scaleX(-1);
 }
+
+/* ======================================================================
+   Explore cards on Home: each feature has its own colour and a small scene.
+   ====================================================================== */
+
+.explore-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--tile-a), var(--tile-b));
+  box-shadow: var(--home-lift-sm);
+}
+
+.explore-tile__art {
+  position: absolute;
+  right: -0.375rem;
+  top: -0.25rem;
+  z-index: -1;
+  width: 54%;
+  max-width: 7.5rem;
+  height: auto;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.explore-tile:active .explore-tile__art {
+  transform: scale(1.06) rotate(-2deg);
+}
+
+.explore-tile--read {
+  --tile-a: #e6f5ee;
+  --tile-b: #c6e8d6;
+  --art-1: #1f8f63;
+  --art-2: #8fd3b1;
+  --art-3: #f2c14e;
+}
+.explore-tile--prayer {
+  --tile-a: #fdf3da;
+  --tile-b: #f7dc9c;
+  --art-1: #b97a12;
+  --art-2: #e9be62;
+  --art-3: #fff3c4;
+}
+.explore-tile--qari {
+  --tile-a: #fce7ed;
+  --tile-b: #f4c6d5;
+  --art-1: #c2436b;
+  --art-2: #eb9fb8;
+  --art-3: #ffd9e4;
+}
+.explore-tile--listen {
+  --tile-a: #e5eafc;
+  --tile-b: #c7d3f6;
+  --art-1: #4453c2;
+  --art-2: #93a5ea;
+  --art-3: #d8e0ff;
+}
+
+html.dark .explore-tile--read {
+  --tile-a: #15332a;
+  --tile-b: #0f261f;
+  --art-1: #3fb886;
+  --art-2: #1f5c46;
+  --art-3: #e8b944;
+}
+html.dark .explore-tile--prayer {
+  --tile-a: #362b14;
+  --tile-b: #261e0d;
+  --art-1: #dfa236;
+  --art-2: #6b5219;
+  --art-3: #f6d987;
+}
+html.dark .explore-tile--qari {
+  --tile-a: #391c27;
+  --tile-b: #291420;
+  --art-1: #e0678c;
+  --art-2: #78324b;
+  --art-3: #f3a9bf;
+}
+html.dark .explore-tile--listen {
+  --tile-a: #1d2340;
+  --tile-b: #151a30;
+  --art-1: #7686ea;
+  --art-2: #38427a;
+  --art-3: #a9b6f5;
+}
+
+/* ======================================================================
+   Prayer
+   ====================================================================== */
+
+/* The card for what comes next: a soft wash of mint into butter. */
+.prayer-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.375rem;
+  background: linear-gradient(115deg, #cdeedd 0%, #ecf3cc 55%, #f8e9a8 100%);
+  color: #16352c;
+  box-shadow: var(--home-lift);
+}
+html.dark .prayer-hero {
+  background: linear-gradient(115deg, #123a30 0%, #1a3a2a 55%, #3b3413 100%);
+  color: #eaf5ee;
+}
+.prayer-hero__ring-track {
+  stroke: rgba(22, 53, 44, 0.12);
+}
+html.dark .prayer-hero__ring-track {
+  stroke: rgba(234, 245, 238, 0.14);
+}
+.prayer-hero__ring-bar {
+  stroke: url(#prayer-ring);
+  transition: stroke-dashoffset 0.9s ease;
+}
+
+/* A rounded chip in each prayer's own colour. */
+.prayer-chip {
+  display: flex;
+  width: 2.375rem;
+  height: 2.375rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+}
+.prayer-chip--fajr { --chip-bg: #e6e8fb; --chip-fg: #4453c2; }
+.prayer-chip--sunrise { --chip-bg: #fdecd0; --chip-fg: #c77a0e; }
+.prayer-chip--dhuhr { --chip-bg: #fdf1c5; --chip-fg: #b58a00; }
+.prayer-chip--asr { --chip-bg: #fde3d2; --chip-fg: #d1591f; }
+.prayer-chip--maghrib { --chip-bg: #fbdde6; --chip-fg: #c2436b; }
+.prayer-chip--isha { --chip-bg: #e9defa; --chip-fg: #6f47c4; }
+html.dark .prayer-chip--fajr { --chip-bg: #262c52; --chip-fg: #94a3f0; }
+html.dark .prayer-chip--sunrise { --chip-bg: #3d2e14; --chip-fg: #efb04e; }
+html.dark .prayer-chip--dhuhr { --chip-bg: #3a3212; --chip-fg: #f0d048; }
+html.dark .prayer-chip--asr { --chip-bg: #40261a; --chip-fg: #f09466; }
+html.dark .prayer-chip--maghrib { --chip-bg: #40202d; --chip-fg: #ef8fab; }
+html.dark .prayer-chip--isha { --chip-bg: #2d2247; --chip-fg: #b596ef; }
+
+.prayer-row {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  transition: background-color 0.2s ease;
+}
+.prayer-row--now {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--home-sage) 14%, transparent), transparent);
+}
+
+.prayer-pill {
+  display: inline-flex;
+  max-width: 46%;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  background: var(--home-card-bg);
+  box-shadow: var(--home-lift-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--home-heading);
+}

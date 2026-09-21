@@ -17,7 +17,7 @@ import {
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
-import { fetchFeed, fetchFollowState, type Recitation } from '@/lib/qari'
+import { fetchFeed, fetchFollowState, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
@@ -62,7 +62,7 @@ export default function QariProfilePage() {
   }, [username, viewerId])
 
   useEffect(() => {
-    setRecitations(null)
+    setRecitations(username ? (peekFeed({ user: username, viewerId, take: 50 })?.items ?? null) : null)
     void loadRecitations()
   }, [loadRecitations])
 

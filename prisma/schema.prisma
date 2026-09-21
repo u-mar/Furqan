@@ -240,3 +240,18 @@ model Notification {
 
   @@index([recipientUsername, createdAt])
 }
+
+/// A phone that agreed to be notified, for one account. `endpoint` is the push
+/// service's address for that phone, and the two keys encrypt what is sent to it.
+model PushSubscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([username])
+  @@index([endpoint])
+}

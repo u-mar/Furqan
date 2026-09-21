@@ -71,13 +71,16 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname === '/quran-data.json') {
     event.respondWith(
-      fetch(event.request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone()
-          caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, copy))
-        }
-        return response
-      })
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, copy))
+          }
+          return response
+        })
+        // Offline: the copy saved earlier is the Quran.
+        .catch(() => caches.match(event.request))
     )
     return
   }
@@ -155,3 +158,42 @@ async function cacheFirst(request, cacheName = STATIC_CACHE) {
   }
   return response
 }
+
+/* ----------------------------------------------------------------- push */
+
+/** A notification from the server: someone liked a recitation or followed. */
+self.addEventListener('push', (event) => {
+  let message = { title: 'Al Furqaan', body: '', url: '/qari/notifications' }
+  try {
+    if (event.data) message = { ...message, ...event.data.json() }
+  } catch {
+    // A plain-text push still shows.
+    if (event.data) message.body = event.data.text()
+  }
+  event.waitUntil(
+    self.registration.showNotification(message.title, {
+      body: message.body,
+      tag: message.tag,
+      icon: '/icons/icon-192',
+      badge: '/icons/icon-192',
+      data: { url: message.url },
+    })
+  )
+})
+
+/** Tapping it opens the app on the right screen, reusing a window that is already open. */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if ('focus' in client) {
+          client.navigate(target).catch(() => {})
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(target)
+    })
+  )
+})

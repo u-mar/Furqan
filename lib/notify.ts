@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { sendPush } from '@/lib/push'
 
 /**
  * Who did something, from the id the app sends. A database account is looked
@@ -45,6 +46,12 @@ export async function notifyLike(
         recitationTitle: recitation.title,
       },
     })
+    await sendPush(recipient, {
+      title: `${actor.name} liked your recitation`,
+      body: recitation.title ? `“${recitation.title}”` : 'Open Qari to hear who.',
+      url: '/qari/notifications',
+      tag: `like-${recitation.id}`,
+    })
   } catch (err) {
     console.error('[notify] like failed:', err)
   }
@@ -63,6 +70,12 @@ export async function notifyFollow(targetUsername: string, actorUserId: string):
     if (existing) return
     await prisma.notification.create({
       data: { recipientUsername: recipient, type: 'follow', actorUsername: actor.username, actorName: actor.name },
+    })
+    await sendPush(recipient, {
+      title: `${actor.name} started following you`,
+      body: 'Open Qari to see your new follower.',
+      url: '/qari/notifications',
+      tag: `follow-${actor.username}`,
     })
   } catch (err) {
     console.error('[notify] follow failed:', err)

@@ -135,19 +135,24 @@ export function qiblaBearing(place: Pick<Place, 'lat' | 'lon'>): number {
   return Qibla(new Coordinates(place.lat, place.lon))
 }
 
-/** Great-circle distance to the Kaaba, in kilometres. */
-export function distanceToKaabaKm(place: Pick<Place, 'lat' | 'lon'>): number {
+/** Great-circle distance between two points, in kilometres. */
+export function distanceKm(a: Pick<Place, 'lat' | 'lon'>, b: Pick<Place, 'lat' | 'lon'>): number {
   const rad = (d: number) => (d * Math.PI) / 180
-  const dLat = rad(KAABA.lat - place.lat)
-  const dLon = rad(KAABA.lon - place.lon)
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(place.lat)) * Math.cos(rad(KAABA.lat)) * Math.sin(dLon / 2) ** 2
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  const dLat = rad(b.lat - a.lat)
+  const dLon = rad(b.lon - a.lon)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+export function distanceToKaabaKm(place: Pick<Place, 'lat' | 'lon'>): number {
+  return distanceKm(place, KAABA)
 }
 
 /* ------------------------------------------------------------- storage */
 
 const SETTINGS_KEY = 'muyassar_prayer_settings'
 const PLACE_KEY = 'muyassar_prayer_place'
+const DENIED_KEY = 'muyassar_location_denied'
 export const PRAYER_CHANGED_EVENT = 'prayer-settings-changed'
 
 export function readPrayerSettings(): PrayerSettings {
@@ -189,9 +194,28 @@ export function readPlace(): Place {
   return DEFAULT_PLACE
 }
 
+/** Whether the person has already said no to sharing their position, so we do not ask again on every visit. */
+export function locationDenied(): boolean {
+  try {
+    return localStorage.getItem(DENIED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setLocationDenied(denied: boolean): void {
+  try {
+    if (denied) localStorage.setItem(DENIED_KEY, '1')
+    else localStorage.removeItem(DENIED_KEY)
+  } catch {
+    // Only a memory of the answer.
+  }
+}
+
 export function savePlace(place: Place): void {
   try {
     localStorage.setItem(PLACE_KEY, JSON.stringify(place))
+    if (place.source === 'device') localStorage.removeItem(DENIED_KEY)
   } catch {
     // Only a memory of the choice.
   }
