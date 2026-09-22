@@ -993,9 +993,9 @@ function ReadPageContent() {
             </p>
           </div>
         ) : null}
-        <div className="mx-auto flex w-fit max-w-full items-center gap-2">
+        <div className="mx-auto flex w-fit max-w-full items-center gap-3">
           <ReciterPicker reciterId={reciterId} />
-          <div className="mushaf-read-chrome-panel flex items-center gap-4 rounded-lg px-4 py-1.5">
+          <div className="mushaf-read-chrome-panel flex items-center gap-5 rounded-lg px-5 py-1.5">
             <button
               type="button"
               onClick={() => {
@@ -1133,7 +1133,7 @@ function ReadPageContent() {
           </div>
         </div>
 
-        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center gap-2.5 rounded-xl px-3.5 py-2">
+        <div className="mushaf-read-chrome-panel mx-auto flex w-[90%] max-w-lg items-center gap-2.5 rounded-xl px-3.5 py-2">
           <div className="relative min-w-0 flex-1">
             {sliderDragging && slidingSurahName ? (
               <span

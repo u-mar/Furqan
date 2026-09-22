@@ -6,6 +6,7 @@ import { ChevronLeft, MapPin } from 'lucide-react'
 import PlaceSheet from '@/components/prayer/PlaceSheet'
 import QiblaCompass from '@/components/prayer/QiblaCompass'
 import { useAutoLocate, usePrayerState } from '@/hooks/usePrayer'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -24,7 +25,10 @@ export default function QiblaPage() {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      <div
+        className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
+      >
         <header className="flex items-center gap-3">
           <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>
             <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
@@ -53,7 +57,7 @@ export default function QiblaPage() {
           </button>
         ) : null}
 
-        <div className="home-card mt-4 rounded-[18px] px-4 py-6">
+        <div className="mt-4">
           <QiblaCompass place={place} />
         </div>
       </div>

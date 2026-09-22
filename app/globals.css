@@ -2697,31 +2697,33 @@ html.dark .qari-monogram {
    Prayer
    ====================================================================== */
 
-/* The card for what comes next: a soft wash of mint into butter. */
+/* The card for what comes next: one calm tone, not a rainbow. */
 .prayer-hero {
   position: relative;
   overflow: hidden;
   border-radius: 1.375rem;
-  background: linear-gradient(115deg, #cdeedd 0%, #ecf3cc 55%, #f8e9a8 100%);
-  color: #16352c;
+  background: var(--home-sage-gradient);
+  color: #eaf5ee;
   box-shadow: var(--home-lift);
 }
 html.dark .prayer-hero {
-  background: linear-gradient(115deg, #123a30 0%, #1a3a2a 55%, #3b3413 100%);
+  background: var(--home-sage-gradient);
   color: #eaf5ee;
 }
 .prayer-hero__ring-track {
-  stroke: rgba(22, 53, 44, 0.12);
+  stroke: rgba(234, 245, 238, 0.16);
 }
 html.dark .prayer-hero__ring-track {
-  stroke: rgba(234, 245, 238, 0.14);
+  stroke: rgba(234, 245, 238, 0.16);
 }
 .prayer-hero__ring-bar {
   stroke: url(#prayer-ring);
   transition: stroke-dashoffset 0.9s ease;
 }
 
-/* A rounded chip in each prayer's own colour. */
+/* A rounded chip, one restrained colour for every prayer — the accent
+   border on .prayer-row--now is what marks the current one, not a
+   different hue per row. */
 .prayer-chip {
   display: flex;
   width: 2.375rem;
@@ -2730,21 +2732,9 @@ html.dark .prayer-hero__ring-track {
   align-items: center;
   justify-content: center;
   border-radius: 0.75rem;
-  background: var(--chip-bg);
-  color: var(--chip-fg);
+  background: var(--home-track);
+  color: var(--home-sage-deep);
 }
-.prayer-chip--fajr { --chip-bg: #e6e8fb; --chip-fg: #4453c2; }
-.prayer-chip--sunrise { --chip-bg: #fdecd0; --chip-fg: #c77a0e; }
-.prayer-chip--dhuhr { --chip-bg: #fdf1c5; --chip-fg: #b58a00; }
-.prayer-chip--asr { --chip-bg: #fde3d2; --chip-fg: #d1591f; }
-.prayer-chip--maghrib { --chip-bg: #fbdde6; --chip-fg: #c2436b; }
-.prayer-chip--isha { --chip-bg: #e9defa; --chip-fg: #6f47c4; }
-html.dark .prayer-chip--fajr { --chip-bg: #262c52; --chip-fg: #94a3f0; }
-html.dark .prayer-chip--sunrise { --chip-bg: #3d2e14; --chip-fg: #efb04e; }
-html.dark .prayer-chip--dhuhr { --chip-bg: #3a3212; --chip-fg: #f0d048; }
-html.dark .prayer-chip--asr { --chip-bg: #40261a; --chip-fg: #f09466; }
-html.dark .prayer-chip--maghrib { --chip-bg: #40202d; --chip-fg: #ef8fab; }
-html.dark .prayer-chip--isha { --chip-bg: #2d2247; --chip-fg: #b596ef; }
 
 .prayer-row {
   display: flex;

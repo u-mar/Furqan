@@ -2,13 +2,27 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, Settings2, Volume2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  CloudSun,
+  MapPin,
+  Moon,
+  MoonStar,
+  Settings2,
+  Sun,
+  Sunrise,
+  Sunset,
+  Volume2,
+  type LucideIcon,
+} from 'lucide-react'
 import PlaceSheet from '@/components/prayer/PlaceSheet'
 import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import Switch from '@/components/qari/Switch'
 import { useAutoLocate, useNow, usePrayerState } from '@/hooks/usePrayer'
 import { adhanAvailable } from '@/lib/adhan-audio'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { formatHijri } from '@/lib/hijri'
 import {
   ADHAN_PRAYERS,
@@ -29,14 +43,14 @@ import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { useLanguage, useT } from '@/lib/i18n'
 
-/** Each prayer's picture, from the Noto emoji set in /public/icons/noto. */
-const PRAYER_ICONS: Record<PrayerId, string> = {
-  fajr: 'milky-way',
-  sunrise: 'sunrise',
-  dhuhr: 'sun',
-  asr: 'sun-behind-cloud',
-  maghrib: 'sunset',
-  isha: 'crescent-moon',
+/** Each prayer's icon — plain outline, one colour, not a small illustration. */
+const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
+  fajr: Moon,
+  sunrise: Sunrise,
+  dhuhr: Sun,
+  asr: CloudSun,
+  maghrib: Sunset,
+  isha: MoonStar,
 }
 
 const RING_R = 40
@@ -105,7 +119,10 @@ export default function PrayerPage() {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      <div
+        className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
+      >
         <header className="flex items-center gap-3">
           <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>
             <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
@@ -194,12 +211,13 @@ export default function PrayerPage() {
             const active = current === id
             const past = currentIndex >= 0 && i < currentIndex
             const withAdhan = ADHAN_PRAYERS.includes(id) && hasAdhan
+            const PrayerIcon = PRAYER_ICONS[id]
             return (
               <div key={id}>
                 {i > 0 ? <div className="set-row__divider" aria-hidden /> : null}
                 <div className={cn('prayer-row', active && 'prayer-row--now', past && 'prayer-row--past')}>
-                  <span className={cn('prayer-chip', `prayer-chip--${id}`)} aria-hidden>
-                    <img src={`/icons/noto/${PRAYER_ICONS[id]}.svg`} alt="" className="h-[1.625rem] w-[1.625rem]" draggable={false} />
+                  <span className="prayer-chip" aria-hidden>
+                    <PrayerIcon className="h-[19px] w-[19px]" strokeWidth={1.8} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2 text-[0.9375rem] font-semibold text-[var(--home-heading)]">

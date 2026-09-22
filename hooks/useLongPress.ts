@@ -18,6 +18,11 @@ export function useLongPress(onLongPress: () => void, doubleTapMs = DEFAULT_DOUB
   const firedRef = useRef(false)
   const startPoint = useRef<{ x: number; y: number } | null>(null)
   const movedRef = useRef(false)
+  // A touchscreen fires a real touch sequence, then — for compatibility with
+  // mouse-only code — a synthetic mousedown/mouseup for the same physical
+  // tap a moment later. Without this, that trailing synthetic pair looked
+  // like a second real tap and turned every single tap into a "double tap".
+  const suppressMouseUntil = useRef(0)
 
   const registerTap = useCallback(() => {
     const now = Date.now()
@@ -54,6 +59,7 @@ export function useLongPress(onLongPress: () => void, doubleTapMs = DEFAULT_DOUB
 
   const handlers = {
     onTouchStart: (e: React.TouchEvent) => {
+      suppressMouseUntil.current = Date.now() + 800
       const touch = e.touches[0]
       if (touch) start(touch.clientX, touch.clientY)
     },
@@ -63,8 +69,12 @@ export function useLongPress(onLongPress: () => void, doubleTapMs = DEFAULT_DOUB
     },
     onTouchEnd: end,
     onTouchCancel: cancel,
-    onMouseDown: (e: React.MouseEvent) => start(e.clientX, e.clientY),
+    onMouseDown: (e: React.MouseEvent) => {
+      if (Date.now() < suppressMouseUntil.current) return
+      start(e.clientX, e.clientY)
+    },
     onMouseUp: (e: React.MouseEvent) => {
+      if (Date.now() < suppressMouseUntil.current) return
       move(e.clientX, e.clientY)
       end()
     },
