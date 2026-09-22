@@ -4,10 +4,14 @@ import { useEffect } from 'react'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { PlayPauseButton, SkipButton } from '@/components/listen/PlayerControls'
 import { useListenProgress, useListenState } from '@/hooks/useListen'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { SKIP_SECONDS } from '@/lib/listen-player'
 import { getReciterById } from '@/lib/reciters'
 import { useT } from '@/lib/i18n'
+
+/** Docked just above the bottom tab bar, which Listen always shows. */
+const MINI_PLAYER_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
 
 /** The player along the bottom of Listen. Tap it for Now playing. */
 export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
@@ -18,7 +22,7 @@ export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
   // Messages sit above the player instead of behind it.
   useEffect(() => {
     if (!showing) return
-    document.documentElement.style.setProperty('--toast-lift', '5.25rem')
+    document.documentElement.style.setProperty('--toast-lift', '9.5rem')
     return () => {
       document.documentElement.style.removeProperty('--toast-lift')
     }
@@ -28,7 +32,7 @@ export default function MiniPlayer({ onOpen }: { onOpen: () => void }) {
   const reciter = getReciterById(reciterId)
 
   return (
-    <div className="listen-mini fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="listen-mini fixed inset-x-0 z-40 px-3" style={{ bottom: MINI_PLAYER_BOTTOM }}>
       <div className="listen-float mx-auto max-w-lg overflow-hidden rounded-[20px]">
         <Progress />
         <div className="flex items-center gap-1 py-2 pl-2.5 pr-2">

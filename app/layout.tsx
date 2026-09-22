@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
+import BottomNav from '@/components/nav/BottomNav'
 import AdhanHost from '@/components/prayer/AdhanHost'
 import ViewportLock from '@/components/ViewportLock'
 import AccountPromptHost from '@/components/account/AccountPromptHost'
@@ -93,6 +94,7 @@ export default function RootLayout({
           <OfflineBootstrap />
           <AccountPromptHost />
           <ToastHost />
+          <BottomNav />
         </SettingsProvider>
       </body>
     </html>

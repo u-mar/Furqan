@@ -3,6 +3,10 @@ import type { Dict } from '@/lib/i18n-dict'
 /* Dates, times, sleep timers and the names of backgrounds and languages. */
 export const MISC: Dict = {
   Read: { so: 'Akhri', ar: 'اقرأ' },
+  Profile: { so: 'Profaylka', ar: 'الملف الشخصي' },
+  'Main navigation': { so: 'Tellinka guud', ar: 'التنقل الرئيسي' },
+  '{timeLeft} left': { so: '{timeLeft} ka haray', ar: 'باقي {timeLeft}' },
+  '{degrees}°': { so: '{degrees}°', ar: '{degrees}°' },
   'Mushaf & translation': { so: 'Mushaf iyo tarjumaad', ar: 'المصحف والترجمة' },
   'Read together': { so: 'Wada akhri', ar: 'اقرأوا معًا' },
   'Share your recitation': { so: 'La wadaag tilaawadaada', ar: 'شارك تلاوتك' },

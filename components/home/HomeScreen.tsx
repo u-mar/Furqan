@@ -4,14 +4,18 @@ import { cn } from '@/lib/cn'
 interface HomeScreenProps {
   children: ReactNode
   className?: string
+  /** True on the screens the bottom tab bar sits over — leaves room for it. */
+  withBottomNav?: boolean
 }
 
-export default function HomeScreen({ children, className }: HomeScreenProps) {
+export default function HomeScreen({ children, className, withBottomNav }: HomeScreenProps) {
   return (
     <main
       className={cn(
         'home-screen relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]',
-        'pb-[max(2rem,env(safe-area-inset-bottom))]',
+        withBottomNav
+          ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom)+1.25rem)]'
+          : 'pb-[max(2rem,env(safe-area-inset-bottom))]',
         '[touch-action:pan-y] [overscroll-behavior-x:none]',
         className
       )}

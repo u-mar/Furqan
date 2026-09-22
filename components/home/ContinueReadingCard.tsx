@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { LAST_READ_PAGE_KEY, LAST_READ_POSITION_KEY } from '@/lib/mushaf'
-import { IconRead } from '@/components/home/TileIcons'
 import { tr, useT } from '@/lib/i18n'
 
 interface ContinueState {
@@ -92,9 +91,7 @@ export default function ContinueReadingCard() {
         className="home-card home-press ed-focus flex items-center gap-3 rounded-2xl px-3.5 py-3"
         aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-          <IconRead className="h-6 w-6" />
-        </span>
+        <img src="/icons/read.png" alt="" className="h-12 w-12 shrink-0 object-contain" draggable={false} />
         <span className="min-w-0 flex-1">
           <span className="home-serif block truncate text-[1.03125rem] font-semibold leading-snug text-[var(--home-heading)]">
             {state.surahName}

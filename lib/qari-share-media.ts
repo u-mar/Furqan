@@ -17,6 +17,7 @@ import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
+import { SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS } from '@/lib/share-backgrounds'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -121,14 +122,30 @@ export interface VideoBackground {
   label: string
   /** null for the plain black background. */
   url: string | null
+  /** A small copy for the pickers; null for the plain black one. */
+  thumb: string | null
+  /** The heading it is listed under in the full gallery. */
+  group: string
 }
 
+/** What the picker strip shows before "More": black and the four landscapes made for videos. */
+export const FEATURED_VIDEO_BACKGROUND_IDS = ['black', 'desert-dunes', 'canyon-pinnacles', 'mountain', 'valley']
+
+export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
+
 export const VIDEO_BACKGROUNDS: VideoBackground[] = [
-  { id: 'black', label: 'Black', url: null },
-  { id: 'desert-dunes', label: 'Dunes', url: '/qari/video-backgrounds/desert-dunes.avif' },
-  { id: 'canyon-pinnacles', label: 'Canyon', url: '/qari/video-backgrounds/canyon-pinnacles.avif' },
-  { id: 'mountain', label: 'Mountain', url: '/qari/video-backgrounds/mountain.avif' },
-  { id: 'valley', label: 'Valley', url: '/qari/video-backgrounds/valley.avif' },
+  { id: 'black', label: 'Black', url: null, thumb: null, group: 'Plain' },
+  ...[
+    ['desert-dunes', 'Dunes'],
+    ['canyon-pinnacles', 'Canyon'],
+    ['mountain', 'Mountain'],
+    ['valley', 'Valley'],
+  ].map(([id, label]) => {
+    const url = `/qari/video-backgrounds/${id}.avif`
+    return { id, label, url, thumb: url, group: 'Landscapes' }
+  }),
+  // Everything the verse cards use, too.
+  ...SHARE_BACKGROUNDS.map((b) => ({ id: `photo-${b.id}`, label: b.label, url: b.src, thumb: b.thumb, group: b.group })),
 ]
 
 export function findVideoBackground(id: string): VideoBackground {

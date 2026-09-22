@@ -16,67 +16,15 @@
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 import { tr } from '@/lib/i18n-core'
+import { SHARE_BACKGROUNDS, type ShareBackground } from '@/lib/share-backgrounds'
 
 const W = 1080
 const H = 1350
 
-export interface VerseImageBackground {
-  id: string
-  label: string
-  src: string
-  /** Reference-line colour, picked to sit with this photo rather than one gold for all. */
-  accent: string
-}
+export type VerseImageBackground = ShareBackground
 
-/**
- * Bundled with the app (Unsplash licence), grouped so the picker reads in a
- * sensible order: sacred first, then calm light, nature, and the quieter
- * everyday scenes that suit verses about hardship, mercy and gratitude.
- */
-export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = [
-  // Sacred
-  { id: 'mosque-arches', label: 'Mosque arches', src: '/share-bg/mosque-arches.jpg', accent: '#e8d3a8' },
-  { id: 'mosque-columns', label: 'Mosque columns', src: '/share-bg/mosque-columns.jpg', accent: '#f0d9a6' },
-  { id: 'kiswah-gold', label: 'Gold calligraphy', src: '/share-bg/kiswah-gold.jpg', accent: '#f3d489' },
-  { id: 'islamic-pattern', label: 'Pattern', src: '/share-bg/islamic-pattern.jpg', accent: '#ffd9a3' },
-  { id: 'quran-flowers', label: 'Quran & flowers', src: '/share-bg/quran-flowers.jpg', accent: '#f6c9cd' },
-  { id: 'quran-ornate', label: 'Mushaf', src: '/share-bg/quran-ornate.jpg', accent: '#eccf9c' },
-  { id: 'tasbih', label: 'Tasbih', src: '/share-bg/tasbih.jpg', accent: '#a8e0d2' },
-  { id: 'sujood', label: 'In prayer', src: '/share-bg/sujood.jpg', accent: '#a9dcc4' },
-
-  // Light and sky
-  { id: 'sunrise', label: 'Sunrise', src: '/share-bg/sunrise.jpg', accent: '#ffd8a0' },
-  { id: 'above-clouds', label: 'Above the clouds', src: '/share-bg/above-clouds.jpg', accent: '#ffc9a8' },
-  { id: 'night-sky', label: 'Night sky', src: '/share-bg/night-sky.jpg', accent: '#d4c2f0' },
-  { id: 'milky-way', label: 'Milky way', src: '/share-bg/milky-way.jpg', accent: '#bcd2f5' },
-  { id: 'candle', label: 'Candle', src: '/share-bg/candle.jpg', accent: '#ffcf94' },
-  { id: 'lantern', label: 'Lantern', src: '/share-bg/lantern.jpg', accent: '#ffd39a' },
-  { id: 'bokeh-lights', label: 'City lights', src: '/share-bg/bokeh-lights.jpg', accent: '#ffc9b0' },
-  { id: 'silhouette', label: 'Dusk', src: '/share-bg/silhouette.jpg', accent: '#e6c6ea' },
-
-  // Nature
-  { id: 'still-water', label: 'Still water', src: '/share-bg/still-water.jpg', accent: '#a9d8e6' },
-  { id: 'blue-hills', label: 'Blue hills', src: '/share-bg/blue-hills.jpg', accent: '#b4d4e8' },
-  { id: 'peaks', label: 'Peaks', src: '/share-bg/peaks.jpg', accent: '#f2c3b4' },
-  { id: 'cliffs', label: 'Cliffs', src: '/share-bg/cliffs.jpg', accent: '#bfe0c4' },
-  { id: 'river', label: 'River', src: '/share-bg/river.jpg', accent: '#b6e2c6' },
-  { id: 'forest', label: 'Forest', src: '/share-bg/forest.jpg', accent: '#c8e4b8' },
-  { id: 'woodland', label: 'Woodland', src: '/share-bg/woodland.jpg', accent: '#c4e2bb' },
-  { id: 'old-tree', label: 'Old tree', src: '/share-bg/old-tree.jpg', accent: '#dbe6b4' },
-  { id: 'sunlight', label: 'Sunlight', src: '/share-bg/sunlight.jpg', accent: '#e4dfa6' },
-  { id: 'meadow', label: 'Meadow', src: '/share-bg/meadow.jpg', accent: '#ffe0a0' },
-  { id: 'poppies', label: 'Poppies', src: '/share-bg/poppies.jpg', accent: '#ffc7bd' },
-  { id: 'soft-bloom', label: 'Soft bloom', src: '/share-bg/soft-bloom.jpg', accent: '#f8cddc' },
-
-  // Quiet everyday
-  { id: 'rain-window', label: 'Rain (warm)', src: '/share-bg/rain-window.jpg', accent: '#e8d5a4' },
-  { id: 'rain-cool', label: 'Rain (cool)', src: '/share-bg/rain-cool.jpg', accent: '#aed8de' },
-  { id: 'misty-road', label: 'Open road', src: '/share-bg/misty-road.jpg', accent: '#ecd9a6' },
-  { id: 'teacup', label: 'Quiet morning', src: '/share-bg/teacup.jpg', accent: '#e9cfae' },
-  { id: 'elderly-hands', label: 'Elder hands', src: '/share-bg/elderly-hands.jpg', accent: '#e2cdb2' },
-  { id: 'small-hand', label: 'Small hand', src: '/share-bg/small-hand.jpg', accent: '#dcdcdc' },
-  { id: 'hospital', label: 'Hospital', src: '/share-bg/hospital.jpg', accent: '#a9dde0' },
-]
+/** Bundled with the app; see lib/share-backgrounds.ts for the list. */
+export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = SHARE_BACKGROUNDS
 
 export const DEFAULT_BACKGROUND_ID = VERSE_IMAGE_BACKGROUNDS[0].id
 

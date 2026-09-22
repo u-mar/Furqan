@@ -17,9 +17,12 @@ import {
   seekTo,
 } from '@/lib/listen-player'
 import { getQiraat, getReciterById } from '@/lib/reciters'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 
 const CLOSE_MS = 260
+/** Stops above the bottom tab bar, which Listen always shows, rather than covering it. */
+const SHEET_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom))`
 
 /**
  * The player, full screen. It rises from the bar at the bottom and can be
@@ -105,7 +108,13 @@ export default function NowPlayingSheet({
   const settle = dragging ? 'none' : `transform ${CLOSE_MS}ms cubic-bezier(0.2, 0.8, 0.25, 1)`
 
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t('Now playing')}>
+    <div
+      className="fixed inset-x-0 top-0 z-40"
+      style={{ bottom: SHEET_BOTTOM }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('Now playing')}
+    >
       <div
         className="listen-np-scrim absolute inset-0 bg-black/50"
         style={{
@@ -120,10 +129,12 @@ export default function NowPlayingSheet({
         style={{
           transform: `translateY(${offset})`,
           transition: settle,
-          borderRadius: drag > 0 || closing ? '28px 28px 0 0' : undefined,
+          // The sheet stops above the tab bar rather than the screen edge, so its
+          // bottom corners stay rounded; dragging it down rounds the top too.
+          borderRadius: drag > 0 || closing ? '28px' : '0 0 28px 28px',
         }}
       >
-        <div className="mx-auto flex min-h-full w-full max-w-lg flex-col px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="mx-auto flex min-h-full w-full max-w-lg flex-col px-4 pb-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <div
             className="touch-none select-none pb-1"
             onPointerDown={grab}

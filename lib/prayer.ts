@@ -126,6 +126,27 @@ export function currentPrayer(times: DayTimes, now: Date): PrayerId | null {
   return current
 }
 
+/** How far through the wait for `next` we are, counted from the prayer before it (0–1). */
+export function prayerWaitProgress(
+  place: Place,
+  settings: PrayerSettings,
+  times: DayTimes,
+  current: PrayerId | null,
+  next: NextPrayer,
+  now: Date
+): number {
+  const waitStart = current
+    ? times[current].getTime()
+    : prayerTimesFor(place, new Date(now.getTime() - 24 * 3600 * 1000), settings).isha.getTime()
+  const waitTotal = Math.max(1, next.at.getTime() - waitStart)
+  return Math.min(1, Math.max(0, (now.getTime() - waitStart) / waitTotal))
+}
+
+/** Whole minutes from `now` until `at` (never negative). */
+export function minutesUntil(at: Date, now: Date): number {
+  return Math.max(0, Math.ceil((at.getTime() - now.getTime()) / 60000))
+}
+
 /* ---------------------------------------------------------------- qibla */
 
 export const KAABA = { lat: 21.4225, lon: 39.8262 }

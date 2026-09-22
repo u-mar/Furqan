@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, Loader2, RotateCcw, Share2, X } from 'lucide-react'
+import { Check, Download, LayoutGrid, Loader2, RotateCcw, Share2, X } from 'lucide-react'
+import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { cn } from '@/lib/cn'
 import {
   DEFAULT_BACKGROUND_ID,
@@ -10,6 +11,7 @@ import {
   renderVerseImage,
   shareVerseBlob,
 } from '@/lib/verse-image'
+import { FEATURED_SHARE_BACKGROUND_IDS, SHARE_BACKGROUND_GROUPS } from '@/lib/share-backgrounds'
 import { getWordTranslations } from '@/lib/word-translations'
 import { tr, useT } from '@/lib/i18n'
 
@@ -46,6 +48,7 @@ export default function ShareVerseSheet({
   const t = useT()
   const [mounted, setMounted] = useState(false)
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID)
+  const [galleryOpen, setGalleryOpen] = useState(false)
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
   const [showTranslation, setShowTranslation] = useState(true)
   const [glosses, setGlosses] = useState<string[] | null>(null)
@@ -252,6 +255,11 @@ export default function ShareVerseSheet({
 
   if (!open || !mounted || !target) return null
 
+  // A few to pick from at a glance; the one in use is always among them.
+  const featured = VERSE_IMAGE_BACKGROUNDS.filter((bg) => FEATURED_SHARE_BACKGROUND_IDS.includes(bg.id))
+  const chosen = VERSE_IMAGE_BACKGROUNDS.find((bg) => bg.id === backgroundId)
+  const stripBackgrounds = chosen && !featured.includes(chosen) ? [chosen, ...featured] : featured
+
   const selStart = range ? Math.min(range.start, range.end) : 0
   const selEnd = range ? Math.max(range.start, range.end) : pickerWords.length - 1
 
@@ -296,7 +304,6 @@ export default function ShareVerseSheet({
           <div className="flex items-center justify-center py-3">
             <div className="relative flex items-center justify-center">
               {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
                   alt={t('Verse card for {verseKey}', { verseKey: target.verseKey })}
@@ -419,7 +426,7 @@ export default function ShareVerseSheet({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--mushaf-popup-meta)]">
             {t('Background')}</p>
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {VERSE_IMAGE_BACKGROUNDS.map((bg) => {
+            {stripBackgrounds.map((bg) => {
               const selected = bg.id === backgroundId
               return (
                 <button
@@ -435,8 +442,7 @@ export default function ShareVerseSheet({
                       : 'ring-1 ring-white/15'
                   )}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bg.src} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  <img src={bg.thumb} alt="" className="h-full w-full object-cover" loading="lazy" />
                   {selected ? (
                     <span className="absolute inset-0 flex items-center justify-center bg-black/35">
                       <Check className="h-4 w-4 text-white" strokeWidth={3} />
@@ -445,6 +451,14 @@ export default function ShareVerseSheet({
                 </button>
               )
             })}
+            <button
+              type="button"
+              onClick={() => setGalleryOpen(true)}
+              className="flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3.5 text-xs font-semibold transition-transform active:scale-95"
+            >
+              <LayoutGrid className="h-4 w-4" strokeWidth={2} />
+              {t('More')}
+            </button>
           </div>
 
           {translationLoading && !translation ? (
@@ -480,5 +494,18 @@ export default function ShareVerseSheet({
     </div>
   )
 
-  return createPortal(sheet, document.body)
+  return createPortal(
+    <>
+      {sheet}
+      <BackgroundGallery
+        open={galleryOpen}
+        items={VERSE_IMAGE_BACKGROUNDS}
+        groups={SHARE_BACKGROUND_GROUPS}
+        selectedId={backgroundId}
+        onSelect={setBackgroundId}
+        onClose={() => setGalleryOpen(false)}
+      />
+    </>,
+    document.body
+  )
 }

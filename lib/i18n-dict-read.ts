@@ -2,6 +2,22 @@ import type { Dict } from '@/lib/i18n-dict'
 
 /* Home and Read: the mushaf, its contents drawer, khatmah plans and sharing an ayah. */
 export const READ: Dict = {
+  More: { so: 'Dheeraad', ar: 'المزيد' },
+  Backgrounds: { so: 'Sawirada dambe', ar: 'الخلفيات' },
+  '{count} pictures': { so: '{count} sawir', ar: '{count} صورة' },
+  Plain: { so: 'Cad', ar: 'سادة' },
+  Landscapes: { so: 'Muuqaallo dabiici ah', ar: 'مناظر طبيعية' },
+  Sacred: { so: 'Muqaddas', ar: 'مقدّس' },
+  'Light and sky': { so: 'Iftiin iyo cirka', ar: 'الضوء والسماء' },
+  'Flowers and wildlife': { so: 'Ubaxyo iyo duur-joog', ar: 'الأزهار والحياة البرية' },
+  'Quiet everyday': { so: 'Maalin-nololeed degan', ar: 'هدوء الحياة اليومية' },
+  'Palm sunset': { so: 'Qorrax-dhac geed timireed', ar: 'غروب بين النخيل' },
+  'Lake sunset': { so: 'Qorrax-dhac harada', ar: 'غروب على البحيرة' },
+  Fox: { so: 'Dawaco', ar: 'ثعلب' },
+  Butterfly: { so: 'Balanbaalis', ar: 'فراشة' },
+  'White rose': { so: 'Ubax cad', ar: 'وردة بيضاء' },
+  Daisies: { so: 'Ubaxyo daisy', ar: 'أقحوان' },
+  'Hospital room': { so: 'Qol isbitaal', ar: 'غرفة مستشفى' },
   'Failed to load page': { so: 'Bogga lama soo raadin karin', ar: 'تعذّر تحميل الصفحة' },
   'Could not open surah': { so: 'Suuradda lama furi karin', ar: 'تعذّر فتح السورة' },
   'Surah {currentSurahNum}': { so: 'Suurada {currentSurahNum}', ar: 'سورة {currentSurahNum}' },

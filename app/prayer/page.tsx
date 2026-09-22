@@ -1,22 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
-  CloudSun,
   Compass,
   LocateFixed,
   MapPin,
-  Moon,
-  MoonStar,
   Settings2,
-  Sun,
-  Sunrise,
-  Sunset,
   Volume2,
-  type LucideIcon,
 } from 'lucide-react'
 import QiblaCompass from '@/components/prayer/QiblaCompass'
 import Radio from '@/components/settings/Radio'
@@ -37,8 +31,10 @@ import {
   formatTime,
   locateDevice,
   locationDenied,
+  minutesUntil,
   nextPrayer,
   prayerTimesFor,
+  prayerWaitProgress,
   savePlace,
   savePrayerSettings,
   setLocationDenied,
@@ -50,13 +46,14 @@ import { cn } from '@/lib/cn'
 import { toastError } from '@/lib/toast'
 import { tr, useLanguage, useT } from '@/lib/i18n'
 
-const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
-  fajr: MoonStar,
-  sunrise: Sunrise,
-  dhuhr: Sun,
-  asr: CloudSun,
-  maghrib: Sunset,
-  isha: Moon,
+/** Each prayer's picture, from the Noto emoji set in /public/icons/noto. */
+const PRAYER_ICONS: Record<PrayerId, string> = {
+  fajr: 'milky-way',
+  sunrise: 'sunrise',
+  dhuhr: 'sun',
+  asr: 'sun-behind-cloud',
+  maghrib: 'sunset',
+  isha: 'crescent-moon',
 }
 
 const RING_R = 38
@@ -65,14 +62,15 @@ const RING_LENGTH = 2 * Math.PI * RING_R
 type Tab = 'times' | 'qibla'
 type Sheet = 'place' | 'method' | null
 
-export default function PrayerPage() {
+function PrayerPageContent() {
   const t = useT()
   const language = useLanguage()
+  const searchParams = useSearchParams()
   const { place, settings, ready } = usePrayerState()
   const clock = useNow(1000)
   const mounted = clock !== null
   const now = clock ?? new Date(0)
-  const [tab, setTab] = useState<Tab>('times')
+  const [tab, setTab] = useState<Tab>(searchParams.get('tab') === 'qibla' ? 'qibla' : 'times')
   const [sheet, setSheet] = useState<Sheet>(null)
   const [locating, setLocating] = useState(false)
   const [hasAdhan, setHasAdhan] = useState(false)
@@ -128,13 +126,8 @@ export default function PrayerPage() {
   const tz = place.timeZone
   const show = (d: Date) => formatTime(d, language, tz)
   const placeLabel = place.name ? place.name : t('Your location')
-  // How far through the wait for the next prayer we are, counted from the one before it.
-  const waitStart = current
-    ? times[current].getTime()
-    : prayerTimesFor(place, new Date(now.getTime() - 24 * 3600 * 1000), settings).isha.getTime()
-  const waitTotal = Math.max(1, next.at.getTime() - waitStart)
-  const waited = Math.min(1, Math.max(0, (now.getTime() - waitStart) / waitTotal))
-  const minutesLeft = Math.max(0, Math.ceil((next.at.getTime() - now.getTime()) / 60000))
+  const waited = prayerWaitProgress(place, settings, times, current, next, now)
+  const minutesLeft = minutesUntil(next.at, now)
   const timeLeft =
     minutesLeft >= 60
       ? t('{h}h {m}m', { h: Math.floor(minutesLeft / 60), m: minutesLeft % 60 })
@@ -262,13 +255,12 @@ export default function PrayerPage() {
               {PRAYER_ORDER.map((id, i) => {
                 const active = current === id
                 const withAdhan = ADHAN_PRAYERS.includes(id) && hasAdhan
-                const Icon = PRAYER_ICONS[id]
                 return (
                   <div key={id}>
                     {i > 0 ? <div className="set-row__divider" aria-hidden /> : null}
                     <div className={cn('prayer-row', active && 'prayer-row--now')}>
                       <span className={cn('prayer-chip', `prayer-chip--${id}`)} aria-hidden>
-                        <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} />
+                        <img src={`/icons/noto/${PRAYER_ICONS[id]}.svg`} alt="" className="h-[1.625rem] w-[1.625rem]" draggable={false} />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2 text-[0.9375rem] font-semibold text-[var(--home-heading)]">
@@ -435,5 +427,19 @@ export default function PrayerPage() {
         </div>
       </SettingsSheet>
     </main>
+  )
+}
+
+export default function PrayerPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--app-bg)]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
+        </main>
+      }
+    >
+      <PrayerPageContent />
+    </Suspense>
   )
 }

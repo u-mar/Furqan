@@ -16,6 +16,7 @@ import { useHydrated } from '@/hooks/useHydrated'
 import { useDownloadsVersion, useListenState } from '@/hooks/useListen'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { setAppSettings } from '@/lib/app-settings'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { onDownloadFinished, surahDownload } from '@/lib/listen-downloads'
@@ -158,9 +159,10 @@ export default function ListenScreen() {
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
         style={{
+          // Listen always shows the bottom tab bar; the mini player, when playing, docks just above it.
           paddingBottom: listening
-            ? 'calc(7.25rem + env(safe-area-inset-bottom))'
-            : 'max(1.75rem, env(safe-area-inset-bottom))',
+            ? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + 5.5rem + env(safe-area-inset-bottom))`
+            : `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)`,
         }}
       >
         <header className="flex items-center gap-3">

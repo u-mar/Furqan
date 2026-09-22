@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight, Download, Film, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
+import { ChevronRight, Download, Film, LayoutGrid, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import {
   canMakeVideo,
@@ -17,12 +17,15 @@ import {
   saveVideoOptions,
   shareMedia,
   ShareCancelled,
+  FEATURED_VIDEO_BACKGROUND_IDS,
+  VIDEO_BACKGROUND_GROUPS,
   VIDEO_BACKGROUNDS,
   type ShareKind,
   type ShareMedia,
   type VideoOptions,
 } from '@/lib/qari-share-media'
 import Switch from '@/components/qari/Switch'
+import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
 import { tr, useT } from '@/lib/i18n'
 
@@ -343,11 +346,16 @@ function CustomizeVideo({
   onMake: () => void
 }) {
   const t = useT()
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  // A few to pick from at a glance; the one in use is always among them.
+  const featured = VIDEO_BACKGROUNDS.filter((b) => FEATURED_VIDEO_BACKGROUND_IDS.includes(b.id))
+  const chosen = VIDEO_BACKGROUNDS.find((b) => b.id === options.backgroundId)
+  const strip = chosen && !featured.includes(chosen) ? [chosen, ...featured] : featured
   return (
     <div className="mt-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--home-muted)]">{t('Background')}</p>
       <div className="qari-no-scrollbar mt-2 flex gap-2.5 overflow-x-auto pb-1">
-        {VIDEO_BACKGROUNDS.map((background) => {
+        {strip.map((background) => {
           const active = background.id === options.backgroundId
           return (
             <button
@@ -363,7 +371,7 @@ function CustomizeVideo({
               <span
                 className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-black bg-cover bg-center"
                 style={{
-                  backgroundImage: background.url ? `url(${background.url})` : undefined,
+                  backgroundImage: background.thumb ? `url(${background.thumb})` : undefined,
                   boxShadow: active
                     ? '0 0 0 2.5px var(--home-card-bg), 0 0 0 4.5px var(--home-sage)'
                     : '0 0 0 1px var(--home-rule)',
@@ -373,7 +381,28 @@ function CustomizeVideo({
             </button>
           )
         })}
+        <button
+          type="button"
+          onClick={() => {
+            tapFeedback()
+            setGalleryOpen(true)
+          }}
+          className="qari-press ed-focus flex shrink-0 flex-col items-center gap-1.5"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--home-track)] text-[var(--home-heading)]">
+            <LayoutGrid className="h-5 w-5" strokeWidth={1.9} />
+          </span>
+          <span className="text-[11px] font-medium text-[var(--home-muted)]">{t('More')}</span>
+        </button>
       </div>
+      <BackgroundGallery
+        open={galleryOpen}
+        items={VIDEO_BACKGROUNDS}
+        groups={VIDEO_BACKGROUND_GROUPS}
+        selectedId={options.backgroundId}
+        onSelect={(id) => onChange({ ...options, backgroundId: id })}
+        onClose={() => setGalleryOpen(false)}
+      />
 
       <div className="set-row mt-4 rounded-2xl border border-[var(--home-rule)]" style={{ paddingBlock: '0.5rem' }}>
         <span className="set-row__label">{t('Include profile picture')}</span>
