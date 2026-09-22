@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Loader2, Mic, RotateCw, SearchX, Users, UsersRound } from 'lucide-react'
+import { Loader2, Mic, RotateCw, SearchX, UserRound, Users, UsersRound } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
 import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -22,6 +22,7 @@ import {
 import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
+import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import type { AppUser } from '@/lib/auth'
 import { tr, useT } from '@/lib/i18n'
@@ -145,6 +146,14 @@ function QariHomeContent() {
     setItems((prev) => prev.filter((r) => r.id !== id))
   }, [])
 
+  // This feed is what everyone sees, so a recitation made private drops out of it.
+  const onPrivacyChanged = useCallback(
+    (id: string, patch: Partial<Recitation>) => {
+      if (patch.isPrivate) removeItem(id)
+    },
+    [removeItem]
+  )
+
   const sheikhs = useMemo(
     () =>
       (discover?.sheikhs ?? [])
@@ -175,6 +184,28 @@ function QariHomeContent() {
             <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label={t('Qaris')}>
               <Users className="h-[19px] w-[19px]" strokeWidth={1.9} />
             </Link>
+            {viewer ? (
+              <Link
+                href={`/qari/${encodeURIComponent(viewer.username)}`}
+                onClick={tapFeedback}
+                className="home-round ed-focus"
+                aria-label={t('Your profile')}
+              >
+                <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  askToSignIn()
+                }}
+                className="home-round ed-focus"
+                aria-label={t('Sign in')}
+              >
+                <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
+              </button>
+            )}
           </div>
         }
       />
@@ -294,6 +325,7 @@ function QariHomeContent() {
                         viewerId={viewerId}
                         viewerUsername={viewer?.username ?? null}
                         onRemoved={removeItem}
+                        onUpdated={onPrivacyChanged}
                         onNotice={qariNotice}
                       />
                     ))}

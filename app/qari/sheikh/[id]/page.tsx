@@ -58,6 +58,14 @@ export default function SheikhPage() {
     setItems((prev) => prev?.filter((r) => r.id !== id) ?? prev)
   }, [])
 
+  // Shared with everyone, so a recitation made private drops out of it.
+  const onPrivacyChanged = useCallback(
+    (id: string, patch: Partial<Recitation>) => {
+      if (patch.isPrivate) onRemoved(id)
+    },
+    [onRemoved]
+  )
+
   return (
     <QariScreen>
       <PullIndicator pull={pull} refreshing={refreshing} />
@@ -110,6 +118,7 @@ export default function SheikhPage() {
                     viewerUsername={viewer?.username ?? null}
                     onNotice={qariNotice}
                     onRemoved={onRemoved}
+                    onUpdated={onPrivacyChanged}
                   />
                 ))}
               </RecitationCards>

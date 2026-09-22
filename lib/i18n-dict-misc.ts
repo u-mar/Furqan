@@ -55,7 +55,7 @@ export const MISC: Dict = {
   Minneapolis: { so: 'Minneapolis', ar: 'مينيابوليس' },
   Toronto: { so: 'Toronto', ar: 'تورنتو' },
   'Adhan for {prayer}': { so: 'Aadaanka {prayer}', ar: 'أذان {prayer}' },
-  'Sound the adhan': { so: 'Ku dhawaaq aadaanka', ar: 'رفع الأذان' },
+  'Turn on adhan': { so: 'Shid aadaanka', ar: 'تشغيل الأذان' },
   'Plays at each prayer while the app is open.': { so: 'Wuxuu dhawaaqaa salaad kasta inta app-ku furan yahay.', ar: 'يُرفع عند كل صلاة ما دام التطبيق مفتوحًا.' },
   'Hear the adhan': { so: 'Dhagayso aadaanka', ar: 'استمع إلى الأذان' },
   Adhan: { so: 'Aadaan', ar: 'الأذان' },

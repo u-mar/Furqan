@@ -187,6 +187,11 @@ export function reportRecitation(id: string, userId: string, reason: string) {
   return post(id, { action: 'report', userId, reason })
 }
 
+/** Only the reciter may call this — flips who can hear their own recording. */
+export async function setRecitationPrivacy(id: string, userId: string, isPrivate: boolean): Promise<void> {
+  await post(id, { action: 'setPrivacy', userId, isPrivate })
+}
+
 export async function deleteRecitation(id: string, userId: string): Promise<void> {
   const res = await fetch(`/api/qari/${id}?userId=${encodeURIComponent(userId)}`, {
     method: 'DELETE',

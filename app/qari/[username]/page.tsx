@@ -168,6 +168,15 @@ export default function QariProfilePage() {
     setFavourites((prev) => prev?.filter((r) => r.id !== id) ?? prev)
   }, [])
 
+  // This is always the owner's own profile when the menu offers it, and it
+  // shows private recitations too — so a privacy change patches in place
+  // rather than removing the row.
+  const updateRecitation = useCallback((id: string, patch: Partial<Recitation>) => {
+    const apply = (prev: Recitation[] | null) => prev?.map((r) => (r.id === id ? { ...r, ...patch } : r)) ?? prev
+    setRecitations(apply)
+    setFavourites(apply)
+  }, [])
+
   const tabs = isMe
     ? [
         { id: 'recitations' as const, label: t('Recitations') },
@@ -316,6 +325,7 @@ export default function QariProfilePage() {
                 viewerId={viewerId}
                 viewerUsername={viewer?.username ?? null}
                 onRemoved={removeRecitation}
+                onUpdated={updateRecitation}
                 onNotice={qariNotice}
               />
             ))}

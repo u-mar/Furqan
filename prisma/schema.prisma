@@ -228,13 +228,18 @@ model Notification {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
   /// Lower-case username of the person being told.
   recipientUsername String
-  /// "like" | "follow"
+  /// "like" | "follow" | "milestone"
   type              String
+  /// For "milestone" this is the reciter's own name/username — there is no
+  /// other actor, but the notification list still reads it from here.
   actorUsername     String
   actorName         String
-  /// For a like: which recitation, and its title as it was then.
+  /// For a like or a milestone: which recitation, and its title as it was then.
   recitationId      String?
   recitationTitle   String?
+  /// For "milestone" only: what crossed the line, and what it crossed.
+  milestoneKind     String?
+  milestoneCount    Int?
   createdAt         DateTime  @default(now())
   readAt            DateTime?
 

@@ -58,11 +58,26 @@ export interface AdminPopupMessage {
   dismissedBy: string[]
 }
 
+/** A recitation someone flagged, with just enough of the recording itself to act on it. */
+export interface AdminReport {
+  id: string
+  recitationId: string
+  recitationTitle: string
+  recitationOwnerName: string
+  recitationOwnerUsername: string
+  recitationIsPrivate: boolean
+  recitationCreatedAt: number
+  reason: string
+  reporterId: string
+  createdAt: number
+}
+
 interface AdminStore {
   dailyVerse: DailyVerseConfig
   feedback: FeedbackMessage[]
   users: UserUsage[]
   popups: AdminPopupMessage[]
+  reports: AdminReport[]
   stats?: AdminStats
 }
 
@@ -75,20 +90,21 @@ const LOCAL_ADMIN_KEY = 'muyassar_admin_fallback'
 
 function readLocalAdminStore(): AdminStore {
   if (typeof window === 'undefined') {
-    return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [] }
+    return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [], reports: [] }
   }
   try {
     const raw = localStorage.getItem(LOCAL_ADMIN_KEY)
-    if (!raw) return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [] }
+    if (!raw) return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [], reports: [] }
     const parsed = JSON.parse(raw) as Partial<AdminStore>
     return {
       dailyVerse: parsed.dailyVerse ?? DEFAULT_DAILY_VERSE,
       feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [],
       users: Array.isArray(parsed.users) ? parsed.users : [],
       popups: Array.isArray(parsed.popups) ? parsed.popups : [],
+      reports: [],
     }
   } catch {
-    return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [] }
+    return { dailyVerse: DEFAULT_DAILY_VERSE, feedback: [], users: [], popups: [], reports: [] }
   }
 }
 
@@ -336,6 +352,7 @@ export async function listAdminData(): Promise<AdminStore> {
       feedback: data.feedback ?? [],
       users: data.users ?? [],
       popups: data.popups ?? readLocalAdminStore().popups,
+      reports: data.reports ?? [],
       stats: data.stats,
     }
   } catch {
@@ -431,5 +448,29 @@ export async function dismissPopupForCurrentUser(popupId: string): Promise<void>
     })
     return
   }
+  window.dispatchEvent(new CustomEvent('admin-store-changed'))
+}
+
+/** The report was looked at and needed no action. */
+export async function dismissReport(reportId: string): Promise<void> {
+  const res = await fetch('/api/admin/reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ action: 'dismiss', reportId }),
+  })
+  if (!res.ok) throw new Error('Could not dismiss that report.')
+  window.dispatchEvent(new CustomEvent('admin-store-changed'))
+}
+
+/** Takes the recording down — deletes it, its likes, and every report against it. */
+export async function removeReportedRecitation(recitationId: string): Promise<void> {
+  const res = await fetch('/api/admin/reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ action: 'removeRecitation', recitationId }),
+  })
+  if (!res.ok) throw new Error('Could not remove that recitation.')
   window.dispatchEvent(new CustomEvent('admin-store-changed'))
 }

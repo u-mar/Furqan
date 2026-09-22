@@ -20,10 +20,9 @@ import {
   Square,
   MessageSquareText,
   Volume2,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  ChevronDown,
+  Bookmark,
+  Share2,
+  Languages,
 } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import MushafFontPreload from '@/components/mushaf/MushafFontPreload'
@@ -31,11 +30,8 @@ import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
-import AyahContextMenu, { type AyahMenuAnchor } from '@/components/read/AyahContextMenu'
-import MushafPageCarousel, { type PageSlideDirection } from '@/components/read/MushafPageCarousel'
 import GallerySwipeView from '@/components/read/GallerySwipeView'
 import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
-import { useSwipe } from '@/hooks/useSwipe'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
@@ -99,6 +95,8 @@ function ReadPageContent() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [showTranslation, setShowTranslation] = useState(false)
   const [sliderPage, setSliderPage] = useState(1)
+  const [sliderDragging, setSliderDragging] = useState(false)
+  const [pageRanges, setPageRanges] = useState<{ id: number; name: string; pages: [number, number] }[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
@@ -125,21 +123,15 @@ function ReadPageContent() {
     translationEditionId,
     mushafWidth,
     verseWallpapersEnabled,
+    verticalPages,
   } = useAppSettings()
-  /** Vertical page swipes hidden in Settings for now — always horizontal. */
-  const verticalPages = false
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
-  const [ayahMenuAnchor, setAyahMenuAnchor] = useState<AyahMenuAnchor | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
+  const [showAyahTranslation, setShowAyahTranslation] = useState(false)
   const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
   const [shareTarget, setShareTarget] = useState<ShareVerseTarget | null>(null)
-  const [pageSlide, setPageSlide] = useState<{
-    direction: PageSlideDirection
-    incomingVerses: Verse[]
-    incomingPage: number
-  } | null>(null)
   const [boundaryIndex, setBoundaryIndex] = useState<MushafBoundaryIndex | null>(null)
   const [boundaryToast, setBoundaryToast] = useState<MushafBoundary | null>(null)
   const prevReadPageRef = useRef<number | null>(null)
@@ -158,7 +150,6 @@ function ReadPageContent() {
   const applyPage = useCallback((page: number, verses: Verse[]) => {
     pageVersesRef.current = verses
     currentPageRef.current = page
-    setPageSlide(null)
     setPageVerses(verses)
     setCurrentPage(page)
     setSliderPage(page)
@@ -179,7 +170,7 @@ function ReadPageContent() {
   // Pre-render the surrounding pages so a gallery-style drag can peek at
   // them immediately, with no loading gap mid-swipe.
   useEffect(() => {
-    if (showTranslation || verticalPages) return
+    if (showTranslation) return
     let cancelled = false
     void (async () => {
       const [prev, next] = await Promise.all([
@@ -192,7 +183,7 @@ function ReadPageContent() {
     return () => {
       cancelled = true
     }
-  }, [currentPage, showTranslation, verticalPages, fetchVersesForPage])
+  }, [currentPage, showTranslation, fetchVersesForPage])
 
   useEffect(() => {
     let cancelled = false
@@ -204,6 +195,22 @@ function ReadPageContent() {
       const index = await resolveBoundaryIndex()
       if (!cancelled) setBoundaryIndex(index)
     })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /* Which surah each page falls in — just for the slider's live label while
+     dragging, so it stays a small, cacheable fetch rather than the full verse set. */
+  useEffect(() => {
+    let cancelled = false
+    fetch('/quran-chapters.json', { cache: 'force-cache' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { chapters?: { id: number; name_simple: string; pages: [number, number] }[] } | null) => {
+        if (cancelled || !data?.chapters) return
+        setPageRanges(data.chapters.map((c) => ({ id: c.id, name: c.name_simple, pages: c.pages })))
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -262,15 +269,6 @@ function ReadPageContent() {
     },
     [applyPage]
   )
-
-  const handleSlideSettled = useCallback(() => {
-    setPageSlide((slide) => {
-      if (!slide) return null
-      applyPage(slide.incomingPage, slide.incomingVerses)
-      setPageLoading(false)
-      return null
-    })
-  }, [applyPage])
 
   const handleRecitationPageComplete = useCallback(() => {
     const page = currentPageRef.current
@@ -375,7 +373,7 @@ function ReadPageContent() {
     async (page: number, options?: { autoContinue?: boolean }) => {
       const next = clampPage(page)
       const fromPage = currentPageRef.current
-      if (next === fromPage || pageSlide) return
+      if (next === fromPage) return
 
       if (!options?.autoContinue) {
         stopRecitation()
@@ -385,41 +383,9 @@ function ReadPageContent() {
         autoContinuePlaybackRef.current = null
       }
 
-      if (!verticalPages || showTranslation) {
-        void loadPage(next, { silent: options?.autoContinue })
-        return
-      }
-
-      const slideSeq = ++pageLoadSeqRef.current
-      setPageLoading(true)
-      setLoadError(null)
-      try {
-        const incomingVerses = await fetchVersesForPage(next)
-        if (slideSeq !== pageLoadSeqRef.current) return
-        const direction: PageSlideDirection = next > fromPage ? 'next' : 'prev'
-        setPageSlide({ direction, incomingVerses, incomingPage: next })
-      } catch (err) {
-        if (slideSeq !== pageLoadSeqRef.current) return
-        const message = err instanceof Error ? err.message : tr('Failed to load page')
-        console.error('Failed to load page:', err)
-        setLoadError(message)
-        setPageLoading(false)
-        if (options?.autoContinue) {
-          autoContinuePlaybackRef.current = null
-          somaliAutoRef.current = false
-          setSomaliAutoPlaying(false)
-        }
-      }
+      void loadPage(next, { silent: options?.autoContinue })
     },
-    [
-      fetchVersesForPage,
-      loadPage,
-      pageSlide,
-      showTranslation,
-      stopRecitation,
-      stopSomaliVoice,
-      verticalPages,
-    ]
+    [loadPage, stopRecitation, stopSomaliVoice]
   )
 
   useEffect(() => {
@@ -492,6 +458,11 @@ function ReadPageContent() {
   )
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || t('Surah {currentSurahNum}', { currentSurahNum })
+  /** The surah the slider is currently sitting over — shown only while dragging. */
+  const slidingSurahName = useMemo(
+    () => pageRanges.find((c) => sliderPage >= c.pages[0] && sliderPage <= c.pages[1])?.name ?? '',
+    [pageRanges, sliderPage]
+  )
   /**
    * Juz shown in the page header. Taken from the verses actually on this page
    * (`juz_number`), not from the surah — a surah can span several juz, so the
@@ -618,6 +589,7 @@ function ReadPageContent() {
       const verse = pageVerses.find((v) => v.verse_key === verseKey)
       if (!verse) return
       setNavSelectedVerseKey(null)
+      setUiVisible(true)
       setAyahMenu({
         verseKey,
         arabic: getVerseArabicText(verse),
@@ -627,37 +599,9 @@ function ReadPageContent() {
     [isActive, pageVerses, pauseRecitation, stopSomaliVoice]
   )
 
-  useLayoutEffect(() => {
-    if (!ayahMenu?.verseKey) {
-      setAyahMenuAnchor(null)
-      return
-    }
-    const measure = () => {
-      const key = ayahMenu.verseKey
-      const el =
-        document.querySelector(`[data-verse-key="${key}"]`) ??
-        document.querySelector(`[data-verse-keys="${key}"]`) ??
-        document.querySelector(`[data-translation-ayah="${key}"]`)
-      if (!el) {
-        setAyahMenuAnchor(null)
-        return
-      }
-      const rect = el.getBoundingClientRect()
-      setAyahMenuAnchor({
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      })
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    window.addEventListener('scroll', measure, true)
-    return () => {
-      window.removeEventListener('resize', measure)
-      window.removeEventListener('scroll', measure, true)
-    }
-  }, [ayahMenu?.verseKey, currentPage, pageVerses, showTranslation, uiVisible])
+  useEffect(() => {
+    setShowAyahTranslation(false)
+  }, [ayahMenu?.verseKey])
 
   const handleToggleBookmark = useCallback(() => {
     if (!ayahMenu) return
@@ -754,32 +698,6 @@ function ReadPageContent() {
     [navigatePage]
   )
 
-  const mushafSwipe = useSwipe(
-    verticalPages
-      ? {
-          direction: 'vertical',
-          onSwipeUp: () => {
-            didSwipe.current = true
-            goNextPage()
-          },
-          onSwipeDown: () => {
-            didSwipe.current = true
-            goPrevPage()
-          },
-        }
-      : {
-          direction: 'horizontal',
-          onSwipeLeft: () => {
-            didSwipe.current = true
-            goPrevPage()
-          },
-          onSwipeRight: () => {
-            didSwipe.current = true
-            goNextPage()
-          },
-        }
-  )
-
   const handleTranslationTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     const touch = e.touches[0]
     translationTouchStart.current = { x: touch.clientX, y: touch.clientY }
@@ -816,9 +734,7 @@ function ReadPageContent() {
     }
   }
 
-  const contentSwipe = showTranslation
-    ? { onTouchStart: handleTranslationTouchStart, onTouchEnd: handleTranslationTouchEnd }
-    : mushafSwipe
+  const contentSwipe = { onTouchStart: handleTranslationTouchStart, onTouchEnd: handleTranslationTouchEnd }
 
   useLayoutEffect(() => {
     if (showTranslation) {
@@ -866,7 +782,10 @@ function ReadPageContent() {
       longPressBlockTap.current = false
       return
     }
-    if (ayahMenu) return
+    if (ayahMenu) {
+      setAyahMenu(null)
+      return
+    }
     toggleUi()
   }
 
@@ -950,12 +869,8 @@ function ReadPageContent() {
               )
         )}
         onClick={handleContentTap}
-        onTouchStart={
-          pageSlide || (!showTranslation && !verticalPages) ? undefined : contentSwipe.onTouchStart
-        }
-        onTouchEnd={
-          pageSlide || (!showTranslation && !verticalPages) ? undefined : contentSwipe.onTouchEnd
-        }
+        onTouchStart={!showTranslation ? undefined : contentSwipe.onTouchStart}
+        onTouchEnd={!showTranslation ? undefined : contentSwipe.onTouchEnd}
         role="presentation"
       >
         {showTranslation ? (
@@ -972,23 +887,9 @@ function ReadPageContent() {
             followPlaybackScroll={playbackActive}
             onAyahLongPress={handleAyahLongPress}
           />
-        ) : verticalPages ? (
-          <MushafPageCarousel
-            vertical
-            slide={
-              pageSlide
-                ? {
-                    direction: pageSlide.direction,
-                    incoming: renderMushafPage(pageSlide.incomingVerses, pageSlide.incomingPage),
-                  }
-                : null
-            }
-            onSettled={handleSlideSettled}
-          >
-            {renderMushafPage(pageVerses, currentPage)}
-          </MushafPageCarousel>
         ) : (
           <GallerySwipeView
+            vertical={verticalPages}
             pageKey={currentPage}
             current={renderMushafPage(pageVerses, currentPage)}
             prev={
@@ -1068,7 +969,7 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-2 px-3 pb-4',
+          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-2.5',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
@@ -1079,105 +980,197 @@ function ReadPageContent() {
             {somaliNotice}
           </p>
         ) : null}
-        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center justify-between gap-3 rounded-xl px-4 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              setSomaliNotice(null)
-              void handleSomaliPageToggle()
-            }}
-            disabled={pageVerses.length === 0}
-            className={cn(
-              'mushaf-read-chrome-btn flex h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors disabled:opacity-40',
-              somaliAutoPlaying || isSomaliVoiceActive
-                ? 'bg-[var(--mushaf-read-accent-soft)]'
-                : undefined
-            )}
-            aria-label={somaliAutoPlaying || isSomaliVoiceActive ? t('Stop Somali voice') : t('Play Somali voice')}
-          >
-            {somaliVoiceState.loading ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
-            ) : somaliAutoPlaying || isSomaliVoiceActive ? (
-              <Square className="h-4 w-4 fill-current" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-            <span>{t('Somali')}</span>
-          </button>
+
+        {ayahMenu && showAyahTranslation ? (
+          <div className="mushaf-read-chrome-panel mx-auto max-w-lg rounded-xl px-3.5 py-2.5">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent)]">
+              {ayahMenu.verseKey}
+            </p>
+            <p className="max-h-[min(30vh,11.5rem)] overflow-y-auto overscroll-contain text-[13px] leading-relaxed text-[var(--mushaf-read-text)]">
+              {ayahTranslationLoading
+                ? t('Loading…')
+                : translationByKey[ayahMenu.verseKey]?.translation || t('Translation unavailable.')}
+            </p>
+          </div>
+        ) : null}
+        <div className="mx-auto flex w-fit max-w-full items-center gap-2">
           <ReciterPicker reciterId={reciterId} />
-          <button
-            type="button"
-            onClick={handleRecitationToggle}
-            disabled={pageVerses.length === 0}
-            className="mushaf-read-chrome-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-            aria-label={
-              isActive ? t('Pause recitation') : isPaused ? t('Resume recitation') : t('Play page recitation')
-            }
-          >
-            {recitation.loading ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
-            ) : isActive ? (
-              <Square className="h-5 w-5 fill-current" />
-            ) : (
-              <Play className="h-6 w-6 fill-current" />
-            )}
-          </button>
+          <div className="mushaf-read-chrome-panel flex items-center gap-4 rounded-lg px-4 py-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (ayahMenu) {
+                  const key = ayahMenu.verseKey
+                  const isPlayingThis = isSomaliVoiceActive && somaliVoiceState.verseKey === key
+                  if (isPlayingThis) {
+                    somaliAutoRef.current = false
+                    setSomaliAutoPlaying(false)
+                    pauseSomaliVoice()
+                    return
+                  }
+                  stopRecitation()
+                  setSomaliNotice(null)
+                  somaliAutoRef.current = true
+                  setSomaliAutoPlaying(true)
+                  if (somaliVoiceState.paused && somaliVoiceState.verseKey === key) {
+                    void resumeSomaliVoice()
+                    return
+                  }
+                  void playSomaliVoice(key)
+                  return
+                }
+                setSomaliNotice(null)
+                void handleSomaliPageToggle()
+              }}
+              disabled={ayahMenu ? !somaliVoiceAvailable : pageVerses.length === 0}
+              className={cn(
+                'mushaf-read-chrome-btn flex h-7 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:opacity-40',
+                (ayahMenu
+                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
+                  : somaliAutoPlaying || isSomaliVoiceActive)
+                  ? 'bg-[var(--mushaf-read-accent-soft)]'
+                  : undefined
+              )}
+              aria-label={
+                (ayahMenu
+                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
+                  : somaliAutoPlaying || isSomaliVoiceActive)
+                  ? t('Stop Somali voice')
+                  : t('Play Somali voice')
+              }
+            >
+              {somaliVoiceState.loading ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
+              ) : (ayahMenu
+                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
+                  : somaliAutoPlaying || isSomaliVoiceActive) ? (
+                <Square className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Volume2 className="h-3.5 w-3.5" />
+              )}
+              <span>{t('Somali')}</span>
+            </button>
+
+            {ayahMenu ? (
+              <div className="flex shrink-0 items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={handleToggleBookmark}
+                  className={cn(
+                    'mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                    ayahMenuBookmarked && 'bg-[var(--mushaf-read-accent-soft)]'
+                  )}
+                  aria-label={ayahMenuBookmarked ? t('Saved') : t('Save')}
+                  aria-pressed={ayahMenuBookmarked}
+                >
+                  <Bookmark className={cn('h-3.5 w-3.5', ayahMenuBookmarked && 'fill-current')} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAyahTranslation((v) => !v)}
+                  className={cn(
+                    'mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                    showAyahTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
+                  )}
+                  aria-label={showAyahTranslation ? t('Hide translation') : t('Show translation')}
+                  aria-pressed={showAyahTranslation}
+                >
+                  <Languages className="h-3.5 w-3.5" />
+                </button>
+
+                {verseWallpapersEnabled ? (
+                  <button
+                    type="button"
+                    onClick={handleShareVerse}
+                    className="mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    aria-label={t('Share')}
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (ayahMenu) {
+                  if (isActive || isPaused) {
+                    stopRecitation()
+                    return
+                  }
+                  stopSomaliVoice()
+                  somaliAutoRef.current = false
+                  setSomaliAutoPlaying(false)
+                  playVerse(ayahMenu.verseKey, { continueOnPage: true })
+                  return
+                }
+                handleRecitationToggle()
+              }}
+              disabled={ayahMenu ? false : pageVerses.length === 0}
+              className="mushaf-read-chrome-btn flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
+              aria-label={
+                ayahMenu
+                  ? isActive || isPaused
+                    ? t('Stop')
+                    : t('Play')
+                  : isActive
+                    ? t('Pause recitation')
+                    : isPaused
+                      ? t('Resume recitation')
+                      : t('Play page recitation')
+              }
+            >
+              {recitation.loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
+              ) : isActive ? (
+                <Square className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Play className="h-4 w-4 fill-current" />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center gap-2 rounded-xl px-3 py-3">
-          <button
-            type="button"
-            onClick={goPrevPage}
-            disabled={currentPage <= 1}
-            className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
-            aria-label={t('Previous page')}
-          >
-            {verticalPages ? (
-              <ChevronUp className="h-6 w-6" />
-            ) : (
-              <ChevronRight className="h-6 w-6" />
-            )}
-          </button>
-
-          <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            <span className="mushaf-read-chrome-subtitle text-[11px] font-medium uppercase tracking-wider">
-              {t('Page')}</span>
+        <div className="mushaf-read-chrome-panel mx-auto flex max-w-lg items-center gap-2.5 rounded-xl px-3.5 py-2">
+          <div className="relative min-w-0 flex-1">
+            {sliderDragging && slidingSurahName ? (
+              <span
+                className="mushaf-slider-tooltip"
+                style={{ left: `${((sliderPage - 1) / (TOTAL_MUSHAF_PAGES - 1)) * 100}%` }}
+              >
+                {slidingSurahName}
+              </span>
+            ) : null}
             <input
               type="range"
               min={1}
               max={TOTAL_MUSHAF_PAGES}
               value={sliderPage}
               onChange={(e) => setSliderPage(Number(e.target.value))}
+              onMouseDown={() => setSliderDragging(true)}
+              onTouchStart={() => setSliderDragging(true)}
               onMouseUp={() => {
+                setSliderDragging(false)
                 if (sliderPage !== currentPage) navigatePage(sliderPage)
                 setNavSelectedVerseKey(null)
               }}
               onTouchEnd={() => {
+                setSliderDragging(false)
                 if (sliderPage !== currentPage) navigatePage(sliderPage)
                 setNavSelectedVerseKey(null)
               }}
-              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
               aria-label={t('Page slider')}
             />
-            <span className="mushaf-read-chrome-title text-sm font-semibold tabular-nums">
-              {currentPage}
-              <span className="mushaf-read-chrome-subtitle font-normal"> / {TOTAL_MUSHAF_PAGES}</span>
-            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={goNextPage}
-            disabled={currentPage >= TOTAL_MUSHAF_PAGES}
-            className="mushaf-read-chrome-btn flex min-h-[44px] min-w-[44px] flex-col items-center justify-center disabled:opacity-30"
-            aria-label={t('Next page')}
-          >
-            {verticalPages ? (
-              <ChevronDown className="h-6 w-6" />
-            ) : (
-              <ChevronLeft className="h-6 w-6" />
+          <span className="mushaf-read-chrome-title shrink-0 text-[13px] font-semibold tabular-nums">
+            {sliderDragging && slidingSurahName ? slidingSurahName : currentPage}
+            {sliderDragging && slidingSurahName ? null : (
+              <span className="mushaf-read-chrome-subtitle font-normal"> / {TOTAL_MUSHAF_PAGES}</span>
             )}
-          </button>
+          </span>
 
           <button
             type="button"
@@ -1189,13 +1182,13 @@ function ReadPageContent() {
               setShowTranslation((v) => !v)
             }}
             className={cn(
-              'mushaf-read-chrome-btn rounded-lg p-2',
+              'mushaf-read-chrome-btn -mr-1 shrink-0 rounded-lg p-1.5',
               showTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
             )}
             aria-label={showTranslation ? t('Hide translation') : t('Show translation')}
             aria-pressed={showTranslation}
           >
-            <MessageSquareText className="h-5 w-5" />
+            <MessageSquareText className="h-[18px] w-[18px]" />
           </button>
         </div>
       </div>
@@ -1224,62 +1217,6 @@ function ReadPageContent() {
         translationLoading={ayahTranslationLoading}
         translationLanguage={translationLanguage}
         onClose={() => setShareTarget(null)}
-      />
-
-      <AyahContextMenu
-        open={Boolean(ayahMenu)}
-        verseKey={ayahMenu?.verseKey ?? ''}
-        anchor={ayahMenuAnchor}
-        translation={
-          ayahMenu ? translationByKey[ayahMenu.verseKey]?.translation ?? null : null
-        }
-        translationLoading={ayahTranslationLoading}
-        isReciting={isActive || isPaused}
-        isBookmarked={ayahMenuBookmarked}
-        somaliVoiceAvailable={somaliVoiceAvailable}
-        isSomaliVoicePlaying={
-          isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu?.verseKey
-        }
-        onClose={() => {
-          stopSomaliVoice()
-          somaliAutoRef.current = false
-          setSomaliAutoPlaying(false)
-          setAyahMenu(null)
-        }}
-        onPlay={() => {
-          if (!ayahMenu) return
-          stopSomaliVoice()
-          somaliAutoRef.current = false
-          setSomaliAutoPlaying(false)
-          const key = ayahMenu.verseKey
-          setUiVisible(false)
-          setAyahMenu(null)
-          playVerse(key, { continueOnPage: true })
-        }}
-        onToggleBookmark={handleToggleBookmark}
-        onShare={verseWallpapersEnabled ? handleShareVerse : undefined}
-        onPlaySomaliVoice={() => {
-          if (!ayahMenu) return
-          stopRecitation()
-          setSomaliNotice(null)
-          const key = ayahMenu.verseKey
-          somaliAutoRef.current = true
-          setSomaliAutoPlaying(true)
-          setUiVisible(false)
-          setAyahMenu(null)
-          // Same ayah held mid-play — pick up where it stopped.
-          if (somaliVoiceState.paused && somaliVoiceState.verseKey === key) {
-            void resumeSomaliVoice()
-            return
-          }
-          void playSomaliVoice(key)
-        }}
-        onStopSomaliVoice={() => {
-          somaliAutoRef.current = false
-          setSomaliAutoPlaying(false)
-          pauseSomaliVoice()
-        }}
-        onStopRecitation={stopRecitation}
       />
 
       {uiVisible && (

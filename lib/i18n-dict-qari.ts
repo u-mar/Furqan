@@ -2,6 +2,27 @@ import type { Dict } from '@/lib/i18n-dict'
 
 /* Qari: the feed, profiles, recording, sharing. */
 export const QARI: Dict = {
+  '“{title}” just passed {count} plays': { so: '“{title}” waxay dhaaftay {count} daawasho', ar: '"{title}" تجاوزت {count} استماع' },
+  '“{title}” just passed {count} likes': { so: '“{title}” waxay dhaaftay {count} jeceyl', ar: '"{title}" تجاوزت {count} إعجاب' },
+  'Your recitation': { so: 'Akhriskaaga', ar: 'تلاوتك' },
+  'Report this recitation': { so: 'Ka warbixi akhriskan', ar: 'الإبلاغ عن هذه التلاوة' },
+  'What is wrong with it?': { so: 'Waa maxay khaladka ku jira?', ar: 'ما هي المشكلة فيها؟' },
+  'Wrong recitation': { so: 'Akhris khaldan', ar: 'تلاوة خاطئة' },
+  'Inappropriate content': { so: 'Waxyaabo aan ku habboonayn', ar: 'محتوى غير مناسب' },
+  Spam: { so: 'Spam', ar: 'محتوى مزعج' },
+  'Copyrighted audio': { so: 'Maqal xuquuq-qorayaal leh', ar: 'صوت محمي بحقوق النشر' },
+  Other: { so: 'Kale', ar: 'أخرى' },
+  'Unfinished recitation': { so: 'Akhris aan dhammaystirnayn', ar: 'تلاوة غير مكتملة' },
+  'not yet published': { so: 'wali lama daabicin', ar: 'لم تُنشر بعد' },
+  'Discard draft': { so: 'Tir qabyo-qorka', ar: 'حذف المسودة' },
+  Resume: { so: 'Sii wad', ar: 'استئناف' },
+  'That draft is no longer there.': { so: 'Qabyo-qorkaasi mar dambe ma jiro.', ar: 'هذه المسودة لم تعد موجودة.' },
+  'Draft discarded.': { so: 'Qabyo-qorka waa la tiray.', ar: 'تم حذف المسودة.' },
+  'Make private': { so: 'Ka dhig mid gaar ah', ar: 'جعلها خاصة' },
+  'Make public': { so: 'Ka dhig mid guud', ar: 'جعلها عامة' },
+  'Only you can hear it now.': { so: 'Adiga kaliya ayaa maanta maqli kara.', ar: 'أنت فقط من يمكنه الاستماع إليها الآن.' },
+  'Everyone can hear it now.': { so: 'Dhammaan dadka ayaa hadda maqli kara.', ar: 'يمكن لجميع الأشخاص الاستماع إليها الآن.' },
+  'Could not change that.': { so: 'Taas lama beddeli karin.', ar: 'تعذّر تغيير ذلك.' },
   '{total} days, done': { so: '{total} maalmood, waa dhammaaday', ar: '{total} أيام، اكتملت' },
   'Everyone in the halaqa read on {days} of the {total} days.': {
     so: 'Dhammaan xubnaha xalqadda waxay akhriyeen {days} ka mid ah {total} maalmood.',

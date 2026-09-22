@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { removeAudio } from '@/lib/qari-storage'
-import { notifyLike } from '@/lib/notify'
+import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
 
 export const runtime = 'nodejs'
 
-type Action = 'like' | 'unlike' | 'play' | 'report'
+type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy'
 
 /** POST /api/qari/[id] — like, unlike, count a play, or report. */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -16,6 +16,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       action?: Action
       userId?: string
       reason?: string
+      isPrivate?: boolean
     }
     const action = body.action
     const userId = body.userId?.trim()
@@ -33,10 +34,26 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         data: { playCount: { increment: 1 } },
         select: { playCount: true },
       })
+      if (!recitation.isPrivate && PLAY_MILESTONES.includes(updated.playCount)) {
+        await notifyMilestone(recitation, 'plays', updated.playCount)
+      }
       return NextResponse.json({ playCount: updated.playCount, counted: true })
     }
 
     if (!userId) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
+
+    if (action === 'setPrivacy') {
+      // Only the reciter decides who can hear their own recording.
+      if (recitation.userId !== userId) {
+        return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
+      }
+      const updated = await prisma.recitation.update({
+        where: { id },
+        data: { isPrivate: Boolean(body.isPrivate) },
+        select: { isPrivate: true },
+      })
+      return NextResponse.json({ isPrivate: updated.isPrivate })
+    }
 
     if (action === 'report') {
       await prisma.recitationReport.create({
@@ -60,7 +77,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           select: { likeCount: true },
         })
         // Tell the reciter. A private recording can only be liked by its owner, so it is skipped.
-        if (!recitation.isPrivate) await notifyLike(recitation, userId)
+        if (!recitation.isPrivate) {
+          await notifyLike(recitation, userId)
+          if (LIKE_MILESTONES.includes(updated.likeCount)) await notifyMilestone(recitation, 'likes', updated.likeCount)
+        }
         return NextResponse.json({ liked: true, likeCount: updated.likeCount })
       }
 

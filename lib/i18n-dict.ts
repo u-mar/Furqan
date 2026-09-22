@@ -33,11 +33,12 @@ const SETTINGS: Dict = {
   'Bigger script': { so: 'Far weyn', ar: 'خط أكبر' },
   Spaced: { so: 'Kala fogaysan', ar: 'بهوامش' },
   'Margins on the sides': { so: 'Hareeraha oo bannaan', ar: 'هوامش على الجانبين' },
+  'Vertical page swipes': { so: 'Bogagga si toosan u dhaqaajin', ar: 'التنقل بين الصفحات عموديًا' },
   'Ayah wallpapers': { so: 'Sawirrada aayadaha', ar: 'خلفيات الآيات' },
   Translation: { so: 'Tarjumaad', ar: 'الترجمة' },
-  'Used in Read translation mode and when you long-press an ayah.': {
-    so: 'Waxaa loo isticmaalaa habka tarjumaadda ee Akhrinta iyo marka aad aayad si dheer u taabato.',
-    ar: 'يُستخدم في وضع الترجمة في القراءة وعند الضغط المطوّل على آية.',
+  'Used in Read translation mode and when you double-tap an ayah.': {
+    so: 'Waxaa loo isticmaalaa habka tarjumaadda ee Akhrinta iyo marka aad aayad laba jeer taabato.',
+    ar: 'يُستخدم في وضع الترجمة في القراءة وعند الضغط مرّتين على آية.',
   },
   Offline: { so: 'Internet la’aan', ar: 'دون اتصال' },
   'Quran for offline': { so: 'Quraanka internet la’aan', ar: 'القرآن دون اتصال' },

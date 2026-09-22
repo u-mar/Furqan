@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
         actorName: n.actorName,
         recitationId: n.recitationId,
         recitationTitle: n.recitationTitle,
+        milestoneKind: n.milestoneKind,
+        milestoneCount: n.milestoneCount,
         createdAt: n.createdAt.toISOString(),
         read: Boolean(n.readAt),
       })),

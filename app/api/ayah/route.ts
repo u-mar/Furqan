@@ -10,6 +10,19 @@ import type { Verse } from '@/types'
 const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
 const API_TIMEOUT_MS = 20_000
 
+// A mushaf glyph run is Arabic presentation-form codepoints only. The upstream
+// API has occasionally returned a `code_v2` string with a stray ASCII letter
+// spliced in, which renders as a literal Latin letter in the middle of the
+// Quran text — reject the whole page so the caller falls back to the
+// verified offline bundle instead of showing corrupted Quran text.
+const ASCII_LETTER_RE = /[A-Za-z]/
+
+function hasCorruptedGlyphs(verses: Verse[]): boolean {
+  return verses.some((verse) =>
+    verse.words?.some((word) => Boolean(word.code_v2 && ASCII_LETTER_RE.test(word.code_v2)))
+  )
+}
+
 async function fetchQcfPage(page: number): Promise<Verse[]> {
   const params = new URLSearchParams({
     fields: 'code_v2',
@@ -27,7 +40,11 @@ async function fetchQcfPage(page: number): Promise<Verse[]> {
   }
 
   const data = (await response.json()) as { verses?: Verse[] }
-  return data.verses || []
+  const verses = data.verses || []
+  if (hasCorruptedGlyphs(verses)) {
+    throw new Error(`Quran API page ${page} returned corrupted glyph data`)
+  }
+  return verses
 }
 
 async function fetchVisualQcfPage(page: number): Promise<Verse[]> {

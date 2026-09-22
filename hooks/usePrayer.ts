@@ -6,8 +6,13 @@ import {
   DEFAULT_PLACE,
   DEFAULT_PRAYER_SETTINGS,
   PRAYER_CHANGED_EVENT,
+  distanceKm,
+  locateDevice,
+  locationDenied,
   readPlace,
   readPrayerSettings,
+  savePlace,
+  setLocationDenied,
   type Place,
   type PrayerSettings,
 } from '@/lib/prayer'
@@ -54,4 +59,32 @@ export function useNow(intervalMs = 1000): Date | null {
 
 export function useAdhanPlaying(): boolean {
   return useSyncExternalStore(subscribeAdhan, isAdhanPlaying, () => false)
+}
+
+/**
+ * Finds the phone's position by itself, quietly. The first time, this is what
+ * brings up the phone's own "allow location?" question; if that was refused
+ * it is not asked again on every visit. Afterwards the position is kept up
+ * to date, so prayer times and the qibla follow the person when they travel.
+ * Shared by the Prayer and Qibla screens so both stay in step.
+ */
+export function useAutoLocate(ready: boolean, place: Place): void {
+  useEffect(() => {
+    if (!ready) return
+    if (place.source === 'device') {
+      void locateDevice()
+        .then((fresh) => {
+          if (distanceKm(fresh, place) > 3) savePlace(fresh)
+        })
+        .catch(() => {})
+      return
+    }
+    if (locationDenied()) return
+    void locateDevice()
+      .then((fresh) => savePlace(fresh))
+      .catch((err) => {
+        if (err instanceof Error && err.message === 'denied') setLocationDenied(true)
+      })
+    // Only when the screen opens, and again if the saved place changes kind.
+  }, [ready, place.source])
 }

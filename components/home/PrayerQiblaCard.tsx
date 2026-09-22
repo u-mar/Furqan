@@ -1,8 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
-import { ChevronRight, Compass } from 'lucide-react'
 import { useNow, usePrayerState } from '@/hooks/usePrayer'
 import {
   PRAYER_NAMES,
@@ -11,7 +9,6 @@ import {
   nextPrayer,
   prayerTimesFor,
   prayerWaitProgress,
-  qiblaBearing,
 } from '@/lib/prayer'
 import { useLanguage, useT } from '@/lib/i18n'
 import { formatTime } from '@/lib/prayer'
@@ -21,16 +18,15 @@ const RING_LENGTH = 2 * Math.PI * RING_R
 
 /**
  * A compact summary of the Prayer screen for Home: what comes next and how
- * far off it is, plus the qibla's bearing. Both open the full Prayer screen —
- * this card is a shortcut into it, not a second place the times are worked out.
+ * far off it is. A shortcut into the full Prayer screen, not a second place
+ * the times are worked out. The Qibla and Prayer tiles below it are the
+ * other two shortcuts into that same screen.
  */
 export default function PrayerQiblaCard() {
   const t = useT()
   const language = useLanguage()
   const { place, settings, ready } = usePrayerState()
   const clock = useNow(1000)
-
-  const bearing = useMemo(() => Math.round(qiblaBearing(place)), [place])
 
   if (!ready || !clock) {
     return (
@@ -94,17 +90,6 @@ export default function PrayerQiblaCard() {
               {timeLeft}
             </span>
           </div>
-        </Link>
-
-        <div className="set-row__divider" aria-hidden />
-
-        <Link href="/prayer?tab=qibla" className="set-row">
-          <span className="set-row__icon" aria-hidden>
-            <Compass className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="set-row__label">{t('Qibla')}</span>
-          <span className="set-row__value tabular-nums">{t('{degrees}°', { degrees: bearing })}</span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
         </Link>
       </div>
     </section>

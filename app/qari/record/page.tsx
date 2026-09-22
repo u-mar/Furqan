@@ -10,6 +10,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  FileAudio,
   Film,
   Globe,
   Hash,
@@ -19,6 +20,7 @@ import {
   Play,
   RotateCcw,
   Send,
+  Trash2,
   X,
 } from 'lucide-react'
 import { SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
@@ -46,6 +48,7 @@ import {
   tidyHashtags,
   type Recitation,
 } from '@/lib/qari'
+import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
 import { measurePeaks } from '@/lib/qari-waveform'
 import { findSheikh, SHEIKHS } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
@@ -104,6 +107,7 @@ function RecordFlow() {
   const [shareOpen, setShareOpen] = useState(false)
   const [titleShake, setTitleShake] = useState(false)
   const [picker, setPicker] = useState<'sound' | 'sheikh' | null>(null)
+  const [draftMeta, setDraftMeta] = useState<QariDraftMeta | null>(null)
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -200,6 +204,54 @@ function RecordFlow() {
     else if (state.quality === 'clipped') qariNotice(tr('The recording was too loud in places. Hold the phone further away next time.'))
   }, [state.blob, state.quality, step])
 
+  /* ---------------------------------------------------------- draft */
+
+  // Offered on the start screen — checked fresh whenever we land back there.
+  useEffect(() => {
+    if (step === 'ready') setDraftMeta(peekDraftMeta())
+  }, [step])
+
+  // The recording itself, saved the moment a take is ready — before a title
+  // is even typed, so backing out never costs the take. Re-saving the exact
+  // bytes just resumed is harmless, so this needs no guard against that.
+  useEffect(() => {
+    if (step !== 'review' || !state.blob) return
+    void saveDraftAudio(state.blob, state.mimeType, state.durationSec)
+  }, [step, state.blob, state.mimeType, state.durationSec])
+
+  // Everything typed while reviewing, kept in step with the saved audio.
+  useEffect(() => {
+    if (step !== 'review' || !state.blob) return
+    saveDraftMeta({ title, hashtags, caption, isPrivate, imitating: imitate ? sheikhId : null, space: spaceId, peaks })
+  }, [step, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks])
+
+  const resumeDraft = useCallback(async () => {
+    tapFeedback()
+    const draft = await loadDraft()
+    if (!draft) {
+      setDraftMeta(null)
+      qariNotice(tr('That draft is no longer there.'))
+      return
+    }
+    recorder.adopt(draft.blob, draft.mimeType, draft.durationSec)
+    setSpaceId((draft.space as SpaceId) || 'reciter')
+    setImitate(Boolean(draft.imitating))
+    if (draft.imitating) setSheikhId(draft.imitating)
+    setPeaks(draft.peaks)
+    setTitle(draft.title)
+    setHashtags(draft.hashtags)
+    setCaption(draft.caption)
+    setIsPrivate(draft.isPrivate)
+    setStep('review')
+  }, [recorder])
+
+  const discardDraft = useCallback(() => {
+    tapFeedback()
+    void clearDraft()
+    setDraftMeta(null)
+    qariNotice(tr('Draft discarded.'))
+  }, [])
+
   useEffect(() => {
     if (!discardArmed) return
     const id = window.setTimeout(() => setDiscardArmed(false), 2500)
@@ -282,6 +334,8 @@ function RecordFlow() {
     recorder.reset()
     setPeaks([])
     setStep('ready')
+    // This take is being abandoned on purpose, so the draft of it goes too.
+    void clearDraft()
   }, [recorder, stopPreview])
 
   /* ---------------------------------------------------------- publish */
@@ -342,6 +396,7 @@ function RecordFlow() {
       })
       successFeedback()
       setStep('published')
+      void clearDraft()
     } catch (err) {
       qariNotice(err instanceof Error ? err.message : tr('Could not publish.'))
     } finally {
@@ -681,6 +736,36 @@ function RecordFlow() {
       ) : (
         <>
           <QariHeader title={t('New recitation')} back={closeButton} />
+          {draftMeta ? (
+            <div className="qari-step home-card mt-3.5 flex items-center gap-3 rounded-2xl px-3.5 py-3">
+              <span className="set-row__icon" aria-hidden>
+                <FileAudio className="h-[17px] w-[17px]" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
+                  {draftMeta.title ? `“${draftMeta.title}”` : t('Unfinished recitation')}
+                </span>
+                <span className="block text-[0.78125rem] text-[var(--home-muted)]">
+                  {formatDuration(draftMeta.durationSec)} · {t('not yet published')}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                aria-label={t('Discard draft')}
+                className="ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-rose-500"
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+              </button>
+              <button
+                type="button"
+                onClick={() => void resumeDraft()}
+                className="ed-ink ed-focus qari-press h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold"
+              >
+                {t('Resume')}
+              </button>
+            </div>
+          ) : null}
           <div className="qari-step">
             <QariLabel>{t('Before you start')}</QariLabel>
             {settings(true)}

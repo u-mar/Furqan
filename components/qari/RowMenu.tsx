@@ -1,16 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Ellipsis, Flag, Trash2 } from 'lucide-react'
+import { Ellipsis, Flag, Globe, Lock, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 
-/** The quieter actions on a recitation: report someone else's, delete your own. */
+/** The quieter actions on a recitation: who can hear it and delete for your own, report for anyone else's. */
 export default function RowMenu({
   isOwner,
+  isPrivate,
+  onTogglePrivacy,
   onReport,
   onDelete,
 }: {
   isOwner: boolean
+  /** Only meaningful when `isOwner` — whether it's currently visible to everyone or only the reciter. */
+  isPrivate?: boolean
+  onTogglePrivacy?: () => void
   onReport: () => void
   onDelete: () => void
 }) {
@@ -45,21 +50,40 @@ export default function RowMenu({
       {open ? (
         <div className="qari-dropdown__menu bottom-[calc(100%+0.3rem)] right-0 w-[12rem] origin-bottom-right">
           {isOwner ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (!confirming) {
-                  setConfirming(true)
-                  return
-                }
-                setOpen(false)
-                onDelete()
-              }}
-              className="qari-dropdown__item ed-focus text-rose-500"
-            >
-              <Trash2 className="h-4 w-4" strokeWidth={2} />
-              {confirming ? t('Tap again to delete') : t('Delete recitation')}
-            </button>
+            <>
+              {onTogglePrivacy ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    onTogglePrivacy()
+                  }}
+                  className="qari-dropdown__item ed-focus"
+                >
+                  {isPrivate ? (
+                    <Globe className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
+                  ) : (
+                    <Lock className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
+                  )}
+                  {isPrivate ? t('Make public') : t('Make private')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirming) {
+                    setConfirming(true)
+                    return
+                  }
+                  setOpen(false)
+                  onDelete()
+                }}
+                className="qari-dropdown__item ed-focus text-rose-500"
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={2} />
+                {confirming ? t('Tap again to delete') : t('Delete recitation')}
+              </button>
+            </>
           ) : (
             <button
               type="button"

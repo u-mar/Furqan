@@ -238,7 +238,7 @@ export default function ContentsDrawer({
         {bottomNav === 'bookmarks' && (
           <div className="px-4 pt-1">
             <h2 className="text-2xl font-semibold">{t('Bookmarks')}</h2>
-            <p className="mt-1 text-xs text-stone-500">{t('Long-press an ayah to save it here.')}</p>
+            <p className="mt-1 text-xs text-stone-500">{t('Double-tap an ayah to save it here.')}</p>
           </div>
         )}
 
@@ -396,7 +396,7 @@ export default function ContentsDrawer({
             <div className="px-2 pt-3">
               {bookmarks.length === 0 ? (
                 <p className="px-4 py-12 text-center text-sm text-stone-500">
-                  {t('No bookmarks yet. Long-press an ayah, then tap Bookmark.')}</p>
+                  {t('No bookmarks yet. Double-tap an ayah, then tap Bookmark.')}</p>
               ) : (
                 <ul className="space-y-1">
                   {bookmarks.map((bookmark) => (

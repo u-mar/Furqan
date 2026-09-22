@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import {
+  ArrowUpDown,
   BookOpen,
   Check,
   CheckCircle2,
@@ -132,6 +133,7 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
+  const [verticalPages, setVerticalPages] = useState(false)
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
     so: false,
@@ -148,6 +150,7 @@ export default function SettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [toast, setToast] = useState('')
   const toastTimer = useRef<number | null>(null)
+  const returnHrefResolved = useRef(false)
 
   const refreshProfile = useCallback(() => setUser(getSignedInUser()), [])
 
@@ -166,6 +169,7 @@ export default function SettingsPage() {
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
     setVerseWallpapers(s.verseWallpapersEnabled)
+    setVerticalPages(s.verticalPages)
     setTranslationCached({
       en: areTranslationsCached('en'),
       so: areTranslationsCached('so'),
@@ -179,6 +183,12 @@ export default function SettingsPage() {
   }, [refreshProfile])
 
   useEffect(() => {
+    // resolveSettingsReturnHref consumes the saved path (it deletes it from
+    // sessionStorage as it reads it), so it must run only once per real visit —
+    // React's Strict Mode double-invokes effects in development, and a second
+    // call would find it already gone and fall back to "/".
+    if (returnHrefResolved.current) return
+    returnHrefResolved.current = true
     const params = new URLSearchParams(window.location.search)
     setReturnHref(resolveSettingsReturnHref(params.get('returnTo')))
   }, [])
@@ -208,6 +218,11 @@ export default function SettingsPage() {
   function saveVerseWallpapers(next: boolean) {
     setVerseWallpapers(next)
     setAppSettings({ verseWallpapersEnabled: next })
+  }
+
+  function saveVerticalPages(next: boolean) {
+    setVerticalPages(next)
+    setAppSettings({ verticalPages: next })
   }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
@@ -353,6 +368,12 @@ export default function SettingsPage() {
           </button>
           <Divider />
           <label className="set-row cursor-pointer">
+            <RowIcon icon={ArrowUpDown} />
+            <span className="set-row__label">{t('Vertical page swipes')}</span>
+            <Switch checked={verticalPages} onChange={saveVerticalPages} label={t('Vertical page swipes')} />
+          </label>
+          <Divider />
+          <label className="set-row cursor-pointer">
             <RowIcon icon={ImageIcon} />
             <span className="set-row__label">{t('Ayah wallpapers')}</span>
             <Switch checked={verseWallpapers} onChange={saveVerseWallpapers} label={t('Ayah wallpapers')} />
@@ -482,7 +503,7 @@ export default function SettingsPage() {
       <SettingsSheet
         open={sheet === 'translation'}
         title={t('Translation')}
-        description={t('Used in Read translation mode and when you long-press an ayah.')}
+        description={t('Used in Read translation mode and when you double-tap an ayah.')}
         onClose={closeSheet}
       >
         <p className="mb-2 text-xs font-semibold text-[var(--home-heading)]">{t('Language')}</p>

@@ -2,11 +2,14 @@ import { tr } from '@/lib/i18n-core'
 
 export interface QariNotification {
   id: string
-  type: 'like' | 'follow'
+  type: 'like' | 'follow' | 'milestone'
   actorUsername: string
   actorName: string
   recitationId: string | null
   recitationTitle: string | null
+  /** Only for type "milestone". */
+  milestoneKind: 'plays' | 'likes' | null
+  milestoneCount: number | null
   createdAt: string
   read: boolean
 }

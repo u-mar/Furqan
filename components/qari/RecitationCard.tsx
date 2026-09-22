@@ -6,6 +6,7 @@ import { Lock, Play, Share2 } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import PlayButton from '@/components/qari/PlayButton'
 import QariAvatar from '@/components/qari/QariAvatar'
+import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
 import RowMenu from '@/components/qari/RowMenu'
 import ShareSheet from '@/components/qari/ShareSheet'
 import Waveform from '@/components/qari/Waveform'
@@ -17,6 +18,7 @@ import {
   formatDuration,
   prefetchRecitationAudio,
   reportRecitation,
+  setRecitationPrivacy,
   timeAgo,
   type Recitation,
 } from '@/lib/qari'
@@ -37,6 +39,8 @@ interface RecitationCardProps {
   /** Position in the list, for the staggered entrance. */
   index?: number
   onRemoved?: (id: string) => void
+  /** Its visibility changed rather than being deleted — the parent list decides what that means for it. */
+  onUpdated?: (id: string, patch: Partial<Recitation>) => void
   onNotice?: (message: string) => void
 }
 
@@ -53,12 +57,16 @@ function RecitationCard({
   hideAuthor = false,
   index = 0,
   onRemoved,
+  onUpdated,
   onNotice,
 }: RecitationCardProps) {
   const t = useT()
   const player = useQariPlayer()
   const [shareOpen, setShareOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
+  // Set only while a toggle is in flight, or if it failed and had to be put back.
+  const [optimisticPrivate, setOptimisticPrivate] = useState<boolean | null>(null)
 
   const isCurrent = player.current?.id === recitation.id
   const status = isCurrent ? player.status : 'idle'
@@ -67,6 +75,7 @@ function RecitationCard({
   const sheikh = findSheikh(recitation.imitating)
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
   const isOwner = Boolean(viewerId && viewerUsername && viewerUsername === recitation.userUsername)
+  const isPrivate = optimisticPrivate ?? recitation.isPrivate
 
   const toggle = useCallback(() => {
     tapFeedback()
@@ -86,18 +95,42 @@ function RecitationCard({
     }
   }, [onNotice, onRemoved, recitation.id, viewerId])
 
-  const handleReport = useCallback(async () => {
+  const handleTogglePrivacy = useCallback(async () => {
+    if (!viewerId) return
+    const next = !isPrivate
+    tapFeedback()
+    setOptimisticPrivate(next)
+    try {
+      await setRecitationPrivacy(recitation.id, viewerId, next)
+      onNotice?.(next ? tr('Only you can hear it now.') : tr('Everyone can hear it now.'))
+      onUpdated?.(recitation.id, { isPrivate: next })
+    } catch {
+      setOptimisticPrivate(!next)
+      onNotice?.(tr('Could not change that.'))
+    }
+  }, [isPrivate, onNotice, onUpdated, recitation.id, viewerId])
+
+  const handleReportTap = useCallback(() => {
     if (!viewerId) {
       askToSignIn({ reason: tr('Create a free account to report a recitation.') })
       return
     }
-    try {
-      await reportRecitation(recitation.id, viewerId, tr('Reported from Qari'))
-      onNotice?.(tr('Thank you. It has been sent for review.'))
-    } catch {
-      onNotice?.(tr('Could not send that report.'))
-    }
-  }, [onNotice, recitation.id, viewerId])
+    setReportOpen(true)
+  }, [viewerId])
+
+  const handleReportReason = useCallback(
+    async (reason: string) => {
+      setReportOpen(false)
+      if (!viewerId) return
+      try {
+        await reportRecitation(recitation.id, viewerId, reason)
+        onNotice?.(tr('Thank you. It has been sent for review.'))
+      } catch {
+        onNotice?.(tr('Could not send that report.'))
+      }
+    },
+    [onNotice, recitation.id, viewerId]
+  )
 
   // Who (unless it is their own profile), when, then what it imitates.
   const sub: React.ReactNode[] = []
@@ -138,7 +171,7 @@ function RecitationCard({
         isCurrent ? 'text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]' : 'text-[var(--home-heading)]'
       )}
     >
-      {recitation.isPrivate ? (
+      {isPrivate ? (
         <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--home-muted)]" strokeWidth={2.4} aria-label={t('Only you')} />
       ) : null}
       <span className="truncate">{recitation.title}</span>
@@ -146,7 +179,13 @@ function RecitationCard({
   )
 
   const menu = (
-    <RowMenu isOwner={isOwner} onReport={() => void handleReport()} onDelete={() => void handleDelete()} />
+    <RowMenu
+      isOwner={isOwner}
+      isPrivate={isPrivate}
+      onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
+      onReport={handleReportTap}
+      onDelete={() => void handleDelete()}
+    />
   )
 
   return (
@@ -231,6 +270,7 @@ function RecitationCard({
       </div>
 
       <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
+      <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
     </article>
   )
 }

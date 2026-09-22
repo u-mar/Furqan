@@ -342,5 +342,14 @@ export function useQariRecorder(maxSeconds = 600) {
     setState(idle)
   }, [stop, teardown])
 
-  return { state, start, stop, pause, resume, reset, supported: typeof MediaRecorder !== 'undefined' }
+  /** Drops a finished, already-polished take straight into the review state — for resuming a saved draft, not for a fresh recording. */
+  const adopt = useCallback((blob: Blob, mimeType: string, durationSec: number) => {
+    polishRun.current += 1
+    discarded.current = true
+    stop()
+    teardown()
+    setState({ ...idle, blob, mimeType, durationSec })
+  }, [stop, teardown])
+
+  return { state, start, stop, pause, resume, reset, adopt, supported: typeof MediaRecorder !== 'undefined' }
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ChevronLeft, Search, X, type LucideIcon } from 'lucide-react'
 import QariMiniPlayer from '@/components/qari/QariMiniPlayer'
-import QariTabBar from '@/components/qari/QariTabBar'
+import QariRecordFab from '@/components/qari/QariRecordFab'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/cn'
@@ -166,13 +166,13 @@ export function QariScreen({ children, className }: { children: React.ReactNode;
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className={cn('mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]', className)}
-        // Clear of the tab bar and the mini player above it.
-        style={{ paddingBottom: 'calc(10rem + env(safe-area-inset-bottom))' }}
+        // Clear of the main bottom bar, the record button and the mini player above it.
+        style={{ paddingBottom: 'calc(9rem + env(safe-area-inset-bottom))' }}
       >
         {children}
       </div>
       <QariMiniPlayer />
-      <QariTabBar />
+      <QariRecordFab />
     </main>
   )
 }

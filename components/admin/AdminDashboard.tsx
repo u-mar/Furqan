@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Megaphone, MessageSquare } from 'lucide-react'
 import AdminShell, { type AdminSection } from '@/components/admin/AdminShell'
+import AdminReportsPanel from '@/components/admin/AdminReportsPanel'
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel'
 import {
   listAdminData,
   sendPopupToUser,
   setDailyVerseConfig,
+  type AdminReport,
   type AdminStats,
   type FeedbackMessage,
   type UserUsage,
@@ -23,6 +25,7 @@ export default function AdminDashboard() {
   const [surahName, setSurahName] = useState('Al-Baqarah')
   const [feedback, setFeedback] = useState<FeedbackMessage[]>([])
   const [users, setUsers] = useState<UserUsage[]>([])
+  const [reports, setReports] = useState<AdminReport[]>([])
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     registered: 0,
@@ -40,6 +43,7 @@ export default function AdminDashboard() {
     setSurahName(data.dailyVerse.surahName)
     setFeedback(data.feedback)
     setUsers(data.users.slice().sort((a, b) => b.lastSeenAt - a.lastSeenAt))
+    setReports(data.reports)
     if (data.stats) {
       setStats(data.stats)
     } else {
@@ -66,6 +70,10 @@ export default function AdminDashboard() {
   const totalVisits = useMemo(
     () => users.reduce((sum, user) => sum + user.totalVisits, 0),
     [users]
+  )
+  const reportedRecitationCount = useMemo(
+    () => new Set(reports.map((r) => r.recitationId)).size,
+    [reports]
   )
 
   const handleSaveDailyVerse = async () => {
@@ -95,7 +103,12 @@ export default function AdminDashboard() {
   }
 
   return (
-    <AdminShell section={section} onSectionChange={setSection} saveNotice={saveNotice}>
+    <AdminShell
+      section={section}
+      onSectionChange={setSection}
+      saveNotice={saveNotice}
+      reportCount={reportedRecitationCount}
+    >
       {section === 'overview' && (
         <section className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -104,12 +117,15 @@ export default function AdminDashboard() {
             <StatCard label="Guests" value={stats.guests} />
             <StatCard label="Online now" value={stats.onlineNow} accent="emerald" live />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="Total sessions" value={totalVisits} />
             <StatCard label="Feedback" value={feedback.length} />
+            <StatCard label="Reported recitations" value={reportedRecitationCount} accent="amber" />
           </div>
         </section>
       )}
+
+      {section === 'reports' && <AdminReportsPanel reports={reports} />}
 
       {section === 'daily-verse' && (
         <section className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">
@@ -229,7 +245,7 @@ function StatCard({
 }: {
   label: string
   value: number
-  accent?: 'teal' | 'emerald'
+  accent?: 'teal' | 'emerald' | 'amber'
   live?: boolean
 }) {
   return (
@@ -241,7 +257,9 @@ function StatCard({
             ? 'text-teal-700 dark:text-teal-300'
             : accent === 'emerald'
               ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-[var(--home-heading)]'
+              : accent === 'amber'
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-[var(--home-heading)]'
         }`}
       >
         {live ? <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden /> : null}

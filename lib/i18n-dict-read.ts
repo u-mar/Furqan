@@ -2,6 +2,8 @@ import type { Dict } from '@/lib/i18n-dict'
 
 /* Home and Read: the mushaf, its contents drawer, khatmah plans and sharing an ayah. */
 export const READ: Dict = {
+  'Choose reciter': { so: 'Dooro qaariga', ar: 'اختر القارئ' },
+  'Who reads each ayah back as you read.': { so: 'Cidda kuu akhrinaysa aayad kasta marka aad akhrinayso.', ar: 'من يتلو عليك كل آية وأنت تقرأ.' },
   More: { so: 'Dheeraad', ar: 'المزيد' },
   Backgrounds: { so: 'Sawirada dambe', ar: 'الخلفيات' },
   '{count} pictures': { so: '{count} sawir', ar: '{count} صورة' },
@@ -96,16 +98,16 @@ export const READ: Dict = {
   Bookmarks: { so: 'Calaamadaha', ar: 'العلامات' },
   CHAPTERS: { so: 'SUURADAHA', ar: 'السور' },
   QUARTERS: { so: 'RUBUCYADA', ar: 'الأرباع' },
-  'Long-press an ayah to save it here.': { so: 'Si dheer u taabo aayad si aad halkan ugu keydiso.', ar: 'اضغط مطوّلًا على آية لحفظها هنا.' },
+  'Double-tap an ayah to save it here.': { so: 'Laba jeer taabo aayad si aad halkan ugu keydiso.', ar: 'اضغط مرّتين على آية لحفظها هنا.' },
   'Continues from previous surah': { so: 'Waxay ka sii socotaa suuraddii hore', ar: 'تكملة من السورة السابقة' },
   'verses ·': { so: 'aayadood ·', ar: 'آية ·' },
   Quarter: { so: 'Rubuc', ar: 'ربع' },
   'starts at': { so: 'wuxuu ka bilaabmaa', ar: 'يبدأ من' },
   '· Ayah': { so: '· Aayad', ar: '· آية' },
   '· Page': { so: '· Bog', ar: '· صفحة' },
-  'No bookmarks yet. Long-press an ayah, then tap Bookmark.': {
-    so: 'Weli calaamado ma jiraan. Si dheer u taabo aayad, kadibna taabo Calaamadee.',
-    ar: 'لا توجد علامات بعد. اضغط مطوّلًا على آية ثم انقر على إضافة علامة.',
+  'No bookmarks yet. Double-tap an ayah, then tap Bookmark.': {
+    so: 'Weli calaamado ma jiraan. Laba jeer taabo aayad, kadibna taabo Calaamadee.',
+    ar: 'لا توجد علامات بعد. اضغط مرّتين على آية ثم انقر على إضافة علامة.',
   },
   'Delete this khatmah plan?': { so: 'Ma tirtiraysaa qorshahan khatmadda?', ar: 'حذف خطة الختمة هذه؟' },
   'Create a plan to finish the Quran on schedule.': { so: 'Samee qorshe si aad Quraanka ugu dhammayso wakhtigiisa.', ar: 'أنشئ خطة لختم القرآن في موعده.' },
