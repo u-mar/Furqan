@@ -935,29 +935,31 @@ html.dark .mushaf-reader-immersive {
   padding-right: max(clamp(22px, 6.5vw, 44px), env(safe-area-inset-right, 0px));
 }
 
-/* The surah banner, in the style of the printed Madani mushaf: a turquoise band of
-   vines and pink flowers with the name in a cream cartouche. It belongs to the
-   page, so it is always shown. Covers both render paths: QCF glyph lines and
-   the plain fallback. The artwork is drawn in /public/mushaf. */
+/* Ornamental band around the surah name, like the printed mushaf header.
+   Always shown (it belongs to the page, not to any frame). Covers both render
+   paths: QCF glyph lines and the plain fallback. */
 .mushaf-reader-immersive .mushaf-qcf-line__surah-name,
 .mushaf-reader-immersive span.surah-header {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.12em 0;
-  font-size: 1.95em;
-  line-height: 1.4;
-  color: #12233f;
-  border: 2px solid #12233f;
-  border-radius: 3px;
-  background:
-    url('/mushaf/surah-banner-cartouche.svg') center / min(50%, 12em) 84% no-repeat,
-    url('/mushaf/surah-banner-tile.svg') center / auto 100% repeat-x,
-    #49b6de;
-  box-shadow: inset 0 0 0 2px #49b6de, inset 0 0 0 3px #12233f;
-  text-shadow: none;
+  gap: 0.5em;
+  padding: 0.02em 0.85em;
+  border: 1px solid var(--mushaf-ornament);
+  border-radius: 0.35rem;
+  background: var(--mushaf-ornament-fill);
+}
+
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name::before,
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name::after,
+.mushaf-reader-immersive span.surah-header::before,
+.mushaf-reader-immersive span.surah-header::after {
+  content: '❁';
+  font-family: serif;
+  font-size: 0.42em;
+  line-height: 1;
+  color: var(--mushaf-ornament);
+  opacity: 0.85;
 }
 
 /* The fit grid stretches to fill the page, so reserve room at its foot for the

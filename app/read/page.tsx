@@ -978,7 +978,7 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]',
+          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-[max(1.15rem,calc(env(safe-area-inset-bottom)+0.5rem))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
@@ -1142,7 +1142,7 @@ function ReadPageContent() {
           </div>
         </div>
 
-        <div className="mx-auto flex w-[90%] max-w-lg items-center gap-2.5 px-3.5 py-2">
+        <div className="mx-auto flex w-[72%] max-w-md items-center gap-2.5 px-3.5 py-2">
           <div className="relative min-w-0 flex-1">
             {sliderDragging && slidingSurahName ? (
               <span
