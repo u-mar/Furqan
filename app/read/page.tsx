@@ -603,6 +603,15 @@ function ReadPageContent() {
     setShowAyahTranslation(false)
   }, [ayahMenu?.verseKey])
 
+  // Playing from the ayah menu continues on to the next verse; once it does,
+  // the tapped ayah is no longer "selected" — without this its highlight came
+  // back the moment playback moved past it (only suppressed while reciting).
+  useEffect(() => {
+    if (ayahMenu && highlightedVerseKey && highlightedVerseKey !== ayahMenu.verseKey) {
+      setAyahMenu(null)
+    }
+  }, [ayahMenu, highlightedVerseKey])
+
   const handleToggleBookmark = useCallback(() => {
     if (!ayahMenu) return
     const verse = pageVerses.find((v) => v.verse_key === ayahMenu.verseKey)
@@ -969,7 +978,7 @@ function ReadPageContent() {
       {/* Bottom controls */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-2.5',
+          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
