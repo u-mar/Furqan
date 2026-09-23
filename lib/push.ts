@@ -37,6 +37,34 @@ export interface PushMessage {
   tag?: string
 }
 
+interface Subscribed {
+  endpoint: string
+  p256dh: string
+  auth: string
+}
+
+/** Sends to a batch of phones, forgetting any that answer "gone". Never throws. */
+async function deliver(subscriptions: Subscribed[], message: PushMessage, forget: (endpoint: string) => Promise<unknown>): Promise<void> {
+  await Promise.all(
+    subscriptions.map(async (s) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+          JSON.stringify(message),
+          { TTL: 60 * 60 * 24 }
+        )
+      } catch (err) {
+        const status = (err as { statusCode?: number }).statusCode
+        if (status === 404 || status === 410) {
+          await forget(s.endpoint).catch(() => {})
+        } else {
+          console.error('[push] send failed:', status ?? err)
+        }
+      }
+    })
+  )
+}
+
 /**
  * Tell every phone this person has signed in on. Never throws: a message that
  * cannot be sent must not undo what it was about. A phone that has removed the
@@ -46,25 +74,24 @@ export async function sendPush(username: string, message: PushMessage): Promise<
   if (!configure()) return
   try {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { username: username.toLowerCase() } })
-    await Promise.all(
-      subscriptions.map(async (s) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            JSON.stringify(message),
-            { TTL: 60 * 60 * 24 }
-          )
-        } catch (err) {
-          const status = (err as { statusCode?: number }).statusCode
-          if (status === 404 || status === 410) {
-            await prisma.pushSubscription.deleteMany({ where: { endpoint: s.endpoint } }).catch(() => {})
-          } else {
-            console.error('[push] send failed:', status ?? err)
-          }
-        }
-      })
-    )
+    await deliver(subscriptions, message, (endpoint) => prisma.pushSubscription.deleteMany({ where: { endpoint } }))
   } catch (err) {
     console.error('[push] failed:', err)
+  }
+}
+
+/**
+ * Tell the given halaqa members — everyone found is sent to, so callers should
+ * already have filtered out whoever should not hear about this. Same rules as
+ * sendPush, keyed by `memberKey` instead of a username since halaqa people have
+ * no account.
+ */
+export async function sendHalaqaPush(memberKeys: string[], message: PushMessage): Promise<void> {
+  if (!configure() || !memberKeys.length) return
+  try {
+    const subscriptions = await prisma.halaqaPushSubscription.findMany({ where: { memberKey: { in: memberKeys } } })
+    await deliver(subscriptions, message, (endpoint) => prisma.halaqaPushSubscription.deleteMany({ where: { endpoint } }))
+  } catch (err) {
+    console.error('[push] halaqa failed:', err)
   }
 }

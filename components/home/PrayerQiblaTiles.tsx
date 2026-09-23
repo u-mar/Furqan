@@ -39,9 +39,77 @@ function QiblaGlyph() {
 }
 
 /**
- * Two small shortcuts into the Prayer screen, below the next-prayer card and
- * above the weekly verse — a picture each instead of a row of text, matching
- * how the rest of Home leads with an image before a label.
+ * A small circle of people around an open book — a halaqa, a study circle
+ * reading together — drawn in the same gold-and-teal picture style as the
+ * compass, instead of a plain book icon.
+ */
+function HalaqaGlyph() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-10 w-10 shrink-0" role="img" aria-hidden>
+      <defs>
+        <linearGradient id="pqt-halaqa-dot" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#5cc4ab" />
+          <stop offset="1" stopColor="#0d6b63" />
+        </linearGradient>
+        <linearGradient id="pqt-halaqa-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f3dc9b" />
+          <stop offset="1" stopColor="#b8893a" />
+        </linearGradient>
+      </defs>
+      {/* People, seated in a ring. */}
+      <circle cx="32" cy="7.5" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      <circle cx="53.3" cy="19.8" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      <circle cx="53.3" cy="44.2" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      <circle cx="32" cy="56.5" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      <circle cx="10.7" cy="44.2" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      <circle cx="10.7" cy="19.8" r="5.6" fill="url(#pqt-halaqa-dot)" />
+      {/* An open book at the centre. */}
+      <path
+        d="M30 22.5c-3.2-1.9-7-2.7-11.2-2.4a1.8 1.8 0 0 0-1.6 1.8v17.4c0 1 .8 1.8 1.9 1.8 4-.1 7.5.8 11 2.6V22.5z"
+        fill="#f1efe8"
+      />
+      <path
+        d="M34 22.5c3.2-1.9 7-2.7 11.2-2.4a1.8 1.8 0 0 1 1.6 1.8v17.4c0 1-.8 1.8-1.9 1.8-4-.1-7.5.8-11 2.6V22.5z"
+        fill="#f1efe8"
+      />
+      <rect x="31.2" y="21.5" width="1.6" height="22.8" rx="0.8" fill="url(#pqt-halaqa-gold)" />
+    </svg>
+  )
+}
+
+function Tile({
+  href,
+  image,
+  title,
+  subtitle,
+}: {
+  href: string
+  image: React.ReactNode
+  title: string
+  subtitle: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="home-press ed-focus flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3.5 text-center"
+    >
+      {image}
+      <span className="min-w-0 w-full">
+        <span className="block truncate text-[0.8125rem] font-semibold text-[var(--home-heading)]">
+          {title}
+        </span>
+        <span className="block truncate text-[0.6875rem] tabular-nums text-[var(--home-muted)]">
+          {subtitle}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
+/**
+ * Three small shortcuts below the next-prayer card and above the weekly
+ * verse — a picture each instead of a row of text, matching how the rest
+ * of Home leads with an image before a label.
  */
 export default function PrayerQiblaTiles() {
   const t = useT()
@@ -50,42 +118,34 @@ export default function PrayerQiblaTiles() {
 
   if (!ready) {
     return (
-      <div className="grid grid-cols-2 gap-3">
-        <div className="h-[4.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
-        <div className="h-[4.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
+      <div className="grid grid-cols-3 gap-3">
+        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
+        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
+        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <Link
+    <div className="grid grid-cols-3 gap-3">
+      <Tile
         href="/prayer/qibla"
-        className="home-card home-press ed-focus flex items-center gap-3 rounded-2xl px-3.5 py-3.5"
-      >
-        <QiblaGlyph />
-        <span className="min-w-0">
-          <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-            {t('Qibla')}
-          </span>
-          <span className="block truncate text-[0.8125rem] tabular-nums text-[var(--home-muted)]">
-            {t('{degrees}°', { degrees: bearing })}
-          </span>
-        </span>
-      </Link>
-
-      <Link
+        image={<QiblaGlyph />}
+        title={t('Qibla')}
+        subtitle={t('{degrees}°', { degrees: bearing })}
+      />
+      <Tile
         href="/prayer"
-        className="home-card home-press ed-focus flex items-center gap-3 rounded-2xl px-3.5 py-3.5"
-      >
-        <img src="/icons/noto/mosque.svg" alt="" className="h-10 w-10 shrink-0" />
-        <span className="min-w-0">
-          <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-            {t('Prayer')}
-          </span>
-          <span className="block truncate text-[0.8125rem] text-[var(--home-muted)]">{t('Times')}</span>
-        </span>
-      </Link>
+        image={<img src="/icons/noto/mosque.svg" alt="" className="h-10 w-10 shrink-0" />}
+        title={t('Prayer')}
+        subtitle={t('Times')}
+      />
+      <Tile
+        href="/halaqa"
+        image={<HalaqaGlyph />}
+        title={t('Halaqa')}
+        subtitle={t('Group reading')}
+      />
     </div>
   )
 }

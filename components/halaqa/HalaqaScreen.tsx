@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Check, ChevronLeft, CloudOff, Loader2, type LucideIcon } from 'lucide-react'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -10,7 +11,10 @@ import { useT } from '@/lib/i18n'
 export function HalaqaScreen({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+      <div
+        className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
+      >
         {children}
       </div>
     </main>

@@ -11,8 +11,8 @@ import { useT } from '@/lib/i18n'
 /**
  * Read, Home, Qari, Listen — the four places the app is built around.
  * Fixed to the bottom of Home, Listen, every Qari screen except the
- * recorder, and both Prayer screens; the mushaf is its own deeper screen
- * and hides it to keep the whole screen for reading.
+ * recorder, both Prayer screens, and Halaqa; the mushaf is its own deeper
+ * screen and hides it to keep the whole screen for reading.
  */
 export default function BottomNav() {
   const t = useT()

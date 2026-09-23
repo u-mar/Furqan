@@ -223,7 +223,7 @@ function RecitationCard({
       ) : null}
 
       <div className="qari-card__strip mt-2 flex items-center gap-2.5 py-1.5 pl-1.5 pr-3">
-        <PlayButton status={status} onClick={toggle} label={recitation.title} size={34} />
+        <PlayButton status={status} onClick={toggle} label={recitation.title} size={34} ghost />
         <Waveform
           peaks={recitation.peaks}
           seed={recitation.id}

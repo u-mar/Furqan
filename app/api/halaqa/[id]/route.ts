@@ -20,6 +20,7 @@ import {
   serverDay,
   trustedToday,
 } from '@/lib/halaqa-server'
+import { sendHalaqaPush } from '@/lib/push'
 
 export const runtime = 'nodejs'
 
@@ -297,6 +298,26 @@ export async function POST(request: NextRequest, context: Context) {
           await prisma.halaqaKhatmah.update({ where: { id: current.id }, data: { completedAt: new Date() } })
         }
         break
+      }
+
+      case 'remind': {
+        const others = await prisma.halaqaMember.findMany({
+          where: { halaqaId: halaqa.id, id: { not: me.id } },
+          select: { memberKey: true },
+        })
+        const keys = [...new Set(others.map((m) => m.memberKey))]
+        const already = keys.length
+          ? await prisma.halaqaReadDay.findMany({ where: { memberKey: { in: keys }, day: today }, select: { memberKey: true } })
+          : []
+        const readSet = new Set(already.map((row) => row.memberKey))
+        const remindKeys = keys.filter((key) => !readSet.has(key))
+        await sendHalaqaPush(remindKeys, {
+          title: `${me.name} sent a reminder`,
+          body: `Have you read today in ${halaqa.name}?`,
+          url: `/halaqa/${halaqa.id}`,
+          tag: `halaqa-remind-${halaqa.id}`,
+        })
+        return NextResponse.json({ ok: true, remindedCount: remindKeys.length })
       }
 
       case 'remove': {

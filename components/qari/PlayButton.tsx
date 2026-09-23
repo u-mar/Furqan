@@ -6,8 +6,10 @@ import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
 /**
- * Round play control in ink; `accent` makes the idle state the accent, for a
- * call to play something.
+ * Round play control. `accent` makes the idle state the accent, for a call
+ * to play something. `ghost` is a light outline instead of a solid ink
+ * fill — for a control that repeats many times in a list, so only the one
+ * actually playing reads as bold.
  */
 export default function PlayButton({
   status,
@@ -15,6 +17,7 @@ export default function PlayButton({
   label,
   size = 38,
   accent = false,
+  ghost = false,
   className,
 }: {
   status: PlayerStatus
@@ -22,6 +25,7 @@ export default function PlayButton({
   label: string
   size?: number
   accent?: boolean
+  ghost?: boolean
   className?: string
 }) {
   const t = useT()
@@ -35,7 +39,11 @@ export default function PlayButton({
       aria-label={active ? t('Pause {label}', { label }) : t('Play {label}', { label })}
       className={cn(
         'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full',
-        accent && !active ? 'bg-[var(--home-sage)] text-white' : 'ed-ink',
+        accent && !active
+          ? 'bg-[var(--home-sage)] text-white'
+          : ghost && !active
+            ? 'qari-play-ghost'
+            : 'ed-ink',
         className
       )}
       style={{ width: size, height: size }}

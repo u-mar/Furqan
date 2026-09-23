@@ -9,6 +9,7 @@ export const MISC: Dict = {
   '{degrees}°': { so: '{degrees}°', ar: '{degrees}°' },
   'Mushaf & translation': { so: 'Mushaf iyo tarjumaad', ar: 'المصحف والترجمة' },
   'Read together': { so: 'Wada akhri', ar: 'اقرأوا معًا' },
+  'Group reading': { so: 'Akhris kooxeed', ar: 'قراءة جماعية' },
   'Share your recitation': { so: 'La wadaag tilaawadaada', ar: 'شارك تلاوتك' },
   'Beautiful recitation': { so: 'Tilaawo qurux badan', ar: 'تلاوة جميلة' },
   'Tafseer for this ayah is not available yet — I am working on it.': {

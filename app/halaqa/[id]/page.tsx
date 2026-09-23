@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookOpen, ChevronRight, Copy, MessageCircle, MoreHorizontal, RefreshCw, Send, UserPlus } from 'lucide-react'
+import { Bell, BellRing, BookOpen, ChevronRight, Copy, MessageCircle, MoreHorizontal, RefreshCw, Send, UserPlus } from 'lucide-react'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import TodayCard from '@/components/halaqa/TodayCard'
+import Switch from '@/components/qari/Switch'
 import {
   ActionButton,
   ErrorCard,
@@ -27,6 +28,7 @@ import {
   halaqaAction,
   peekHalaqa,
   markReadToday,
+  remindHalaqa,
   scheduleLabel,
   shortDay,
   whatsAppLink,
@@ -34,6 +36,7 @@ import {
   type HalaqaDetail,
   type HalaqaMemberView,
 } from '@/lib/halaqa'
+import { disableHalaqaPush, enableHalaqaPush, pushState, syncHalaqaPush, type PushState } from '@/lib/push-client'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 
@@ -149,6 +152,8 @@ export default function HalaqaPage() {
         />
       </Rise>
 
+      <NotifyBanner />
+
       <Rise order={1} className="home-card mt-3 overflow-hidden rounded-2xl">
         <button
           type="button"
@@ -248,6 +253,55 @@ export default function HalaqaPage() {
   )
 }
 
+/** Lets this phone opt in to the reminders other members send from "Share today's check-in". */
+function NotifyBanner() {
+  const t = useT()
+  const [push, setPush] = useState<PushState | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void pushState().then((state) => {
+      setPush(state)
+      if (state === 'on') void syncHalaqaPush()
+    })
+  }, [])
+
+  if (!push || push === 'unconfigured') return null
+
+  const toggle = async (next: boolean) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      setPush(next ? await enableHalaqaPush() : await disableHalaqaPush())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Rise className="home-card mt-3 flex items-center gap-3 rounded-2xl px-3.5 py-3">
+      <span className="set-row__icon" aria-hidden>
+        {push === 'on' ? <BellRing className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <Bell className="h-[17px] w-[17px]" strokeWidth={1.9} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Get reminded to read')}</span>
+        <span className="mt-0.5 block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
+          {push === 'needs-install'
+            ? t('On iPhone, first add this app to your Home Screen (Share, then Add to Home Screen), then open it from there.')
+            : push === 'blocked'
+              ? t('Notifications are blocked. Allow them for this app in your phone’s settings.')
+              : push === 'unsupported'
+                ? t('This browser cannot show notifications when it is closed.')
+                : t('Hear it here when someone in this halaqa sends a reminder.')}
+        </span>
+      </span>
+      {push === 'off' || push === 'on' ? (
+        <Switch checked={push === 'on'} onChange={(next) => void toggle(next)} label={t('Get reminded to read')} />
+      ) : null}
+    </Rise>
+  )
+}
+
 function JuzDone({ done }: { done: number }) {
   const t = useT()
   const shown = useCountUp(done)
@@ -298,12 +352,42 @@ function PeopleList({
 function ShareCheckIn({ open, detail, onClose }: { open: boolean; detail: HalaqaDetail; onClose: () => void }) {
   const t = useT()
   const message = open ? checkInMessage(detail) : ''
+  const [reminding, setReminding] = useState(false)
+  const notYet = detail.members.filter((m) => !m.readToday && !m.isMe).length
+
+  const remind = async () => {
+    if (reminding) return
+    tapFeedback()
+    setReminding(true)
+    try {
+      const { remindedCount } = await remindHalaqa(detail.halaqa.id)
+      successFeedback()
+      toastSuccess(
+        remindedCount === 1
+          ? tr('Reminder sent to 1 person')
+          : remindedCount > 1
+            ? tr('Reminder sent to {count} people', { count: remindedCount })
+            : tr('Everyone has already read today')
+      )
+      onClose()
+    } catch (err) {
+      errorFeedback()
+      toastError(errorMessage(err, tr('Could not send that reminder.')))
+    } finally {
+      setReminding(false)
+    }
+  }
+
   return (
-    <SettingsSheet open={open} title={t('Today\'s check-in')} description={t('Post it in your WhatsApp group.')} onClose={onClose}>
+    <SettingsSheet open={open} title={t('Today\'s check-in')} description={t('Post it, or send a reminder straight to their phone.')} onClose={onClose}>
       <div className="halaqa-bubble qari-enter whitespace-pre-line px-3.5 py-3 text-[0.90625rem] leading-relaxed text-[var(--home-heading)]">
         {message}
       </div>
       <div className="mt-5 flex flex-col gap-2.5">
+        {notYet > 0 ? (
+          <ActionButton icon={BellRing} busy={reminding} disabled={reminding} onClick={() => void remind()}>
+            {t('Send a reminder to read')}</ActionButton>
+        ) : null}
         <a
           href={whatsAppLink(message)}
           target="_blank"
@@ -312,7 +396,10 @@ function ShareCheckIn({ open, detail, onClose }: { open: boolean; detail: Halaqa
             tapFeedback()
             onClose()
           }}
-          className="ed-ink ed-focus fx-press flex h-12 items-center justify-center gap-2 rounded-full text-[0.90625rem] font-semibold"
+          className={cn(
+            'ed-focus fx-press flex h-12 items-center justify-center gap-2 rounded-full text-[0.90625rem] font-semibold',
+            notYet > 0 ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)]' : 'ed-ink'
+          )}
         >
           <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
           {t('Share on WhatsApp')}</a>

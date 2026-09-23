@@ -260,3 +260,18 @@ model PushSubscription {
   @@index([username])
   @@index([endpoint])
 }
+
+/// A phone that agreed to be notified, for one halaqa member. Keyed by the same
+/// hashed `memberKey` as HalaqaMember, since halaqa people have no account.
+model HalaqaPushSubscription {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberKey String
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([memberKey])
+  @@index([endpoint])
+}

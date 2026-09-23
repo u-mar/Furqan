@@ -1,5 +1,7 @@
 'use client'
 
+import { halaqaKey } from '@/lib/halaqa'
+
 /**
  * Turning on notifications for this phone. The person has to say yes (from a
  * tap: phones refuse to ask otherwise), the phone hands back an address for
@@ -109,4 +111,55 @@ export async function syncPush(viewer: Viewer): Promise<void> {
   const reg = await registration()
   const sub = await reg?.pushManager.getSubscription()
   if (sub) await save(viewer, sub)
+}
+
+/* --------------------------------------------------------- halaqa reminders */
+
+async function saveHalaqa(subscription: PushSubscription): Promise<boolean> {
+  const res = await fetch('/api/halaqa/push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-halaqa-key': halaqaKey() },
+    body: JSON.stringify({ subscription: subscription.toJSON() }),
+  }).catch(() => null)
+  return Boolean(res?.ok)
+}
+
+/** Same flow as enablePush, for the reminders other halaqa members send — no account needed. */
+export async function enableHalaqaPush(): Promise<PushState> {
+  const state = await pushState()
+  if (state !== 'off') return state
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off'
+  const reg = await registration()
+  if (!reg) return 'unsupported'
+  try {
+    const subscription =
+      (await reg.pushManager.getSubscription()) ??
+      (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(PUBLIC_KEY) }))
+    return (await saveHalaqa(subscription)) ? 'on' : 'off'
+  } catch {
+    return 'off'
+  }
+}
+
+export async function disableHalaqaPush(): Promise<PushState> {
+  const reg = await registration()
+  const sub = await reg?.pushManager.getSubscription()
+  if (sub) {
+    await fetch('/api/halaqa/push', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-halaqa-key': halaqaKey() },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    }).catch(() => {})
+    await sub.unsubscribe().catch(() => {})
+  }
+  return pushState()
+}
+
+/** Where notifications are already allowed, tell the server about this phone again — same as syncPush. */
+export async function syncHalaqaPush(): Promise<void> {
+  if ((await pushState()) !== 'on') return
+  const reg = await registration()
+  const sub = await reg?.pushManager.getSubscription()
+  if (sub) await saveHalaqa(sub)
 }

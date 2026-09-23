@@ -1133,7 +1133,7 @@ function ReadPageContent() {
           </div>
         </div>
 
-        <div className="mushaf-read-chrome-panel mx-auto flex w-[90%] max-w-lg items-center gap-2.5 rounded-xl px-3.5 py-2">
+        <div className="mx-auto flex w-[90%] max-w-lg items-center gap-2.5 px-3.5 py-2">
           <div className="relative min-w-0 flex-1">
             {sliderDragging && slidingSurahName ? (
               <span

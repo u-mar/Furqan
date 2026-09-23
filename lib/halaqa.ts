@@ -320,6 +320,14 @@ export async function halaqaAction(
   return done
 }
 
+/** Pushes a "have you read today?" reminder to everyone else in the halaqa who has not read yet. */
+export async function remindHalaqa(id: string): Promise<{ remindedCount: number }> {
+  return request<{ remindedCount: number }>(`/api/halaqa/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'remind', today: localDay() }),
+  })
+}
+
 export async function deleteHalaqa(id: string): Promise<{ ok: boolean }> {
   const done = await request<{ ok: boolean }>(`/api/halaqa/${encodeURIComponent(id)}`, { method: 'DELETE' })
   dropCache(DETAIL_CACHE + id)
