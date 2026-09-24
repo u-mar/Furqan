@@ -2,7 +2,7 @@
 export const QCF_FONT_CDN_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2'
 
 export const SURAH_NAME_FONT_URL =
-  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf'
+  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/surah-header/QCF_SurahHeader_COLOR-Regular.ttf'
 
 export const TOTAL_MUSHAF_FONT_PAGES = 604
 

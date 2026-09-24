@@ -1,5 +1,6 @@
 import type { AppLanguage } from '@/lib/i18n-core'
 import { HALAQA } from '@/lib/i18n-dict-halaqa'
+import { HIFDH } from '@/lib/i18n-dict-hifdh'
 import { QARI } from '@/lib/i18n-dict-qari'
 import { READ } from '@/lib/i18n-dict-read'
 import { LISTEN } from '@/lib/i18n-dict-listen'
@@ -65,4 +66,4 @@ const SETTINGS: Dict = {
   'For Sadaqah Jariyah': { so: 'Sadaqo Jaariya ah', ar: 'صدقة جارية' },
 }
 
-export const DICT: Dict = { ...SETTINGS, ...HALAQA, ...QARI, ...READ, ...LISTEN, ...ACCOUNT, ...MISC }
+export const DICT: Dict = { ...SETTINGS, ...HALAQA, ...HIFDH, ...QARI, ...READ, ...LISTEN, ...ACCOUNT, ...MISC }

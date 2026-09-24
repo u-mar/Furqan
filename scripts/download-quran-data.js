@@ -4,7 +4,7 @@
  * Build a high-quality offline Quran bundle:
  * - public/quran-data.json  (QCF code_v2 + line layout for all 604 Madani pages)
  * - public/qcf/p{n}.woff2  (page fonts for offline glyph rendering)
- * - public/fonts/surah-name-v2.ttf
+ * - public/fonts/surah-header-color.ttf
  * - public/offline-manifest.json
  *
  * Usage: node scripts/download-quran-data.js [--skip-fonts] [--fonts-only]
@@ -18,7 +18,7 @@ const http = require('http')
 const QURAN_API_BASE = 'https://api.quran.com/api/v4'
 const QCF_FONT_CDN_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2'
 const SURAH_NAME_FONT_URL =
-  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf'
+  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/surah-header/QCF_SurahHeader_COLOR-Regular.ttf'
 const TOTAL_PAGES = 604
 const BUNDLE_VERSION = 2
 
@@ -225,7 +225,7 @@ async function downloadFonts(publicDir) {
   console.log('\n🔤  Downloading mushaf fonts (604 page files + surah names)…\n')
 
   const qcfDir = path.join(publicDir, 'qcf')
-  const surahDest = path.join(publicDir, 'fonts', 'surah-name-v2.ttf')
+  const surahDest = path.join(publicDir, 'fonts', 'surah-header-color.ttf')
   fs.mkdirSync(qcfDir, { recursive: true })
 
   let totalBytes = 0
@@ -235,7 +235,7 @@ async function downloadFonts(publicDir) {
   const surahResult = await downloadFile(SURAH_NAME_FONT_URL, surahDest, 'surah names')
   totalBytes += surahResult.size || 0
   if (surahResult.skipped) skipped += 1
-  console.log(`  ✓ Surah name font → fonts/surah-name-v2.ttf`)
+  console.log(`  ✓ Surah name font → fonts/surah-header-color.ttf`)
 
   const concurrency = 10
   let nextPage = 1
@@ -278,7 +278,7 @@ async function writeManifest(publicDir, stats) {
     generatedAt: new Date().toISOString(),
     quranData: fs.existsSync(path.join(publicDir, 'quran-data.json')),
     fonts: fs.existsSync(path.join(publicDir, 'qcf', 'p1.woff2')),
-    surahNameFont: fs.existsSync(path.join(publicDir, 'fonts', 'surah-name-v2.ttf')),
+    surahNameFont: fs.existsSync(path.join(publicDir, 'fonts', 'surah-header-color.ttf')),
     ...stats,
   }
   const manifestPath = path.join(publicDir, 'offline-manifest.json')

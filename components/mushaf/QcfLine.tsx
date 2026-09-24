@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { memo, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
 import { BASMALAH_ARABIC, BASMALAH_ORNAMENT } from '@/lib/mushaf-basmalah'
@@ -16,6 +16,7 @@ function QcfSegment({
   onLongPress,
   onSelect,
   ayahSelectMode,
+  hidden,
 }: {
   segment: QcfPageSegment
   index: number
@@ -24,6 +25,8 @@ function QcfSegment({
   onLongPress?: (verseKey: string) => void
   onSelect?: (verseKey: string) => void
   ayahSelectMode?: boolean
+  /** Hifdh Test: keeps this word's shaped width so lines don't reflow, but paints nothing. */
+  hidden?: boolean
 }) {
   const longPress = useLongPress(() => onLongPress?.(segment.verseKey))
   // The ayah-number ornament never gets a highlight wash — only the words
@@ -40,8 +43,10 @@ function QcfSegment({
         segment.isEnd && 'mushaf-qcf-segment--end',
         (onLongPress || onSelect) && 'mushaf-qcf-segment--pressable',
         isReciting && 'mushaf-qcf-segment--reciting',
-        isSelected && 'mushaf-qcf-segment--selected'
+        isSelected && 'mushaf-qcf-segment--selected',
+        hidden && 'mushaf-qcf-segment--hidden'
       )}
+      aria-hidden={hidden}
       {...(onLongPress ? longPress.handlers : {})}
       onClick={(e) => {
         if (!ayahSelectMode || !onSelect) return
@@ -54,7 +59,13 @@ function QcfSegment({
   )
 }
 
-/** Fit long lines by font size (not scale) so QCF glyphs do not overlap at line starts. */
+/**
+ * Sizing happens once per page, not here — see `fitQcfPageLines` in
+ * `QcfPage.tsx`. Every content line on a page must land on the same final
+ * font size, so one unusually wide line doesn't get shrunk on its own while
+ * its neighbours stay at full size, which is what made some words look
+ * bigger than others on the same page.
+ */
 function QcfLineGlyphs({
   segments,
   style,
@@ -64,6 +75,7 @@ function QcfLineGlyphs({
   onSegmentLongPress,
   onSegmentSelect,
   ayahSelectMode,
+  isSegmentHidden,
 }: {
   segments: QcfPageSegment[]
   style: CSSProperties
@@ -73,71 +85,12 @@ function QcfLineGlyphs({
   onSegmentLongPress?: (verseKey: string) => void
   onSegmentSelect?: (verseKey: string) => void
   ayahSelectMode?: boolean
+  /** Hifdh Test: per-word visibility (independent of the whole-line `invisible` toggle). */
+  isSegmentHidden?: (segment: QcfPageSegment, index: number) => boolean
 }) {
-  const outerRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLSpanElement>(null)
-
-  useLayoutEffect(() => {
-    const outer = outerRef.current
-    const inner = innerRef.current
-    if (!outer || !inner) return
-
-    // Both the line box and its scale wrapper grow to fit their own nowrap
-    // content, so neither can tell us the real constraint. Measure against the
-    // page column (.mushaf-fit-grid), which is bounded by the viewport.
-    const lineEl = outer.parentElement
-    const container = outer.closest('.mushaf-fit-grid') ?? lineEl ?? outer
-
-    const fit = () => {
-      inner.style.transform = 'none'
-      inner.style.fontSize = ''
-
-      // How much of the column the script may occupy. Full-width mode raises
-      // this so the glyphs shrink less and render larger.
-      const fitVar = parseFloat(
-        getComputedStyle(outer).getPropertyValue('--mushaf-line-fit')
-      )
-      const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
-      const lineCs = lineEl ? getComputedStyle(lineEl) : null
-      const inset = lineCs
-        ? (parseFloat(lineCs.paddingLeft) || 0) + (parseFloat(lineCs.paddingRight) || 0)
-        : 0
-      const available = (container.clientWidth - inset) * fitFactor
-      const needed = inner.scrollWidth
-      if (needed <= available || available <= 0) return
-
-      const basePx = parseFloat(getComputedStyle(inner).fontSize)
-      if (!Number.isFinite(basePx) || basePx <= 0) return
-
-      const ratio = (available / needed) * 0.995
-      inner.style.fontSize = `${Math.max(14, basePx * ratio)}px`
-    }
-
-    fit()
-    const observer = new ResizeObserver(fit)
-    observer.observe(container)
-
-    // Glyph widths change once the page's QCF font swaps in, so the first
-    // measurement can under-report and skip the shrink. Re-fit when fonts settle.
-    let cancelled = false
-    const refit = () => {
-      if (!cancelled) fit()
-    }
-    const fonts = typeof document !== 'undefined' ? document.fonts : undefined
-    fonts?.ready.then(refit).catch(() => {})
-    fonts?.addEventListener?.('loadingdone', refit)
-
-    return () => {
-      cancelled = true
-      observer.disconnect()
-      fonts?.removeEventListener?.('loadingdone', refit)
-    }
-  }, [segments])
-
   return (
-    <div ref={outerRef} className="mushaf-qcf-line__scale">
+    <div className="mushaf-qcf-line__scale">
       <span
-        ref={innerRef}
         className={cn('mushaf-qcf-line__glyphs', invisible && 'mushaf-qcf-line__glyphs--hidden')}
         style={style}
         aria-hidden={invisible}
@@ -152,6 +105,7 @@ function QcfLineGlyphs({
             onLongPress={onSegmentLongPress}
             onSelect={onSegmentSelect}
             ayahSelectMode={ayahSelectMode}
+            hidden={isSegmentHidden?.(segment, index)}
           />
         ))}
       </span>
@@ -170,6 +124,7 @@ export interface QcfLineProps {
   revealState?: QcfLineRevealState
   nextVerseKey?: string | null
   onReveal?: (verseKey: string) => void
+  isSegmentHidden?: (segment: QcfPageSegment, index: number) => boolean
 }
 
 function QcfLineComponent({
@@ -183,6 +138,7 @@ function QcfLineComponent({
   revealState = 'shown',
   nextVerseKey = null,
   onReveal,
+  isSegmentHidden,
 }: QcfLineProps) {
   const t = useT()
   const glyphStyle = { fontFamily: `"${qcfFontFamily}", serif` } as const
@@ -222,6 +178,7 @@ function QcfLineComponent({
         segments={line.segments}
         style={glyphStyle}
         invisible={revealState === 'tap'}
+        isSegmentHidden={isSegmentHidden}
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}
         onSegmentLongPress={segmentLongPress}

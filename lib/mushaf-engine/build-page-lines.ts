@@ -1,6 +1,7 @@
 import { surahHasOpeningBasmalah } from '@/lib/mushaf-basmalah'
 import type { Verse, VerseWord } from '@/types'
 import type { MushafLineModel, MushafLineSegment, MushafPageModel } from '@/lib/mushaf-engine/types'
+import { surahHeaderGlyph } from '@/lib/mushaf-engine/surah-header-glyphs'
 import {
   compareMushafWords,
   sortVersesByKey,
@@ -71,6 +72,7 @@ function segmentFromWord(word: VerseWord & { verseKey: string }): MushafLineSegm
     verseKey: word.verseKey,
     codeV2,
     isEnd: word.char_type_name === 'end',
+    position: word.position,
   }
 }
 
@@ -159,5 +161,5 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
 }
 
 export function surahHeaderToken(chapterNumber: number): string {
-  return `surah${String(chapterNumber).padStart(3, '0')}`
+  return surahHeaderGlyph(chapterNumber)
 }

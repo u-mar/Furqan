@@ -582,11 +582,11 @@ export default function QuranPageView({
                   line.isBasmalah && 'mushaf-page-line--basmalah basmalah-ornament-inline'
                 )
           )
-          const lineStyle = {
-            fontFamily: line.isSurahHeader
-              ? 'SurahNameV2'
-              : PLAIN_MUSHAF_FONT,
-          }
+          // This branch always renders the surah's real name text (formatSurahHeaderLabel
+          // below), never the QCF glyph token — 'SurahNameV2' now points at a font whose
+          // only glyphs are the per-surah banner ligatures, so plain Arabic text needs the
+          // ordinary mushaf font here, same as everything else on the line.
+          const lineStyle = { fontFamily: PLAIN_MUSHAF_FONT }
 
           return (
           <div

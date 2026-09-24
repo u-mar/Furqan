@@ -10,6 +10,10 @@ export interface QcfPageSegment {
   text: string
   /** True when this segment is just the ayah-end ornament glyph. */
   isEnd?: boolean
+  /** The word's position within its verse — only meaningful when this segment
+   *  wasn't merged with a neighbour (see `neverMergeVerseKeys`), i.e. it still
+   *  represents exactly one word. */
+  position?: number
 }
 
 export interface QcfPageLine {
@@ -23,16 +27,20 @@ export interface QcfPageLine {
   chapterNumber?: number
 }
 
-function mergeAdjacentSegments(segments: QcfPageSegment[]): QcfPageSegment[] {
+function mergeAdjacentSegments(segments: QcfPageSegment[], neverMergeVerseKeys?: Set<string>): QcfPageSegment[] {
   const merged: QcfPageSegment[] = []
   for (const seg of segments) {
     const last = merged[merged.length - 1]
+    const keepSeparate = neverMergeVerseKeys?.has(seg.verseKey)
     // Never merge across an ayah-end glyph — it stays its own segment so the
     // UI can style the ornament separately from the surrounding ayah text.
-    if (last && last.verseKey === seg.verseKey && !last.isEnd && !seg.isEnd) {
+    // A verse in `neverMergeVerseKeys` also stays word-by-word (Hifdh Test's
+    // per-word reveal needs one segment per word to reveal them one at a time).
+    if (last && last.verseKey === seg.verseKey && !last.isEnd && !seg.isEnd && !keepSeparate) {
       last.text += seg.text
+      last.position = undefined
     } else {
-      merged.push({ verseKey: seg.verseKey, text: seg.text, isEnd: seg.isEnd })
+      merged.push({ verseKey: seg.verseKey, text: seg.text, isEnd: seg.isEnd, position: seg.position })
     }
   }
   return merged
@@ -70,7 +78,11 @@ function lineDisplayText(line: MushafLineModel): string {
  * Ordering: `lib/mushaf-engine/word-order.ts` — line_number → verse → position → id.
  * Only non-empty `code_v2` tokens are included (ayah ends must be QCF glyphs, not Unicode ۝).
  */
-export function buildQcfPageLayout(verses: Verse[], pageNumber: number): QcfPageLayout {
+export function buildQcfPageLayout(
+  verses: Verse[],
+  pageNumber: number,
+  options?: { neverMergeVerseKeys?: Set<string> }
+): QcfPageLayout {
   const model = buildMushafPageModel(verses, pageNumber)
   const lines: QcfPageLine[] = model.lines.map((line) => ({
     lineNumber: line.lineNumber,
@@ -81,7 +93,9 @@ export function buildQcfPageLayout(verses: Verse[], pageNumber: number): QcfPage
         verseKey: segment.verseKey,
         text: segment.codeV2,
         isEnd: segment.isEnd,
-      }))
+        position: segment.position,
+      })),
+      options?.neverMergeVerseKeys
     ),
     verseKeys: line.verseKeys,
     chapterNumber: line.chapterNumber,

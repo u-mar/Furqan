@@ -117,7 +117,7 @@ function levenshtein(a: string, b: string): number {
  * fewer never fuzz: at that length half the Quran's function words are one
  * edit apart from each other, so tolerance there just invents false matches.
  */
-function wordsAreClose(a: string, b: string): boolean {
+export function wordsAreClose(a: string, b: string): boolean {
   if (a === b) return true
   const maxLen = Math.max(a.length, b.length)
   if (maxLen <= 3) return false

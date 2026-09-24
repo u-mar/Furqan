@@ -114,8 +114,11 @@
   pointer-events: none;
 }
 
+/* The banner glyph is a wide strip (~1.9:1), not a letterform, so it's sized
+   by viewport width rather than the smaller line-height-driven scale text
+   glyphs use. */
 .mushaf-qcf-line__surah-name {
-  font-size: clamp(28px, 5.5vw, 52px);
+  font-size: clamp(32px, 40vw, 84px);
   line-height: 1;
   letter-spacing: 0;
   word-spacing: 0;
@@ -189,6 +192,12 @@ html.dark .mushaf-qcf-segment--selected {
 .mushaf-qcf-line__glyphs--hidden {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Hifdh Test's Surprise ayah: one hidden word, not the whole line — keeps its
+   shaped width so the page's real line breaks and rhythm stay intact. */
+.mushaf-qcf-segment--hidden {
+  visibility: hidden;
 }
 
 /* Block global Quranic utility classes inside mushaf */

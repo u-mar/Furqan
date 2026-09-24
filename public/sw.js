@@ -1,11 +1,11 @@
 const CACHE_VERSION = 'al-quran-v10'
-const STATIC_CACHE = 'al-quran-static-v9'
+const STATIC_CACHE = 'al-quran-static-v10'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
 const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
-const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-name-v2.ttf']
+const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf']
 
 function isNavigationRequest(request) {
   return (

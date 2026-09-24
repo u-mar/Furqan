@@ -130,7 +130,7 @@ body {
 
 @font-face {
   font-family: 'SurahNameV2';
-  src: url('/fonts/surah-name-v2.ttf') format('truetype');
+  src: url('/fonts/surah-header-color.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -935,10 +935,19 @@ html.dark .mushaf-reader-immersive {
   padding-right: max(clamp(22px, 6.5vw, 44px), env(safe-area-inset-right, 0px));
 }
 
-/* Ornamental band around the surah name, like the printed mushaf header.
-   Always shown (it belongs to the page, not to any frame). Covers both render
-   paths: QCF glyph lines and the plain fallback. */
-.mushaf-reader-immersive .mushaf-qcf-line__surah-name,
+/* The QCF surah-name glyph (from QCF_SurahHeader_COLOR) draws a complete
+   printed-mushaf-style banner by itself — border, background band and all —
+   so it only needs centring, not another frame drawn around it. */
+.mushaf-reader-immersive .mushaf-qcf-line__surah-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* The plain-text fallback (real Arabic name, shown when QCF glyph data isn't
+   available for a page) still needs its own drawn frame, like the printed
+   mushaf header. */
 .mushaf-reader-immersive span.surah-header {
   display: inline-flex;
   align-items: center;
@@ -950,8 +959,6 @@ html.dark .mushaf-reader-immersive {
   background: var(--mushaf-ornament-fill);
 }
 
-.mushaf-reader-immersive .mushaf-qcf-line__surah-name::before,
-.mushaf-reader-immersive .mushaf-qcf-line__surah-name::after,
 .mushaf-reader-immersive span.surah-header::before,
 .mushaf-reader-immersive span.surah-header::after {
   content: '❁';
@@ -1822,6 +1829,96 @@ html.dark .legal-summary li::before {
   width: 1.875rem;
   height: 1.875rem;
   border-radius: 0.5rem;
+}
+
+/* Hifdh Test's reveal hints: small round buttons riding in the same
+   floating lane as the record button, left of it. */
+.hifdh-hint {
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--home-rule-strong);
+  background: var(--app-bg);
+  color: var(--home-heading);
+  transition: transform 0.12s ease;
+}
+
+.hifdh-hint:active {
+  transform: scale(0.92);
+}
+
+.hifdh-hint:disabled {
+  opacity: 0.4;
+}
+
+/* Hifdh Test's record button: a floating glowing circle in the corner,
+   like Tarteel's — not the ringed qari-rec button. */
+.hifdh-rec {
+  display: flex;
+  width: 4.25rem;
+  height: 4.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: none;
+  background: #22c55e;
+  color: #fff;
+  box-shadow:
+    0 10px 22px rgba(34, 197, 94, 0.4),
+    0 0 0 10px rgba(34, 197, 94, 0.14);
+  transition:
+    transform 0.12s ease,
+    background 0.2s ease,
+    box-shadow 0.3s ease;
+}
+
+.hifdh-rec:active {
+  transform: scale(0.94);
+}
+
+.hifdh-rec--listening {
+  animation: hifdh-rec-pulse 1.4s ease-in-out infinite;
+}
+
+.hifdh-rec--correct {
+  background: #16a34a;
+  box-shadow:
+    0 10px 22px rgba(22, 163, 74, 0.4),
+    0 0 0 10px rgba(22, 163, 74, 0.14);
+}
+
+.hifdh-rec--incorrect {
+  background: #64748b;
+  box-shadow:
+    0 10px 22px rgba(100, 116, 139, 0.35),
+    0 0 0 10px rgba(100, 116, 139, 0.12);
+}
+
+.hifdh-rec--disabled {
+  opacity: 0.55;
+}
+
+@keyframes hifdh-rec-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 22px rgba(34, 197, 94, 0.4),
+      0 0 0 10px rgba(34, 197, 94, 0.14);
+  }
+  50% {
+    box-shadow:
+      0 10px 26px rgba(34, 197, 94, 0.55),
+      0 0 0 16px rgba(34, 197, 94, 0.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hifdh-rec--listening {
+    animation: none;
+  }
 }
 
 .qari-done {

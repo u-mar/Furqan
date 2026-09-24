@@ -10,7 +10,7 @@ import { tr } from '@/lib/i18n-core'
 /** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
 export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
 const CACHE_NAME = QCF_FONT_CACHE_NAME
-const SURAH_CACHE_KEY = '/fonts/surah-name-v2.ttf'
+const SURAH_CACHE_KEY = '/fonts/surah-header-color.ttf'
 
 export function areOfflineFontsCached(): boolean {
   if (typeof window === 'undefined') return false
@@ -105,7 +105,7 @@ export async function resolveSurahNameFontUrl(): Promise<string> {
     }
   }
 
-  const local = '/fonts/surah-name-v2.ttf'
+  const local = '/fonts/surah-header-color.ttf'
   try {
     const head = await fetch(local, { method: 'HEAD' })
     if (head.ok) return local
