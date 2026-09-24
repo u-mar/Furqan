@@ -33,6 +33,7 @@ import {
   getAppSettings,
   setAppSettings,
   type MushafWidthMode,
+  type ReadingMode,
   type ThemeMode,
 } from '@/lib/app-settings'
 import {
@@ -49,7 +50,7 @@ import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@/lib/i18n'
 
-type SheetName = 'mushaf' | 'translation' | 'feedback' | 'language'
+type SheetName = 'mushaf' | 'reading-mode' | 'translation' | 'feedback' | 'language'
 
 /* Each dot depicts a theme, so its colour is fixed rather than a token. */
 const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
@@ -61,6 +62,12 @@ const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
 const MUSHAF_WIDTHS: { mode: MushafWidthMode; label: string; hint: string; inset: string }[] = [
   { mode: 'full', label: 'Full width', hint: 'Bigger script', inset: '0.5rem' },
   { mode: 'spaced', label: 'Spaced', hint: 'Margins on the sides', inset: '1.15rem' },
+]
+
+const READING_MODES: { mode: ReadingMode; label: string; hint: string }[] = [
+  { mode: 'horizontal', label: 'Horizontal swipe', hint: 'Swipe left and right, like turning pages' },
+  { mode: 'vertical', label: 'Vertical swipe', hint: 'Swipe up and down, one page at a time' },
+  { mode: 'continuous', label: 'Continuous scroll', hint: 'Scroll smoothly, with no page-turn' },
 ]
 
 const btnBase =
@@ -133,7 +140,7 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
-  const [verticalPages, setVerticalPages] = useState(false)
+  const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
     so: false,
@@ -169,7 +176,7 @@ export default function SettingsPage() {
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
     setVerseWallpapers(s.verseWallpapersEnabled)
-    setVerticalPages(s.verticalPages)
+    setReadingMode(s.readingMode)
     setTranslationCached({
       en: areTranslationsCached('en'),
       so: areTranslationsCached('so'),
@@ -215,14 +222,15 @@ export default function SettingsPage() {
     setAppSettings({ mushafWidth: next })
   }
 
+  function saveReadingMode(next: ReadingMode) {
+    setReadingMode(next)
+    setAppSettings({ readingMode: next })
+    setSheet(null)
+  }
+
   function saveVerseWallpapers(next: boolean) {
     setVerseWallpapers(next)
     setAppSettings({ verseWallpapersEnabled: next })
-  }
-
-  function saveVerticalPages(next: boolean) {
-    setVerticalPages(next)
-    setAppSettings({ verticalPages: next })
   }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
@@ -367,11 +375,14 @@ export default function SettingsPage() {
             <RowChevron />
           </button>
           <Divider />
-          <label className="set-row cursor-pointer">
+          <button type="button" className="set-row" onClick={() => setSheet('reading-mode')}>
             <RowIcon icon={ArrowUpDown} />
-            <span className="set-row__label">{t('Vertical page swipes')}</span>
-            <Switch checked={verticalPages} onChange={saveVerticalPages} label={t('Vertical page swipes')} />
-          </label>
+            <span className="set-row__label">{t('Page navigation')}</span>
+            <span className="set-row__value">
+              {t(READING_MODES.find((m) => m.mode === readingMode)?.label ?? 'Horizontal swipe')}
+            </span>
+            <RowChevron />
+          </button>
           <Divider />
           <label className="set-row cursor-pointer">
             <RowIcon icon={ImageIcon} />
@@ -493,6 +504,42 @@ export default function SettingsPage() {
                     </span>
                   ) : null}
                 </span>
+              </button>
+            )
+          })}
+        </div>
+      </SettingsSheet>
+
+      {/* Page navigation */}
+      <SettingsSheet
+        open={sheet === 'reading-mode'}
+        title={t('Page navigation')}
+        description={t('How you move between pages in Read.')}
+        onClose={closeSheet}
+      >
+        <div
+          className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]"
+          role="radiogroup"
+          aria-label={t('Page navigation')}
+        >
+          {READING_MODES.map(({ mode, label, hint }) => {
+            const selected = readingMode === mode
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => saveReadingMode(mode)}
+                className="set-row"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[0.9375rem] font-semibold">{t(label)}</span>
+                  <span className="block text-xs text-[var(--home-muted)]">{t(hint)}</span>
+                </span>
+                {selected ? (
+                  <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
+                ) : null}
               </button>
             )
           })}

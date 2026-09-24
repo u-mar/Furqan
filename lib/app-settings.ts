@@ -17,6 +17,18 @@ function isWidthMode(value: unknown): value is MushafWidthMode {
   return value === 'full' || value === 'spaced'
 }
 
+/**
+ * How moving between pages works in Read.
+ * - `horizontal` — swipe left/right, book-flip style
+ * - `vertical`   — swipe up/down, one page at a time
+ * - `continuous` — scroll, pages flow into each other with no page-turn
+ */
+export type ReadingMode = 'horizontal' | 'vertical' | 'continuous'
+
+function isReadingMode(value: unknown): value is ReadingMode {
+  return value === 'horizontal' || value === 'vertical' || value === 'continuous'
+}
+
 export interface AppSettings {
   theme: ThemeMode
   /** Mushaf page width. */
@@ -27,8 +39,8 @@ export interface AppSettings {
   reciterId: string
   /** Reciter for full-surah playback in Listen — may be surah-only. */
   listenReciterId: string
-  /** Swipe up/down to turn pages instead of left/right. */
-  verticalPages: boolean
+  /** How moving between pages works in Read. */
+  readingMode: ReadingMode
   /** Translation text language in read mode. */
   translationLanguage: TranslationLanguageId
   /** Which edition/translator of translationLanguage to show, e.g. "en.pickthall". */
@@ -58,14 +70,16 @@ const defaults: AppSettings = {
   translationsDownloaded: false,
   reciterId: DEFAULT_RECITER_ID,
   listenReciterId: DEFAULT_RECITER_ID,
-  verticalPages: false,
+  readingMode: 'horizontal',
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
   translationEditionId: DEFAULT_TRANSLATION_EDITION[DEFAULT_TRANSLATION_LANGUAGE],
   verseWallpapersEnabled: false,
   language: 'en',
 }
 
-function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }): AppSettings {
+function parseSettings(
+  parsed: Partial<AppSettings> & { mushafStyle?: string; verticalPages?: boolean }
+): AppSettings {
   const reciterId =
     typeof parsed.reciterId === 'string' && parsed.reciterId.length > 0
       ? parsed.reciterId
@@ -80,7 +94,12 @@ function parseSettings(parsed: Partial<AppSettings> & { mushafStyle?: string }):
       typeof parsed.listenReciterId === 'string' && parsed.listenReciterId.length > 0
         ? parsed.listenReciterId
         : reciterId,
-    verticalPages: Boolean(parsed.verticalPages),
+    // Older saves only had the vertical/horizontal boolean.
+    readingMode: isReadingMode(parsed.readingMode)
+      ? parsed.readingMode
+      : parsed.verticalPages
+        ? 'vertical'
+        : 'horizontal',
     // Off until someone turns it on.
     verseWallpapersEnabled: parsed.verseWallpapersEnabled === true,
     language: parsed.language === 'so' || parsed.language === 'ar' ? parsed.language : 'en',

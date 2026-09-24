@@ -30,6 +30,7 @@ import SurahSearchModal from '@/components/read/SurahSearchModal'
 import ContentsDrawer from '@/components/read/ContentsDrawer'
 import MushafTranslationView from '@/components/read/MushafTranslationView'
 import ReciterPicker from '@/components/read/ReciterPicker'
+import ContinuousScrollView from '@/components/read/ContinuousScrollView'
 import GallerySwipeView from '@/components/read/GallerySwipeView'
 import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
 import { useAppSettings } from '@/hooks/useAppSettings'
@@ -58,6 +59,7 @@ import {
 import {
   getChapters,
   getMushafPage,
+  getVerseByKey,
   getVersesByChapter,
   getVisualPageForVerse,
 } from '@/lib/quran'
@@ -123,7 +125,7 @@ function ReadPageContent() {
     translationEditionId,
     mushafWidth,
     verseWallpapersEnabled,
-    verticalPages,
+    readingMode,
   } = useAppSettings()
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
@@ -444,6 +446,28 @@ function ReadPageContent() {
     await goToSurah(surahId)
   }
 
+  const goToVerse = async (verseKey: string) => {
+    stopRecitation()
+    setDrawerOpen(false)
+    setSearchOpen(false)
+    setLoadError(null)
+    try {
+      const verse = await getVerseByKey(verseKey)
+      const page = await getVisualPageForVerse(verseKey, verse.page_number || 1)
+      await loadPage(page)
+      setNavSelectedVerseKey(verseKey)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : tr('Could not open that ayah')
+      setLoadError(message)
+    }
+  }
+
+  const handleSelectAyah = async (verseKey: string) => {
+    setSearchOpen(false)
+    setDrawerOpen(false)
+    await goToVerse(verseKey)
+  }
+
   const openSearch = () => {
     setUiVisible(true)
     setSearchOpen(true)
@@ -727,7 +751,7 @@ function ReadPageContent() {
       return
     }
 
-    if (!verticalPages || absY < threshold || absY <= absX) return
+    if (readingMode === 'horizontal' || absY < threshold || absY <= absX) return
 
     const el = contentScrollRef.current
     if (!el) return
@@ -896,9 +920,17 @@ function ReadPageContent() {
             followPlaybackScroll={playbackActive}
             onAyahLongPress={handleAyahLongPress}
           />
+        ) : readingMode === 'continuous' ? (
+          <ContinuousScrollView
+            currentPage={currentPage}
+            totalPages={TOTAL_MUSHAF_PAGES}
+            fetchPage={fetchVersesForPage}
+            renderPage={renderMushafPage}
+            onPageChange={(page) => void navigatePage(page)}
+          />
         ) : (
           <GallerySwipeView
-            vertical={verticalPages}
+            vertical={readingMode === 'vertical'}
             pageKey={currentPage}
             current={renderMushafPage(pageVerses, currentPage)}
             prev={
@@ -1208,6 +1240,7 @@ function ReadPageContent() {
         currentSurahId={currentSurahNum}
         onClose={() => setSearchOpen(false)}
         onSelectSurah={handleSelectSurah}
+        onSelectAyah={handleSelectAyah}
       />
 
       <ContentsDrawer
