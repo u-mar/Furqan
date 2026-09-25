@@ -1799,38 +1799,6 @@ html.dark .legal-summary li::before {
 }
 
 /* The record control: a ring with a red dot that becomes a red square. */
-.qari-rec {
-  display: flex;
-  width: 5.25rem;
-  height: 5.25rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 4px solid var(--home-heading);
-  transition: transform 0.12s ease;
-}
-
-.qari-rec:active {
-  transform: scale(0.94);
-}
-
-.qari-rec__core {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 999px;
-  background: #f43f5e;
-  transition:
-    width 0.25s cubic-bezier(0.3, 1.2, 0.5, 1),
-    height 0.25s cubic-bezier(0.3, 1.2, 0.5, 1),
-    border-radius 0.25s ease;
-}
-
-.qari-rec.is-recording .qari-rec__core {
-  width: 1.875rem;
-  height: 1.875rem;
-  border-radius: 0.5rem;
-}
-
 /* Hifdh Test's reveal hints: small round buttons riding in the same
    floating lane as the record button, left of it. */
 .hifdh-hint {
@@ -1854,8 +1822,9 @@ html.dark .legal-summary li::before {
   opacity: 0.4;
 }
 
-/* Hifdh Test's record button: a floating glowing circle in the corner,
-   like Tarteel's — not the ringed qari-rec button. */
+/* The record button's look, Tarteel-style: a glowing solid circle with a
+   mic/square icon, not a ring. Used by Hifdh Test's floating corner button
+   and Qari's centered record/stop button (app/qari/record/page.tsx). */
 .hifdh-rec {
   display: flex;
   width: 4.25rem;
@@ -1954,8 +1923,7 @@ html.dark .legal-summary li::before {
     animation: none;
   }
 
-  .qari-switch__knob,
-  .qari-rec__core {
+  .qari-switch__knob {
     transition: none;
   }
 }

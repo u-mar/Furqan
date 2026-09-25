@@ -7,6 +7,7 @@ import { askToSignIn } from '@/lib/account-prompt'
 import { getSignedInUser } from '@/lib/auth'
 import {
   AudioLines,
+  BookOpen,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -15,16 +16,19 @@ import {
   Globe,
   Hash,
   Lock,
+  Mic,
   MicVocal,
   Pause,
   Play,
   RotateCcw,
   Send,
+  Square,
   Trash2,
   X,
 } from 'lucide-react'
 import { SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
+import MushafReadAlong from '@/components/qari/MushafReadAlong'
 import RecitationCard from '@/components/qari/RecitationCard'
 import ShareSheet from '@/components/qari/ShareSheet'
 import Switch from '@/components/qari/Switch'
@@ -108,6 +112,11 @@ function RecordFlow() {
   const [titleShake, setTitleShake] = useState(false)
   const [picker, setPicker] = useState<'sound' | 'sheikh' | null>(null)
   const [draftMeta, setDraftMeta] = useState<QariDraftMeta | null>(null)
+  // Some reciters read from the mushaf instead of memory — this opens a
+  // read-only mushaf overlay on top of the record screen; the recording
+  // itself (owned by useQariRecorder) keeps running underneath since this
+  // never unmounts RecordFlow, just layers a full-screen view over it.
+  const [mushafOpen, setMushafOpen] = useState(false)
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -452,6 +461,29 @@ function RecordFlow() {
             </button>
           </div>
         ) : null}
+        <Divider />
+        <button
+          type="button"
+          className="set-row"
+          style={{ paddingBlock: 8 }}
+          onClick={() => {
+            tapFeedback()
+            setMushafOpen(true)
+          }}
+        >
+          <span className="set-row__icon">
+            <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium">{t('Read from Mushaf')}</span>
+            {hints ? (
+              <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">
+                {t('Open any page to read from while you record')}
+              </span>
+            ) : null}
+          </span>
+          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+        </button>
       </Group>
       <SoundSheet open={picker === 'sound'} value={spaceId} onClose={() => setPicker(null)} onSelect={setSpaceId} />
       <SheikhSheet open={picker === 'sheikh'} value={sheikhId} onClose={() => setPicker(null)} onSelect={setSheikhId} />
@@ -727,7 +759,21 @@ function RecordFlow() {
             ) : (
               <span className="text-[15px] font-semibold text-[var(--home-heading)]">{t('Get ready')}</span>
             )}
-            <span className="w-[42px]" aria-hidden />
+            {recording ? (
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  setMushafOpen(true)
+                }}
+                aria-label={t('Read from Mushaf')}
+                className="home-round ed-focus"
+              >
+                <BookOpen className="h-[18px] w-[18px]" strokeWidth={1.9} />
+              </button>
+            ) : (
+              <span className="w-[42px]" aria-hidden />
+            )}
           </div>
           <p className="qari-step mt-3.5 text-center text-[13px] text-[var(--home-muted)]">
             {t(space.label)} {t('sound')}{imitate && sheikh ? t(' · Imitating {shortName}', { shortName: sheikh.shortName }) : ''}
@@ -877,9 +923,13 @@ function RecordFlow() {
             }}
             disabled={countingDown}
             aria-label={recording ? t('Finish recording') : t('Start recording')}
-            className={cn('qari-rec ed-focus disabled:opacity-60', recording && !state.paused && 'is-recording')}
+            className={cn('hifdh-rec ed-focus disabled:opacity-60', recording && !state.paused && 'hifdh-rec--listening')}
           >
-            <span className="qari-rec__core" />
+            {recording ? (
+              <Square className="h-4 w-4" fill="currentColor" strokeWidth={0} />
+            ) : (
+              <Mic className="h-7 w-7" strokeWidth={2.2} />
+            )}
           </button>
           <span className="h-12 w-12" aria-hidden />
         </div>
@@ -891,6 +941,7 @@ function RecordFlow() {
             : t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
         </p>
       </div>
+      <MushafReadAlong open={mushafOpen} onClose={() => setMushafOpen(false)} />
     </Screen>
   )
 }

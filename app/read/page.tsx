@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   Menu,
+  Moon,
   Search,
   Settings,
   Play,
@@ -39,7 +40,7 @@ import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useHalaqaReadingTick } from '@/hooks/useHalaqaReadingTick'
-import { getAppSettings } from '@/lib/app-settings'
+import { applyThemeToDocument, getAppSettings, setAppSettings, THEME_MODES } from '@/lib/app-settings'
 import { setSettingsReturnTo } from '@/lib/settings-return'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
@@ -126,7 +127,14 @@ function ReadPageContent() {
     mushafWidth,
     verseWallpapersEnabled,
     readingMode,
+    theme,
   } = useAppSettings()
+
+  const cycleTheme = () => {
+    const next = THEME_MODES[(THEME_MODES.indexOf(theme) + 1) % THEME_MODES.length]
+    setAppSettings({ theme: next })
+    applyThemeToDocument(next)
+  }
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
@@ -992,6 +1000,14 @@ function ReadPageContent() {
             aria-label={t('Search surah')}
           >
             <Search className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={cycleTheme}
+            className="mushaf-read-chrome-btn rounded-lg p-2"
+            aria-label={t('Change theme')}
+          >
+            <Moon className="h-5 w-5" />
           </button>
           <Link
             href="/settings"

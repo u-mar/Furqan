@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, Volume2 } from 'lucide-react'
+import Link from 'next/link'
+import { BookOpen, Check, ChevronRight, Mic, Volume2 } from 'lucide-react'
 import RecordButton, { type RecordButtonState } from '@/components/hifdh/RecordButton'
 import { HifdhHeader, HifdhScreen } from '@/components/hifdh/HifdhScreen'
 import SettingsSheet from '@/components/settings/SettingsSheet'
-import { useArabicVoiceInput } from '@/hooks/useArabicVoiceInput'
+import { useQuranAsr } from '@/hooks/useQuranAsr'
+import { isAsrModelDownloaded } from '@/lib/asr/model-cache'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
@@ -99,7 +101,7 @@ export default function SabaqPage() {
     }, 350)
   }
 
-  const voice = useArabicVoiceInput(onTranscript)
+  const voice = useQuranAsr(onTranscript)
 
   const buttonState: RecordButtonState =
     voice.state === 'unsupported' ? 'unsupported' : voice.state === 'listening' ? 'listening' : result
@@ -127,7 +129,7 @@ export default function SabaqPage() {
             <p className="px-2 py-8 text-center text-sm text-[var(--home-muted)]">{t('Loading surahs…')}</p>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto">
-              <ul>
+              <ul className="space-y-1">
                 {chapters.map((c) => (
                   <li key={c.id}>
                     <button
@@ -135,11 +137,20 @@ export default function SabaqPage() {
                       onClick={() => void chooseSurah(c)}
                       className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-[var(--home-track)]"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--home-track)] text-[0.8125rem] font-semibold text-[var(--home-heading)]">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[0.8125rem] font-semibold text-[var(--home-sage-deep)]">
                         {c.id}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                        {c.englishName}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
+                          {c.englishName}
+                        </span>
+                        <span className="amiri mt-0.5 block truncate text-sm text-[var(--home-sage-deep)]">
+                          {c.name}
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--home-muted)]">
+                        <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
+                        {c.versesCount}
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)]" />
                     </button>
@@ -197,8 +208,10 @@ export default function SabaqPage() {
           </div>
         ) : phase === 'sheikh' ? (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <span className="flex items-center gap-1.5 rounded-full bg-[var(--home-sage-soft)] px-3 py-1 text-[0.75rem] font-semibold text-[var(--home-sage-deep)]">
-              <Volume2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+              <Volume2 className="h-6 w-6" strokeWidth={2} />
+            </span>
+            <span className="rounded-full bg-[var(--home-sage-soft)] px-3 py-1 text-[0.75rem] font-semibold text-[var(--home-sage-deep)]">
               {t('The sheikh recites')}
             </span>
             <p className="amiri px-2 text-[1.75rem] leading-relaxed text-[var(--home-heading)]" dir="rtl">
@@ -208,9 +221,21 @@ export default function SabaqPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-5 py-6 pb-28 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--home-track)] text-[var(--home-heading)]">
+              <Mic className="h-6 w-6" strokeWidth={2} />
+            </span>
             <span className="rounded-full bg-[var(--home-track)] px-3 py-1 text-[0.75rem] font-semibold text-[var(--home-heading)]">
               {t('Your turn — recite ayah {ayah} from memory', { ayah: currentVerse.verse_key.split(':')[1] })}
             </span>
+            {voice.state === 'unsupported' && voice.error ? (
+              isAsrModelDownloaded() ? (
+                <p className="text-[0.75rem] font-medium text-[var(--home-muted)]">{voice.error}</p>
+              ) : (
+                <Link href="/settings" className="text-[0.75rem] font-semibold text-[var(--home-sage-deep)] underline">
+                  {voice.error}
+                </Link>
+              )
+            ) : null}
 
             {result === 'incorrect' ? (
               <div className="w-full rounded-2xl bg-[var(--home-track)] px-4 py-3.5">

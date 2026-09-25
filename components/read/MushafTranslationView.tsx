@@ -225,6 +225,13 @@ function TranslationAyahArticle({
 
 const AYAH_STACK_GAP_PX = 20
 const SCROLL_TOP_PAD_PX = 12
+// The scroll container (app/read/page.tsx) reserves `pb-36` (144px) at its
+// bottom so the fixed playback bar never sits over real content once
+// scrolled to the end. That reserved strip is still part of clientHeight
+// though, so it must be excluded here too — otherwise this "does it already
+// fit?" check overcounts usable space by 144px and can decide no scroll is
+// needed while the last ayah still renders partly under the bar.
+const BOTTOM_BAR_RESERVED_PX = 144
 
 function remainingAyahsFitInView(
   fromIndex: number,
@@ -239,7 +246,7 @@ function remainingAyahsFitInView(
     total += el.offsetHeight
     if (i < verseKeys.length - 1) total += AYAH_STACK_GAP_PX
   }
-  return total <= containerHeight - SCROLL_TOP_PAD_PX
+  return total <= containerHeight - BOTTOM_BAR_RESERVED_PX - SCROLL_TOP_PAD_PX
 }
 
 function scrollAyahToContainerTop(

@@ -67,4 +67,7 @@ export const HIFDH: Dict = {
     ar: 'مطلوب للتحقق من التلاوة الصوتية',
   },
   'Speech model download failed': { so: 'Soo dejinta qaabka codku way fashilantay', ar: 'فشل تنزيل نموذج الصوت' },
+  'Free mode': { so: 'Habka xorta ah', ar: 'الوضع الحر' },
+  'Fewer ayahs': { so: 'Aayado ka yar', ar: 'آيات أقل' },
+  'More ayahs': { so: 'Aayado ka badan', ar: 'آيات أكثر' },
 }

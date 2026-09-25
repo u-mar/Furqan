@@ -135,6 +135,11 @@ export const QARI: Dict = {
   'Imitate a sheikh': { so: 'Ku dayo sheekh', ar: 'قلّد شيخًا' },
   'Also shows on his page': { so: 'Waxay kaloo ka muuqataa bogiisa', ar: 'تظهر أيضًا في صفحته' },
   Sheikh: { so: 'Sheekh', ar: 'الشيخ' },
+  'Read from Mushaf': { so: 'Ka akhri Mushafka', ar: 'اقرأ من المصحف' },
+  'Open any page to read from while you record': {
+    so: 'Fur bog kasta oo aad ka akhriyeyso intaad duubaysid',
+    ar: 'افتح أي صفحة لتقرأ منها أثناء التسجيل',
+  },
   Published: { so: 'La daabacay', ar: 'تم النشر' },
   'It is on your profile. Only you can hear it.': { so: 'Waxay ku jirtaa bogaaga. Adiga oo keliya ayaa maqli kara.', ar: 'إنها في ملفك الشخصي. أنت وحدك من يسمعها.' },
   'It is in the Qari feed and on {shortName}\'s page.': { so: 'Waxay ku jirtaa qaybta Qaari iyo bogga {shortName}.', ar: 'إنها في قسم القرّاء وفي صفحة {shortName}.' },

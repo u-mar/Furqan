@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, ChevronLeft, ChevronRight, ChevronsLeft, SkipForward } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, ChevronsRight, Minus, Plus, SkipForward } from 'lucide-react'
 import HifdhMushafReveal from '@/components/hifdh/HifdhMushafReveal'
 import RecordButton, { type RecordButtonState } from '@/components/hifdh/RecordButton'
 import { HifdhHeader, HifdhScreen } from '@/components/hifdh/HifdhScreen'
 import SettingsSheet from '@/components/settings/SettingsSheet'
+import Switch from '@/components/qari/Switch'
 import { useQuranAsr } from '@/hooks/useQuranAsr'
 import { isAsrModelDownloaded } from '@/lib/asr/model-cache'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
@@ -32,6 +33,17 @@ function pickRandomPair(verses: Verse[]): { anchor: Verse; target: Verse } | nul
   return { anchor: verses[i], target: verses[i + 1] }
 }
 
+/** The verse right after `from` in `pool`, or null at the end of the surah/juz. */
+function nextVerseAfter(pool: Verse[], from: Verse): Verse | null {
+  const i = pool.findIndex((v) => v.verse_key === from.verse_key)
+  if (i < 0 || i + 1 >= pool.length) return null
+  return pool[i + 1]
+}
+
+const MIN_FREE_MODE_COUNT = 2
+const MAX_FREE_MODE_COUNT = 20
+const DEFAULT_FREE_MODE_COUNT = 5
+
 export default function RandomAyahPage() {
   const t = useT()
   const [chapters, setChapters] = useState<Chapter[] | null>(null)
@@ -45,6 +57,12 @@ export default function RandomAyahPage() {
   const [result, setResult] = useState<Result>('idle')
   const [revealedWords, setRevealedWords] = useState(0)
   const [wordCount, setWordCount] = useState<number | null>(null)
+  // Free mode: instead of a single surprise ayah, chain through several
+  // consecutive ayahs in a row — each one recited correctly advances to the
+  // next, rather than jumping to a fresh random spot.
+  const [freeMode, setFreeMode] = useState(false)
+  const [ayahCount, setAyahCount] = useState(DEFAULT_FREE_MODE_COUNT)
+  const [remaining, setRemaining] = useState(0)
   // A chunk of ASR audio can surface several new words at once (the model
   // updates every ~0.56s, not per-word) — stepping revealedWords toward the
   // new count one word at a time, instead of jumping straight to it, makes
@@ -101,6 +119,7 @@ export default function RandomAyahPage() {
       setPool(verses)
       setAnchor(pair.anchor)
       setTarget(pair.target)
+      setRemaining(ayahCount)
     } catch (err) {
       setLoadError(errorMessage(err, tr('Could not load that.')))
     }
@@ -113,11 +132,45 @@ export default function RandomAyahPage() {
     setAnchor(pair.anchor)
     setTarget(pair.target)
     setResult('idle')
+    setRemaining(ayahCount)
   }
 
   const nextAyah = () => {
     tapFeedback()
     goToNextAyah()
+  }
+
+  const advanceInFreeMode = () => {
+    if (!pool || !target) return goToNextAyah()
+    const next = nextVerseAfter(pool, target)
+    if (!next || remaining <= 1) {
+      // Ran out of ayahs, or finished this run of `ayahCount` — jump to a
+      // fresh spot and start counting down again, so free mode keeps going
+      // rather than dead-ending.
+      goToNextAyah()
+      return
+    }
+    setAnchor(target)
+    setTarget(next)
+    setResult('idle')
+    setRemaining((n) => n - 1)
+  }
+
+  const toggleFreeMode = () => {
+    tapFeedback()
+    setFreeMode((was) => {
+      if (!was) setRemaining(ayahCount)
+      return !was
+    })
+  }
+
+  const changeAyahCount = (delta: number) => {
+    tapFeedback()
+    setAyahCount((n) => {
+      const next = Math.min(MAX_FREE_MODE_COUNT, Math.max(MIN_FREE_MODE_COUNT, n + delta))
+      setRemaining(next)
+      return next
+    })
   }
 
   const onTranscript = (transcript: string) => {
@@ -129,7 +182,7 @@ export default function RandomAyahPage() {
       if (passed) {
         successFeedback()
         setResult('correct')
-        window.setTimeout(goToNextAyah, 1100)
+        window.setTimeout(freeMode ? advanceInFreeMode : goToNextAyah, 1100)
       } else {
         errorFeedback()
         setResult('incorrect')
@@ -277,9 +330,6 @@ export default function RandomAyahPage() {
           </span>
           <span className="h-9 w-9 shrink-0" aria-hidden />
         </div>
-        <span className="rounded-full bg-[var(--mushaf-read-badge-bg)] px-3.5 py-1.5 text-[0.8125rem] font-semibold text-[var(--mushaf-read-text)]">
-          {t('Recite the next ayah from memory')}
-        </span>
         {voice.state === 'unsupported' && voice.error ? (
           isAsrModelDownloaded() ? (
             <p className="text-[0.75rem] font-medium text-[var(--mushaf-read-meta)]">{voice.error}</p>
@@ -320,6 +370,43 @@ export default function RandomAyahPage() {
       />
 
       {result === 'correct' ? null : (
+        <div
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center"
+          style={{ bottom: 'calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem + 0.75rem)' }}
+        >
+          <div className="mushaf-read-chrome-panel pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2">
+            <span className="text-[0.8125rem] font-semibold text-[var(--mushaf-read-text)]">{t('Free mode')}</span>
+            <Switch checked={freeMode} onChange={toggleFreeMode} label={t('Free mode')} />
+            {freeMode ? (
+              <div className="flex items-center gap-1 border-l border-[var(--mushaf-read-chrome-border)] pl-3">
+                <button
+                  type="button"
+                  onClick={() => changeAyahCount(-1)}
+                  disabled={ayahCount <= MIN_FREE_MODE_COUNT}
+                  aria-label={t('Fewer ayahs')}
+                  className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
+                >
+                  <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                </button>
+                <span className="w-6 text-center text-[0.8125rem] font-semibold tabular-nums text-[var(--mushaf-read-text)]">
+                  {ayahCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => changeAyahCount(1)}
+                  disabled={ayahCount >= MAX_FREE_MODE_COUNT}
+                  aria-label={t('More ayahs')}
+                  className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
+                >
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {result === 'correct' ? null : (
         <RecordButton
           state={buttonState}
           onStart={() => {
@@ -341,7 +428,7 @@ export default function RandomAyahPage() {
                     aria-label={t('Show next word')}
                     className="hifdh-hint ed-focus pointer-events-auto"
                   >
-                    <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                    <ChevronRight className="h-[18px] w-[18px]" strokeWidth={2.2} />
                   </button>
                   <button
                     type="button"
@@ -349,7 +436,7 @@ export default function RandomAyahPage() {
                     aria-label={t('Show full ayah')}
                     className="hifdh-hint ed-focus pointer-events-auto"
                   >
-                    <ChevronsLeft className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                    <ChevronsRight className="h-[18px] w-[18px]" strokeWidth={2.2} />
                   </button>
                 </>
               ) : null}

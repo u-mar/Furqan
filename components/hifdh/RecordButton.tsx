@@ -9,8 +9,9 @@ export type RecordButtonState = 'idle' | 'listening' | 'checking' | 'correct' | 
 
 /**
  * Floats fixed above the bottom nav, bottom-right of the content column —
- * a glowing green circle, like Tarteel's own recite button — rather than
- * sitting inline in the page like Qari's ringed `.qari-rec`.
+ * a glowing green circle, like Tarteel's own recite button. Qari's record
+ * screen uses the same `.hifdh-rec` look for its own record/stop button,
+ * just positioned inline rather than floating.
  */
 export default function RecordButton({
   state,

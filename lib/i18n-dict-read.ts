@@ -53,6 +53,7 @@ export const READ: Dict = {
   'Loading page': { so: 'Bogga waa la soo raadinayaa', ar: 'جارٍ تحميل الصفحة' },
   'Open contents': { so: 'Fur tusmada', ar: 'فتح الفهرس' },
   'Search surah': { so: 'Raadi suurad', ar: 'ابحث عن سورة' },
+  'Change theme': { so: 'Beddel muuqaalka', ar: 'تغيير المظهر' },
   'Stop Somali voice': { so: 'Jooji codka Soomaaliga', ar: 'إيقاف الصوت الصومالي' },
   'Play Somali voice': { so: 'Ciyaar codka Soomaaliga', ar: 'تشغيل الصوت الصومالي' },
   Somali: { so: 'Soomaali', ar: 'الصومالية' },

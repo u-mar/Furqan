@@ -21,7 +21,19 @@ import type { VoiceInputState } from './useArabicVoiceInput'
  * vs. the model just not being downloaded yet are different situations that
  * deserve different UI, so a caller that cares can show it (e.g. a link to
  * Settings); a caller that doesn't is unaffected, since it's an addition.
+ *
+ * Also stops itself automatically after a stretch of silence, the same way
+ * Web Speech API's `continuous` mode used to — real mic capture has no
+ * built-in "the person stopped talking" signal, so this does a simple
+ * energy-based check on each captured chunk.
  */
+const SILENCE_TIMEOUT_MS = 1500
+// RMS of raw [-1,1] PCM above this counts as speech, not background noise.
+// A fixed threshold is crude (no adaptation to a noisy room or a quiet mic),
+// but simple and good enough as a first cut — revisit if real-device testing
+// shows it cutting off too early/late.
+const VOICE_RMS_THRESHOLD = 0.012
+
 export function useQuranAsr(onResult: (text: string) => void, onInterim?: (text: string) => void) {
   const [state, setState] = useState<VoiceInputState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +44,8 @@ export function useQuranAsr(onResult: (text: string) => void, onInterim?: (text:
   onResultRef.current = onResult
   const onInterimRef = useRef(onInterim)
   onInterimRef.current = onInterim
+  const heardSpeechRef = useRef(false)
+  const lastVoiceAtRef = useRef(0)
 
   useEffect(() => {
     if (!isMicCaptureSupported()) {
@@ -44,6 +58,23 @@ export function useQuranAsr(onResult: (text: string) => void, onInterim?: (text:
   }, [])
 
   useEffect(() => () => captureRef.current?.stop(), [])
+
+  const stop = useCallback(() => {
+    sessionIdRef.current++ // invalidates an in-flight start() from a rapid tap-stop-before-ready
+    const capture = captureRef.current
+    captureRef.current = null
+    capture?.stop()
+    setState('idle')
+    const recognizer = recognizerRef.current
+    recognizerRef.current = null
+    if (recognizer) {
+      void recognizer.finish().then((text) => {
+        if (text) onResultRef.current(text)
+      })
+    }
+  }, [])
+  const stopRef = useRef(stop)
+  stopRef.current = stop
 
   const start = useCallback(() => {
     if (!isMicCaptureSupported()) {
@@ -59,12 +90,25 @@ export function useQuranAsr(onResult: (text: string) => void, onInterim?: (text:
     const sessionId = ++sessionIdRef.current
     setState('listening')
     setError(null)
+    heardSpeechRef.current = false
+    lastVoiceAtRef.current = 0
     void (async () => {
       try {
         const recognizer = await StreamingRecognizer.create()
         if (sessionId !== sessionIdRef.current) return // stop() ran before the model finished loading
         recognizerRef.current = recognizer
         const capture = await startMicCapture((samples) => {
+          let sumSquares = 0
+          for (let i = 0; i < samples.length; i++) sumSquares += samples[i] * samples[i]
+          const rms = Math.sqrt(sumSquares / samples.length)
+          const now = performance.now()
+          if (rms > VOICE_RMS_THRESHOLD) {
+            heardSpeechRef.current = true
+            lastVoiceAtRef.current = now
+          } else if (heardSpeechRef.current && now - lastVoiceAtRef.current > SILENCE_TIMEOUT_MS) {
+            stopRef.current()
+            return
+          }
           void recognizer.pushAudio(samples).then((text) => onInterimRef.current?.(text))
         })
         if (sessionId !== sessionIdRef.current) {
@@ -79,21 +123,6 @@ export function useQuranAsr(onResult: (text: string) => void, onInterim?: (text:
         }
       }
     })()
-  }, [])
-
-  const stop = useCallback(() => {
-    sessionIdRef.current++ // invalidates an in-flight start() from a rapid tap-stop-before-ready
-    const capture = captureRef.current
-    captureRef.current = null
-    capture?.stop()
-    setState('idle')
-    const recognizer = recognizerRef.current
-    recognizerRef.current = null
-    if (recognizer) {
-      void recognizer.finish().then((text) => {
-        if (text) onResultRef.current(text)
-      })
-    }
   }, [])
 
   return { state, error, start, stop }
