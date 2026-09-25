@@ -1,15 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Check, ChevronLeft, ChevronRight, ChevronsLeft, SkipForward } from 'lucide-react'
 import HifdhMushafReveal from '@/components/hifdh/HifdhMushafReveal'
 import RecordButton, { type RecordButtonState } from '@/components/hifdh/RecordButton'
 import { HifdhHeader, HifdhScreen } from '@/components/hifdh/HifdhScreen'
 import SettingsSheet from '@/components/settings/SettingsSheet'
-import { useArabicVoiceInput } from '@/hooks/useArabicVoiceInput'
+import { useQuranAsr } from '@/hooks/useQuranAsr'
+import { isAsrModelDownloaded } from '@/lib/asr/model-cache'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
-import { checkRecitation } from '@/lib/hifdh/recitation-check'
+import { checkRecitation, matchedPrefixWordCount } from '@/lib/hifdh/recitation-check'
 import { getChapters, getVersesByChapter, getVersesByJuz } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { errorMessage } from '@/lib/toast'
@@ -44,15 +45,45 @@ export default function RandomAyahPage() {
   const [result, setResult] = useState<Result>('idle')
   const [revealedWords, setRevealedWords] = useState(0)
   const [wordCount, setWordCount] = useState<number | null>(null)
+  // A chunk of ASR audio can surface several new words at once (the model
+  // updates every ~0.56s, not per-word) — stepping revealedWords toward the
+  // new count one word at a time, instead of jumping straight to it, makes
+  // the mushaf reveal read as a smooth word-by-word write rather than a
+  // stutter every half-second.
+  const revealTargetRef = useRef(0)
+  const revealStepTimerRef = useRef<number | null>(null)
+
+  const clearRevealStep = () => {
+    if (revealStepTimerRef.current !== null) {
+      window.clearTimeout(revealStepTimerRef.current)
+      revealStepTimerRef.current = null
+    }
+    revealTargetRef.current = 0
+  }
+
+  const stepReveal = () => {
+    revealStepTimerRef.current = null
+    setRevealedWords((prev) => {
+      if (prev >= revealTargetRef.current) return prev
+      const next = prev + 1
+      if (next < revealTargetRef.current) {
+        revealStepTimerRef.current = window.setTimeout(stepReveal, 110)
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     void getChapters().then(setChapters)
   }, [])
 
   useEffect(() => {
+    clearRevealStep()
     setRevealedWords(0)
     setWordCount(null)
   }, [target?.verse_key])
+
+  useEffect(() => clearRevealStep, [])
 
   const chooseScope = async (kind: Scope, id: number, label: string) => {
     tapFeedback()
@@ -106,7 +137,20 @@ export default function RandomAyahPage() {
     }, 350)
   }
 
-  const voice = useArabicVoiceInput(onTranscript)
+  // Writes the words onto the mushaf live as they're recognised, the same
+  // way Tarteel highlights them while you're still reciting — matched in
+  // order, so it tracks real progress through the ayah rather than jumping
+  // ahead on an out-of-order guess.
+  const onInterimTranscript = (transcript: string) => {
+    if (!target) return
+    const expected = getVerseArabicText(target, { omitEndMark: true })
+    const count = matchedPrefixWordCount(transcript, expected)
+    if (count <= revealTargetRef.current) return
+    revealTargetRef.current = count
+    if (revealStepTimerRef.current === null) stepReveal()
+  }
+
+  const voice = useQuranAsr(onTranscript, onInterimTranscript)
 
   const buttonState: RecordButtonState =
     voice.state === 'unsupported'
@@ -221,16 +265,30 @@ export default function RandomAyahPage() {
   return (
     <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
       <div
-        className="relative z-20 flex shrink-0 items-center gap-3 px-4 pb-2 pt-[max(0.65rem,env(safe-area-inset-top))]"
+        className="relative z-20 flex shrink-0 flex-col items-center gap-1.5 px-4 pb-2 pt-[max(0.65rem,env(safe-area-inset-top))]"
         dir="ltr"
       >
-        <Link href="/hifdh" className="home-round ed-focus shrink-0" aria-label={t('Back')}>
-          <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
-        </Link>
-        <span className="mx-auto rounded-full bg-[var(--mushaf-read-badge-bg)] px-3.5 py-1.5 text-[0.8125rem] font-semibold text-[var(--mushaf-read-text)]">
+        <div className="flex w-full items-center gap-3">
+          <Link href="/hifdh" className="home-round ed-focus shrink-0" aria-label={t('Back')}>
+            <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+          </Link>
+          <span className="flex-1 truncate text-center text-[0.8125rem] font-semibold text-[var(--mushaf-read-meta)]">
+            {scopeLabel}
+          </span>
+          <span className="h-9 w-9 shrink-0" aria-hidden />
+        </div>
+        <span className="rounded-full bg-[var(--mushaf-read-badge-bg)] px-3.5 py-1.5 text-[0.8125rem] font-semibold text-[var(--mushaf-read-text)]">
           {t('Recite the next ayah from memory')}
         </span>
-        <span className="h-9 w-9 shrink-0" aria-hidden />
+        {voice.state === 'unsupported' && voice.error ? (
+          isAsrModelDownloaded() ? (
+            <p className="text-[0.75rem] font-medium text-[var(--mushaf-read-meta)]">{voice.error}</p>
+          ) : (
+            <Link href="/settings" className="text-[0.75rem] font-semibold text-[var(--mushaf-read-accent)] underline">
+              {voice.error}
+            </Link>
+          )
+        ) : null}
       </div>
 
       {result === 'incorrect' || result === 'revealed' || result === 'correct' ? (
@@ -266,6 +324,8 @@ export default function RandomAyahPage() {
           state={buttonState}
           onStart={() => {
             setResult('idle')
+            clearRevealStep()
+            setRevealedWords(0)
             voice.start()
           }}
           onStop={voice.stop}

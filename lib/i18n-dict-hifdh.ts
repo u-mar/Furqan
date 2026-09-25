@@ -56,4 +56,15 @@ export const HIFDH: Dict = {
   'Next ayah': { so: 'Aayadda xigta', ar: 'الآية التالية' },
   'Show next word': { so: 'Tus kalmadda xigta', ar: 'أظهر الكلمة التالية' },
   'Show full ayah': { so: 'Tus aayadda oo dhan', ar: 'أظهر الآية كاملة' },
+  'Download the speech recognition model in Settings to use your voice.': {
+    so: 'Ku soo deji qaabka aqoonsiga codka ee Dejinta si aad codkaaga u isticmaasho.',
+    ar: 'قم بتنزيل نموذج التعرف على الصوت من الإعدادات لاستخدام صوتك.',
+  },
+  'Could not start voice recording.': { so: 'Duubista codka lama bilaabi karin.', ar: 'تعذّر بدء تسجيل الصوت.' },
+  'Speech recognition': { so: 'Aqoonsiga codka', ar: 'التعرف على الصوت' },
+  'Needed for voice recitation checking': {
+    so: 'Waxaa loo baahan yahay hubinta akhriska codka',
+    ar: 'مطلوب للتحقق من التلاوة الصوتية',
+  },
+  'Speech model download failed': { so: 'Soo dejinta qaabka codku way fashilantay', ar: 'فشل تنزيل نموذج الصوت' },
 }

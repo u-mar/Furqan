@@ -3,6 +3,8 @@ const STATIC_CACHE = 'al-quran-static-v10'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
 const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
+/** Must match lib/asr/model-cache.ts CACHE_NAME */
+const ASR_MODEL_CACHE = 'muyassar-asr-model-v1'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
 const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf']
@@ -31,7 +33,8 @@ self.addEventListener('activate', (event) => {
               k !== STATIC_CACHE &&
               k !== CACHE_VERSION &&
               k !== QCF_FONT_CACHE &&
-              k !== TRANSLATIONS_CACHE
+              k !== TRANSLATIONS_CACHE &&
+              k !== ASR_MODEL_CACHE
           )
           .map((k) => caches.delete(k))
       )

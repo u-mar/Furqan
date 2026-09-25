@@ -35,3 +35,32 @@ export function checkRecitation(transcript: string, expectedArabic: string): Rec
   const score = matched / expectedWords.length
   return { score, passed: score >= PASS_THRESHOLD }
 }
+
+/**
+ * How many of the expected ayah's words have been recited so far, in order —
+ * for live, word-by-word reveal while the mic is still listening (Tarteel's
+ * "words light up as you say them"). Unlike `checkRecitation` this is
+ * order-sensitive: a later word matching out of turn doesn't count, so the
+ * reveal always tracks the reciter's actual left-to-right progress instead
+ * of jumping ahead on a lucky out-of-order match.
+ */
+export function matchedPrefixWordCount(transcript: string, expectedArabic: string): number {
+  const heardWords = normalizeArabic(transcript).split(' ').filter(Boolean)
+  const expectedWords = normalizeArabic(expectedArabic).split(' ').filter(Boolean)
+
+  let heardIndex = 0
+  let matched = 0
+  for (const expectedWord of expectedWords) {
+    let foundAt = -1
+    for (let i = heardIndex; i < heardWords.length; i += 1) {
+      if (heardWords[i] === expectedWord || wordsAreClose(expectedWord, heardWords[i])) {
+        foundAt = i
+        break
+      }
+    }
+    if (foundAt === -1) break
+    matched += 1
+    heardIndex = foundAt + 1
+  }
+  return matched
+}

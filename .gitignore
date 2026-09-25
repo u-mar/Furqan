@@ -39,3 +39,9 @@ tsconfig.tsbuildinfo
 public/qcf/
 public/fonts/qcf/
 download-quran-log.txt
+# Large ASR model — downloaded on demand via Settings, not shipped in git.
+# The tiny CMVN/tokenizer JSON files next to it ARE committed (see
+# public/models/asr/.gitignore), since they're a few KB and always needed.
+public/models/asr/model.q8.onnx
+public/models/asr/*.npz
+public/models/asr/tokenizer.model

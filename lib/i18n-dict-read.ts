@@ -26,6 +26,10 @@ export const READ: Dict = {
   Surahs: { so: 'Suurado', ar: 'السور' },
   Ayahs: { so: 'Aayado', ar: 'الآيات' },
   'Type an ayah in Arabic…': { so: 'Ku qor aayad Carabi ah…', ar: 'اكتب آية بالعربية…' },
+  'Search a surah, or type an ayah in Arabic…': {
+    so: 'Raadi suurad, ama ku qor aayad Carabi ah…',
+    ar: 'ابحث عن سورة، أو اكتب آية بالعربية…',
+  },
   'Loading the Quran text…': { so: 'Qoraalka Quraanka waa la soo raadinayaa…', ar: 'جارٍ تحميل نص القرآن…' },
   'Type a few words from the ayah, in Arabic.': {
     so: 'Ku qor dhawr eray oo aayadda ka mid ah, oo Carabi ah.',
