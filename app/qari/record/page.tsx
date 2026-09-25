@@ -941,7 +941,16 @@ function RecordFlow() {
             : t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
         </p>
       </div>
-      <MushafReadAlong open={mushafOpen} onClose={() => setMushafOpen(false)} />
+      <MushafReadAlong
+        open={mushafOpen}
+        onClose={() => setMushafOpen(false)}
+        recording={recording}
+        countingDown={countingDown}
+        count={count}
+        elapsedLabel={clock(elapsed)}
+        onBegin={() => void begin()}
+        onStop={() => recorder.stop()}
+      />
     </Screen>
   )
 }

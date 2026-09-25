@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronLeft, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
@@ -48,14 +48,19 @@ export function HifdhHeader({
   )
 }
 
-/** A big picture-first choice card, like the two Hifdh modes on the landing page. */
+/** A big picture-first choice card, like the two Hifdh modes on the landing
+ *  page — a real photo behind the title, not an icon standing in for one. */
 export function HifdhModeCard({
   href,
+  image,
   icon: Icon,
   title,
   description,
 }: {
   href: string
+  /** A photo from /public/share-bg — the same library ayah/recitation shares use. */
+  image: string
+  /** A small badge icon over the corner of the photo, for quick recognition at a glance. */
   icon: LucideIcon
   title: string
   description: string
@@ -63,15 +68,29 @@ export function HifdhModeCard({
   return (
     <Link
       href={href}
-      className="home-card home-press ed-focus flex items-center gap-3.5 rounded-2xl px-4 py-4"
+      className="home-press ed-focus group relative block overflow-hidden rounded-[20px]"
     >
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-        <Icon className="h-[22px] w-[22px]" strokeWidth={1.9} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[1rem] font-semibold text-[var(--home-heading)]">{title}</span>
-        <span className="mt-0.5 block text-[0.8125rem] leading-snug text-[var(--home-muted)]">{description}</span>
-      </span>
+      <div className="relative aspect-[16/10] w-full">
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-active:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5" />
+        <span className="absolute right-3.5 top-3.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm">
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        </span>
+        <span className="absolute inset-x-4 bottom-3.5 flex items-end justify-between gap-3">
+          <span className="min-w-0">
+            <span className="home-serif block text-[1.1875rem] font-semibold leading-tight text-white">{title}</span>
+            <span className="mt-1 block text-[0.78125rem] leading-snug text-white/80">{description}</span>
+          </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/90 text-black">
+            <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+          </span>
+        </span>
+      </div>
     </Link>
   )
 }

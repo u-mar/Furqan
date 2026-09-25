@@ -2,26 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Check, ChevronLeft, ChevronRight, ChevronsRight, Minus, Plus, SkipForward } from 'lucide-react'
+import { BookOpen, Check, ChevronLeft, ChevronRight, ChevronsRight, Minus, Moon, Plus, SkipForward } from 'lucide-react'
 import HifdhMushafReveal from '@/components/hifdh/HifdhMushafReveal'
 import RecordButton, { type RecordButtonState } from '@/components/hifdh/RecordButton'
 import { HifdhHeader, HifdhScreen } from '@/components/hifdh/HifdhScreen'
-import SettingsSheet from '@/components/settings/SettingsSheet'
-import Switch from '@/components/qari/Switch'
+import SurahJuzPicker from '@/components/hifdh/SurahJuzPicker'
 import { useQuranAsr } from '@/hooks/useQuranAsr'
 import { isAsrModelDownloaded } from '@/lib/asr/model-cache'
+import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { checkRecitation, matchedPrefixWordCount } from '@/lib/hifdh/recitation-check'
-import { getChapters, getVersesByChapter, getVersesByJuz } from '@/lib/quran'
+import { getVersesByChapter, getVersesByJuz } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { errorMessage } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
-import type { Chapter, Verse } from '@/types'
+import type { Verse } from '@/types'
 
 type Scope = 'surah' | 'juz'
 type Result = 'idle' | 'checking' | 'correct' | 'incorrect' | 'revealed'
-
-const JUZ_LIST = Array.from({ length: 30 }, (_, i) => i + 1)
 
 /** People don't recall the Quran by verse number — they recognise an ayah and
  *  continue with what comes after it. So the test shows one ayah (the
@@ -46,7 +44,6 @@ const DEFAULT_FREE_MODE_COUNT = 5
 
 export default function RandomAyahPage() {
   const t = useT()
-  const [chapters, setChapters] = useState<Chapter[] | null>(null)
   const [scope, setScope] = useState<Scope>('surah')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [scopeLabel, setScopeLabel] = useState('')
@@ -90,10 +87,6 @@ export default function RandomAyahPage() {
       return next
     })
   }
-
-  useEffect(() => {
-    void getChapters().then(setChapters)
-  }, [])
 
   useEffect(() => {
     clearRevealStep()
@@ -219,83 +212,48 @@ export default function RandomAyahPage() {
       <HifdhScreen>
         <HifdhHeader title={t('Surprise ayah')} sub={t('Pick a surah or juz to be tested on')} />
 
-        <div className="mt-5 flex justify-center">
-          <div role="group" aria-label={t('Scope')} className="ed-seg" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
-            {(['surah', 'juz'] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={scope === s}
-                onClick={() => {
-                  tapFeedback()
-                  setScope(s)
-                }}
-                className="ed-seg__item ed-focus flex h-9 items-center justify-center px-4 text-[0.8125rem] font-semibold"
-              >
-                {s === 'surah' ? t('Surah') : t('Juz')}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-4">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
-            className="ed-ink ed-focus fx-press flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold"
+            onClick={() => {
+              tapFeedback()
+              setScope('surah')
+              setPickerOpen(true)
+            }}
+            className="home-card home-press ed-focus flex flex-col items-center gap-2 rounded-2xl px-3 py-5 text-center"
           >
-            {scope === 'surah' ? t('Choose a surah') : t('Choose a juz')}
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+              <BookOpen className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+            <span className="text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Surah')}</span>
+            <span className="text-[0.75rem] text-[var(--home-muted)]">{t('Pick by name')}</span>
           </button>
-          {loadError ? <p className="mt-3 text-center text-sm text-rose-600">{loadError}</p> : null}
+          <button
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              setScope('juz')
+              setPickerOpen(true)
+            }}
+            className="home-card home-press ed-focus flex flex-col items-center gap-2 rounded-2xl px-3 py-5 text-center"
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+              <Moon className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+            <span className="text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Juz')}</span>
+            <span className="text-[0.75rem] text-[var(--home-muted)]">{t('Pick by section')}</span>
+          </button>
         </div>
+        {loadError ? <p className="mt-3 text-center text-sm text-rose-600">{loadError}</p> : null}
 
-        <SettingsSheet
+        <SurahJuzPicker
           open={pickerOpen}
-          title={scope === 'surah' ? t('Choose a surah') : t('Choose a juz')}
           onClose={() => setPickerOpen(false)}
-        >
-          <div className="max-h-[60vh] overflow-y-auto">
-            {scope === 'surah' ? (
-              !chapters ? (
-                <p className="px-2 py-8 text-center text-sm text-[var(--home-muted)]">{t('Loading surahs…')}</p>
-              ) : (
-                <ul>
-                  {chapters.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => void chooseScope('surah', c.id, c.englishName)}
-                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-[var(--home-track)]"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--home-track)] text-[0.8125rem] font-semibold text-[var(--home-heading)]">
-                          {c.id}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                          {c.englishName}
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)]" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : (
-              <ul className="grid grid-cols-3 gap-2 p-1">
-                {JUZ_LIST.map((j) => (
-                  <li key={j}>
-                    <button
-                      type="button"
-                      onClick={() => void chooseScope('juz', j, t('Juz {juz}', { juz: j }))}
-                      className="ed-focus flex h-12 w-full items-center justify-center rounded-xl bg-[var(--home-track)] text-[0.9375rem] font-semibold text-[var(--home-heading)]"
-                    >
-                      {j}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </SettingsSheet>
+          title={scope === 'surah' ? t('Choose a surah') : t('Choose a juz')}
+          initialTab={scope}
+          onSelectSurah={(c) => void chooseScope('surah', c.id, c.englishName)}
+          onSelectJuz={(j) => void chooseScope('juz', j, t('Juz {juz}', { juz: j }))}
+        />
       </HifdhScreen>
     )
   }
@@ -370,43 +328,6 @@ export default function RandomAyahPage() {
       />
 
       {result === 'correct' ? null : (
-        <div
-          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center"
-          style={{ bottom: 'calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem + 0.75rem)' }}
-        >
-          <div className="mushaf-read-chrome-panel pointer-events-auto flex items-center gap-3 rounded-full px-4 py-2">
-            <span className="text-[0.8125rem] font-semibold text-[var(--mushaf-read-text)]">{t('Free mode')}</span>
-            <Switch checked={freeMode} onChange={toggleFreeMode} label={t('Free mode')} />
-            {freeMode ? (
-              <div className="flex items-center gap-1 border-l border-[var(--mushaf-read-chrome-border)] pl-3">
-                <button
-                  type="button"
-                  onClick={() => changeAyahCount(-1)}
-                  disabled={ayahCount <= MIN_FREE_MODE_COUNT}
-                  aria-label={t('Fewer ayahs')}
-                  className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
-                >
-                  <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
-                </button>
-                <span className="w-6 text-center text-[0.8125rem] font-semibold tabular-nums text-[var(--mushaf-read-text)]">
-                  {ayahCount}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => changeAyahCount(1)}
-                  disabled={ayahCount >= MAX_FREE_MODE_COUNT}
-                  aria-label={t('More ayahs')}
-                  className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
-                >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      {result === 'correct' ? null : (
         <RecordButton
           state={buttonState}
           onStart={() => {
@@ -419,7 +340,46 @@ export default function RandomAyahPage() {
           bottomOffset="max(1rem, env(safe-area-inset-bottom))"
           leading={
             <>
-              {result === 'idle' || result === 'checking' ? (
+              <button
+                type="button"
+                onClick={toggleFreeMode}
+                aria-pressed={freeMode}
+                aria-label={t('Free mode')}
+                className={cn(
+                  'ed-focus pointer-events-auto flex h-12 shrink-0 items-center rounded-full border px-2.5 text-[0.75rem] font-semibold transition-colors',
+                  freeMode
+                    ? 'border-[var(--mushaf-read-accent)] bg-[var(--mushaf-read-accent-soft)] text-[var(--mushaf-read-accent)]'
+                    : 'border-[var(--home-rule-strong)] text-[var(--mushaf-read-meta)]'
+                )}
+              >
+                {t('Free')}
+              </button>
+              {freeMode ? (
+                <div className="ed-focus pointer-events-auto flex h-12 shrink-0 items-center gap-0.5 rounded-full border border-[var(--home-rule-strong)] px-1">
+                  <button
+                    type="button"
+                    onClick={() => changeAyahCount(-1)}
+                    disabled={ayahCount <= MIN_FREE_MODE_COUNT}
+                    aria-label={t('Fewer ayahs')}
+                    className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
+                  >
+                    <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                  </button>
+                  <span className="w-4 text-center text-[0.8125rem] font-semibold tabular-nums text-[var(--mushaf-read-text)]">
+                    {ayahCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => changeAyahCount(1)}
+                    disabled={ayahCount >= MAX_FREE_MODE_COUNT}
+                    aria-label={t('More ayahs')}
+                    className="ed-focus flex h-7 w-7 items-center justify-center rounded-full text-[var(--mushaf-read-text)] disabled:opacity-30"
+                  >
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+                  </button>
+                </div>
+              ) : null}
+              {!freeMode && (result === 'idle' || result === 'checking') ? (
                 <>
                   <button
                     type="button"

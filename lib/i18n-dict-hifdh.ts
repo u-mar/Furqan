@@ -68,6 +68,11 @@ export const HIFDH: Dict = {
   },
   'Speech model download failed': { so: 'Soo dejinta qaabka codku way fashilantay', ar: 'فشل تنزيل نموذج الصوت' },
   'Free mode': { so: 'Habka xorta ah', ar: 'الوضع الحر' },
+  Free: { so: 'Xor', ar: 'حر' },
+  'Pick by name': { so: 'Ku dooro magaca', ar: 'اختر بالاسم' },
+  'Pick by section': { so: 'Ku dooro qaybta', ar: 'اختر بالجزء' },
+  'Search a surah…': { so: 'Raadi suurad…', ar: 'ابحث عن سورة…' },
+  'No surahs found for that.': { so: 'Suurad looma helin taas.', ar: 'لم يتم العثور على سورة لذلك.' },
   'Fewer ayahs': { so: 'Aayado ka yar', ar: 'آيات أقل' },
   'More ayahs': { so: 'Aayado ka badan', ar: 'آيات أكثر' },
 }

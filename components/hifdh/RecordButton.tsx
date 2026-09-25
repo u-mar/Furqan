@@ -40,7 +40,7 @@ export default function RecordButton({
         bottom: bottomOffset ?? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1rem)`,
       }}
     >
-      <div className="flex w-full max-w-lg items-center justify-end gap-2.5 px-5">
+      <div className="flex w-full max-w-lg items-center justify-end gap-2 px-4">
         {leading}
         <button
           type="button"

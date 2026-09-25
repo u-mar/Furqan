@@ -10,15 +10,17 @@ export default function HifdhPage() {
     <HifdhScreen>
       <HifdhHeader title={t('Hifdh Test')} backHref="/" sub={t('Two ways to test what you\'ve memorised')} />
 
-      <div className="mt-[22px] flex flex-col gap-2.5">
+      <div className="mt-[22px] flex flex-col gap-3">
         <HifdhModeCard
           href="/hifdh/sabaq"
+          image="/share-bg/mosque-columns.jpg"
           icon={GraduationCap}
           title={t('Sabaq')}
           description={t('The sheikh reads an ayah, then it\'s your turn — back and forth, checked as you go')}
         />
         <HifdhModeCard
           href="/hifdh/random"
+          image="/share-bg/quran-flowers.jpg"
           icon={Shuffle}
           title={t('Surprise ayah')}
           description={t('Pick a surah or juz — see one ayah, then recite the next one from memory')}

@@ -5,14 +5,14 @@ import Link from 'next/link'
 import { BookOpen, Check, ChevronRight, Mic, Volume2 } from 'lucide-react'
 import RecordButton, { type RecordButtonState } from '@/components/hifdh/RecordButton'
 import { HifdhHeader, HifdhScreen } from '@/components/hifdh/HifdhScreen'
-import SettingsSheet from '@/components/settings/SettingsSheet'
+import SurahJuzPicker from '@/components/hifdh/SurahJuzPicker'
 import { useQuranAsr } from '@/hooks/useQuranAsr'
 import { isAsrModelDownloaded } from '@/lib/asr/model-cache'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { checkRecitation } from '@/lib/hifdh/recitation-check'
-import { getChapters, getVersesByChapter } from '@/lib/quran'
+import { getVersesByChapter } from '@/lib/quran'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { ayahAudioUrl, getReciterById } from '@/lib/reciters'
 import { errorMessage } from '@/lib/toast'
@@ -25,7 +25,6 @@ type Result = 'idle' | 'checking' | 'correct' | 'incorrect'
 export default function SabaqPage() {
   const t = useT()
   const { reciterId } = useAppSettings()
-  const [chapters, setChapters] = useState<Chapter[] | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [verses, setVerses] = useState<Verse[] | null>(null)
@@ -34,10 +33,6 @@ export default function SabaqPage() {
   const [phase, setPhase] = useState<Phase>('sheikh')
   const [result, setResult] = useState<Result>('idle')
   const audioRef = useRef<HTMLAudioElement>(null)
-
-  useEffect(() => {
-    void getChapters().then(setChapters)
-  }, [])
 
   const chooseSurah = async (c: Chapter) => {
     tapFeedback()
@@ -110,56 +105,32 @@ export default function SabaqPage() {
     return (
       <HifdhScreen>
         <HifdhHeader title={t('Sabaq')} sub={t('Choose the surah to start from')} />
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="ed-ink ed-focus fx-press flex h-12 w-full items-center justify-center rounded-full text-[0.90625rem] font-semibold"
-          >
-            {t('Choose starting surah')}
-          </button>
-        </div>
-
-        <SettingsSheet
-          open={pickerOpen}
-          title={t('Choose starting surah')}
-          onClose={() => setPickerOpen(false)}
+        <button
+          type="button"
+          onClick={() => {
+            tapFeedback()
+            setPickerOpen(true)
+          }}
+          className="home-card home-press ed-focus mt-6 flex w-full items-center gap-3 rounded-2xl px-3.5 py-4 text-left"
         >
-          {!chapters ? (
-            <p className="px-2 py-8 text-center text-sm text-[var(--home-muted)]">{t('Loading surahs…')}</p>
-          ) : (
-            <div className="max-h-[60vh] overflow-y-auto">
-              <ul className="space-y-1">
-                {chapters.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      onClick={() => void chooseSurah(c)}
-                      className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-[var(--home-track)]"
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[0.8125rem] font-semibold text-[var(--home-sage-deep)]">
-                        {c.id}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                          {c.englishName}
-                        </span>
-                        <span className="amiri mt-0.5 block truncate text-sm text-[var(--home-sage-deep)]">
-                          {c.name}
-                        </span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--home-muted)]">
-                        <BookOpen className="h-3.5 w-3.5" strokeWidth={1.9} />
-                        {c.versesCount}
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)]" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </SettingsSheet>
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
+            <BookOpen className="h-6 w-6" strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">
+              {t('Choose starting surah')}
+            </span>
+            <span className="block text-[0.75rem] text-[var(--home-muted)]">{t('Pick by name')}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)]" />
+        </button>
+
+        <SurahJuzPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          title={t('Choose starting surah')}
+          onSelectSurah={(c) => void chooseSurah(c)}
+        />
       </HifdhScreen>
     )
   }
