@@ -149,7 +149,11 @@
   border-radius: 5px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.2), 0 6px 18px rgba(45, 212, 191, 0.14);
+  /* No drop-shadow glow here on purpose: an ayah that spans several mushaf
+     lines gets a highlighted segment on each one, and a vertically-offset
+     blurred shadow on one line bleeds into the highlighted segment on the
+     next, reading as a doubled/overlaid highlight right at the seam. */
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.2);
 }
 
 .mushaf-qcf-segment--selected {
@@ -162,7 +166,7 @@
 
 html:not(.dark) .mushaf-qcf-segment--reciting {
   background: rgba(13, 107, 99, 0.24);
-  box-shadow: 0 0 0 1px rgba(13, 107, 99, 0.18), 0 8px 18px rgba(13, 107, 99, 0.1);
+  box-shadow: 0 0 0 1px rgba(13, 107, 99, 0.18);
 }
 
 html:not(.dark) .mushaf-qcf-segment--selected {
@@ -172,7 +176,7 @@ html:not(.dark) .mushaf-qcf-segment--selected {
 
 html.dark .mushaf-qcf-segment--reciting {
   background: rgba(77, 184, 168, 0.28);
-  box-shadow: 0 0 0 1px rgba(77, 184, 168, 0.18), 0 10px 24px rgba(10, 25, 25, 0.28);
+  box-shadow: 0 0 0 1px rgba(77, 184, 168, 0.18);
 }
 
 html.dark .mushaf-qcf-segment--selected {

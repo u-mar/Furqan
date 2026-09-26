@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { APP_ICON_LETTER } from '@/lib/app-brand'
+import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { cn } from '@/lib/cn'
 
 const SHOWN_KEY = 'nadir-splash-shown'
@@ -12,11 +12,7 @@ const INK = '#f5ecd8'
 /**
  * A brief branded cover shown once per app open, over the manifest's own
  * black background — the OS-generated PWA splash can only show the icon, so
- * this is what carries the verse. The mark below it is set as SVG text in
- * Amiri (not Georgia, which has no Arabic coverage and was falling back to
- * whatever Arabic font the OS happened to have) so it centers on its own
- * glyph metrics rather than CSS line-height, which reads oddly for a single
- * harakat-free Arabic letter.
+ * this is what carries the verse.
  */
 export default function SplashScreen() {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
@@ -45,39 +41,58 @@ export default function SplashScreen() {
     <div
       aria-hidden
       className={cn(
-        'fixed inset-0 z-[300] flex flex-col items-center justify-center gap-10 bg-black px-10 transition-opacity ease-out',
+        'fixed inset-0 z-[300] flex flex-col items-center bg-black px-8 transition-opacity ease-out',
         phase === 'fading' ? 'pointer-events-none opacity-0' : 'opacity-100'
       )}
-      style={{ transitionDuration: `${FADE_MS}ms` }}
+      style={{
+        transitionDuration: `${FADE_MS}ms`,
+        paddingTop: 'max(4.5rem, env(safe-area-inset-top) + 2.5rem)',
+        paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom) + 1.5rem)',
+      }}
     >
       <p
         dir="rtl"
         lang="ar"
-        className="mx-auto max-w-xs text-center"
+        className="mx-auto max-w-sm text-center"
         style={{
           fontFamily: 'var(--font-amiri), Amiri, serif',
           fontWeight: 700,
-          fontSize: 'clamp(26px, 6.5vw, 34px)',
-          lineHeight: 2,
+          fontSize: 'clamp(32px, 8.5vw, 44px)',
+          lineHeight: 2.05,
           color: INK,
+          textShadow: '0 0 28px rgba(245, 236, 216, 0.22)',
         }}
       >
         أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ
       </p>
 
-      <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <text
-          x="50"
-          y="54"
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill={INK}
-          style={{ fontFamily: 'var(--font-amiri), Amiri, serif', fontWeight: 700 }}
-          fontSize="72"
+      <div className="mt-auto flex items-center gap-2.5">
+        <svg width="30" height="30" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="4" width="92" height="92" rx="22" fill="none" stroke={INK} strokeWidth="6" />
+          <text
+            x="50"
+            y="54"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={INK}
+            style={{ fontFamily: 'var(--font-amiri), Amiri, serif', fontWeight: 700 }}
+            fontSize="58"
+          >
+            {APP_ICON_LETTER}
+          </text>
+        </svg>
+        <span
+          style={{
+            fontFamily: 'var(--font-home-serif), Fraunces, Georgia, serif',
+            fontWeight: 600,
+            fontSize: '17px',
+            letterSpacing: '0.01em',
+            color: INK,
+          }}
         >
-          {APP_ICON_LETTER}
-        </text>
-      </svg>
+          {APP_NAME} App
+        </span>
+      </div>
     </div>
   )
 }
