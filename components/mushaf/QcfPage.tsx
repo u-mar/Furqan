@@ -92,6 +92,11 @@ export interface QcfPageProps {
   verses: Verse[]
   pageNumber: number
   immersive?: boolean
+  /** Continuous scroll: the page never has to fit one screen's height, so
+   *  the glyph size is set from viewport width instead of `100dvh / 15` —
+   *  otherwise it inherits the same cramped "must fit one screen" size the
+   *  swipe modes need. */
+  scrollable?: boolean
   fontReady?: boolean
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
@@ -116,6 +121,7 @@ function QcfPageComponent({
   verses,
   pageNumber,
   immersive = false,
+  scrollable = false,
   fontReady = true,
   highlightedVerseKey,
   selectedVerseKey,
@@ -149,6 +155,7 @@ function QcfPageComponent({
       className={cn(
         'mushaf-qcf-page',
         immersive && 'mushaf-qcf-page--immersive',
+        scrollable && 'mushaf-qcf-page--scrollable',
         pageClass
       )}
       data-page={pageNumber}

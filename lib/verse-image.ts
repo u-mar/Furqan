@@ -28,6 +28,11 @@ export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = SHARE_BACKGROUNDS
 
 export const DEFAULT_BACKGROUND_ID = VERSE_IMAGE_BACKGROUNDS[0].id
 
+export const DEFAULT_VERSE_FONT_SCALE = 1
+export const MIN_VERSE_FONT_SCALE = 0.7
+export const MAX_VERSE_FONT_SCALE = 1.3
+export const VERSE_FONT_SCALE_STEP = 0.1
+
 export interface VerseImageInput {
   /** Arabic words in reading order — sliced already if sharing part of an ayah. */
   words: string[]
@@ -43,6 +48,8 @@ export interface VerseImageInput {
   /** Marks the card as a portion of the ayah rather than the whole. */
   partial?: boolean
   backgroundId?: string
+  /** Multiplier on the Arabic type size, from the user's text-size control. */
+  fontScale?: number
 }
 
 const INK = '#ffffff'
@@ -157,6 +164,10 @@ function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): 
 
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const { words, page, isQcf, translation } = input
+  const fontScale = Math.min(
+    MAX_VERSE_FONT_SCALE,
+    Math.max(MIN_VERSE_FONT_SCALE, input.fontScale ?? DEFAULT_VERSE_FONT_SCALE)
+  )
 
   const background =
     VERSE_IMAGE_BACKGROUNDS.find((b) => b.id === input.backgroundId) ?? VERSE_IMAGE_BACKGROUNDS[0]
@@ -210,8 +221,8 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
     fontStack: arabicFont,
     maxWidth: W - 210,
     maxHeight: available * (translation ? 0.6 : 0.92),
-    startSize: 92,
-    minSize: 40,
+    startSize: Math.round(78 * fontScale),
+    minSize: Math.round(34 * fontScale),
     lineHeightRatio: 1.85,
   })
 
@@ -288,7 +299,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
     ctx.textBaseline = 'alphabetic'
     ctx.fillStyle = MUTED
     ctx.font = `600 26px ${fonts.serif}`
-    ctx.fillText(APP_NAME, margin + markSize + 16, baseline - 8)
+    ctx.fillText(`${APP_NAME} App`, margin + markSize + 16, baseline - 8)
   })
 
   return new Promise<Blob>((resolve, reject) => {

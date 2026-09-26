@@ -97,7 +97,7 @@ export default function MushafReadAlong({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]">
+    <div className="mushaf-reader-immersive fixed inset-0 z-[100] flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]">
       <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button
           type="button"

@@ -1,9 +1,9 @@
 /** App display name and generated icon styling (PWA / favicon). */
 
-export const APP_NAME = 'Al Furqaan'
+export const APP_NAME = 'Nadir'
 
-/** Arabic fa (ف) — from Al-Furqaan (الفُرقان). */
-export const APP_ICON_LETTER = 'ف'
+/** Arabic noon (ن) — the letter for "N", from Nadir. */
+export const APP_ICON_LETTER = 'ن'
 
 export const APP_ICON_THEME_COLOR = '#000000'
 

@@ -13,10 +13,12 @@ import {
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
+  ArrowLeftRight,
+  ArrowUpDown,
   Menu,
   Moon,
+  ScrollText,
   Search,
-  Settings,
   Play,
   Square,
   MessageSquareText,
@@ -40,8 +42,7 @@ import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useHalaqaReadingTick } from '@/hooks/useHalaqaReadingTick'
-import { applyThemeToDocument, getAppSettings, setAppSettings, THEME_MODES } from '@/lib/app-settings'
-import { setSettingsReturnTo } from '@/lib/settings-return'
+import { applyThemeToDocument, getAppSettings, READING_MODES, setAppSettings, THEME_MODES } from '@/lib/app-settings'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
 import {
@@ -134,6 +135,11 @@ function ReadPageContent() {
     const next = THEME_MODES[(THEME_MODES.indexOf(theme) + 1) % THEME_MODES.length]
     setAppSettings({ theme: next })
     applyThemeToDocument(next)
+  }
+
+  const cycleReadingMode = () => {
+    const next = READING_MODES[(READING_MODES.indexOf(readingMode) + 1) % READING_MODES.length]
+    setAppSettings({ readingMode: next })
   }
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
@@ -705,6 +711,7 @@ function ReadPageContent() {
           onReveal={() => {}}
           readOnly
           readMode
+          scrollable={readingMode === 'continuous'}
           pageNumber={pageNum}
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
@@ -713,7 +720,7 @@ function ReadPageContent() {
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -1009,17 +1016,20 @@ function ReadPageContent() {
           >
             <Moon className="h-5 w-5" />
           </button>
-          <Link
-            href="/settings"
+          <button
+            type="button"
+            onClick={cycleReadingMode}
             className="mushaf-read-chrome-btn rounded-lg p-2"
-            aria-label={t('Settings')}
-            onClick={(e) => {
-              e.stopPropagation()
-              setSettingsReturnTo(`/read?page=${currentPage}`)
-            }}
+            aria-label={t('Page navigation')}
           >
-            <Settings className="h-5 w-5" />
-          </Link>
+            {readingMode === 'horizontal' ? (
+              <ArrowLeftRight className="h-5 w-5" />
+            ) : readingMode === 'vertical' ? (
+              <ArrowUpDown className="h-5 w-5" />
+            ) : (
+              <ScrollText className="h-5 w-5" />
+            )}
+          </button>
         </div>
       </header>
 

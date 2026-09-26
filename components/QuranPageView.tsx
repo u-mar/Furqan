@@ -32,6 +32,9 @@ interface QuranPageViewProps {
   selectedVerseKey?: string | null
   /** Full-screen: 15 lines fit viewport, no scroll. */
   readMode?: boolean
+  /** Continuous scroll: sizes the glyphs from viewport width instead of
+   *  height, since the page isn't trying to fit one screen. */
+  scrollable?: boolean
   readOnly?: boolean
   /** Hide grey reveal boxes; unrevealed text stays invisible (for hifdh test). */
   hideRevealBoxes?: boolean
@@ -263,6 +266,7 @@ export default function QuranPageView({
   revealedAyahs,
   onReveal,
   readMode = false,
+  scrollable = false,
   readOnly = false,
   hideRevealBoxes = false,
   pageNumber: pageNumberProp,
@@ -487,6 +491,7 @@ export default function QuranPageView({
             verses={verses}
             pageNumber={pageNumber}
             immersive={readMode}
+            scrollable={scrollable}
             fontReady={qcfFont.ready}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}

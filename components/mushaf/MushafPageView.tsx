@@ -11,6 +11,7 @@ export interface MushafPageViewProps {
   verses: Verse[]
   pageNumber: number
   immersive?: boolean
+  scrollable?: boolean
   fontReady?: boolean
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
@@ -32,6 +33,7 @@ export default function MushafPageView({
   verses,
   pageNumber,
   immersive = true,
+  scrollable = false,
   fontReady = false,
   highlightedVerseKey,
   selectedVerseKey,
@@ -72,6 +74,7 @@ export default function MushafPageView({
         verses={verses}
         pageNumber={pageNumber}
         immersive={immersive}
+        scrollable={scrollable}
         fontReady={fontReady}
         highlightedVerseKey={highlightedVerseKey}
         selectedVerseKey={selectedVerseKey}

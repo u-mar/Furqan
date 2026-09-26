@@ -109,6 +109,13 @@
   box-sizing: content-box;
 }
 
+/* Continuous scroll: no single-screen height to fit, so size from viewport
+   width instead — comfortably bigger than the swipe modes' "must fit one
+   screen" size, and stable while scrolling instead of shifting with dvh. */
+.mushaf-qcf-page--scrollable .mushaf-qcf-line__glyphs {
+  font-size: clamp(24px, 6.2vw, 46px);
+}
+
 .mushaf-qcf-line--empty {
   visibility: hidden;
   pointer-events: none;

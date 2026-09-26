@@ -419,20 +419,24 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
     avatar = avatarCanvas
   }
 
-  /* The app's mark with the reciter's name under it, for the bottom-left corner */
+  /* The app's mark and name, with the reciter's name under it, for the bottom-left corner */
   const badgeWidth = 520
   const mark = 40
+  const textX = mark + 14
   const [badge, bctx] = makeCanvas(badgeWidth, 74)
   drawBrandMark(bctx, 2, 2, mark, serif)
-  bctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
-  bctx.font = `600 16px ${sans}`
+  bctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+  bctx.font = `700 18px ${serif}`
   bctx.textAlign = 'left'
   bctx.textBaseline = 'top'
+  bctx.fillText(`${APP_NAME} App`, textX, 2)
+  bctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+  bctx.font = `500 15px ${sans}`
   const fullName = r.userName || r.userUsername
   let name = fullName
-  while (name.length > 1 && bctx.measureText(name).width > badgeWidth - 8) name = name.slice(0, -1)
+  while (name.length > 1 && bctx.measureText(name).width > badgeWidth - textX - 4) name = name.slice(0, -1)
   if (name !== fullName) name = `${name.trimEnd()}…`
-  bctx.fillText(name, 2, mark + 12)
+  bctx.fillText(name, textX, 26)
 
   const { bands, level, frames } = analyse(buffer)
   return { background: backgroundImage, avatar, badge, bands, level, frames, seconds: buffer.duration }

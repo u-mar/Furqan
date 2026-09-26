@@ -25,6 +25,8 @@ function isWidthMode(value: unknown): value is MushafWidthMode {
  */
 export type ReadingMode = 'horizontal' | 'vertical' | 'continuous'
 
+export const READING_MODES: ReadingMode[] = ['horizontal', 'vertical', 'continuous']
+
 function isReadingMode(value: unknown): value is ReadingMode {
   return value === 'horizontal' || value === 'vertical' || value === 'continuous'
 }

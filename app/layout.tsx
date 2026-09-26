@@ -11,6 +11,7 @@ import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
+import SplashScreen from '@/components/SplashScreen'
 import { APP_ICON_THEME_COLOR, APP_NAME } from '@/lib/app-brand'
 import './globals.css'
 import './mushaf-qcf.css'
@@ -48,7 +49,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'Read the Quran, listen, and read together in a halaqa with Al Furqaan',
+  description: `Read the Quran, listen, and read together in a halaqa with ${APP_NAME}`,
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -95,6 +96,7 @@ export default function RootLayout({
           <AccountPromptHost />
           <ToastHost />
           <BottomNav />
+          <SplashScreen />
         </SettingsProvider>
       </body>
     </html>

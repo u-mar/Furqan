@@ -2,11 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Download, LayoutGrid, Loader2, RotateCcw, Share2, X } from 'lucide-react'
+import { Check, Download, LayoutGrid, Loader2, Minus, Plus, RotateCcw, Share2, X } from 'lucide-react'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { cn } from '@/lib/cn'
 import {
   DEFAULT_BACKGROUND_ID,
+  DEFAULT_VERSE_FONT_SCALE,
+  MAX_VERSE_FONT_SCALE,
+  MIN_VERSE_FONT_SCALE,
+  VERSE_FONT_SCALE_STEP,
   VERSE_IMAGE_BACKGROUNDS,
   renderVerseImage,
   shareVerseBlob,
@@ -51,6 +55,7 @@ export default function ShareVerseSheet({
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
   const [showTranslation, setShowTranslation] = useState(true)
+  const [fontScale, setFontScale] = useState(DEFAULT_VERSE_FONT_SCALE)
   const [glosses, setGlosses] = useState<string[] | null>(null)
   const [glossesLoading, setGlossesLoading] = useState(false)
   const [glossesMissing, setGlossesMissing] = useState(false)
@@ -72,11 +77,12 @@ export default function ShareVerseSheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  /* A new ayah resets the selection and its glosses. */
+  /* A new ayah resets the selection, its glosses, and the text size. */
   useEffect(() => {
     setRange(null)
     setGlosses(null)
     setGlossesMissing(false)
+    setFontScale(DEFAULT_VERSE_FONT_SCALE)
   }, [target?.verseKey])
 
   const useQcf = Boolean(target?.qcfWords.length)
@@ -157,6 +163,7 @@ export default function ShareVerseSheet({
           verseKey: target.verseKey,
           partial: selection.partial,
           backgroundId,
+          fontScale,
         })
         if (cancelled) return
         blobRef.current = blob
@@ -174,7 +181,7 @@ export default function ShareVerseSheet({
     return () => {
       cancelled = true
     }
-  }, [open, target, backgroundId, selection, useQcf, cardTranslation])
+  }, [open, target, backgroundId, selection, useQcf, cardTranslation, fontScale])
 
   /* Drop the object URL when the sheet closes. */
   useEffect(() => {
@@ -219,6 +226,13 @@ export default function ShareVerseSheet({
 
   const endWordDrag = useCallback(() => {
     draggingRef.current = false
+  }, [])
+
+  const changeFontScale = useCallback((delta: number) => {
+    setFontScale((v) => {
+      const next = Math.round((v + delta) * 10) / 10
+      return Math.min(MAX_VERSE_FONT_SCALE, Math.max(MIN_VERSE_FONT_SCALE, next))
+    })
   }, [])
 
   const handleShare = useCallback(async () => {
@@ -421,6 +435,34 @@ export default function ShareVerseSheet({
               </span>
             </button>
           ) : null}
+
+          {/* Text size */}
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-[var(--mushaf-popup-badge-bg)] px-3 py-2.5">
+            <span className="text-xs font-semibold">{t('Ayah text size')}</span>
+            <div className="flex items-center gap-0.5 rounded-full border border-[var(--mushaf-read-popup-border)] px-1">
+              <button
+                type="button"
+                onClick={() => changeFontScale(-VERSE_FONT_SCALE_STEP)}
+                disabled={fontScale <= MIN_VERSE_FONT_SCALE}
+                aria-label={t('Smaller text')}
+                className="ed-focus flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-30"
+              >
+                <Minus className="h-3.5 w-3.5" strokeWidth={2.4} />
+              </button>
+              <span className="w-9 text-center text-[0.8125rem] font-semibold tabular-nums">
+                {Math.round((fontScale / DEFAULT_VERSE_FONT_SCALE) * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => changeFontScale(VERSE_FONT_SCALE_STEP)}
+                disabled={fontScale >= MAX_VERSE_FONT_SCALE}
+                aria-label={t('Bigger text')}
+                className="ed-focus flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-30"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+              </button>
+            </div>
+          </div>
 
           {/* Backgrounds */}
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--mushaf-popup-meta)]">

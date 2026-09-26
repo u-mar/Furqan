@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Mic, Search, Square, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { useQuranAsr } from '@/hooks/useQuranAsr'
+import { useArabicVoiceInput } from '@/hooks/useArabicVoiceInput'
 import { loadQuranData } from '@/lib/quran'
 import { searchAyahs, type AyahSearchResult } from '@/lib/search-ayahs'
 import { filterChapters } from '@/lib/search-chapters'
@@ -33,7 +33,7 @@ export default function SurahSearchModal({
   const [query, setQuery] = useState('')
   const [verses, setVerses] = useState<Verse[] | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const voice = useQuranAsr((text) => setQuery(text))
+  const voice = useArabicVoiceInput((text) => setQuery(text))
 
   // Arabic text means they're searching for an ayah; anything else (a name,
   // a number) means a surah — no tab to choose between them up front.

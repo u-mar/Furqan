@@ -5,6 +5,10 @@ const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
 /** Must match lib/asr/model-cache.ts CACHE_NAME */
 const ASR_MODEL_CACHE = 'muyassar-asr-model-v1'
+/** Reciter portraits, bundled locally under /reciters/ — small, rarely
+ *  change, so a dedicated stable cache keeps them offline across app updates
+ *  the same way fonts/translations/the ASR model do. */
+const RECITER_PHOTOS_CACHE = 'muyassar-reciter-photos-v1'
 
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
 const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf']
@@ -34,7 +38,8 @@ self.addEventListener('activate', (event) => {
               k !== CACHE_VERSION &&
               k !== QCF_FONT_CACHE &&
               k !== TRANSLATIONS_CACHE &&
-              k !== ASR_MODEL_CACHE
+              k !== ASR_MODEL_CACHE &&
+              k !== RECITER_PHOTOS_CACHE
           )
           .map((k) => caches.delete(k))
       )
@@ -69,6 +74,12 @@ self.addEventListener('fetch', (event) => {
   // Surah header + other bundled fonts
   if (url.pathname.startsWith('/fonts/')) {
     event.respondWith(cacheFirst(event.request, QCF_FONT_CACHE))
+    return
+  }
+
+  // Reciter portraits (Listen screen) — small, bundled locally, offline-first.
+  if (url.pathname.startsWith('/reciters/')) {
+    event.respondWith(cacheFirst(event.request, RECITER_PHOTOS_CACHE))
     return
   }
 

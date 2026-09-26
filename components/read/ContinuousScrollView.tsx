@@ -51,6 +51,7 @@ export default function ContinuousScrollView({
   const prevOrder = useRef<number[]>([])
   const lastReported = useRef(currentPage)
   const pendingJump = useRef<number | null>(currentPage)
+  const loadDebounceRef = useRef<number | null>(null)
 
   const ensureLoaded = useCallback(
     (center: number) => {
@@ -142,14 +143,27 @@ export default function ContinuousScrollView({
         }
         if (best && best.page !== lastReported.current && pendingJump.current === null) {
           lastReported.current = best.page
-          ensureLoaded(best.page)
           onPageChange(best.page)
+          // A fast fling on a phone can cross a dozen+ pages in one motion,
+          // firing this callback for every one of them — without debouncing,
+          // each intermediate page would kick off its own burst of fetches
+          // (loadPage ± WINDOW_RADIUS) that's obsolete before it even
+          // resolves. Only the page the scroll actually settles on needs its
+          // neighbours loaded.
+          if (loadDebounceRef.current !== null) window.clearTimeout(loadDebounceRef.current)
+          loadDebounceRef.current = window.setTimeout(() => {
+            loadDebounceRef.current = null
+            ensureLoaded(best.page)
+          }, 150)
         }
       },
       { root, threshold: [0.5] }
     )
     for (const el of pageEls.current.values()) observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (loadDebounceRef.current !== null) window.clearTimeout(loadDebounceRef.current)
+    }
   }, [ensureLoaded, onPageChange, version])
 
   const orderedPages = [...dataRef.current.keys()].sort((a, b) => a - b)
