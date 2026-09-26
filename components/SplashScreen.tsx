@@ -7,11 +7,16 @@ import { cn } from '@/lib/cn'
 const SHOWN_KEY = 'nadir-splash-shown'
 const SHOW_MS = 1200
 const FADE_MS = 500
+const INK = '#f5ecd8'
 
 /**
  * A brief branded cover shown once per app open, over the manifest's own
  * black background — the OS-generated PWA splash can only show the icon, so
- * this is what carries the verse and settles the "N" mark below it.
+ * this is what carries the verse. The mark below it is set as SVG text in
+ * Amiri (not Georgia, which has no Arabic coverage and was falling back to
+ * whatever Arabic font the OS happened to have) so it centers on its own
+ * glyph metrics rather than CSS line-height, which reads oddly for a single
+ * harakat-free Arabic letter.
  */
 export default function SplashScreen() {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
@@ -40,7 +45,7 @@ export default function SplashScreen() {
     <div
       aria-hidden
       className={cn(
-        'fixed inset-0 z-[300] flex flex-col items-center bg-black px-8 pb-24 pt-[max(6rem,env(safe-area-inset-top))] transition-opacity ease-out',
+        'fixed inset-0 z-[300] flex flex-col items-center justify-center gap-10 bg-black px-10 transition-opacity ease-out',
         phase === 'fading' ? 'pointer-events-none opacity-0' : 'opacity-100'
       )}
       style={{ transitionDuration: `${FADE_MS}ms` }}
@@ -48,16 +53,31 @@ export default function SplashScreen() {
       <p
         dir="rtl"
         lang="ar"
-        className="amiri mx-auto max-w-xs text-center text-2xl leading-relaxed text-[#f5ecd8]"
+        className="mx-auto max-w-xs text-center"
+        style={{
+          fontFamily: 'var(--font-amiri), Amiri, serif',
+          fontWeight: 700,
+          fontSize: 'clamp(26px, 6.5vw, 34px)',
+          lineHeight: 2,
+          color: INK,
+        }}
       >
         أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ
       </p>
-      <span
-        className="mt-auto text-5xl leading-none text-[#f5ecd8]"
-        style={{ fontFamily: 'Georgia, serif' }}
-      >
-        {APP_ICON_LETTER}
-      </span>
+
+      <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <text
+          x="50"
+          y="54"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={INK}
+          style={{ fontFamily: 'var(--font-amiri), Amiri, serif', fontWeight: 700 }}
+          fontSize="72"
+        >
+          {APP_ICON_LETTER}
+        </text>
+      </svg>
     </div>
   )
 }

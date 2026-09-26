@@ -941,7 +941,7 @@ function ReadPageContent() {
             totalPages={TOTAL_MUSHAF_PAGES}
             fetchPage={fetchVersesForPage}
             renderPage={renderMushafPage}
-            onPageChange={(page) => void navigatePage(page)}
+            onPageChange={(page) => void navigatePage(page, { autoContinue: true })}
           />
         ) : (
           <GallerySwipeView

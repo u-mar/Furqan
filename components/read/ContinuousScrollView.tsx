@@ -7,6 +7,10 @@ import type { Verse } from '@/types'
 const WINDOW_RADIUS = 2
 /** Pages this far from the current one are dropped to bound memory. */
 const PRUNE_RADIUS = 6
+/** Fine-grained so the observer reports on every meaningful scroll step —
+ *  a single [0.5] threshold only fires when a target's own ratio crosses
+ *  0.5, which a page taller than the viewport may never do. */
+const DENSE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
 
 export interface ContinuousScrollViewProps {
   currentPage: number
@@ -101,6 +105,12 @@ export default function ContinuousScrollView({
     el.scrollIntoView({ block: 'start' })
     lastReported.current = target
     pendingJump.current = null
+    // The anchor-compensation effect below was skipped for every commit
+    // while this jump was pending, so its `prevOrder` baseline is however
+    // many pages stale — often from a completely different surah. Reset it
+    // to the set we just landed on, or its next run computes a delta against
+    // that stale snapshot and yanks the scroll straight back off the target.
+    prevOrder.current = [...dataRef.current.keys()].sort((a, b) => a - b)
   })
 
   // Scroll-anchor compensation — see the component doc comment. Skipped
@@ -135,11 +145,16 @@ export default function ContinuousScrollView({
     if (!root) return
     const observer = new IntersectionObserver(
       (entries) => {
-        let best: { page: number; ratio: number } | null = null
+        // Compare visible *pixels*, not each page's own intersection ratio —
+        // every mushaf page is taller than the viewport, so its ratio (visible
+        // ÷ its own full height) tops out well under 0.5 and a coarse
+        // threshold like [0.5] would simply never fire while scrolling.
+        let best: { page: number; visiblePx: number } | null = null
         for (const entry of entries) {
           const page = Number((entry.target as HTMLElement).dataset.page)
           if (!page || !entry.isIntersecting) continue
-          if (!best || entry.intersectionRatio > best.ratio) best = { page, ratio: entry.intersectionRatio }
+          const visiblePx = entry.intersectionRect.height
+          if (!best || visiblePx > best.visiblePx) best = { page, visiblePx }
         }
         if (best && best.page !== lastReported.current && pendingJump.current === null) {
           lastReported.current = best.page
@@ -157,7 +172,7 @@ export default function ContinuousScrollView({
           }, 150)
         }
       },
-      { root, threshold: [0.5] }
+      { root, threshold: DENSE_THRESHOLDS }
     )
     for (const el of pageEls.current.values()) observer.observe(el)
     return () => {
