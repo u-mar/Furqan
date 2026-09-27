@@ -245,7 +245,6 @@ export default function ContinuousScrollView({
         // spacer math anywhere else in the document.
         const pagesMoved = Math.round((root.scrollTop - anchorScrollTop.current) / avgHeight.current)
         const approx = Math.min(totalPages, Math.max(1, lastReported.current + pagesMoved))
-        console.log('[dbg2] fallback', { scrollTop: root.scrollTop, anchor: anchorScrollTop.current, avg: avgHeight.current, lastReported: lastReported.current, pagesMoved, approx, has: dataRef.current.has(approx) })
         if (!dataRef.current.has(approx) && !loadingRef.current.has(approx)) {
           ensureLoaded(approx)
         }

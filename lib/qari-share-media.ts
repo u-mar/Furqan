@@ -14,10 +14,16 @@
 
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
+import { compareMushafWords, wordOnVisualPage } from '@/lib/mushaf-engine/word-order'
+import { loadPageFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
+import { pageHasQcfData, versePageNumber } from '@/lib/qcf-page'
+import { getVerseArabicText } from '@/lib/quran-display'
+import { getVerseByKey } from '@/lib/quran'
 import { SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS } from '@/lib/share-backgrounds'
+import type { Verse } from '@/types'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -126,15 +132,47 @@ export interface VideoBackground {
   thumb: string | null
   /** The heading it is listed under in the full gallery. */
   group: string
+  /** A moving clip, hosted on Cloudinary — takes priority over `url` when set. */
+  videoUrl?: string | null
 }
 
-/** What the picker strip shows before "More": black and the four landscapes made for videos. */
-export const FEATURED_VIDEO_BACKGROUND_IDS = ['black', 'desert-dunes', 'canyon-pinnacles', 'mountain', 'valley']
+/** What the picker strip shows before "More": black, one moving clip, and the four landscapes made for videos. */
+export const FEATURED_VIDEO_BACKGROUND_IDS = [
+  'black',
+  'motion-sunset-on-the-beach',
+  'desert-dunes',
+  'canyon-pinnacles',
+  'mountain',
+  'valley',
+]
 
-export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
+export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Motion', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
+
+const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
+
+/** Looping clips — Coverr footage, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle). */
+const MOTION_BACKGROUNDS: VideoBackground[] = (
+  [
+    ['sunset-in-auckland-new-zealand', 'Auckland sunset'],
+    ['sunset-on-sayulita-beach-in-mexico', 'Sayulita beach'],
+    ['river-surrounded-by-mountains', 'Mountain river'],
+    ['sunset-on-the-beach', 'Beach sunset'],
+    ['purple-flowers-at-sunset', 'Purple flowers'],
+    ['sun-setting-in-auckland-new-zealand', 'Auckland sun'],
+  ] as const
+).map(([id, label]) => ({
+  id: `motion-${id}`,
+  label,
+  // Cloudinary derives a JPG frame from the video on request — no separate upload needed.
+  url: `${MOTION_CLOUD_BASE}/${id}.jpg`,
+  thumb: `${MOTION_CLOUD_BASE}/${id}.jpg`,
+  videoUrl: `${MOTION_CLOUD_BASE}/${id}.mp4`,
+  group: 'Motion',
+}))
 
 export const VIDEO_BACKGROUNDS: VideoBackground[] = [
   { id: 'black', label: 'Black', url: null, thumb: null, group: 'Plain' },
+  ...MOTION_BACKGROUNDS,
   ...[
     ['desert-dunes', 'Dunes'],
     ['canyon-pinnacles', 'Canyon'],
@@ -189,24 +227,55 @@ export function saveVideoOptions(options: VideoOptions): void {
   }
 }
 
-/** Frequency bands; the bars mirror them, low voices in the middle and higher ones outwards. */
-const BANDS = 18
-const BAR_WIDTH = 6
-const BAR_GAP = 6
-
-const AVATAR_Y = 600
+// Low, centred, and clear of the badge at the very bottom — the ayah and its
+// translation take the whole middle of the frame now that there's no
+// waveform to share it with.
+const AVATAR_Y = 1050
 const AVATAR_SIZE = 148
-const WAVE_Y = 780
+
+const CAPTION_TOP = 380
+const CAPTION_BOTTOM = 900
+const CAPTION_SIDE_MARGIN = 70
+
+interface FittedBlock {
+  lines: string[]
+  fontSize: number
+  lineHeight: number
+  height: number
+}
+
+interface CaptionBlock {
+  /** The recording's own clock — shown from here until the next one starts. */
+  atSeconds: number
+  arabic: FittedBlock
+  /** The page's own QCF glyph font — the same script the mushaf itself uses.
+   *  Falls back to Amiri when the ayah has no QCF data or its font won't load. */
+  arabicFont: string
+  /** '' for QCF (a PUA-glyph font with no real bold face — forcing one would
+   *  synthesize-bold the letterforms out of shape), '700' for the Amiri fallback. */
+  arabicWeight: string
+  /** null when no translation could be found for this ayah. */
+  translation: FittedBlock | null
+  /** Both blocks' combined height, for centring the pair as one group. */
+  groupHeight: number
+}
 
 interface Scene {
-  /** null when the plain black background was chosen. */
+  /** null when the plain black background — or a moving one — was chosen. */
   background: HTMLImageElement | null
+  /** Set instead of `background` for a moving clip; looped to the recitation's length. */
+  backgroundVideo: HTMLVideoElement | null
+  /** `backgroundVideo`'s own length, for looping it under a longer recitation. 0 when there is none. */
+  backgroundVideoDuration: number
   /** null when the reciter's picture was left out. */
   avatar: HTMLCanvasElement | null
   badge: HTMLCanvasElement
-  /** Band levels per frame, 0–1: frame f, band b is at f * BANDS + b. */
-  bands: Float32Array
-  /** Overall loudness per frame, 0–1. */
+  /** The ayah text (and its translation), one block per verse marked while
+   *  recording — empty when the reciter never opened the Mushaf overlay (or
+   *  never tapped an ayah). */
+  captions: CaptionBlock[]
+  translationFont: string
+  /** Overall loudness per frame, 0–1 — still used for the avatar's breathing ring. */
   level: Float32Array
   frames: number
   seconds: number
@@ -226,6 +295,43 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   })
 }
 
+/**
+ * Loaded muted and never played — frames are pulled out one at a time by
+ * seeking (see `seekVideoTo`), since the export runs frame-by-frame rather
+ * than in real time. `crossOrigin` is required for a cross-origin video to
+ * stay drawable on canvas; Cloudinary sends the CORS header this needs.
+ */
+function loadVideo(src: string): Promise<HTMLVideoElement | null> {
+  return new Promise((resolve) => {
+    const el = document.createElement('video')
+    el.crossOrigin = 'anonymous'
+    el.muted = true
+    el.playsInline = true
+    el.preload = 'auto'
+    el.onloadedmetadata = () => resolve(el)
+    el.onerror = () => resolve(null)
+    el.src = src
+  })
+}
+
+/** Resolves once the frame at `time` has actually decoded and is drawable. */
+function seekVideoTo(video: HTMLVideoElement, time: number): Promise<void> {
+  return new Promise((resolve) => {
+    const onSeeked = () => {
+      video.removeEventListener('seeked', onSeeked)
+      resolve()
+    }
+    video.addEventListener('seeked', onSeeked)
+    video.currentTime = time
+  })
+}
+
+function mediaSize(el: HTMLImageElement | HTMLVideoElement): { w: number; h: number } {
+  return el instanceof HTMLVideoElement
+    ? { w: el.videoWidth, h: el.videoHeight }
+    : { w: el.naturalWidth, h: el.naturalHeight }
+}
+
 function makeCanvas(width = W, height = H): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -233,6 +339,73 @@ function makeCanvas(width = W, height = H): [HTMLCanvasElement, CanvasRenderingC
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error(tr('Could not draw the video on this device.'))
   return [canvas, ctx]
+}
+
+function wrapLines(ctx: CanvasRenderingContext2D, words: string[], maxWidth: number): string[] {
+  const lines: string[] = []
+  let line = ''
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word
+    if (!line || ctx.measureText(candidate).width <= maxWidth) line = candidate
+    else {
+      lines.push(line)
+      line = word
+    }
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+/** Shrinks the type until the wrapped block fits the space it's given — the
+ *  same approach the verse-image share cards use, done once per marked ayah
+ *  (and its translation) rather than on every frame. */
+function fitBlock(
+  ctx: CanvasRenderingContext2D,
+  words: string[],
+  opts: { fontStack: string; weight?: string; maxWidth: number; maxHeight: number; startSize: number; minSize: number; lineHeightRatio: number }
+): FittedBlock {
+  const { fontStack, weight = '', maxWidth, maxHeight, startSize, minSize, lineHeightRatio } = opts
+  let fontSize = startSize
+  let lines: string[] = []
+  let lineHeight = fontSize * lineHeightRatio
+  while (fontSize >= minSize) {
+    ctx.font = `${weight} ${fontSize}px ${fontStack}`.trim()
+    lines = wrapLines(ctx, words, maxWidth)
+    lineHeight = fontSize * lineHeightRatio
+    if (lines.length * lineHeight <= maxHeight) break
+    fontSize -= 2
+  }
+  return { lines, fontSize, lineHeight, height: lines.length * lineHeight }
+}
+
+/** The ayah's own QCF glyphs, one array entry per word (so they wrap and
+ *  space like real words), in reading order, with the ayah-end ornament left
+ *  out. Empty when the verse has no QCF data for this page. */
+function verseQcfWords(verse: Verse, pageNumber: number): string[] {
+  const items = (verse.words || [])
+    .filter(
+      (w) => w.char_type_name !== 'end' && wordOnVisualPage(w, pageNumber, verse) && Boolean(w.code_v2?.trim())
+    )
+    .map((w) => ({ ...w, verseKey: verse.verse_key }))
+  items.sort(compareMushafWords)
+  return items.map((w) => w.code_v2!.trim())
+}
+
+/** A page's translations, fetched once and reused for every ayah marked on it. */
+async function fetchPageTranslations(page: number): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  try {
+    const res = await fetch(`/api/ayah?type=translations&page=${page}&lang=en&edition=en.sahih`)
+    const data: unknown = await res.json()
+    if (Array.isArray(data)) {
+      for (const row of data as { verse_key?: string; translation?: string }[]) {
+        if (row.verse_key && row.translation) map.set(row.verse_key, row.translation)
+      }
+    }
+  } catch {
+    // No translation for this page — the caption just shows the ayah alone.
+  }
+  return map
 }
 
 function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, serif: string) {
@@ -252,138 +425,152 @@ function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.restore()
 }
 
-/** In-place fast Fourier transform. Both arrays must have a power-of-two length. */
-function fft(re: Float32Array, im: Float32Array) {
-  const n = re.length
-  for (let i = 1, j = 0; i < n; i += 1) {
-    let bit = n >> 1
-    for (; j & bit; bit >>= 1) j ^= bit
-    j ^= bit
-    if (i < j) {
-      const tr = re[i]
-      re[i] = re[j]
-      re[j] = tr
-      const ti = im[i]
-      im[i] = im[j]
-      im[j] = ti
-    }
-  }
-  for (let len = 2; len <= n; len <<= 1) {
-    const angle = (-2 * Math.PI) / len
-    const wr = Math.cos(angle)
-    const wi = Math.sin(angle)
-    const half = len >> 1
-    for (let i = 0; i < n; i += len) {
-      let cr = 1
-      let ci = 0
-      for (let j = 0; j < half; j += 1) {
-        const a = i + j
-        const b = a + half
-        const tr = re[b] * cr - im[b] * ci
-        const ti = re[b] * ci + im[b] * cr
-        re[b] = re[a] - tr
-        im[b] = im[a] - ti
-        re[a] += tr
-        im[a] += ti
-        const next = cr * wr - ci * wi
-        ci = cr * wi + ci * wr
-        cr = next
-      }
-    }
-  }
-}
-
 /**
- * Listen to the whole recitation once, frame by frame: how loud it is and how
- * that loudness spreads across the voice's range. The bars are drawn from this.
+ * Listen to the whole recitation once, frame by frame, for how loud it is —
+ * used only for the avatar's breathing ring now that the waveform is gone.
  */
-function analyse(buffer: AudioBuffer): { bands: Float32Array; level: Float32Array; frames: number } {
+function analyse(buffer: AudioBuffer): { level: Float32Array; frames: number } {
   const data = buffer.getChannelData(0)
   const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
-  const size = 1024
-  const windowShape = new Float32Array(size)
-  for (let i = 0; i < size; i += 1) windowShape[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1))
+  const windowSamples = Math.round(buffer.sampleRate / FPS)
 
-  // Log-spaced bands from 90 Hz to 7 kHz: where a reciting voice lives.
-  const binHz = buffer.sampleRate / size
-  const edges: number[] = []
-  for (let b = 0; b <= BANDS; b += 1) {
-    const bin = Math.round((90 * Math.pow(7000 / 90, b / BANDS)) / binHz)
-    edges.push(b > 0 ? Math.max(edges[b - 1] + 1, bin) : Math.max(1, bin))
-  }
-
-  const re = new Float32Array(size)
-  const im = new Float32Array(size)
-  const raw = new Float32Array(frames * BANDS)
   const loud = new Float32Array(frames)
-
   for (let f = 0; f < frames; f += 1) {
-    const start = Math.floor((f / FPS) * buffer.sampleRate) - size / 2
+    const start = Math.floor((f / FPS) * buffer.sampleRate) - windowSamples / 2
     let energy = 0
-    for (let i = 0; i < size; i += 1) {
+    for (let i = 0; i < windowSamples; i += 1) {
       const index = start + i
       const sample = index >= 0 && index < data.length ? data[index] : 0
-      re[i] = sample * windowShape[i]
-      im[i] = 0
       energy += sample * sample
     }
-    loud[f] = Math.sqrt(energy / size)
-    fft(re, im)
-    for (let b = 0; b < BANDS; b += 1) {
-      let sum = 0
-      for (let k = edges[b]; k < edges[b + 1]; k += 1) sum += Math.hypot(re[k], im[k])
-      raw[f * BANDS + b] = sum / (edges[b + 1] - edges[b])
-    }
+    loud[f] = Math.sqrt(energy / windowSamples)
   }
 
-  // Each band is measured against its own loud moments, so the treble moves as
-  // freely as the bass instead of sitting flat beside it.
-  const ceiling = new Float32Array(BANDS)
-  const column = new Float32Array(frames)
-  for (let b = 0; b < BANDS; b += 1) {
-    for (let f = 0; f < frames; f += 1) column[f] = raw[f * BANDS + b]
-    const sorted = Float32Array.from(column).sort()
-    ceiling[b] = sorted[Math.floor(sorted.length * 0.96)] || 1e-6
-  }
   const sortedLoud = Float32Array.from(loud).sort()
   const loudCeiling = sortedLoud[Math.floor(sortedLoud.length * 0.97)] || 1e-6
 
   const level = new Float32Array(frames)
-  const bands = new Float32Array(frames * BANDS)
-  const held = new Float32Array(BANDS)
   let heldLevel = 0
   for (let f = 0; f < frames; f += 1) {
     const targetLevel = Math.min(1, Math.pow(loud[f] / loudCeiling, 0.7))
     heldLevel += (targetLevel - heldLevel) * (targetLevel > heldLevel ? 0.5 : 0.16)
     level[f] = heldLevel
-    for (let b = 0; b < BANDS; b += 1) {
-      // Quiet stretches settle the bars down rather than showing room noise.
-      const target = Math.min(1, Math.pow(raw[f * BANDS + b] / ceiling[b], 0.75)) * (0.25 + 0.75 * targetLevel)
-      held[b] += (target - held[b]) * (target > held[b] ? 0.6 : 0.2)
-      bands[f * BANDS + b] = held[b]
-    }
   }
 
-  return { bands, level, frames }
+  return { level, frames }
 }
 
 async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
+  const arabicFont = cssFont('--font-amiri', "'Amiri', serif")
   const background = findVideoBackground(options.backgroundId)
 
-  const [picture, backgroundImage] = await Promise.all([
+  const [picture, backgroundImage, backgroundVideo] = await Promise.all([
     options.includeAvatar
       ? loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`)
       : null,
-    background.url ? loadImage(background.url) : null,
+    // A moving background's `url` is only its Cloudinary-derived poster frame,
+    // used by the picker's thumbnail — the actual export always pulls frames
+    // from `videoUrl` instead, so it's skipped here.
+    !background.videoUrl && background.url ? loadImage(background.url) : null,
+    background.videoUrl ? loadVideo(background.videoUrl) : null,
     document.fonts
       ? Promise.all([
           document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
           document.fonts.load(`600 30px ${sans}`, r.userName),
+          document.fonts.load(`700 30px ${arabicFont}`, 'ا'),
         ]).catch(() => null)
       : null,
   ])
+
+  // The ayat marked while reading from the Mushaf — one verse (and one
+  // translation) lookup per unique verse, then wrapped/sized once each
+  // rather than on every frame.
+  const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
+  let captions: CaptionBlock[] = []
+  if (timeline.length) {
+    const uniqueKeys = [...new Set(timeline.map((entry) => entry.verseKey))]
+    const verses = new Map<string, Verse>()
+    await Promise.all(
+      uniqueKeys.map(async (verseKey) => {
+        try {
+          verses.set(verseKey, await getVerseByKey(verseKey))
+        } catch {
+          // An ayah that fails to resolve just has no caption of its own —
+          // the previous one keeps showing instead of breaking the export.
+        }
+      })
+    )
+
+    // One translation fetch per page these ayat actually fall on, not one per ayah.
+    const pagesNeeded = new Set([...verses.values()].map((v) => versePageNumber(v)))
+    const translationsByPage = new Map<number, Map<string, string>>()
+    await Promise.all(
+      [...pagesNeeded].map(async (page) => translationsByPage.set(page, await fetchPageTranslations(page)))
+    )
+
+    const [, measureCtx] = makeCanvas(10, 10)
+    const arabicMaxHeight = (CAPTION_BOTTOM - CAPTION_TOP) * 0.62
+    const translationMaxHeight = (CAPTION_BOTTOM - CAPTION_TOP) * 0.3
+
+    captions = (
+      await Promise.all(
+        timeline.map(async (entry): Promise<CaptionBlock | null> => {
+          const verse = verses.get(entry.verseKey)
+          if (!verse) return null
+          const page = versePageNumber(verse)
+
+          // The mushaf's own script when this ayah has QCF data for its page
+          // and the page's glyph font actually loads; plain Uthmani otherwise.
+          const qcfWords = pageHasQcfData([verse]) ? verseQcfWords(verse, page) : []
+          const fontFamily = qcfPageFontFamily(page)
+          const fontLoaded = qcfWords.length > 0 && (await loadPageFont(page, qcfWords.join('').slice(0, 12)))
+          const words = fontLoaded ? qcfWords : getVerseArabicText(verse, { omitEndMark: true }).split(/\s+/)
+          const font = fontLoaded ? `"${fontFamily}"` : arabicFont
+
+          const arabic = fitBlock(measureCtx, words, {
+            fontStack: font,
+            // QCF is a PUA-glyph font shaped for the printed Madani mushaf,
+            // never designed with a bold face — forcing weight 700 makes the
+            // browser synthesize bold by thickening strokes, which distorts
+            // the letterforms into something that no longer reads as the
+            // real mushaf script. The mushaf reader itself never bolds it
+            // either. Amiri (the fallback when a page has no QCF data) does
+            // have a real bold face, so it still gets one.
+            weight: fontLoaded ? '' : '700',
+            maxWidth: W - CAPTION_SIDE_MARGIN * 2,
+            maxHeight: arabicMaxHeight,
+            startSize: 64,
+            minSize: 30,
+            lineHeightRatio: 1.7,
+          })
+
+          const translationText = translationsByPage.get(page)?.get(entry.verseKey)?.replace(/\s+/g, ' ').trim()
+          const translation = translationText
+            ? fitBlock(measureCtx, translationText.split(/\s+/), {
+                fontStack: serif,
+                weight: '500',
+                maxWidth: W - CAPTION_SIDE_MARGIN * 2 - 40,
+                maxHeight: translationMaxHeight,
+                startSize: 30,
+                minSize: 18,
+                lineHeightRatio: 1.5,
+              })
+            : null
+
+          return {
+            atSeconds: entry.atSeconds,
+            arabic,
+            arabicFont: font,
+            arabicWeight: fontLoaded ? '' : '700',
+            translation,
+            groupHeight: arabic.height + (translation ? 56 + translation.height : 0),
+          }
+        })
+      )
+    ).filter((c): c is CaptionBlock => c !== null)
+  }
 
   /* The picture, small and round; the initial on deep blue when there is none */
   let avatar: HTMLCanvasElement | null = null
@@ -438,26 +625,78 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
   if (name !== fullName) name = `${name.trimEnd()}…`
   bctx.fillText(name, textX, 26)
 
-  const { bands, level, frames } = analyse(buffer)
-  return { background: backgroundImage, avatar, badge, bands, level, frames, seconds: buffer.duration }
+  const { level, frames } = analyse(buffer)
+  return {
+    background: backgroundImage,
+    backgroundVideo,
+    backgroundVideoDuration: backgroundVideo?.duration || 0,
+    avatar,
+    badge,
+    captions,
+    translationFont: serif,
+    level,
+    frames,
+    seconds: buffer.duration,
+  }
 }
 
 function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
   ctx.fillStyle = '#000000'
   ctx.fillRect(0, 0, W, H)
 
-  if (scene.background) {
-    const scale = Math.max(W / scene.background.naturalWidth, H / scene.background.naturalHeight)
-    const dw = scene.background.naturalWidth * scale
-    const dh = scene.background.naturalHeight * scale
-    ctx.drawImage(scene.background, (W - dw) / 2, (H - dh) / 2, dw, dh)
-    // A dark wash so the waveform, picture and name stay legible on any photo.
+  const backgroundMedia = scene.backgroundVideo || scene.background
+  if (backgroundMedia) {
+    const { w, h } = mediaSize(backgroundMedia)
+    const scale = Math.max(W / w, H / h)
+    const dw = w * scale
+    const dh = h * scale
+    ctx.drawImage(backgroundMedia, (W - dw) / 2, (H - dh) / 2, dw, dh)
+    // A dark wash so the ayah, picture and name stay legible on any photo or clip.
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
     ctx.fillRect(0, 0, W, H)
   }
 
   const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
   const level = scene.level[f] ?? 0
+
+  // The ayah being recited, if the reciter marked any — the last one whose
+  // timestamp has passed, so it holds until the next mark takes over. Drawn
+  // as one centred group with its translation underneath.
+  let caption: CaptionBlock | null = null
+  for (const c of scene.captions) {
+    if (c.atSeconds > t) break
+    caption = c
+  }
+  if (caption) {
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)'
+    ctx.shadowBlur = 18
+
+    let y = (CAPTION_TOP + CAPTION_BOTTOM - caption.groupHeight) / 2
+
+    ctx.direction = 'rtl'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `${caption.arabicWeight} ${caption.arabic.fontSize}px ${caption.arabicFont}`.trim()
+    y += caption.arabic.lineHeight * 0.78
+    for (const line of caption.arabic.lines) {
+      ctx.fillText(line, W / 2, y)
+      y += caption.arabic.lineHeight
+    }
+
+    if (caption.translation) {
+      y += 56 - caption.arabic.lineHeight * 0.78 + caption.translation.lineHeight * 0.78
+      ctx.direction = 'ltr'
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.font = `500 ${caption.translation.fontSize}px ${scene.translationFont}`
+      for (const line of caption.translation.lines) {
+        ctx.fillText(line, W / 2, y)
+        y += caption.translation.lineHeight
+      }
+    }
+    ctx.restore()
+  }
 
   if (scene.avatar) {
     // A soft ring breathing out from the picture with the voice.
@@ -474,26 +713,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
     ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
   }
 
-  // The waveform: mirrored bars with a faint glow, tallest in the middle.
-  const count = BANDS * 2 - 1
-  const span = count * BAR_WIDTH + (count - 1) * BAR_GAP
-  const left = (W - span) / 2
-  ctx.save()
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.4)'
-  ctx.shadowBlur = 16
-  ctx.beginPath()
-  for (let i = 0; i < count; i += 1) {
-    const band = Math.abs(i - (BANDS - 1))
-    const value = scene.bands[f * BANDS + band] ?? 0
-    const taper = 1 - (band / BANDS) * 0.45
-    const height = BAR_WIDTH + value * 116 * taper
-    ctx.roundRect(left + i * (BAR_WIDTH + BAR_GAP), WAVE_Y - height / 2, BAR_WIDTH, height, BAR_WIDTH / 2)
-  }
-  ctx.fill()
-  ctx.restore()
-
-  ctx.drawImage(scene.badge, 40, H - 240)
+  ctx.drawImage(scene.badge, 40, H - 100)
 
   // In from black, and out again over the last moments of the tail.
   const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)
@@ -548,6 +768,12 @@ export async function makeRecitationVideo(
     for (let i = 0; i < totalFrames; i += 1) {
       throwIfCancelled(signal)
       const t = i / FPS
+      // The export runs frame-by-frame, not in real time, so the clip is
+      // advanced by seeking rather than played — looped under a recitation
+      // longer than the clip itself.
+      if (scene.backgroundVideo && scene.backgroundVideoDuration > 0) {
+        await seekVideoTo(scene.backgroundVideo, t % scene.backgroundVideoDuration)
+      }
       drawFrame(ctx, scene, t)
       await video.add(t, 1 / FPS)
 

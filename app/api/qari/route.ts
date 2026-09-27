@@ -49,6 +49,34 @@ function parsePeaks(raw: string): number[] {
   }
 }
 
+const MAX_VERSE_TIMELINE = 1000
+const VERSE_KEY_RE = /^\d{1,3}:\d{1,3}$/
+
+/** Ayah markings sent from the phone while reading from the Mushaf — dropped
+ *  silently if malformed, since this only ever enriches the share video. */
+function parseVerseTimeline(raw: string, maxSeconds: number): { verseKey: string; atSeconds: number }[] {
+  try {
+    const value: unknown = JSON.parse(raw || '[]')
+    if (!Array.isArray(value)) return []
+    return value
+      .slice(0, MAX_VERSE_TIMELINE)
+      .filter(
+        (entry): entry is { verseKey: string; atSeconds: number } =>
+          Boolean(entry) &&
+          typeof entry === 'object' &&
+          typeof (entry as { verseKey?: unknown }).verseKey === 'string' &&
+          VERSE_KEY_RE.test((entry as { verseKey: string }).verseKey) &&
+          Number.isFinite((entry as { atSeconds?: unknown }).atSeconds)
+      )
+      .map((entry) => ({
+        verseKey: entry.verseKey,
+        atSeconds: Math.max(0, Math.min(maxSeconds, entry.atSeconds)),
+      }))
+  } catch {
+    return []
+  }
+}
+
 /**
  * GET /api/qari?sort=recent|top&user=username&likedBy=userId&imitating=sheikhId
  *   &following=1&viewerId=&q=&skip=&take=
@@ -198,6 +226,11 @@ export async function POST(request: NextRequest) {
     if (durationSec <= 0 || durationSec > MAX_DURATION_SEC) {
       return NextResponse.json({ error: 'Recording length is out of range.' }, { status: 400 })
     }
+    const verseTimelineRaw = form.get('verseTimeline')
+    const verseTimeline = parseVerseTimeline(
+      typeof verseTimelineRaw === 'string' ? verseTimelineRaw : '',
+      durationSec
+    )
 
     const buffer = Buffer.from(await file.arrayBuffer())
     const audioId = await putAudio(buffer, {
@@ -222,6 +255,11 @@ export async function POST(request: NextRequest) {
         // stays a plain equality match on MongoDB.
         ...(imitating ? { imitating } : {}),
         peaks,
+        // Left off entirely rather than stored as an empty array, matching
+        // `imitating` above — keeps rows from before this existed and rows
+        // genuinely marked with nothing indistinguishable, which is fine
+        // since both read back as "no caption text to show."
+        ...(verseTimeline.length ? { verseTimeline } : {}),
         caption: clean(form.get('caption'), 280),
       },
     })

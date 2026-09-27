@@ -23,6 +23,10 @@ interface MushafReadAlongProps {
   elapsedLabel: string
   onBegin: () => void
   onStop: () => void
+  /** Fired with a verse key whenever recording is on and the "now reciting"
+   *  ayah changes — a tap, or the first ayah of a page just turned to. The
+   *  caller timestamps it against the recording's own clock. */
+  onMarkVerse?: (verseKey: string) => void
 }
 
 /**
@@ -43,6 +47,7 @@ export default function MushafReadAlong({
   elapsedLabel,
   onBegin,
   onStop,
+  onMarkVerse,
 }: MushafReadAlongProps) {
   const t = useT()
   const [page, setPage] = useState(initialPage)
@@ -52,6 +57,22 @@ export default function MushafReadAlong({
   const [chapterNamesById, setChapterNamesById] = useState<Record<number, string>>({})
   const [searchOpen, setSearchOpen] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
+  const [currentVerseKey, setCurrentVerseKey] = useState<string | null>(null)
+
+  const markVerse = (verseKey: string) => {
+    setCurrentVerseKey(verseKey)
+    if (recording) onMarkVerse?.(verseKey)
+  }
+
+  // A freshly-turned page (or recording starting on a page already open)
+  // marks its first ayah automatically — a sensible default caption the
+  // reciter can sharpen at any point by tapping the ayah they're actually on.
+  useEffect(() => {
+    if (!open || !recording || !verses || verses.length === 0) return
+    const first = verses[0]?.verse_key
+    if (first) markVerse(first)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, recording, verses])
 
   useEffect(() => {
     if (!open) return
@@ -131,6 +152,12 @@ export default function MushafReadAlong({
         </button>
       </div>
 
+      {recording ? (
+        <p className="shrink-0 px-4 pb-1.5 text-center text-[11.5px] text-[var(--home-muted)]">
+          {t('Tap the ayah you’re reciting to caption the video there')}
+        </p>
+      ) : null}
+
       <div className="relative min-h-0 flex-1 overflow-hidden px-1">
         {verses ? (
           <QuranPageView
@@ -144,6 +171,9 @@ export default function MushafReadAlong({
             readOnly
             readMode
             pageNumber={page}
+            highlightedVerseKey={recording ? currentVerseKey : null}
+            ayahSelectMode={recording}
+            onAyahSelect={recording ? markVerse : undefined}
           />
         ) : loadError ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">

@@ -3,6 +3,12 @@ import { tr } from '@/lib/i18n-core'
 
 /** Client-side access to the Qari recitation feed. */
 
+/** One ayah becoming "the one being read" at a point in the recording. */
+export interface VerseTimelineEntry {
+  verseKey: string
+  atSeconds: number
+}
+
 export interface Recitation {
   id: string
   userName: string
@@ -19,6 +25,8 @@ export interface Recitation {
   imitating: string | null
   /** Loudness across the recording, 0–100. Empty for recordings made before waveforms. */
   peaks: number[]
+  /** Empty unless the reciter marked ayat while reading from the Mushaf overlay. */
+  verseTimeline: VerseTimelineEntry[]
   caption: string
   durationSec: number
   likeCount: number
@@ -212,6 +220,8 @@ export interface PublishInput {
   /** Sheikh id, or empty when not imitating. */
   imitating: string
   peaks: number[]
+  /** Empty when the reciter never opened the Mushaf overlay, or never tapped an ayah. */
+  verseTimeline: VerseTimelineEntry[]
   userId: string
   userName: string
   userUsername: string
@@ -229,6 +239,7 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   form.append('caption', input.caption)
   form.append('imitating', input.imitating)
   form.append('peaks', JSON.stringify(input.peaks))
+  form.append('verseTimeline', JSON.stringify(input.verseTimeline))
   form.append('userId', input.userId)
   form.append('userName', input.userName)
   form.append('userUsername', input.userUsername)

@@ -26,6 +26,8 @@ export interface QariDraftMeta {
   mimeType: string
   durationSec: number
   peaks: number[]
+  /** Ayat marked while reading from the Mushaf, oldest first. Empty otherwise. */
+  verseTimeline: { verseKey: string; atSeconds: number }[]
   savedAt: number
 }
 
@@ -66,6 +68,7 @@ export async function saveDraftAudio(blob: Blob, mimeType: string, durationSec: 
       imitating: existing?.imitating ?? null,
       space: existing?.space ?? 'reciter',
       peaks: existing?.peaks ?? [],
+      verseTimeline: existing?.verseTimeline ?? [],
       mimeType,
       durationSec,
       savedAt: Date.now(),

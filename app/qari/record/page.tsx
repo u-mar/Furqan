@@ -51,6 +51,7 @@ import {
   publishRecitation,
   tidyHashtags,
   type Recitation,
+  type VerseTimelineEntry,
 } from '@/lib/qari'
 import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
 import { measurePeaks } from '@/lib/qari-waveform'
@@ -117,6 +118,8 @@ function RecordFlow() {
   // itself (owned by useQariRecorder) keeps running underneath since this
   // never unmounts RecordFlow, just layers a full-screen view over it.
   const [mushafOpen, setMushafOpen] = useState(false)
+  // Ayat marked "now reciting" while the Mushaf overlay is open.
+  const [verseTimeline, setVerseTimeline] = useState<VerseTimelineEntry[]>([])
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -162,6 +165,7 @@ function RecordFlow() {
       clearCountdown()
       strongFeedback()
       setLevels([])
+      setVerseTimeline([])
       setStep('recording')
       const prepared = preparedRef.current
       preparedRef.current = null
@@ -189,6 +193,16 @@ function RecordFlow() {
     }, 90)
     return () => window.clearInterval(id)
   }, [state.recording])
+
+  // Read from a ref rather than closed over directly, so marking a verse
+  // (fired from deep inside the Mushaf overlay) always timestamps against
+  // the true current elapsed time instead of whatever it was when the
+  // callback identity was last created.
+  const elapsedRef = useRef(0)
+  elapsedRef.current = state.elapsed
+  const handleMarkVerse = useCallback((verseKey: string) => {
+    setVerseTimeline((prev) => [...prev, { verseKey, atSeconds: elapsedRef.current }])
+  }, [])
 
   // A failure to start drops back to the start, saying why.
   useEffect(() => {
@@ -231,8 +245,17 @@ function RecordFlow() {
   // Everything typed while reviewing, kept in step with the saved audio.
   useEffect(() => {
     if (step !== 'review' || !state.blob) return
-    saveDraftMeta({ title, hashtags, caption, isPrivate, imitating: imitate ? sheikhId : null, space: spaceId, peaks })
-  }, [step, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks])
+    saveDraftMeta({
+      title,
+      hashtags,
+      caption,
+      isPrivate,
+      imitating: imitate ? sheikhId : null,
+      space: spaceId,
+      peaks,
+      verseTimeline,
+    })
+  }, [step, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, verseTimeline])
 
   const resumeDraft = useCallback(async () => {
     tapFeedback()
@@ -247,6 +270,7 @@ function RecordFlow() {
     setImitate(Boolean(draft.imitating))
     if (draft.imitating) setSheikhId(draft.imitating)
     setPeaks(draft.peaks)
+    setVerseTimeline(draft.verseTimeline ?? [])
     setTitle(draft.title)
     setHashtags(draft.hashtags)
     setCaption(draft.caption)
@@ -342,6 +366,7 @@ function RecordFlow() {
     stopPreview()
     recorder.reset()
     setPeaks([])
+    setVerseTimeline([])
     setStep('ready')
     // This take is being abandoned on purpose, so the draft of it goes too.
     void clearDraft()
@@ -381,6 +406,7 @@ function RecordFlow() {
         caption: caption.trim(),
         imitating,
         peaks,
+        verseTimeline,
         userId: viewer.id,
         userName: viewer.name,
         userUsername: viewer.username,
@@ -396,6 +422,7 @@ function RecordFlow() {
         isPrivate,
         imitating: imitating || null,
         peaks,
+        verseTimeline,
         caption: caption.trim(),
         durationSec: state.durationSec,
         likeCount: 0,
@@ -411,7 +438,7 @@ function RecordFlow() {
     } finally {
       setPublishing(false)
     }
-  }, [caption, hashtags, imitate, isPrivate, peaks, sheikhId, spaceId, state, stopPreview, tags, title, viewer])
+  }, [caption, hashtags, imitate, isPrivate, peaks, sheikhId, spaceId, state, stopPreview, tags, title, verseTimeline, viewer])
 
   const startOver = useCallback(() => {
     recorder.reset()
@@ -420,6 +447,7 @@ function RecordFlow() {
     setHashtags('')
     setCaption('')
     setPeaks([])
+    setVerseTimeline([])
     setStep('ready')
   }, [recorder])
 
@@ -950,6 +978,7 @@ function RecordFlow() {
         elapsedLabel={clock(elapsed)}
         onBegin={() => void begin()}
         onStop={() => recorder.stop()}
+        onMarkVerse={handleMarkVerse}
       />
     </Screen>
   )

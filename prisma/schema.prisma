@@ -83,6 +83,11 @@ model Recitation {
   /// Loudness across the recording, 0–100, measured on the phone when it was
   /// published. Draws the waveform without downloading the audio.
   peaks       Int[]
+  /// Which ayah was being read at which point in the recording, oldest first
+  /// — {verseKey: string, atSeconds: number}[]. Only present for recitations
+  /// made with "Read from Mushaf" open and at least one ayah marked; used to
+  /// caption the share video with the real text as it's recited.
+  verseTimeline Json?
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)
