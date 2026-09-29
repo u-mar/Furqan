@@ -109,11 +109,63 @@
   box-sizing: content-box;
 }
 
-/* Continuous scroll: no single-screen height to fit, so size from viewport
-   width instead — comfortably bigger than the swipe modes' "must fit one
-   screen" size, and stable while scrolling instead of shifting with dvh. */
-.mushaf-qcf-page--scrollable .mushaf-qcf-line__glyphs {
-  font-size: clamp(24px, 6.2vw, 46px);
+/* Continuous scroll — words flow as paragraphs instead of keeping the
+   15 printed lines, so the script can be far larger than a full mushaf line
+   allows at phone width. Surah banners and the basmalah stay centred blocks. */
+.mushaf-qcf-page--flow {
+  height: auto;
+}
+
+.mushaf-qcf-flow {
+  padding: 14px clamp(20px, 6vw, 36px) 6px;
+}
+
+.mushaf-qcf-flow__text {
+  margin: 0;
+  font-size: clamp(28px, 7.8vw, 42px);
+  line-height: 2.2;
+  /* Not justified: with only ~5 large words a line and no kashida stretching,
+     justify opens big holes between words. A clean right edge reads better. */
+  text-align: start;
+  white-space: normal;
+  letter-spacing: 0;
+  /* Each QCF word glyph already carries its own spacing — the real space
+     between words is only a break point, so pull most of its width back. */
+  word-spacing: -0.12em;
+  font-kerning: none;
+  font-synthesis: none;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: normal !important;
+  text-rendering: geometricPrecision;
+}
+
+.mushaf-qcf-flow .mushaf-qcf-line {
+  display: flex;
+  justify-content: center;
+}
+
+.mushaf-qcf-flow .mushaf-qcf-line--surah-header {
+  margin: 20px 0 4px;
+}
+
+.mushaf-qcf-flow .mushaf-qcf-line--basmalah .mushaf-qcf-line__glyphs {
+  font-size: clamp(30px, 8.4vw, 44px);
+  line-height: 1.9;
+}
+
+/* Tajweed pages use the colour font's own palettes (registered per loaded page
+   in lib/mushaf-fonts) — light and dark each have one. */
+.mushaf-tajweed {
+  font-palette: --nadir-tajweed-light;
+}
+
+html.dark .mushaf-tajweed {
+  font-palette: --nadir-tajweed-dark;
+}
+
+/* The tajweed glyphs carry less built-in trailing space than the plain set. */
+.mushaf-tajweed .mushaf-qcf-flow__text {
+  word-spacing: -0.02em;
 }
 
 .mushaf-qcf-line--empty {

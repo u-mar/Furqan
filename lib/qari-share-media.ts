@@ -14,10 +14,10 @@
 
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
-import { compareMushafWords, wordOnVisualPage } from '@/lib/mushaf-engine/word-order'
 import { loadPageFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
+import { fetchPageTranslations, verseQcfWords } from '@/lib/qari-ayah'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 import { pageHasQcfData, versePageNumber } from '@/lib/qcf-page'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -376,36 +376,6 @@ function fitBlock(
     fontSize -= 2
   }
   return { lines, fontSize, lineHeight, height: lines.length * lineHeight }
-}
-
-/** The ayah's own QCF glyphs, one array entry per word (so they wrap and
- *  space like real words), in reading order, with the ayah-end ornament left
- *  out. Empty when the verse has no QCF data for this page. */
-function verseQcfWords(verse: Verse, pageNumber: number): string[] {
-  const items = (verse.words || [])
-    .filter(
-      (w) => w.char_type_name !== 'end' && wordOnVisualPage(w, pageNumber, verse) && Boolean(w.code_v2?.trim())
-    )
-    .map((w) => ({ ...w, verseKey: verse.verse_key }))
-  items.sort(compareMushafWords)
-  return items.map((w) => w.code_v2!.trim())
-}
-
-/** A page's translations, fetched once and reused for every ayah marked on it. */
-async function fetchPageTranslations(page: number): Promise<Map<string, string>> {
-  const map = new Map<string, string>()
-  try {
-    const res = await fetch(`/api/ayah?type=translations&page=${page}&lang=en&edition=en.sahih`)
-    const data: unknown = await res.json()
-    if (Array.isArray(data)) {
-      for (const row of data as { verse_key?: string; translation?: string }[]) {
-        if (row.verse_key && row.translation) map.set(row.verse_key, row.translation)
-      }
-    }
-  } catch {
-    // No translation for this page — the caption just shows the ayah alone.
-  }
-  return map
 }
 
 function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, serif: string) {

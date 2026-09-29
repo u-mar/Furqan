@@ -13,7 +13,7 @@ const MAX_PULL = 110
  * The browser's own pull-to-refresh reloads the whole app, so it is switched
  * off while a list that refreshes itself is on screen.
  */
-export function usePullToRefresh(onRefresh: () => Promise<unknown>) {
+export function usePullToRefresh(onRefresh: () => Promise<unknown>, enabled = true) {
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const refreshRef = useRef(onRefresh)
@@ -24,6 +24,8 @@ export function usePullToRefresh(onRefresh: () => Promise<unknown>) {
   })
 
   useEffect(() => {
+    // Off where a downward drag means something else, such as the swipe view.
+    if (!enabled) return
     const root = document.documentElement
     const previous = root.style.overscrollBehaviorY
     root.style.overscrollBehaviorY = 'contain'
@@ -82,7 +84,7 @@ export function usePullToRefresh(onRefresh: () => Promise<unknown>) {
       window.removeEventListener('touchend', onEnd)
       window.removeEventListener('touchcancel', onEnd)
     }
-  }, [])
+  }, [enabled])
 
   return { pull, refreshing }
 }

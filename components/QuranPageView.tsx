@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
-import { useQcfFont } from '@/hooks/useQcfFont'
+import { useQcfFont, useTajweedFont } from '@/hooks/useQcfFont'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import MushafPageView from '@/components/mushaf/MushafPageView'
 import {
@@ -18,6 +18,19 @@ import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { Verse, VerseWord } from '@/types'
 import { tr, useT } from '@/lib/i18n'
+
+// Faint stand-ins for the page's lines while its glyph font downloads.
+const SKELETON_LINE_WIDTHS = [100, 97, 100, 93, 100, 98, 100, 90, 100, 96, 100, 64]
+
+function MushafPageSkeleton({ label }: { label: string }) {
+  return (
+    <div className="mushaf-skeleton" role="status" aria-label={label}>
+      {SKELETON_LINE_WIDTHS.map((width, i) => (
+        <span key={i} style={{ width: `${width}%` }} />
+      ))}
+    </div>
+  )
+}
 
 interface QuranPageViewProps {
   verses: Verse[]
@@ -44,6 +57,8 @@ interface QuranPageViewProps {
   ayahSelectMode?: boolean
   /** Skip scroll-into-view when ayah highlight changes (e.g. during audio playback). */
   suppressHighlightScroll?: boolean
+  /** Colour-coded tajweed rendering (falls back to the plain page font offline). */
+  tajweed?: boolean
 }
 
 interface PageWord {
@@ -276,6 +291,7 @@ export default function QuranPageView({
   onAyahSelect,
   ayahSelectMode = false,
   suppressHighlightScroll = false,
+  tajweed = false,
 }: QuranPageViewProps) {
   const t = useT()
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
@@ -371,6 +387,10 @@ export default function QuranPageView({
     useQcfRead && hasQcfData && pageNumber > 0,
     qcfSample
   )
+  const tajweedReady = useTajweedFont(
+    pageNumber,
+    tajweed && useQcfRead && !hifdhRevealMode && hasQcfData && pageNumber > 0
+  )
 
   const preferUnicodeFallback =
     useQcfRead &&
@@ -445,11 +465,8 @@ export default function QuranPageView({
           className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
           dir="rtl"
           lang="ar"
-          aria-label={t('Loading mushaf font')}
         >
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-[var(--mushaf-read-meta)]">{t('Loading mushaf font…')}</p>
-          </div>
+          <MushafPageSkeleton label={t('Loading mushaf font')} />
         </div>
       )
     }
@@ -493,6 +510,7 @@ export default function QuranPageView({
             immersive={readMode}
             scrollable={scrollable}
             fontReady={qcfFont.ready}
+            tajweed={tajweedReady}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}
@@ -520,11 +538,8 @@ export default function QuranPageView({
         className={cn('w-full', readMode ? 'relative h-full' : 'mx-auto max-w-[980px] px-0 py-2 sm:px-2')}
         dir="rtl"
         lang="ar"
-        aria-label={t('Loading mushaf font')}
       >
-        <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-[var(--mushaf-read-meta)]">{t('Loading mushaf font…')}</p>
-        </div>
+        <MushafPageSkeleton label={t('Loading mushaf font')} />
       </div>
     )
   }

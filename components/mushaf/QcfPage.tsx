@@ -2,7 +2,7 @@
 
 import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
-import QcfLine from '@/components/mushaf/QcfLine'
+import QcfLine, { QcfSegment } from '@/components/mushaf/QcfLine'
 import {
   buildQcfPageLayout,
   qcfPageFontClass,
@@ -23,7 +23,11 @@ import { useT } from '@/lib/i18n'
  * one page. This measures every content line first, then shrinks all of
  * them by whichever line needed it most.
  */
-function useFitQcfPageLines(containerRef: React.RefObject<HTMLElement | null>, layout: QcfPageLayout) {
+function useFitQcfPageLines(
+  containerRef: React.RefObject<HTMLElement | null>,
+  layout: QcfPageLayout,
+  fontFamily: string
+) {
   useLayoutEffect(() => {
     const container = containerRef.current
     const grid = container?.querySelector<HTMLElement>('.mushaf-fit-grid')
@@ -85,7 +89,29 @@ function useFitQcfPageLines(containerRef: React.RefObject<HTMLElement | null>, l
       observer.disconnect()
       fonts?.removeEventListener?.('loadingdone', refit)
     }
-  }, [containerRef, layout])
+    // A family swap (e.g. into the wider tajweed font) keeps the same layout
+    // but changes every glyph width, so it has to trigger a re-fit too.
+  }, [containerRef, layout, fontFamily])
+}
+
+type FlowBlock =
+  | { type: 'line'; line: QcfPageLayout['lines'][number] }
+  | { type: 'text'; key: number; segments: QcfPageSegment[] }
+
+/** Consecutive content lines become one paragraph; headers and basmalah stay their own blocks. */
+function flowBlocks(layout: QcfPageLayout): FlowBlock[] {
+  const blocks: FlowBlock[] = []
+  for (const line of layout.lines) {
+    if (line.kind === 'empty') continue
+    if (line.kind !== 'content') {
+      blocks.push({ type: 'line', line })
+      continue
+    }
+    const last = blocks[blocks.length - 1]
+    if (last?.type === 'text') last.segments.push(...line.segments)
+    else blocks.push({ type: 'text', key: line.lineNumber, segments: [...line.segments] })
+  }
+  return blocks
 }
 
 export interface QcfPageProps {
@@ -115,6 +141,8 @@ export interface QcfPageProps {
    *  verse(s) must stay split word-by-word instead of merged into one run. */
   isSegmentHidden?: (segment: QcfPageSegment, index: number) => boolean
   neverMergeVerseKeys?: Set<string>
+  /** Render with this family instead of the page's own (e.g. its tajweed font). */
+  fontFamily?: string
 }
 
 function QcfPageComponent({
@@ -131,22 +159,84 @@ function QcfPageComponent({
   hifdhReveal,
   isSegmentHidden,
   neverMergeVerseKeys,
+  fontFamily,
 }: QcfPageProps) {
   const t = useT()
+  // Continuous scroll flows the words instead of keeping the 15 printed lines,
+  // so the script can be far larger than a full mushaf line allows on a phone.
+  const flow = scrollable && !hifdhReveal && !isSegmentHidden
   const layout = useMemo(
-    () => buildQcfPageLayout(verses, pageNumber, { neverMergeVerseKeys }),
-    [verses, pageNumber, neverMergeVerseKeys]
+    () => buildQcfPageLayout(verses, pageNumber, { neverMergeVerseKeys, wordSegments: flow }),
+    [verses, pageNumber, neverMergeVerseKeys, flow]
   )
-  const qcfFamily = qcfPageFontFamily(pageNumber)
+  const qcfFamily = fontFamily ?? qcfPageFontFamily(pageNumber)
   const pageClass = qcfPageFontClass(pageNumber)
   const startIndex = hifdhReveal
     ? verses.findIndex((verse) => verse.verse_key === hifdhReveal.startVerseKey)
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
-  useFitQcfPageLines(pageRef, layout)
+  useFitQcfPageLines(pageRef, layout, qcfFamily)
+  const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
 
   if (!fontReady) {
     return null
+  }
+
+  if (flow) {
+    return (
+      <div
+        ref={pageRef}
+        className={cn('mushaf-qcf-page mushaf-qcf-page--flow', pageClass)}
+        data-page={pageNumber}
+        data-qcf-font={qcfFamily}
+        dir="rtl"
+        lang="ar"
+        aria-label={t('Quran page {pageNumber}', { pageNumber })}
+      >
+        <div className="mushaf-qcf-flow mushaf-qcf-page-content">
+          {blocks.map((block) =>
+            block.type === 'line' ? (
+              <QcfLine
+                key={`line-${block.line.lineNumber}`}
+                line={block.line}
+                qcfFontFamily={qcfFamily}
+                highlightedVerseKey={highlightedVerseKey}
+                selectedVerseKey={selectedVerseKey}
+                onLineLongPress={onAyahLongPress}
+                onAyahSelect={onAyahSelect}
+                ayahSelectMode={ayahSelectMode}
+              />
+            ) : (
+              <p
+                key={`text-${block.key}`}
+                className="mushaf-qcf-flow__text"
+                style={{ fontFamily: `"${qcfFamily}", serif` }}
+              >
+                {block.segments.map((segment, index) => {
+                  const next = block.segments[index + 1]
+                  // The space sits inside the word's span so a recited ayah's
+                  // highlight runs unbroken; a no-break space keeps the ayah
+                  // ornament on the same line as the word it closes.
+                  const gap = next ? (next.isEnd ? ' ' : ' ') : ''
+                  return (
+                    <QcfSegment
+                      key={`${segment.verseKey}-${index}`}
+                      segment={{ ...segment, text: segment.text + gap }}
+                      index={index}
+                      highlightedVerseKey={highlightedVerseKey}
+                      selectedVerseKey={selectedVerseKey}
+                      onLongPress={onAyahLongPress}
+                      onSelect={onAyahSelect}
+                      ayahSelectMode={ayahSelectMode}
+                    />
+                  )
+                })}
+              </p>
+            )
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (

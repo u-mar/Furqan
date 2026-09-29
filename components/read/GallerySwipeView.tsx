@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
 } from 'react'
+import { tapFeedback } from '@/lib/haptics'
 
 interface GallerySwipeViewProps {
   /** Changes only when the parent has actually committed to a new page. */
@@ -37,6 +38,7 @@ const COMMIT_RATIO = 0.28
 const COMMIT_VELOCITY = 0.5 // px/ms
 const DEAD_ZONE = 6
 const SETTLE_MS = 240
+const PANEL = 'mushaf-turn-panel mushaf-sheet absolute h-full w-full'
 
 /**
  * Gallery/photo-style page swipe: the incoming page follows the finger in
@@ -64,6 +66,15 @@ export default function GallerySwipeView({
   const gestureRef = useRef<Gesture | null>(null)
   const [settling, setSettling] = useState(false)
 
+  // Toggled straight on the DOM (not state) so the fold shadow appears the
+  // instant a drag locks, without re-rendering the heavy mushaf pages.
+  const setTurning = useCallback((on: boolean) => {
+    const el = containerRef.current
+    if (!el) return
+    if (on) el.dataset.turning = ''
+    else delete el.dataset.turning
+  }, [])
+
   const setTransform = useCallback(
     (px: number, animated: boolean) => {
       const track = trackRef.current
@@ -81,7 +92,8 @@ export default function GallerySwipeView({
   useLayoutEffect(() => {
     setTransform(0, false)
     setSettling(false)
-  }, [pageKey, setTransform])
+    setTurning(false)
+  }, [pageKey, setTransform, setTurning])
 
   const onTouchStart = useCallback(
     (e: ReactTouchEvent<HTMLDivElement>) => {
@@ -115,7 +127,10 @@ export default function GallerySwipeView({
       if (!g.locked) {
         if (Math.abs(dMain) < DEAD_ZONE && Math.abs(dCross) < DEAD_ZONE) return
         g.locked = Math.abs(dMain) > Math.abs(dCross) ? 'main' : 'cross'
-        if (g.locked === 'main') onDragStart?.()
+        if (g.locked === 'main') {
+          setTurning(true)
+          onDragStart?.()
+        }
       }
       if (g.locked !== 'main') return
 
@@ -134,7 +149,7 @@ export default function GallerySwipeView({
       const effectiveMain = atStart || atEnd ? dMain * 0.3 : dMain
       setTransform(effectiveMain, false)
     },
-    [prev, next, onDragStart, setTransform, vertical]
+    [prev, next, onDragStart, setTransform, setTurning, vertical]
   )
 
   const finishGesture = useCallback(() => {
@@ -161,18 +176,26 @@ export default function GallerySwipeView({
         ? goingNext ? -g.size : g.size
         : goingNext ? g.size : -g.size
       setTransform(commitTo, true)
+      tapFeedback()
       window.setTimeout(() => {
         if (goingNext) onCommitNext()
         else onCommitPrev()
       }, SETTLE_MS)
     } else {
       setTransform(0, true)
-      window.setTimeout(() => setSettling(false), SETTLE_MS)
+      window.setTimeout(() => {
+        setSettling(false)
+        setTurning(false)
+      }, SETTLE_MS)
     }
-  }, [next, prev, onCommitNext, onCommitPrev, setTransform, vertical])
+  }, [next, prev, onCommitNext, onCommitPrev, setTransform, setTurning, vertical])
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
+    <div
+      ref={containerRef}
+      className="mushaf-turn relative h-full w-full overflow-hidden"
+      data-axis={vertical ? 'y' : 'x'}
+    >
       <div
         ref={trackRef}
         className="relative h-full w-full"
@@ -185,17 +208,17 @@ export default function GallerySwipeView({
         {vertical ? (
           <>
             {/* Dragging up advances — next sits below, prev above. */}
-            {next ? <div className="absolute inset-x-0 top-full h-full w-full">{next}</div> : null}
-            <div className="absolute inset-0 h-full w-full">{current}</div>
-            {prev ? <div className="absolute inset-x-0 bottom-full h-full w-full">{prev}</div> : null}
+            {next ? <div className={`${PANEL} inset-x-0 top-full`}>{next}</div> : null}
+            <div className={`${PANEL} inset-0`}>{current}</div>
+            {prev ? <div className={`${PANEL} inset-x-0 bottom-full`}>{prev}</div> : null}
           </>
         ) : (
           <>
             {/* Book-flip convention: next sits to the left, prev to the right — a
                 rightward drag reveals it, following the finger naturally. */}
-            {next ? <div className="absolute inset-y-0 right-full h-full w-full">{next}</div> : null}
-            <div className="absolute inset-0 h-full w-full">{current}</div>
-            {prev ? <div className="absolute inset-y-0 left-full h-full w-full">{prev}</div> : null}
+            {next ? <div className={`${PANEL} inset-y-0 right-full`}>{next}</div> : null}
+            <div className={`${PANEL} inset-0`}>{current}</div>
+            {prev ? <div className={`${PANEL} inset-y-0 left-full`}>{prev}</div> : null}
           </>
         )}
       </div>

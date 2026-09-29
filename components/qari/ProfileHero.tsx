@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ChevronLeft, Pencil, Share2 } from 'lucide-react'
+import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
 import { tapFeedback } from '@/lib/haptics'
@@ -19,11 +20,14 @@ export function ProfileTopBar({
   username,
   name,
   avatarVersion,
+  showNotifications = false,
   onShare,
 }: {
   username: string
   name: string
   avatarVersion?: number
+  /** Your own profile carries the bell: notifications no longer have a button on the feed. */
+  showNotifications?: boolean
   onShare: () => void
 }) {
   const t = useT()
@@ -56,9 +60,12 @@ export function ProfileTopBar({
         <QariAvatar username={username} name={name} size={28} version={avatarVersion} />
         <span className="home-serif truncate text-[1.0625rem] font-semibold text-[var(--home-heading)]">{name}</span>
       </div>
-      <button type="button" onClick={onShare} className="home-round ed-focus ml-auto" aria-label={t('Share profile')}>
-        <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
-      </button>
+      <div className="ml-auto flex items-center gap-2">
+        {showNotifications ? <NotificationsBell /> : null}
+        <button type="button" onClick={onShare} className="home-round ed-focus" aria-label={t('Share profile')}>
+          <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        </button>
+      </div>
     </header>
   )
 }

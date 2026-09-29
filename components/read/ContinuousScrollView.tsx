@@ -103,7 +103,7 @@ export default function ContinuousScrollView({
             // Kick the page's own glyph font off in parallel with mounting it —
             // otherwise each of the ~5 pages in the window independently starts
             // its font fetch only once React renders it, and the reader sees a
-            // "Loading mushaf font…" flash per page, staggered across several
+            // loading-skeleton flash per page, staggered across several
             // seconds. Started here, most are already loaded (or well underway)
             // by the time the page actually renders.
             if (pageHasQcfData(verses)) {
@@ -135,8 +135,12 @@ export default function ContinuousScrollView({
     if (pendingJump.current === null) return
     const target = pendingJump.current
     const el = pageEls.current.get(target)
-    if (!el) return
-    el.scrollIntoView({ block: 'start' })
+    const root = containerRef.current
+    if (!el || !root) return
+    // Not scrollIntoView: that also scrolls every ancestor, including the
+    // overflow-hidden reader, which then slides the running head off-screen
+    // and pulls the hidden dock (parked just below it) into view.
+    root.scrollTop += el.getBoundingClientRect().top - root.getBoundingClientRect().top
     lastReported.current = target
     pendingJump.current = null
     aboveAnchorHeight.current = null
@@ -148,8 +152,8 @@ export default function ContinuousScrollView({
   // supersedes it, and the "anchor" is still the old page until that lands.
   useLayoutEffect(() => {
     for (const [page, el] of pageEls.current) heightCache.current.set(page, el.offsetHeight)
-    // A page still showing its one-line "Loading mushaf font…" placeholder
-    // (or the font-check step in between) reports a real but tiny height —
+    // A page still showing its loading skeleton (sized to stay under this
+    // floor) or the font-check step in between reports a real but short height —
     // averaging those in collapses the estimate toward zero, which then
     // corrupts the spacer sizing and the fling safety-net's page guess.
     // A real rendered mushaf page is always well above this floor.
@@ -276,6 +280,9 @@ export default function ContinuousScrollView({
           data-page={page}
         >
           {renderPage(dataRef.current.get(page) as Verse[], page)}
+          <div className="mushaf-flow-divider" aria-hidden>
+            <span>{page}</span>
+          </div>
         </div>
       ))}
       {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} aria-hidden />}

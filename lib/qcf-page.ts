@@ -81,25 +81,29 @@ function lineDisplayText(line: MushafLineModel): string {
 export function buildQcfPageLayout(
   verses: Verse[],
   pageNumber: number,
-  options?: { neverMergeVerseKeys?: Set<string> }
+  options?: {
+    neverMergeVerseKeys?: Set<string>
+    /** Keep one segment per word — flowing text needs a break point between every word. */
+    wordSegments?: boolean
+  }
 ): QcfPageLayout {
   const model = buildMushafPageModel(verses, pageNumber)
-  const lines: QcfPageLine[] = model.lines.map((line) => ({
-    lineNumber: line.lineNumber,
-    kind: line.kind,
-    text: lineDisplayText(line),
-    segments: mergeAdjacentSegments(
-      line.segments.map((segment) => ({
-        verseKey: segment.verseKey,
-        text: segment.codeV2,
-        isEnd: segment.isEnd,
-        position: segment.position,
-      })),
-      options?.neverMergeVerseKeys
-    ),
-    verseKeys: line.verseKeys,
-    chapterNumber: line.chapterNumber,
-  }))
+  const lines: QcfPageLine[] = model.lines.map((line) => {
+    const words = line.segments.map((segment) => ({
+      verseKey: segment.verseKey,
+      text: segment.codeV2,
+      isEnd: segment.isEnd,
+      position: segment.position,
+    }))
+    return {
+      lineNumber: line.lineNumber,
+      kind: line.kind,
+      text: lineDisplayText(line),
+      segments: options?.wordSegments ? words : mergeAdjacentSegments(words, options?.neverMergeVerseKeys),
+      verseKeys: line.verseKeys,
+      chapterNumber: line.chapterNumber,
+    }
+  })
 
   const pageText = lines
     .filter((line) => line.kind !== 'empty')

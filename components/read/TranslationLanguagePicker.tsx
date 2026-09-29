@@ -4,19 +4,27 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { setAppSettings } from '@/lib/app-settings'
-import { ayahCapableReciters, RECITERS } from '@/lib/reciters'
+import {
+  DEFAULT_TRANSLATION_EDITION,
+  type TranslationLanguageId,
+  translationLanguageLabel,
+} from '@/lib/translations'
 import { useT } from '@/lib/i18n'
 
-interface ReciterPickerProps {
-  reciterId: string
+const LANGUAGES: TranslationLanguageId[] = ['en', 'so']
+
+interface TranslationLanguagePickerProps {
+  language: TranslationLanguageId
   className?: string
 }
 
-export default function ReciterPicker({ reciterId, className }: ReciterPickerProps) {
+export default function TranslationLanguagePicker({
+  language,
+  className,
+}: TranslationLanguagePickerProps) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
-  const current = RECITERS.find((r) => r.id === reciterId) ?? RECITERS[0]
 
   useEffect(() => {
     if (!open) return
@@ -33,36 +41,39 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="mushaf-dock-select"
-        aria-label={`${t('Choose reciter')}: ${current.name}`}
+        aria-label={`${t('Translation language')}: ${t(translationLanguageLabel(language))}`}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="mushaf-dock-select__caption">{t('Reciter')}</span>
+        <span className="mushaf-dock-select__caption">{t('Translation')}</span>
         <span className="mushaf-dock-select__value">
-          <span className="truncate">{current.name}</span>
+          <span className="truncate">{t(translationLanguageLabel(language))}</span>
           <ChevronDown className="mushaf-dock-select__chevron h-3.5 w-3.5" strokeWidth={2.4} />
         </span>
       </button>
       {open && (
         <ul
-          className="mushaf-dock-menu absolute bottom-full left-2 z-50 mb-2 max-h-72 w-60 overflow-y-auto rounded-2xl py-1.5"
+          className="mushaf-dock-menu absolute bottom-full right-2 z-50 mb-2 w-48 overflow-hidden rounded-2xl py-1.5"
           role="listbox"
-          aria-label={t('Choose reciter')}
+          aria-label={t('Translation language')}
         >
-          {ayahCapableReciters().map((r) => (
-            <li key={r.id}>
+          {LANGUAGES.map((lang) => (
+            <li key={lang}>
               <button
                 type="button"
                 role="option"
-                aria-selected={r.id === reciterId}
+                aria-selected={lang === language}
                 onClick={() => {
-                  setAppSettings({ reciterId: r.id })
+                  setAppSettings({
+                    translationLanguage: lang,
+                    translationEditionId: DEFAULT_TRANSLATION_EDITION[lang],
+                  })
                   setOpen(false)
                 }}
                 className="mushaf-dock-menu__item"
               >
-                <span className="truncate">{r.name}</span>
-                {r.id === reciterId ? <Check className="h-4 w-4 shrink-0" strokeWidth={2.6} /> : null}
+                {t(translationLanguageLabel(lang))}
+                {lang === language ? <Check className="h-4 w-4 shrink-0" strokeWidth={2.6} /> : null}
               </button>
             </li>
           ))}

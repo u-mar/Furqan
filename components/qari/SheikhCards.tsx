@@ -32,8 +32,7 @@ export function SheikhMonogram({ sheikh, size = 40, className }: { sheikh: Sheik
   return (
     <span
       aria-hidden
-      className={cn('qari-monogram relative overflow-hidden', className)}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.52), paddingBottom: Math.round(size * 0.18) }}
+      className={cn('qari-monogram relative overflow-hidden', className)}      style={{ width: size, height: size, fontSize: Math.round(size * 0.52), paddingBottom: Math.round(size * 0.18) }}
     >
       {sheikhLetter(sheikh)}
       {photo && failed !== photo ? (
@@ -73,21 +72,25 @@ export function SheikhCard({
       href={`/qari/sheikh/${sheikh.id}`}
       onClick={tapFeedback}
       className={cn(
-        'qari-enter qari-press ed-focus flex min-w-0 snap-start items-center gap-2.5 rounded-2xl bg-[var(--home-card-bg)] p-3 shadow-[var(--home-lift-sm)]',
-        fill ? 'flex-1' : 'w-[164px] shrink-0'
+        'qari-enter qari-press ed-focus flex min-w-0 snap-start items-center gap-2.5 rounded-[18px] bg-[var(--home-card-bg)] p-3 shadow-[var(--home-lift-sm)]',
+        fill ? 'flex-1' : 'w-[168px] shrink-0'
       )}
       style={{ animationDelay: `${index * 45}ms` }}
     >
       <SheikhMonogram sheikh={sheikh} size={40} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-[var(--home-heading)]">{sheikh.shortName}</span>
-        <span className="mt-px block text-[12.5px] text-[var(--home-muted)]">{plural(count, 'imitation')}</span>
+        <span className="block truncate text-sm font-medium text-[var(--home-heading)]">{sheikh.shortName}</span>
+        <span className="mt-px block text-xs text-[var(--qari-gold)]">{plural(count, 'imitation')}</span>
       </span>
     </Link>
   )
 }
 
-/** The top of a sheikh's page or search result: who, how many, and a way to join in. */
+/**
+ * The top of a sheikh's page or search result: his portrait in a gold ring
+ * over a band of gold stars, his name, how many have imitated him, and a way
+ * to join in.
+ */
 export function SheikhHeader({
   sheikh,
   count,
@@ -99,28 +102,31 @@ export function SheikhHeader({
 }) {
   const t = useT()
   return (
-    <section className="qari-enter home-card rounded-[18px] p-4">
-      <div className="flex items-center gap-3.5">
-        <SheikhMonogram sheikh={sheikh} size={56} />
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold leading-snug text-[var(--home-heading)]">{sheikh.name}</h2>
-          <p className="mt-0.5 min-h-[1.25rem] text-[13px] text-[var(--home-muted)]">
-            {count === null
-              ? ''
-              : count === 0
-                ? t('No imitations yet')
-                : t('{imitation} from {people}', { imitation: plural(count, 'imitation'), people: plural(people ?? 0, 'person', 'people') })}
-          </p>
-        </div>
+    <section className="qari-enter home-card overflow-hidden rounded-[20px] text-center">
+      <div className="qari-star-band h-[76px]" aria-hidden />
+      <div className="-mt-12 px-4 pb-4">
+        <span className="relative mx-auto block w-fit rounded-full bg-[var(--home-card-bg)] p-[3px] shadow-[inset_0_0_0_1.5px_var(--qari-gold)]">
+          <SheikhMonogram sheikh={sheikh} size={84} />
+        </span>
+        <h2 className="home-serif mt-2.5 text-[21px] font-medium leading-tight tracking-[-0.015em] text-[var(--home-heading)]">
+          {sheikh.name}
+        </h2>
+        <p className="mt-1 min-h-[1.25rem] text-[13px] text-[var(--home-muted)]">
+          {count === null
+            ? ''
+            : count === 0
+              ? t('No imitations yet')
+              : t('{imitation} from {people}', { imitation: plural(count, 'imitation'), people: plural(people ?? 0, 'person', 'people') })}
+        </p>
+        <Link
+          href={`/qari/record?imitate=${encodeURIComponent(sheikh.id)}`}
+          onClick={tapFeedback}
+          className="ed-ink ed-focus qari-press mt-3.5 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium"
+        >
+          <Mic className="h-4 w-4" strokeWidth={2} />
+          {t('Imitate')} {sheikh.shortName}
+        </Link>
       </div>
-      <Link
-        href={`/qari/record?imitate=${encodeURIComponent(sheikh.id)}`}
-        onClick={tapFeedback}
-        className="ed-ink ed-focus qari-press mt-3.5 flex h-12 items-center justify-center gap-2 rounded-full text-[14.5px] font-semibold"
-      >
-        <Mic className="h-[17px] w-[17px]" strokeWidth={2.1} />
-        {t('Imitate')} {sheikh.shortName}
-      </Link>
     </section>
   )
 }

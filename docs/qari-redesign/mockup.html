@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qari redesign mockup</title>
+<!-- Reference only — not part of the app. The Arabic calligraphy uses Google look-alikes; the app uses
+     the NadirSurahTitle font (lib/mushaf-fonts.ts) and the QCF page fonts instead. -->
+<link href="https://fonts.googleapis.com/css2?family=Amiri&family=Aref+Ruqaa&family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css" rel="stylesheet">
+<style>
+  body{margin:0;background:#ece8df;font-family:Inter,system-ui,sans-serif;padding:24px 16px}
+  .qw{display:flex;flex-wrap:wrap;gap:28px;justify-content:center}
+  .ph{position:relative;width:290px;height:600px;border-radius:34px;overflow:hidden;border:1px solid rgba(29,25,20,.2)}
+  .cap{font-size:13px;color:#6b6252;text-align:center;margin:10px 0 0}
+  .ib{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fffdf8;border:.5px solid rgba(29,25,20,.12);color:#1d1914;font-size:17px}
+  .chip{flex-shrink:0;height:28px;padding:0 12px;border-radius:999px;display:flex;align-items:center;font-size:12px;font-weight:500;border:.5px solid rgba(29,25,20,.14);color:#4a4338;background:#fffdf8}
+  .card{margin:0 14px 10px;background:#fffdf8;border:.5px solid rgba(29,25,20,.1);border-radius:18px;padding:11px 12px 9px}
+  .ar{font-family:Amiri,serif;direction:rtl}
+  .wave{display:flex;align-items:center;gap:2px;flex:1;min-width:0}
+  .wave span{flex:1;border-radius:2px}
+  .serif{font-family:Fraunces,serif}
+  .rt{text-align:center;width:48px}
+  .ring{width:46px;height:46px;border-radius:50%;padding:2px;box-sizing:border-box}
+  .ring>div{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Fraunces,serif}
+  .nm{font-size:11px;color:#6b6252;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="qw">
+  <!-- Feed -->
+  <div>
+    <div class="ph" style="background:#fbf7ee;color:#1d1914">
+      <div style="padding:16px 16px 0;display:flex;align-items:center;justify-content:space-between">
+        <span class="serif" style="font-size:26px;font-weight:500;letter-spacing:-0.02em">Qari</span>
+        <div style="display:flex;gap:8px">
+          <span class="ib"><i class="ti ti-search"></i></span>
+          <span class="ib serif" style="background:#d6e9e3;color:#0d6b63;font-size:15px;border-color:#0d6b63">C</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;overflow:hidden;padding:12px 16px 0">
+        <span class="chip" style="background:#0d6b63;color:#fbf7ee;border-color:#0d6b63">Latest</span>
+        <span class="chip">Most loved</span>
+        <span class="chip">Following</span>
+        <span class="chip" style="color:#0d6b63">#hijaz</span>
+      </div>
+      <div style="margin:12px 14px 0;background:#12332e;border-radius:20px;padding:13px 15px 14px;color:#f3ead6">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#d9b86a">
+          <span><i class="ti ti-sparkles"></i> Recitation of the day</span><span style="color:rgba(243,234,214,.6)">2:14</span>
+        </div>
+        <div class="ar" style="font-family:'Aref Ruqaa',serif;font-size:31px;line-height:1.5;text-align:right;margin-top:2px">سورة الملك</div>
+        <div style="font-size:12px;color:rgba(243,234,214,.7)">Ayat 1–10 · Mohamed Ali</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+          <span style="width:40px;height:40px;border-radius:50%;background:#f3ead6;color:#12332e;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="ti ti-player-play-filled"></i></span>
+          <div class="wave" data-wave="30,0,#f3ead6,rgba(243,234,214,.32),26" style="height:26px"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 8px">
+        <span style="font-size:13px;font-weight:500">Reciters</span><span style="font-size:12px;color:#0d6b63">See all</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:0 16px">
+        <div class="rt"><div class="ring" style="border:2px solid #0d6b63"><div style="background:#d6e9e3;color:#0d6b63">C</div></div><div class="nm">Cumar</div></div>
+        <div class="rt"><div class="ring" style="border:2px solid #0d6b63"><div style="background:#efe3cc;color:#8a6a24">M</div></div><div class="nm">Mohamed</div></div>
+        <div class="rt"><div class="ring" style="border:2px solid rgba(29,25,20,.1)"><div style="background:#e4e0ef;color:#534ab7">A</div></div><div class="nm">Abdi</div></div>
+        <div class="rt"><div class="ring" style="border:2px solid rgba(29,25,20,.1)"><div style="background:#d6e9e3;color:#0d6b63">M</div></div><div class="nm">Mumin</div></div>
+      </div>
+      <div style="padding:14px 16px 8px;font-size:13px;font-weight:500">Latest recitations</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:#0d6b63;background:#e1f0ec;border-radius:999px;padding:2px 8px">Ayat 12–19</span>
+          <span class="ar" style="font-size:21px;line-height:1.3">سورة لقمان</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;margin-top:6px">
+          <span style="width:30px;height:30px;border-radius:50%;background:#0d6b63;color:#fbf7ee;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0"><i class="ti ti-player-play-filled"></i></span>
+          <div class="wave" data-wave="34,0,#0d6b63,rgba(29,25,20,.16),22" style="height:22px"></div>
+          <span style="font-size:11px;color:#857a66">1:52</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:11px;color:#857a66">
+          <span>Mohamed · 6 days ago</span><span><i class="ti ti-heart"></i> 3 · 14 plays</span>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:#0d6b63;background:#e1f0ec;border-radius:999px;padding:2px 8px">Ayat 1–7</span>
+          <span class="ar" style="font-size:21px;line-height:1.3">سورة الإسراء</span>
+        </div>
+      </div>
+      <span style="position:absolute;right:16px;bottom:64px;width:50px;height:50px;border-radius:50%;background:#0d6b63;color:#fbf7ee;display:flex;align-items:center;justify-content:center;font-size:22px"><i class="ti ti-microphone"></i></span>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:52px;background:#fbf7ee;border-top:.5px solid rgba(29,25,20,.1);display:flex;justify-content:space-around;align-items:center;font-size:11px;color:#9a917f">
+        <span style="text-align:center"><i class="ti ti-book" style="font-size:18px;display:block"></i>Read</span>
+        <span style="text-align:center"><i class="ti ti-home" style="font-size:18px;display:block"></i>Home</span>
+        <span style="text-align:center;color:#0d6b63"><i class="ti ti-microphone-2" style="font-size:18px;display:block"></i>Qari</span>
+        <span style="text-align:center"><i class="ti ti-headphones" style="font-size:18px;display:block"></i>Listen</span>
+      </div>
+    </div>
+    <p class="cap">Feed (Phase 1; surah names and "Ayat" chips need Phase 5 data)</p>
+  </div>
+
+  <!-- Now playing -->
+  <div>
+    <div class="ph" style="background:#12332e;color:#f3ead6">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 16px 0;font-size:13px;color:rgba(243,234,214,.75)">
+        <i class="ti ti-chevron-down" style="font-size:20px"></i><span>Now playing</span><i class="ti ti-dots" style="font-size:20px"></i>
+      </div>
+      <div style="text-align:center;margin-top:18px">
+        <div style="width:92px;height:92px;margin:0 auto;border-radius:50%;border:1.5px solid #d9b86a;padding:4px;box-sizing:border-box">
+          <div class="serif" style="width:100%;height:100%;border-radius:50%;background:#efe3cc;display:flex;align-items:center;justify-content:center;font-size:34px;color:#8a6a24">M</div>
+        </div>
+        <div style="font-size:17px;font-weight:500;margin-top:10px">Mohamed</div>
+        <div style="font-size:12px;color:rgba(243,234,214,.65);margin-top:2px">Surah Luqman · Ayat 12–19</div>
+      </div>
+      <div class="ar" style="margin:22px 20px 0;text-align:right;font-size:21px;line-height:2.05">
+        <div style="color:rgba(243,234,214,.35)">وَلَقَدْ آتَيْنَا لُقْمَانَ الْحِكْمَةَ</div>
+        <div style="color:#f3ead6;border-bottom:1px solid rgba(217,184,106,.55)">أَنِ اشْكُرْ لِلَّهِ ۚ وَمَن يَشْكُرْ</div>
+        <div style="color:rgba(243,234,214,.35)">فَإِنَّمَا يَشْكُرُ لِنَفْسِهِ</div>
+      </div>
+      <div style="margin:22px 20px 0">
+        <div class="wave" data-wave="40,15,#d9b86a,rgba(243,234,214,.25),32" style="height:32px"></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(243,234,214,.6);margin-top:6px"><span>0:41</span><span>1:52</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 26px 0">
+        <span style="font-size:12px;border:.5px solid rgba(243,234,214,.35);border-radius:999px;padding:3px 9px">1x</span>
+        <i class="ti ti-player-skip-back" style="font-size:22px"></i>
+        <span style="width:60px;height:60px;border-radius:50%;background:#f3ead6;color:#12332e;display:flex;align-items:center;justify-content:center;font-size:26px"><i class="ti ti-player-pause-filled"></i></span>
+        <i class="ti ti-player-skip-forward" style="font-size:22px"></i>
+        <i class="ti ti-repeat" style="font-size:20px;color:#d9b86a"></i>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:26px 20px 0;font-size:12px">
+        <span><i class="ti ti-heart"></i> 3</span>
+        <span style="border:.5px solid #d9b86a;color:#d9b86a;border-radius:999px;padding:6px 12px">Compare with Sheikh Minshawi</span>
+        <i class="ti ti-share" style="font-size:17px"></i>
+      </div>
+    </div>
+    <p class="cap">Now playing (Phase 2; "Compare" is Phase 5)</p>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('[data-wave]').forEach((el, w) => {
+    const [n, played, on, off, h] = el.dataset.wave.split(',')
+    let seed = 7 + w * 13
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
+    for (let i = 0; i < +n; i++) {
+      const s = document.createElement('span')
+      const envelope = 0.35 + 0.65 * Math.sin(Math.PI * (i + 1) / (+n + 1))
+      s.style.height = Math.max(3, Math.round(+h * envelope * (0.45 + 0.55 * rnd()))) + 'px'
+      s.style.background = i < +played ? on : off
+      el.appendChild(s)
+    }
+  })
+</script>
+</body>
+</html>

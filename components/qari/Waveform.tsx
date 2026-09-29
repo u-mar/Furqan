@@ -37,8 +37,30 @@ function placeholderPeaks(seed: string, count: number): number[] {
 }
 
 /**
+ * Recordings are loudness-levelled, so the raw peaks all sit near the top and
+ * draw a flat block. Stretch the 5th–95th percentile across 18–100% and bend it
+ * a little, so quiet and loud passages actually look different.
+ */
+function normalise(values: number[]): number[] {
+  if (values.length === 0) return values
+  const sorted = [...values].sort((a, b) => a - b)
+  const at = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * (sorted.length - 1)))]
+  const low = at(0.05)
+  const high = at(0.95)
+  const range = high - low
+  return values.map((v) => {
+    // Nothing to stretch when the recording is genuinely even.
+    const x = range < 2 ? 0.6 : Math.max(0, Math.min(1, (v - low) / range))
+    return 18 + 82 * x ** 1.6
+  })
+}
+
+/**
  * The shape of a recitation, filled in as it plays. Drag or tap along it to
  * jump; arrow keys step five seconds' worth when it has focus.
+ *
+ * `tone="dark"` is for the deep-teal surfaces: ivory bars, gold once played.
+ * `tone="gold"` is the same gold on paper.
  */
 export default function Waveform({
   peaks,
@@ -48,6 +70,7 @@ export default function Waveform({
   onSeek,
   className,
   label,
+  tone = 'paper',
 }: {
   peaks: number[]
   seed: string
@@ -57,12 +80,17 @@ export default function Waveform({
   onSeek?: (fraction: number) => void
   className?: string
   label?: string
+  tone?: 'paper' | 'dark' | 'gold'
 }) {
   const t = useT()
   const values = useMemo(
-    () => resample(peaks.length > 0 ? peaks : placeholderPeaks(seed, bars), bars),
+    () => normalise(resample(peaks.length > 0 ? peaks : placeholderPeaks(seed, bars), bars)),
     [bars, peaks, seed]
   )
+  const playedColor =
+    tone === 'dark' ? 'var(--qari-gold-hi, #d9b86a)' : tone === 'gold' ? 'var(--qari-gold, #9c7a2e)' : 'var(--home-sage)'
+  const idleColor =
+    tone === 'dark' ? 'rgba(243, 234, 214, 0.32)' : 'color-mix(in srgb, var(--home-heading) 16%, transparent)'
   const draggingRef = useRef(false)
 
   const seekFrom = useCallback(
@@ -113,10 +141,10 @@ export default function Waveform({
       {values.map((value, i) => (
         <span
           key={i}
-          className="min-w-px flex-1 rounded-full transition-colors duration-150"
+          className="min-w-px flex-1 rounded-[2px] transition-colors duration-150"
           style={{
-            height: `${Math.max(14, value)}%`,
-            background: i < playedBars ? 'var(--home-sage)' : 'var(--home-rule-strong)',
+            height: `${value}%`,
+            background: i < playedBars ? playedColor : idleColor,
           }}
         />
       ))}

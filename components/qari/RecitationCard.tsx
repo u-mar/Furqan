@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Fragment, memo, useCallback, useState } from 'react'
-import { Lock, Play, Share2 } from 'lucide-react'
+import { memo, useCallback } from 'react'
+import { Headphones, Lock, Share2 } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import PlayButton from '@/components/qari/PlayButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -11,22 +11,13 @@ import RowMenu from '@/components/qari/RowMenu'
 import ShareSheet from '@/components/qari/ShareSheet'
 import Waveform from '@/components/qari/Waveform'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
+import { useRecitationActions } from '@/hooks/useRecitationActions'
 import { tapFeedback } from '@/lib/haptics'
-import {
-  compactNumber,
-  deleteRecitation,
-  formatDuration,
-  prefetchRecitationAudio,
-  reportRecitation,
-  setRecitationPrivacy,
-  timeAgo,
-  type Recitation,
-} from '@/lib/qari'
+import { compactNumber, formatDuration, prefetchRecitationAudio, timeAgoLong, type Recitation } from '@/lib/qari'
 import { seekPlayback, togglePlayback } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
-import { tr, useT } from '@/lib/i18n'
-import { askToSignIn } from '@/lib/account-prompt'
+import { useT } from '@/lib/i18n'
 
 interface RecitationCardProps {
   recitation: Recitation
@@ -42,6 +33,8 @@ interface RecitationCardProps {
   /** Its visibility changed rather than being deleted — the parent list decides what that means for it. */
   onUpdated?: (id: string, patch: Partial<Recitation>) => void
   onNotice?: (message: string) => void
+  /** Opens this recitation in the full-screen swipe view. Without it, tapping the card plays it. */
+  onOpen?: (recitation: Recitation) => void
 }
 
 /**
@@ -59,14 +52,23 @@ function RecitationCard({
   onRemoved,
   onUpdated,
   onNotice,
+  onOpen,
 }: RecitationCardProps) {
   const t = useT()
   const player = useQariPlayer()
-  const [shareOpen, setShareOpen] = useState(false)
-  const [reportOpen, setReportOpen] = useState(false)
-  const [removing, setRemoving] = useState(false)
-  // Set only while a toggle is in flight, or if it failed and had to be put back.
-  const [optimisticPrivate, setOptimisticPrivate] = useState<boolean | null>(null)
+  const {
+    isOwner,
+    isPrivate,
+    removing,
+    shareOpen,
+    setShareOpen,
+    reportOpen,
+    setReportOpen,
+    handleDelete,
+    handleTogglePrivacy,
+    handleReportTap,
+    handleReportReason,
+  } = useRecitationActions({ recitation, viewerId, viewerUsername, onRemoved, onUpdated, onNotice })
 
   const isCurrent = player.current?.id === recitation.id
   const status = isCurrent ? player.status : 'idle'
@@ -74,108 +76,39 @@ function RecitationCard({
   const progress = isCurrent && duration > 0 ? Math.min(1, player.position / duration) : 0
   const sheikh = findSheikh(recitation.imitating)
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
-  const isOwner = Boolean(viewerId && viewerUsername && viewerUsername === recitation.userUsername)
-  const isPrivate = optimisticPrivate ?? recitation.isPrivate
 
   const toggle = useCallback(() => {
     tapFeedback()
     togglePlayback(recitation, { queue, viewerId })
   }, [queue, recitation, viewerId])
 
-  const handleDelete = useCallback(async () => {
-    if (!viewerId) return
-    setRemoving(true)
-    try {
-      await deleteRecitation(recitation.id, viewerId)
-      onRemoved?.(recitation.id)
-      onNotice?.(tr('Recitation deleted.'))
-    } catch {
-      setRemoving(false)
-      onNotice?.(tr('Could not delete that recitation.'))
-    }
-  }, [onNotice, onRemoved, recitation.id, viewerId])
+  const firstTag = recitation.hashtags[0]
 
-  const handleTogglePrivacy = useCallback(async () => {
-    if (!viewerId) return
-    const next = !isPrivate
-    tapFeedback()
-    setOptimisticPrivate(next)
-    try {
-      await setRecitationPrivacy(recitation.id, viewerId, next)
-      onNotice?.(next ? tr('Only you can hear it now.') : tr('Everyone can hear it now.'))
-      onUpdated?.(recitation.id, { isPrivate: next })
-    } catch {
-      setOptimisticPrivate(!next)
-      onNotice?.(tr('Could not change that.'))
-    }
-  }, [isPrivate, onNotice, onUpdated, recitation.id, viewerId])
-
-  const handleReportTap = useCallback(() => {
-    if (!viewerId) {
-      askToSignIn({ reason: tr('Create a free account to report a recitation.') })
-      return
-    }
-    setReportOpen(true)
-  }, [viewerId])
-
-  const handleReportReason = useCallback(
-    async (reason: string) => {
-      setReportOpen(false)
-      if (!viewerId) return
-      try {
-        await reportRecitation(recitation.id, viewerId, reason)
-        onNotice?.(tr('Thank you. It has been sent for review.'))
-      } catch {
-        onNotice?.(tr('Could not send that report.'))
+  // A tap on empty card space opens it full screen (or plays it, where there is no
+  // full-screen view); links, buttons, the waveform and anything portaled out of the
+  // card (the sheets) keep their own behaviour.
+  const onCardClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement
+      if (!event.currentTarget.contains(target)) return
+      if (target.closest('a, button, input, [role="slider"], [role="dialog"]')) return
+      if (onOpen) {
+        tapFeedback()
+        onOpen(recitation)
+      } else {
+        toggle()
       }
     },
-    [onNotice, recitation.id, viewerId]
-  )
-
-  // Who (unless it is their own profile), when, then what it imitates.
-  const sub: React.ReactNode[] = []
-  if (!hideAuthor) {
-    sub.push(
-      <Link key="who" href={profileHref} className="ed-focus font-medium hover:text-[var(--home-heading)]">
-        {recitation.userName}
-      </Link>
-    )
-  }
-  sub.push(<span key="when">{timeAgo(recitation.createdAt)}</span>)
-  if (sheikh) {
-    sub.push(
-      <Link
-        key="sheikh"
-        href={`/qari/sheikh/${sheikh.id}`}
-        className="ed-focus font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]"
-      >
-        {t('Imitating')} {sheikh.shortName}
-      </Link>
-    )
-  }
-  const subLine = (
-    <p className="truncate text-xs leading-4 text-[var(--home-muted)]">
-      {sub.map((part, i) => (
-        <Fragment key={i}>
-          {i > 0 ? ' · ' : null}
-          {part}
-        </Fragment>
-      ))}
-    </p>
+    [onOpen, recitation, toggle]
   )
 
   const title = (
-    <p
-      className={cn(
-        'flex min-w-0 items-center gap-1.5 text-[15.5px] font-semibold leading-5 tracking-[-0.005em] transition-colors',
-        isCurrent ? 'text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]' : 'text-[var(--home-heading)]'
-      )}
-    >
+    <h3 className="home-serif flex min-w-0 items-center gap-1.5 text-[17px] font-medium leading-snug tracking-[-0.01em] text-[var(--home-heading)]">
       {isPrivate ? (
         <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--home-muted)]" strokeWidth={2.4} aria-label={t('Only you')} />
       ) : null}
       <span className="truncate">{recitation.title}</span>
-    </p>
+    </h3>
   )
 
   const menu = (
@@ -192,70 +125,88 @@ function RecitationCard({
     <article
       data-recitation={recitation.id}
       className={cn(
-        'qari-card qari-enter px-3 pb-1 pt-2.5 transition-opacity',
+        'qari-card qari-enter px-3.5 pb-2 pt-3 transition-opacity',
         isCurrent && 'is-current',
         removing && 'pointer-events-none opacity-50'
       )}
       style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
       onPointerDown={() => void prefetchRecitationAudio(recitation.id)}
+      onClick={onCardClick}
     >
-      <div className={cn('flex items-center gap-2.5', hideAuthor && 'pl-0.5')}>
-        {hideAuthor ? null : (
-          <Link
-            href={profileHref}
-            aria-label={t('{userName}’s profile', { userName: recitation.userName })}
-            className="qari-press ed-focus shrink-0 rounded-full"
-          >
-            <QariAvatar username={recitation.userUsername} name={recitation.userName} size={36} />
-          </Link>
-        )}
-        <div className="min-w-0 flex-1">
-          {title}
-          <div className="mt-px">{subLine}</div>
-        </div>
-        <div className="-mr-1.5 self-start">{menu}</div>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">{title}</div>
+        <div className="-mr-2 -mt-1.5 shrink-0">{menu}</div>
       </div>
 
-      {recitation.caption && isCurrent ? (
-        <p className="qari-enter mt-1 line-clamp-2 pl-0.5 text-[12.5px] leading-snug text-[var(--home-muted)]">
-          {recitation.caption}
-        </p>
+      {sheikh || firstTag ? (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+          {sheikh ? (
+            <Link href={`/qari/sheikh/${sheikh.id}`} className="qari-chip qari-chip--gold qari-press ed-focus">
+              {t('Imitating')} {sheikh.shortName}
+            </Link>
+          ) : null}
+          {firstTag ? (
+            <Link href={`/qari?q=${encodeURIComponent(`#${firstTag}`)}`} className="qari-chip qari-press ed-focus">
+              #{firstTag}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
 
-      <div className="qari-card__strip mt-2 flex items-center gap-2.5 py-1.5 pl-1.5 pr-3">
-        <PlayButton status={status} onClick={toggle} label={recitation.title} size={34} ghost />
+      <div className="mt-2.5 flex items-center gap-2.5">
+        <PlayButton status={status} onClick={toggle} label={recitation.title} size={30} />
         <Waveform
           peaks={recitation.peaks}
           seed={recitation.id}
           progress={progress}
           bars={36}
           onSeek={isCurrent ? seekPlayback : undefined}
-          className="h-7 min-w-0 flex-1"
+          className="h-[26px] min-w-0 flex-1"
           label={t('Position in {title}', { title: recitation.title })}
         />
-        <span className="shrink-0 text-[11.5px] tabular-nums text-[var(--home-muted)]">
+        <span className="shrink-0 text-[11px] tabular-nums text-[var(--home-muted)]">
           {isCurrent && player.position > 0 ? formatDuration(player.position) : formatDuration(duration)}
         </span>
       </div>
 
-      <div className="flex h-9 items-center gap-0.5 text-[var(--home-muted)]">
+      {recitation.caption && isCurrent ? (
+        <p className="qari-enter mt-2 line-clamp-2 text-[12.5px] leading-snug text-[var(--home-muted)]">
+          {recitation.caption}
+        </p>
+      ) : null}
+
+      <div className="mt-1.5 flex h-8 items-center gap-1 text-[11px] text-[var(--home-muted)]">
+        {hideAuthor ? null : (
+          <Link
+            href={profileHref}
+            aria-label={t('{userName}’s profile', { userName: recitation.userName })}
+            className="qari-press ed-focus shrink-0 rounded-full"
+          >
+            <QariAvatar username={recitation.userUsername} name={recitation.userName} size={20} />
+          </Link>
+        )}
+        <p className={cn('min-w-0 flex-1 truncate', !hideAuthor && 'pl-1')}>
+          {hideAuthor ? null : (
+            <>
+              <Link href={profileHref} className="ed-focus font-medium hover:text-[var(--home-heading)]">
+                {recitation.userName}
+              </Link>
+              {' · '}
+            </>
+          )}
+          {timeAgoLong(recitation.createdAt)}
+        </p>
         <LikeButton recitation={recitation} viewerId={viewerId} onNotice={onNotice} compact />
         {recitation.playCount > 0 ? (
+          // Headphones, not a play triangle — a triangle here read as a second play button.
           <span
-            className="flex h-8 items-center gap-1 px-1.5 text-xs font-semibold tabular-nums"
+            className="flex shrink-0 items-center gap-1 px-1 tabular-nums"
             aria-label={t('{playCount} plays', { playCount: recitation.playCount })}
           >
-            <Play className="h-3 w-3 fill-current" strokeWidth={0} />
+            <Headphones className="h-[15px] w-[15px]" strokeWidth={1.9} aria-hidden />
             {compactNumber(recitation.playCount)}
           </span>
         ) : null}
-        <div className="flex min-w-0 flex-1 gap-1 overflow-hidden pl-1">
-          {recitation.hashtags.slice(0, 2).map((tag) => (
-            <Link key={tag} href={`/qari?q=${encodeURIComponent(`#${tag}`)}`} className="qari-chip qari-press ed-focus">
-              #{tag}
-            </Link>
-          ))}
-        </div>
         <button
           type="button"
           onClick={() => {
@@ -263,9 +214,9 @@ function RecitationCard({
             setShareOpen(true)
           }}
           aria-label={t('Share')}
-          className="qari-press ed-focus -mr-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:text-[var(--home-heading)]"
+          className="qari-press ed-focus relative -mr-2 ml-0.5 flex h-8 w-9 shrink-0 items-center justify-center rounded-full transition-colors before:absolute before:-inset-y-1 before:inset-x-0 before:content-[''] hover:text-[var(--home-heading)]"
         >
-          <Share2 className="h-[17px] w-[17px]" strokeWidth={2} />
+          <Share2 className="h-[16px] w-[16px]" strokeWidth={2} />
         </button>
       </div>
 
@@ -282,20 +233,22 @@ export function RecitationCards({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col gap-2.5">{children}</div>
 }
 
-/** Card-shaped placeholders while a list loads. */
+/** Card-shaped placeholders while a list loads: title, waveform row, meta line. */
 export function RecitationSkeletons({ count = 4 }: { count?: number }) {
   return (
     <RecitationCards>
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="qari-card px-3 pb-3 pt-2.5" aria-hidden>
-          <div className="flex items-center gap-2.5">
-            <span className="qari-skeleton h-9 w-9 rounded-full" />
-            <div className="flex-1 space-y-1.5">
-              <span className="qari-skeleton block h-3.5 w-3/5 rounded-full" />
-              <span className="qari-skeleton block h-2.5 w-24 rounded-full" />
-            </div>
+        <div key={i} className="qari-card px-3.5 pb-3 pt-3.5" aria-hidden>
+          <span className="qari-skeleton block h-[18px] w-3/5 rounded-full" />
+          <div className="mt-3 flex items-center gap-2.5">
+            <span className="qari-skeleton h-[30px] w-[30px] shrink-0 rounded-full" />
+            <span className="qari-skeleton h-[22px] flex-1 rounded-[6px]" />
+            <span className="qari-skeleton h-2.5 w-7 rounded-full" />
           </div>
-          <span className="qari-skeleton mt-2.5 block h-[46px] rounded-xl" />
+          <div className="mt-3 flex items-center gap-2">
+            <span className="qari-skeleton h-5 w-5 shrink-0 rounded-full" />
+            <span className="qari-skeleton h-2.5 w-28 rounded-full" />
+          </div>
         </div>
       ))}
     </RecitationCards>

@@ -2,19 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Mic, MicVocal } from 'lucide-react'
+import { MicVocal } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import { SheikhHeader } from '@/components/qari/SheikhCards'
-import {
-  QariHeader,
-  QariLabel,
-  QariScreen,
-  QariSegmented,
-  qariNotice,
-  useViewer,
-} from '@/components/qari/QariShell'
+import { QariChips, QariHeader, QariScreen, qariNotice, useViewer } from '@/components/qari/QariShell'
 import { fetchFeed, fetchSheikhStats, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
@@ -69,7 +62,8 @@ export default function SheikhPage() {
   return (
     <QariScreen>
       <PullIndicator pull={pull} refreshing={refreshing} />
-      <QariHeader title={sheikh?.shortName ?? t('Imitations')} sub={sheikh ? t('Imitations') : undefined} />
+      {/* The card below carries his name, so the header is only the way back. */}
+      <QariHeader title={t('Imitations')} />
 
       {!sheikh ? (
         <div className="mt-6">
@@ -82,31 +76,31 @@ export default function SheikhPage() {
         </div>
       ) : (
         <>
-          <div className="mt-[18px]">
+          <div className="mt-4">
             <SheikhHeader sheikh={sheikh} count={stats?.count ?? null} people={stats?.people ?? null} />
           </div>
 
-          <QariLabel>{t('Imitations')}</QariLabel>
-          <QariSegmented
-            label={t('Sort imitations')}
-            value={sort}
-            onChange={setSort}
-            options={[
-              { id: 'top', label: t('Most loved') },
-              { id: 'recent', label: t('Latest') },
-            ]}
-          />
+          {/* Nothing to sort until someone has imitated him — and the card above
+              already says so, with the button to be the first. */}
+          {items && items.length > 0 ? (
+            <QariChips
+              className="mt-6"
+              label={t('Sort imitations')}
+              value={sort}
+              onChange={setSort}
+              options={[
+                { id: 'top', label: t('Most loved') },
+                { id: 'recent', label: t('Latest') },
+              ]}
+            />
+          ) : null}
 
           <div className="mt-3">
             {items === null ? (
-              <RecitationSkeletons count={3} />
-            ) : items.length === 0 ? (
-              <EmptyState
-                Icon={Mic}
-                title={t('No one has imitated {shortName} yet', { shortName: sheikh.shortName })}
-                body={t('Be the first. Switch on Imitate when you record and pick him.')}
-              />
-            ) : (
+              <div className="mt-6">
+                <RecitationSkeletons count={3} />
+              </div>
+            ) : items.length === 0 ? null : (
               <RecitationCards>
                 {items.map((recitation, i) => (
                   <RecitationCard

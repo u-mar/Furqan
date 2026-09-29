@@ -60,13 +60,15 @@ export default function LikeButton({
       aria-label={liked ? t('Remove from favourites') : t('Add to favourites')}
       className={cn(
         'ed-focus flex shrink-0 items-center gap-1 rounded-full font-semibold transition-colors',
-        compact ? 'h-8 px-1 text-xs' : 'h-11 min-w-11 justify-center px-1.5 text-[12.5px]',
+        compact
+          ? "relative h-8 px-1 text-[11px] before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']"
+          : 'h-11 min-w-11 justify-center px-1.5 text-[12.5px]',
         liked ? 'text-rose-500' : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
       )}
     >
       <Heart
         key={popKey}
-        className={cn(compact ? 'h-[17px] w-[17px]' : 'h-5 w-5', liked && 'fill-current', popKey > 0 && 'qari-pop')}
+        className={cn(compact ? 'h-[15px] w-[15px]' : 'h-5 w-5', liked && 'fill-current', popKey > 0 && 'qari-pop')}
         strokeWidth={1.9}
       />
       {count > 0 ? <span className="tabular-nums">{count}</span> : null}

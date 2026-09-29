@@ -26,6 +26,8 @@ interface UsePageRecitationOptions {
   reciterId: string
   verses: Verse[]
   onPageFinished?: () => void
+  /** Fires when a single-ayah play (`continueOnPage: false`) reaches its end or fails. */
+  onSingleVerseEnd?: (verseKey: string) => void
   /** When true, verse list swap resumes playback instead of stopping (auto page advance). */
   resumeOnPageChangeRef?: import('react').MutableRefObject<boolean>
 }
@@ -67,7 +69,13 @@ function waitForAudioReady(audio: HTMLAudioElement): Promise<void> {
   })
 }
 
-export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnPageChangeRef }: UsePageRecitationOptions) {
+export function usePageRecitation({
+  reciterId,
+  verses,
+  onPageFinished,
+  onSingleVerseEnd,
+  resumeOnPageChangeRef,
+}: UsePageRecitationOptions) {
   const [state, setState] = useState<PageRecitationState>(idleState)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const sessionRef = useRef(0)
@@ -77,6 +85,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
   const reciterRef = useRef(reciterId)
   const playModeRef = useRef<'page' | 'single'>('page')
   const onPageFinishedRef = useRef(onPageFinished)
+  const onSingleVerseEndRef = useRef(onSingleVerseEnd)
   const abortingRef = useRef(false)
   const objectUrlRef = useRef<string | null>(null)
   const preloadMapRef = useRef<Map<string, PreloadedClip>>(new Map())
@@ -88,6 +97,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
   versesRef.current = verses
   reciterRef.current = reciterId
   onPageFinishedRef.current = onPageFinished
+  onSingleVerseEndRef.current = onSingleVerseEnd
 
   const clearPreload = useCallback(() => {
     for (const pre of preloadMapRef.current.values()) {
@@ -365,13 +375,19 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
     const audio = new Audio()
     audioRef.current = audio
 
+    const finishSingle = () => {
+      const verseKey = versesRef.current[indexRef.current]?.verse_key
+      finishPlayback()
+      if (verseKey) onSingleVerseEndRef.current?.(verseKey)
+    }
+
     const onEnded = () => {
       if (abortingRef.current) return
       const session = playbackSessionRef.current
       if (session !== sessionRef.current) return
 
       if (playModeRef.current === 'single') {
-        finishPlayback()
+        finishSingle()
         return
       }
       void playIndex(indexRef.current + 1, session, { seamless: true })
@@ -393,7 +409,7 @@ export function usePageRecitation({ reciterId, verses, onPageFinished, resumeOnP
       if (session !== sessionRef.current) return
 
       if (playModeRef.current === 'single') {
-        finishPlayback()
+        finishSingle()
         return
       }
       const next = indexRef.current + 1

@@ -188,7 +188,13 @@ export default function QariProfilePage() {
     <QariScreen>
       <PullIndicator pull={pull} refreshing={refreshing} />
 
-      <ProfileTopBar username={username} name={displayName} avatarVersion={avatarVersion} onShare={() => void handleShare()} />
+      <ProfileTopBar
+        username={username}
+        name={displayName}
+        avatarVersion={avatarVersion}
+        showNotifications={isMe}
+        onShare={() => void handleShare()}
+      />
 
       <div className="mt-1">
         <ProfileHero
@@ -251,7 +257,7 @@ export default function QariProfilePage() {
                 setTab(id)
               }}
               className={cn(
-                'ed-focus relative h-11 text-[14.5px] font-semibold transition-colors',
+                'ed-focus relative h-11 text-[14.5px] font-medium transition-colors',
                 tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
               )}
             >
@@ -261,7 +267,7 @@ export default function QariProfilePage() {
               ) : null}
               <span
                 className={cn(
-                  'absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-[var(--home-heading)] transition-opacity',
+                  'absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-[var(--home-sage)] transition-opacity',
                   tab === id ? 'opacity-100' : 'opacity-0'
                 )}
               />
@@ -273,7 +279,7 @@ export default function QariProfilePage() {
             type="button"
             onClick={playAll}
             aria-label={playingNow ? t('Pause') : t('Play all')}
-            className="ed-ink qari-press ed-focus mb-1 flex h-[34px] items-center gap-1.5 rounded-full pl-2.5 pr-[13px] text-[13px] font-semibold"
+            className="qari-press ed-focus mb-1 flex h-[34px] items-center gap-1.5 rounded-full bg-[var(--home-sage)] pl-2.5 pr-[13px] text-[13px] font-medium text-[var(--qari-on-teal)]"
           >
             {playingNow ? (
               <Pause key="pause" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />

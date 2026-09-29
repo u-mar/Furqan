@@ -9,19 +9,14 @@ export function avatarUrl(username: string, version?: number): string {
   return version ? `${base}?v=${version}` : base
 }
 
-/** Soft backgrounds for the initial, mixed into the card so both themes suit them. */
-const AVATAR_TONES = [
-  'color-mix(in srgb, #0f7a6a 16%, var(--home-card-bg))',
-  'color-mix(in srgb, #64748b 20%, var(--home-card-bg))',
-  'color-mix(in srgb, #7c6aa8 20%, var(--home-card-bg))',
-  'var(--home-track)',
-]
+/** Tile colours live in CSS (`.qari-avatar--n`): teal, warm sand, lavender. */
+const AVATAR_TONE_COUNT = 3
 
 /** The same person always gets the same tone. */
 function toneIndex(key: string): number {
   let h = 0
   for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.toLowerCase().charCodeAt(i)) | 0
-  return Math.abs(h) % AVATAR_TONES.length
+  return Math.abs(h) % AVATAR_TONE_COUNT
 }
 
 /**
@@ -59,7 +54,7 @@ export default function QariAvatar({
   const initial = (name || username || '?').trim().charAt(0).toUpperCase()
 
   const hasPicture = loadedSrc === src
-  const tone = AVATAR_TONES[toneIndex(username || name)]
+  const tone = toneIndex(username || name)
 
   // Held in a ref so an inline callback does not re-fire the effect each render.
   const notify = useRef(onPictureChange)
@@ -90,10 +85,16 @@ export default function QariAvatar({
   return (
     <span
       className={cn(
-        'home-serif relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium text-[var(--home-heading)]',
+        'home-serif qari-avatar relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
+        tone > 0 && `qari-avatar--${tone}`,
         className
       )}
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.42), background: tone }}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.42),
+        backgroundSize: `${Math.max(8, Math.round(size * 0.3))}px`,
+      }}
     >
       {showInitial ? initial : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}

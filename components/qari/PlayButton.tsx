@@ -6,31 +6,27 @@ import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
 /**
- * Round play control. `accent` makes the idle state the accent, for a call
- * to play something. `ghost` is a light outline instead of a solid ink
- * fill — for a control that repeats many times in a list, so only the one
- * actually playing reads as bold.
+ * Round play control, a filled teal circle. `tone="ivory"` is the version for
+ * the deep-teal surfaces: an ivory circle with a deep-teal glyph.
  */
 export default function PlayButton({
   status,
   onClick,
   label,
   size = 38,
-  accent = false,
-  ghost = false,
+  tone = 'teal',
   className,
 }: {
   status: PlayerStatus
   onClick: () => void
   label: string
   size?: number
-  accent?: boolean
-  ghost?: boolean
+  tone?: 'teal' | 'ivory'
   className?: string
 }) {
   const t = useT()
   const active = status === 'playing' || status === 'loading'
-  const iconClass = size >= 48 ? 'h-5 w-5' : size >= 40 ? 'h-4 w-4' : 'h-[15px] w-[15px]'
+  const iconClass = size >= 48 ? 'h-5 w-5' : size >= 40 ? 'h-[18px] w-[18px]' : size >= 34 ? 'h-4 w-4' : 'h-3.5 w-3.5'
 
   return (
     <button
@@ -38,12 +34,11 @@ export default function PlayButton({
       onClick={onClick}
       aria-label={active ? t('Pause {label}', { label }) : t('Play {label}', { label })}
       className={cn(
-        'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full',
-        accent && !active
-          ? 'bg-[var(--home-sage)] text-white'
-          : ghost && !active
-            ? 'qari-play-ghost'
-            : 'ed-ink',
+        // The ::before keeps the tap area at 40px even when the circle is smaller.
+        'qari-press ed-focus relative flex shrink-0 items-center justify-center rounded-full before:absolute before:-inset-[5px] before:content-[""]',
+        tone === 'ivory'
+          ? 'bg-[var(--qari-ivory,#f3ead6)] text-[var(--qari-deep,#12332e)]'
+          : 'bg-[var(--home-sage)] text-[var(--qari-on-teal,#fff)]',
         className
       )}
       style={{ width: size, height: size }}

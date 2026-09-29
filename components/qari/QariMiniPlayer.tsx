@@ -13,10 +13,11 @@ import { useT } from '@/lib/i18n'
 
 /** Whether the card for this recitation is on screen, above the tab bar. */
 function cardInView(id: string): boolean {
-  const card = document.querySelector(`[data-recitation="${CSS.escape(id)}"]`)
-  if (!card) return false
-  const rect = card.getBoundingClientRect()
-  return rect.bottom > 72 && rect.top < window.innerHeight - 150
+  const cards = document.querySelectorAll(`[data-recitation="${CSS.escape(id)}"]`)
+  return Array.from(cards).some((card) => {
+    const rect = card.getBoundingClientRect()
+    return rect.bottom > 72 && rect.top < window.innerHeight - 150
+  })
 }
 
 /**
@@ -67,7 +68,9 @@ export default function QariMiniPlayer() {
 
   const goToCard = () => {
     tapFeedback()
-    const card = document.querySelector(`[data-recitation="${CSS.escape(current.id)}"]`)
+    const card = document.querySelector(
+      `[data-recitation="${CSS.escape(current.id)}"]`
+    )
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' })
     else router.push(`/qari/${encodeURIComponent(current.userUsername)}`)
   }

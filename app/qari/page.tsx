@@ -3,28 +3,45 @@
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Loader2, Mic, RotateCw, SearchX, UserRound, Users, UsersRound } from 'lucide-react'
+import {
+  ChevronLeft,
+  GalleryVertical,
+  LayoutList,
+  Loader2,
+  Mic,
+  RotateCw,
+  Search,
+  SearchX,
+  UserRound,
+  Users,
+  UsersRound,
+  X,
+} from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
-import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
+import { useStartRecording } from '@/components/qari/QariRecordFab'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import { SheikhCard, SheikhHeader } from '@/components/qari/SheikhCards'
+import SwipeFeed from '@/components/qari/SwipeFeed'
 import {
+  QariChips,
   QariHeader,
   QariLabel,
   QariScreen,
   QariSearch,
-  QariSegmented,
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications'
 import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
+import { useQariView } from '@/lib/qari-view'
 import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
 import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import type { AppUser } from '@/lib/auth'
+import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
 type Sort = 'recent' | 'top' | 'following'
@@ -38,6 +55,13 @@ function QariHomeContent() {
   const [search, setSearch] = useState(urlQuery)
   const [query, setQuery] = useState(urlQuery)
   const [sort, setSort] = useState<Sort>('recent')
+  const [searchOpen, setSearchOpen] = useState(urlQuery.length > 0)
+  const [view, setView] = useQariView()
+  // A recitation opened full screen from a card, over the list. Closing it returns to the list.
+  const [overlay, setOverlay] = useState<{ items: Recitation[]; startId: string } | null>(null)
+  // Only a tap lets the browser start sound, so the swipe view plays at once only when one opened it.
+  const [swipeAutoplay, setSwipeAutoplay] = useState(false)
+  const startRecording = useStartRecording()
 
   const [discover, setDiscover] = useState<Discover | null>(null)
   const [items, setItems] = useState<Recitation[]>([])
@@ -51,6 +75,7 @@ function QariHomeContent() {
   useEffect(() => {
     setSearch(urlQuery)
     setQuery(urlQuery)
+    if (urlQuery) setSearchOpen(true)
   }, [urlQuery])
 
   /* Search fires once the typing settles, not on every key. */
@@ -62,7 +87,13 @@ function QariHomeContent() {
   useEffect(() => onPlayerError(qariNotice), [])
 
   const viewerId = viewer?.id ?? null
+  // The full-screen view has "For You" (most loved) and "Following"; "Latest" is a list thing.
+  useEffect(() => {
+    if (view === 'swipe' && sort === 'recent') setSort('top')
+  }, [view, sort])
+  const unread = useUnreadNotifications(viewer)
   const searching = query.length > 0
+  const swipeOn = !searching && (view === 'swipe' || overlay !== null)
 
   // Searching swaps the whole list out, taking the playing card with it.
   const wasSearching = useRef(searching)
@@ -114,12 +145,14 @@ function QariHomeContent() {
       setHasMore(remembered.hasMore)
       setLoading(false)
     } else {
+      // Another feed is on its way: never leave the last one showing under a new heading.
+      setItems([])
       setLoading(true)
     }
     void loadFeed()
   }, [loadFeed, searching])
 
-  const { pull, refreshing } = usePullToRefresh(() => Promise.all([loadDiscover(), loadFeed()]))
+  const { pull, refreshing } = usePullToRefresh(() => Promise.all([loadDiscover(), loadFeed()]), !swipeOn)
 
   const loadMore = useCallback(async () => {
     tapFeedback()
@@ -144,6 +177,7 @@ function QariHomeContent() {
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((r) => r.id !== id))
+    setOverlay((prev) => (prev ? { ...prev, items: prev.items.filter((r) => r.id !== id) } : prev))
   }, [])
 
   // This feed is what everyone sees, so a recitation made private drops out of it.
@@ -162,7 +196,7 @@ function QariHomeContent() {
     [discover]
   )
 
-  const sortOptions = useMemo(
+  const sortChips = useMemo(
     () => [
       { id: 'recent' as const, label: t('Latest') },
       { id: 'top' as const, label: t('Most loved') },
@@ -171,75 +205,298 @@ function QariHomeContent() {
     [viewer, t]
   )
 
-  return (
-    <QariScreen>
-      <PullIndicator pull={pull} refreshing={refreshing} />
+  const listTitle =
+    sort === 'top' ? t('Most loved recitations') : sort === 'following' ? t('From people you follow') : t('Latest recitations')
 
-      <QariHeader
-        title={t('Qari')}
-        backHref="/"
-        action={
-          <div className="flex items-center gap-2">
-            <NotificationsBell />
-            <Link href="/qari/qaris" onClick={tapFeedback} className="home-round ed-focus" aria-label={t('Qaris')}>
-              <Users className="h-[19px] w-[19px]" strokeWidth={1.9} />
-            </Link>
-            {viewer ? (
-              <Link
-                href={`/qari/${encodeURIComponent(viewer.username)}`}
-                onClick={tapFeedback}
-                className="home-round ed-focus"
-                aria-label={t('Your profile')}
-              >
-                <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  tapFeedback()
-                  askToSignIn()
-                }}
-                className="home-round ed-focus"
-                aria-label={t('Sign in')}
-              >
-                <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
-              </button>
+  const toggleSearch = () => {
+    tapFeedback()
+    if (searchOpen) {
+      setSearch('')
+      setQuery('')
+    }
+    setSearchOpen((open) => !open)
+  }
+
+  const switchView = () => {
+    tapFeedback()
+    setSwipeAutoplay(true)
+    setView(view === 'swipe' ? 'list' : 'swipe')
+  }
+
+  const openSwipe = useCallback((list: Recitation[], startId: string) => {
+    setSwipeAutoplay(true)
+    setOverlay({ items: list, startId })
+  }, [])
+
+  const openFromFeed = useCallback((recitation: Recitation) => openSwipe(items, recitation.id), [items, openSwipe])
+
+  const swipeItems = overlay ? overlay.items : items
+
+  const switchBtn = overlay ? null : (
+    <button
+      type="button"
+      onClick={switchView}
+      className="home-round ed-focus"
+      aria-label={view === 'swipe' ? t('Show as a list') : t('Show as full-screen swipe')}
+    >
+      {view === 'swipe' ? (
+        <LayoutList className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      ) : (
+        <GalleryVertical className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      )}
+    </button>
+  )
+
+  const searchBtn = (
+    <button
+      type="button"
+      onClick={toggleSearch}
+      className="home-round ed-focus"
+      aria-label={searchOpen ? t('Close search') : t('Search recitations')}
+      aria-expanded={searchOpen}
+    >
+      {searchOpen ? (
+        <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      ) : (
+        <Search className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      )}
+    </button>
+  )
+
+  const profileBtn = viewer ? (
+    <Link
+      href={`/qari/${encodeURIComponent(viewer.username)}`}
+      onClick={tapFeedback}
+      className="qari-press ed-focus relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-[2px] shadow-[inset_0_0_0_1.5px_var(--home-sage)]"
+      aria-label={unread > 0 ? t('Your profile, {count} new notifications', { count: unread }) : t('Your profile')}
+    >
+      <QariAvatar username={viewer.username} name={viewer.name} size={30} />
+      {/* Notifications live behind the avatar now: a dot here, the list on the profile. */}
+      {unread > 0 ? (
+        <span
+          className="qari-pop absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-[var(--home-sage)] ring-2 ring-[var(--app-bg)]"
+          aria-hidden
+        />
+      ) : null}
+    </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={() => {
+        tapFeedback()
+        askToSignIn()
+      }}
+      className="home-round ed-focus"
+      aria-label={t('Sign in')}
+    >
+      <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
+    </button>
+  )
+
+  const headerActions = (
+    <div className="flex items-center gap-2">
+      {switchBtn}
+      {searchBtn}
+      {profileBtn}
+    </div>
+  )
+
+  /* Following | For You — the two feeds of the full-screen view, as tabs along the top. */
+  const swipeTab: 'following' | 'foryou' = sort === 'following' ? 'following' : 'foryou'
+  const pickSwipeTab = (next: 'following' | 'foryou') => {
+    if (next === swipeTab) return
+    if (next === 'following' && !viewer) {
+      askToSignIn({ reason: tr('Create a free account to follow qaris.') })
+      return
+    }
+    tapFeedback()
+    setSwipeAutoplay(true)
+    setSort(next === 'following' ? 'following' : 'top')
+  }
+  const swipeTabs = (
+    <div role="tablist" aria-label={t('Recitations')} className="flex min-w-0 flex-1 items-center justify-center gap-5">
+      {(
+        [
+          { id: 'following' as const, label: t('Following') },
+          { id: 'foryou' as const, label: t('For You') },
+        ] as const
+      ).map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={swipeTab === id}
+          onClick={() => pickSwipeTab(id)}
+          className={cn(
+            'ed-focus relative h-9 whitespace-nowrap text-[16px] font-semibold transition-colors [text-shadow:0_1px_8px_rgba(0,0,0,0.55)]',
+            swipeTab === id ? 'text-white' : 'text-white/60'
+          )}
+        >
+          {label}
+          <span
+            className={cn(
+              'absolute inset-x-0 bottom-0 mx-auto h-[2.5px] w-6 rounded-full bg-white transition-opacity',
+              swipeTab === id ? 'opacity-100' : 'opacity-0'
             )}
-          </div>
-        }
-      />
+          />
+        </button>
+      ))}
+    </div>
+  )
 
-      <QariSearch
-        className="mt-3.5"
-        value={search}
-        onChange={(value) => {
-          setSearch(value)
-          if (!value) setQuery('')
-        }}
-        placeholder={t('Search a qari, recitation or #tag')}
-        label={t('Search recitations')}
-      />
+  const searchBar = searchOpen ? (
+    <QariSearch
+      className="qari-enter mt-3"
+      value={search}
+      onChange={(value) => {
+        setSearch(value)
+        if (!value) setQuery('')
+      }}
+      placeholder={t('Search a qari, recitation or #tag')}
+      label={t('Search recitations')}
+      autoFocus={!urlQuery}
+    />
+  ) : null
+
+  const closeOverlay = (
+    <button
+      type="button"
+      onClick={() => {
+        tapFeedback()
+        setOverlay(null)
+      }}
+      className="home-round ed-focus"
+      aria-label={t('Back')}
+    >
+      <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+    </button>
+  )
+
+  return (
+    <QariScreen bare={swipeOn} recordFab={!swipeOn}>
+      {swipeOn ? (
+        <>
+          <SwipeFeed
+            key={overlay ? `overlay-${overlay.startId}` : `feed-${sort}`}
+            items={swipeItems}
+            loading={!overlay && loading}
+            hasMore={overlay ? false : hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            startId={overlay?.startId ?? null}
+            autoplay={swipeAutoplay}
+            viewerId={viewerId}
+            viewerUsername={viewer?.username ?? null}
+            onRemoved={removeItem}
+            onUpdated={onPrivacyChanged}
+            onNotice={qariNotice}
+            empty={
+              <>
+                <p className="home-serif text-[24px] font-medium tracking-[-0.01em] text-[var(--home-heading)]">
+                  {sort === 'following' ? t('Nothing from people you follow') : t('No recitations yet')}
+                </p>
+                <p className="max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">
+                  {sort === 'following'
+                    ? t('Follow qaris you like and their new recitations will show up here.')
+                    : t('Be the first. Record a few ayahs and share them with everyone here.')}
+                </p>
+                <Link
+                  href={sort === 'following' ? '/qari/qaris' : '/qari/record'}
+                  onClick={sort === 'following' ? tapFeedback : startRecording}
+                  className="qari-pill qari-press ed-focus mt-1"
+                  style={{ height: '2.5rem', padding: '0 1.25rem' }}
+                >
+                  {sort === 'following' ? t('Find qaris') : t('Record the first one')}
+                </Link>
+              </>
+            }
+          />
+          {/* Over the photo: transparent to touches, so a swipe can start anywhere but on a button. */}
+          <div className="qari-swipe pointer-events-none fixed inset-x-0 top-0 z-40 bg-gradient-to-b from-black/65 via-black/25 to-transparent pb-8 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_label]:pointer-events-auto">
+            <div className="mx-auto max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+              <div className="flex items-center gap-2">
+                {/* An empty slot as wide as the buttons on the right keeps the tabs centred. */}
+                {overlay ? closeOverlay : <span className="w-[5rem] shrink-0" aria-hidden />}
+                {overlay ? <span className="flex-1" /> : swipeTabs}
+                <div className="flex w-[5rem] shrink-0 items-center justify-end gap-2">
+                  {switchBtn}
+                  {searchBtn}
+                </div>
+              </div>
+              {searchBar}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <PullIndicator pull={pull} refreshing={refreshing} />
+
+          <QariHeader title={t('Qari')} hideBack action={headerActions} />
+
+          {searchBar}
 
       {searching ? (
         <SearchResults key={query} query={query} viewer={viewer} />
       ) : (
         <>
-          {discover && discover.tags.length > 0 ? (
-            <div className="qari-no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 pt-0.5">
-              {discover.tags.map(({ tag }, i) => (
-                <Link
-                  key={tag}
-                  href={`/qari?q=${encodeURIComponent(`#${tag}`)}`}
-                  onClick={tapFeedback}
-                  className="qari-enter qari-press ed-focus flex h-8 shrink-0 items-center rounded-full bg-[var(--home-card-bg)] px-3 text-[13px] font-semibold text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
-                  style={{ animationDelay: `${Math.min(i, 8) * 30}ms` }}
-                >
-                  <span className="text-[var(--home-sage)]">#</span>
-                  {tag}
-                </Link>
-              ))}
-            </div>
+          <div className="qari-no-scrollbar -mx-4 mt-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 pt-0.5">
+            {sortChips.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={sort === id}
+                onClick={() => {
+                  if (sort === id) return
+                  tapFeedback()
+                  setSort(id)
+                }}
+                className="qari-pill qari-press ed-focus"
+              >
+                {label}
+              </button>
+            ))}
+            {discover && discover.tags.length > 0 ? (
+              <>
+                <span className="mx-1 h-4 w-px shrink-0 bg-[var(--home-rule-strong)]" aria-hidden />
+                {discover.tags.map(({ tag }) => (
+                  <Link
+                    key={tag}
+                    href={`/qari?q=${encodeURIComponent(`#${tag}`)}`}
+                    onClick={tapFeedback}
+                    className="qari-pill qari-pill--tag qari-press ed-focus"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </>
+            ) : null}
+          </div>
+
+          {discover && discover.lovedQaris.length > 0 ? (
+            <section>
+              <QariLabel action={<SeeAll href="/qari/qaris" />}>{t('Reciters')}</QariLabel>
+              <div className="qari-no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-1 overflow-x-auto px-4 pb-1">
+                {discover.lovedQaris.map((qari, i) => (
+                  <Link
+                    key={qari.username}
+                    href={`/qari/${encodeURIComponent(qari.username)}`}
+                    onClick={tapFeedback}
+                    className="qari-enter qari-press ed-focus flex w-[62px] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl py-0.5"
+                    style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}
+                  >
+                    {/* A teal ring will mark reciters with a fresh recitation once Discover carries a date. */}
+                    <span className="rounded-full p-[2px] shadow-[inset_0_0_0_2px_var(--home-rule)]">
+                      <span className="block rounded-full p-[2px]">
+                        <QariAvatar username={qari.username} name={qari.name} size={46} />
+                      </span>
+                    </span>
+                    <span className="w-full truncate text-center text-[11px] text-[var(--home-muted)]">
+                      {qari.name.split(' ')[0]}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           ) : null}
 
           {sheikhs.length > 0 ? (
@@ -261,33 +518,10 @@ function QariHomeContent() {
             </section>
           ) : null}
 
-          {discover && discover.lovedQaris.length > 0 ? (
-            <section>
-              <QariLabel action={<SeeAll href="/qari/qaris" />}>{t('Most loved qaris')}</QariLabel>
-              <div className="qari-no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-1 overflow-x-auto px-4 pb-1">
-                {discover.lovedQaris.map((qari, i) => (
-                  <Link
-                    key={qari.username}
-                    href={`/qari/${encodeURIComponent(qari.username)}`}
-                    onClick={tapFeedback}
-                    className="qari-enter qari-press ed-focus flex w-[68px] shrink-0 snap-start flex-col items-center gap-[7px] rounded-2xl py-0.5"
-                    style={{ animationDelay: `${Math.min(i, 10) * 40}ms` }}
-                  >
-                    <QariAvatar username={qari.username} name={qari.name} size={56} />
-                    <span className="w-full truncate text-center text-xs font-medium text-[var(--home-muted)]">
-                      {qari.name.split(' ')[0]}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
           <section id="all-recitations" className="scroll-mt-4">
-            <QariLabel>{t('Recitations')}</QariLabel>
-            <QariSegmented label={t('Sort recitations')} options={sortOptions} value={sort} onChange={setSort} />
+            <QariLabel>{listTitle}</QariLabel>
 
-            <div className="mt-3">
+            <div>
               {loading ? (
                 <RecitationSkeletons />
               ) : failed ? (
@@ -327,6 +561,7 @@ function QariHomeContent() {
                         onRemoved={removeItem}
                         onUpdated={onPrivacyChanged}
                         onNotice={qariNotice}
+                        onOpen={openFromFeed}
                       />
                     ))}
                   </RecitationCards>
@@ -335,7 +570,7 @@ function QariHomeContent() {
                       type="button"
                       onClick={() => void loadMore()}
                       disabled={loadingMore}
-                      className="qari-press ed-focus mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] disabled:opacity-70"
+                      className="qari-press ed-focus mt-3.5 flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-sm font-medium text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] disabled:opacity-70"
                     >
                       {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} /> : null}
                       {loadingMore ? t('Loading') : t('Show more')}
@@ -345,6 +580,8 @@ function QariHomeContent() {
               )}
             </div>
           </section>
+        </>
+      )}
         </>
       )}
     </QariScreen>
@@ -357,9 +594,10 @@ function SeeAll({ href }: { href: string }) {
     <Link
       href={href}
       onClick={tapFeedback}
-      className="ed-focus rounded text-[12.5px] font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]"
+      className="ed-focus rounded text-xs font-medium text-[var(--home-sage-deep)]"
     >
-      {t('See all')}</Link>
+      {t('See all')}
+    </Link>
   )
 }
 
@@ -437,26 +675,26 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
       {sheikh ? (
         <>
           <SheikhHeader sheikh={sheikh} count={stats?.count ?? null} people={stats?.people ?? null} />
-          <QariLabel>{t('Imitations')}</QariLabel>
-          <QariSegmented
-            label={t('Sort imitations')}
-            value={sort}
-            onChange={setSort}
-            options={[
-              { id: 'top', label: t('Most loved') },
-              { id: 'recent', label: t('Latest') },
-            ]}
-          />
-          <div className="mt-3">
-            {imitations === null ? (
+          {/* The card above already says when nobody has imitated him, with the button to be first. */}
+          {imitations === null ? (
+            <div className="mt-6">
               <RecitationSkeletons count={2} />
-            ) : imitations.length === 0 ? (
-              <p className="qari-enter home-card rounded-2xl px-4 py-3.5 text-sm leading-relaxed text-[var(--home-muted)]">
-                {t('No one has imitated {name} yet. Be the first.', { name: sheikh.shortName })}</p>
-            ) : (
-              cards(imitations)
-            )}
-          </div>
+            </div>
+          ) : imitations.length > 0 ? (
+            <>
+              <QariLabel>{t('Imitations')}</QariLabel>
+              <QariChips
+                label={t('Sort imitations')}
+                value={sort}
+                onChange={setSort}
+                options={[
+                  { id: 'top', label: t('Most loved') },
+                  { id: 'recent', label: t('Latest') },
+                ]}
+              />
+              <div className="mt-3">{cards(imitations)}</div>
+            </>
+          ) : null}
         </>
       ) : null}
 

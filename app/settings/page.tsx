@@ -16,6 +16,7 @@ import {
   Lock,
   LogOut,
   MessageSquare,
+  Palette,
   Trash,
   UserRound,
   type LucideIcon,
@@ -141,6 +142,7 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
+  const [tajweed, setTajweed] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
   const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
     en: false,
@@ -182,6 +184,7 @@ export default function SettingsPage() {
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
     setVerseWallpapers(s.verseWallpapersEnabled)
+    setTajweed(s.tajweed)
     setReadingMode(s.readingMode)
     setTranslationCached({
       en: areTranslationsCached('en'),
@@ -238,6 +241,11 @@ export default function SettingsPage() {
   function saveVerseWallpapers(next: boolean) {
     setVerseWallpapers(next)
     setAppSettings({ verseWallpapersEnabled: next })
+  }
+
+  function saveTajweed(next: boolean) {
+    setTajweed(next)
+    setAppSettings({ tajweed: next })
   }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
@@ -408,6 +416,12 @@ export default function SettingsPage() {
             </span>
             <RowChevron />
           </button>
+          <Divider />
+          <label className="set-row cursor-pointer">
+            <RowIcon icon={Palette} />
+            <span className="set-row__label">{t('Tajweed colors')}</span>
+            <Switch checked={tajweed} onChange={saveTajweed} label={t('Tajweed colors')} />
+          </label>
           <Divider />
           <label className="set-row cursor-pointer">
             <RowIcon icon={ImageIcon} />

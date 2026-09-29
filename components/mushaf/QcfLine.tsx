@@ -8,7 +8,7 @@ import type { QcfPageLine, QcfPageSegment } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
 import { useT } from '@/lib/i18n'
 
-function QcfSegment({
+export function QcfSegment({
   segment,
   index,
   highlightedVerseKey,

@@ -23,9 +23,13 @@ export interface PlayerSnapshot {
   /** Seconds into the current recitation. */
   position: number
   duration: number
+  /** Playback speed, 1 being normal. Kept between recitations. */
+  rate: number
 }
 
-const IDLE: PlayerSnapshot = { current: null, status: 'idle', position: 0, duration: 0 }
+export const PLAYBACK_RATES = [0.75, 1, 1.25] as const
+
+const IDLE: PlayerSnapshot = { current: null, status: 'idle', position: 0, duration: 0, rate: 1 }
 
 let snapshot: PlayerSnapshot = IDLE
 const listeners = new Set<() => void>()
@@ -36,6 +40,7 @@ let context: AudioContext | null = null
 let mixer: SpaceMixer | null = null
 let queue: Recitation[] = []
 let viewerId: string | null = null
+let rate = 1
 /** Plays are counted once per recitation per visit, not per tap. */
 const counted = new Set<string>()
 
@@ -76,6 +81,8 @@ function ensureAudio(): HTMLAudioElement {
   if (audio) return audio
   const el = new Audio()
   el.preload = 'auto'
+  el.defaultPlaybackRate = rate
+  el.playbackRate = rate
   // Needed for the space mixer to read the samples.
   el.crossOrigin = 'anonymous'
   el.addEventListener('playing', () => emit({ status: 'playing' }))
@@ -156,6 +163,8 @@ export function playRecitation(
 
   if (snapshot.current?.id !== r.id) {
     el.src = recitationAudioUrl(r.id)
+    // A new source can reset the speed to the default; the default is kept in step with it.
+    el.playbackRate = rate
     emit({ current: r, status: 'loading', position: 0, duration: r.durationSec })
   } else {
     emit({ status: 'loading' })
@@ -207,6 +216,16 @@ export function seekPlayback(fraction: number): void {
   emit({ position: el.currentTime })
 }
 
+/** Faster or slower, without changing the pitch. Stays for the recitations after this one. */
+export function setPlaybackRate(next: number): void {
+  rate = next
+  if (audio) {
+    audio.defaultPlaybackRate = next
+    audio.playbackRate = next
+  }
+  emit({ rate: next })
+}
+
 function nextInQueue(): Recitation | undefined {
   const index = snapshot.current ? queue.findIndex((q) => q.id === snapshot.current!.id) : -1
   return index >= 0 ? queue[index + 1] : undefined
@@ -237,5 +256,5 @@ export function stopPlayback(): void {
     audio.load()
   }
   queue = []
-  emit(IDLE)
+  emit({ ...IDLE, rate })
 }

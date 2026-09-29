@@ -20,12 +20,16 @@ import {
   ScrollText,
   Search,
   Play,
-  Square,
+  Pause,
   MessageSquareText,
-  Volume2,
   Bookmark,
   Share2,
   Languages,
+  AudioLines,
+  Palette,
+  SkipBack,
+  SkipForward,
+  X,
 } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
 import MushafFontPreload from '@/components/mushaf/MushafFontPreload'
@@ -36,6 +40,8 @@ import ReciterPicker from '@/components/read/ReciterPicker'
 import ContinuousScrollView from '@/components/read/ContinuousScrollView'
 import GallerySwipeView from '@/components/read/GallerySwipeView'
 import MushafBoundaryToast from '@/components/read/MushafBoundaryToast'
+import TranslationLanguagePicker from '@/components/read/TranslationLanguagePicker'
+import DockAction from '@/components/read/DockAction'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { usePageRecitation } from '@/hooks/usePageRecitation'
 import { usePageTranslations } from '@/hooks/usePageTranslations'
@@ -69,7 +75,7 @@ import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/l
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
 import { getVerseQcfGlyphs, getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
-import { qcfPageFontFamily } from '@/lib/mushaf-fonts'
+import { loadSurahTitleFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import {
   hasSomaliVoiceForVerse,
   loadSomaliVoiceManifest,
@@ -78,6 +84,16 @@ import {
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 import { tr, useT } from '@/lib/i18n'
+
+/** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
+type ReadAudioMode = 'arabic' | 'somali' | 'both'
+const READ_AUDIO_MODES: ReadAudioMode[] = ['arabic', 'somali', 'both']
+const AUDIO_MODE_KEY = 'nadir-read-audio-mode'
+const AUDIO_MODE_LABELS: Record<ReadAudioMode, string> = {
+  arabic: 'Arabic',
+  somali: 'Somali',
+  both: 'Ar + So',
+}
 
 function ReadPageContent() {
   const t = useT()
@@ -98,9 +114,6 @@ function ReadPageContent() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [showTranslation, setShowTranslation] = useState(false)
-  const [sliderPage, setSliderPage] = useState(1)
-  const [sliderDragging, setSliderDragging] = useState(false)
-  const [pageRanges, setPageRanges] = useState<{ id: number; name: string; pages: [number, number] }[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(false)
   const didSwipe = useRef(false)
@@ -113,7 +126,7 @@ function ReadPageContent() {
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
-  const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | null>(null)
+  const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | 'both' | null>(null)
   const resumeRecitationOnPageRef = useRef(false)
   const currentPageRef = useRef(1)
   const pageLoadSeqRef = useRef(0)
@@ -121,6 +134,26 @@ function ReadPageContent() {
     (page: number, options?: { autoContinue?: boolean }) => void | Promise<void>
   >(() => {})
   const [somaliAutoPlaying, setSomaliAutoPlaying] = useState(false)
+  const [audioMode, setAudioMode] = useState<ReadAudioMode>('arabic')
+  // Arabic-then-Somali sequence: which ayah it's on, and which half is playing.
+  const [bothActive, setBothActive] = useState(false)
+  const [bothVerseKey, setBothVerseKey] = useState<string | null>(null)
+  const bothRef = useRef(false)
+  const bothPhaseRef = useRef<'arabic' | 'somali'>('arabic')
+  // Bumped on every start/stop so an in-flight Arabic→Somali handoff can tell it's been superseded.
+  const bothSeqRef = useRef(0)
+  const arabicVerseEndRef = useRef<(verseKey: string) => void>(() => {})
+  const advanceBothRef = useRef<(afterVerseKey: string) => void>(() => {})
+  const pauseAllRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AUDIO_MODE_KEY)
+      if (saved && (READ_AUDIO_MODES as string[]).includes(saved)) setAudioMode(saved as ReadAudioMode)
+    } catch {
+      /* storage blocked — default mode is fine */
+    }
+  }, [])
   const {
     reciterId,
     translationLanguage,
@@ -129,6 +162,7 @@ function ReadPageContent() {
     verseWallpapersEnabled,
     readingMode,
     theme,
+    tajweed,
   } = useAppSettings()
 
   const cycleTheme = () => {
@@ -145,7 +179,6 @@ function ReadPageContent() {
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [showAyahTranslation, setShowAyahTranslation] = useState(false)
-  const [somaliVoiceAvailable, setSomaliVoiceAvailable] = useState(false)
   const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
   const [shareTarget, setShareTarget] = useState<ShareVerseTarget | null>(null)
   const [boundaryIndex, setBoundaryIndex] = useState<MushafBoundaryIndex | null>(null)
@@ -168,7 +201,6 @@ function ReadPageContent() {
     currentPageRef.current = page
     setPageVerses(verses)
     setCurrentPage(page)
-    setSliderPage(page)
     setLoadError(null)
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
     if (verses[0]?.verse_key) {
@@ -211,22 +243,6 @@ function ReadPageContent() {
       const index = await resolveBoundaryIndex()
       if (!cancelled) setBoundaryIndex(index)
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  /* Which surah each page falls in — just for the slider's live label while
-     dragging, so it stays a small, cacheable fetch rather than the full verse set. */
-  useEffect(() => {
-    let cancelled = false
-    fetch('/quran-chapters.json', { cache: 'force-cache' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { chapters?: { id: number; name_simple: string; pages: [number, number] }[] } | null) => {
-        if (cancelled || !data?.chapters) return
-        setPageRanges(data.chapters.map((c) => ({ id: c.id, name: c.name_simple, pages: c.pages })))
-      })
-      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -299,6 +315,7 @@ function ReadPageContent() {
       reciterId,
       verses: pageVerses,
       onPageFinished: handleRecitationPageComplete,
+      onSingleVerseEnd: (verseKey) => arabicVerseEndRef.current(verseKey),
       resumeOnPageChangeRef: resumeRecitationOnPageRef,
     })
 
@@ -317,6 +334,10 @@ function ReadPageContent() {
 
   const handleSomaliSegmentEnd = useCallback(
     (segment: SomaliVoiceSegment) => {
+      if (bothRef.current) {
+        advanceBothRef.current(segment.verseKey)
+        return
+      }
       if (!somaliAutoRef.current) return
 
       void (async () => {
@@ -357,19 +378,10 @@ function ReadPageContent() {
     void loadSomaliVoiceManifest()
   }, [])
 
+  const [surahTitleFontReady, setSurahTitleFontReady] = useState(false)
   useEffect(() => {
-    if (!ayahMenu?.verseKey) {
-      setSomaliVoiceAvailable(false)
-      return
-    }
-    let cancelled = false
-    void hasSomaliVoiceForVerse(ayahMenu.verseKey).then((ok) => {
-      if (!cancelled) setSomaliVoiceAvailable(ok)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [ayahMenu?.verseKey])
+    void loadSurahTitleFont().then(setSurahTitleFontReady)
+  }, [])
 
   const arabicByKey = useMemo(
     () => Object.fromEntries(pageVerses.map((v) => [v.verse_key, v.text_uthmani])),
@@ -396,6 +408,9 @@ function ReadPageContent() {
         stopSomaliVoice()
         somaliAutoRef.current = false
         setSomaliAutoPlaying(false)
+        bothRef.current = false
+        setBothActive(false)
+        setBothVerseKey(null)
         autoContinuePlaybackRef.current = null
       }
 
@@ -496,11 +511,7 @@ function ReadPageContent() {
   )
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || t('Surah {currentSurahNum}', { currentSurahNum })
-  /** The surah the slider is currently sitting over — shown only while dragging. */
-  const slidingSurahName = useMemo(
-    () => pageRanges.find((c) => sliderPage >= c.pages[0] && sliderPage <= c.pages[1])?.name ?? '',
-    [pageRanges, sliderPage]
-  )
+  const arabicSurahName = chapters.find((c) => c.id === currentSurahNum)?.name || ''
   /**
    * Juz shown in the page header. Taken from the verses actually on this page
    * (`juz_number`), not from the surah — a surah can span several juz, so the
@@ -510,54 +521,191 @@ function ReadPageContent() {
     const fromPage = pageVerses.find((v) => typeof v.juz_number === 'number')?.juz_number
     return fromPage ?? juzForChapter(currentSurahNum)
   }, [pageVerses, currentSurahNum])
-  const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
-  const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying
+  const highlightedVerseKey = recitation.highlightedVerseKey ?? somaliVoiceState.verseKey ?? bothVerseKey
+  const playbackActive = isActive || isSomaliVoiceActive || somaliAutoPlaying || bothActive
+  const audioPlaying = isActive || isSomaliVoiceActive
+  const audioLoading = recitation.loading || somaliVoiceState.loading
+  /** The ayah the current session (playing or paused) is on — null when nothing is queued. */
+  const nowPlayingKey = bothActive
+    ? bothVerseKey
+    : recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
 
-  const handleRecitationToggle = () => {
+  const playBothFrom = useCallback(
+    (verseKey: string) => {
+      bothSeqRef.current += 1
+      bothRef.current = true
+      bothPhaseRef.current = 'arabic'
+      setBothActive(true)
+      setBothVerseKey(verseKey)
+      playVerse(verseKey, { continueOnPage: false })
+    },
+    [playVerse]
+  )
+
+  const stopAllAudio = () => {
+    bothSeqRef.current += 1
+    bothRef.current = false
+    setBothActive(false)
+    setBothVerseKey(null)
+    somaliAutoRef.current = false
+    setSomaliAutoPlaying(false)
+    stopRecitation()
+    stopSomaliVoice()
+  }
+
+  const pauseAllAudio = () => {
+    if (bothRef.current) {
+      if (bothPhaseRef.current === 'arabic') pauseRecitation()
+      else pauseSomaliVoice()
+      return
+    }
     if (isActive) {
       pauseRecitation()
       return
     }
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
-    stopSomaliVoice()
-    setUiVisible(false)
-    if (isPaused) {
-      resumeRecitation()
-    } else {
-      startRecitation()
-    }
+    pauseSomaliVoice()
   }
 
-  const handleSomaliPageToggle = async () => {
-    // Held mid-ayah — carry on from the same spot instead of starting over.
-    if (somaliVoiceState.paused) {
-      somaliAutoRef.current = true
-      setSomaliAutoPlaying(true)
-      await resumeSomaliVoice()
+  useEffect(() => {
+    pauseAllRef.current = pauseAllAudio
+
+    arabicVerseEndRef.current = (verseKey: string) => {
+      if (!bothRef.current) return
+      const seq = bothSeqRef.current
+      void (async () => {
+        if (await hasSomaliVoiceForVerse(verseKey)) {
+          if (seq !== bothSeqRef.current) return
+          bothPhaseRef.current = 'somali'
+          if (await playSomaliVoiceRef.current(verseKey)) return
+        }
+        if (seq !== bothSeqRef.current) return
+        advanceBothRef.current(verseKey)
+      })()
+    }
+
+    advanceBothRef.current = (afterVerseKey: string) => {
+      if (!bothRef.current) return
+      const verses = pageVersesRef.current
+      const next = verses[verses.findIndex((v) => v.verse_key === afterVerseKey) + 1]
+      if (next) {
+        playBothFrom(next.verse_key)
+        return
+      }
+      if (currentPageRef.current >= TOTAL_MUSHAF_PAGES) {
+        stopAllAudio()
+        return
+      }
+      autoContinuePlaybackRef.current = 'both'
+      void navigatePageRef.current(currentPageRef.current + 1, { autoContinue: true })
+    }
+  })
+
+  const startAudio = async (mode: ReadAudioMode, fromVerseKey: string | null) => {
+    stopAllAudio()
+    setSomaliNotice(null)
+
+    if (mode === 'arabic') {
+      if (fromVerseKey) playVerse(fromVerseKey, { continueOnPage: true })
+      else startRecitation()
       return
     }
 
-    if (somaliAutoPlaying || isSomaliVoiceActive) {
-      // Pause rather than stop, so tapping play again resumes.
-      somaliAutoRef.current = false
-      setSomaliAutoPlaying(false)
-      pauseSomaliVoice()
+    if (mode === 'both') {
+      const first = fromVerseKey ?? pageVersesRef.current[0]?.verse_key
+      if (first) playBothFrom(first)
       return
     }
 
-    stopRecitation()
-    const firstVerseKey = await findNextSomaliVerse(null)
-    if (!firstVerseKey) {
+    const verseKey = fromVerseKey
+      ? (await hasSomaliVoiceForVerse(fromVerseKey))
+        ? fromVerseKey
+        : null
+      : await findNextSomaliVerse(null)
+    if (!verseKey) {
       setSomaliNotice(tr(TAFSIR_UNAVAILABLE_MESSAGE))
       return
     }
-
-    setSomaliNotice(null)
     somaliAutoRef.current = true
     setSomaliAutoPlaying(true)
-    setUiVisible(false)
-    await playSomaliVoice(firstVerseKey)
+    await playSomaliVoice(verseKey)
+  }
+
+  const handlePlayToggle = () => {
+    const selectedKey = ayahMenu?.verseKey ?? null
+    if (selectedKey && selectedKey !== nowPlayingKey) {
+      void startAudio(audioMode, selectedKey)
+      return
+    }
+    if (audioPlaying) {
+      pauseAllAudio()
+      return
+    }
+    if (bothRef.current) {
+      if (bothPhaseRef.current === 'arabic') resumeRecitation()
+      else void resumeSomaliVoice()
+      return
+    }
+    if (isPaused) {
+      resumeRecitation()
+      return
+    }
+    if (somaliVoiceState.paused) {
+      somaliAutoRef.current = true
+      setSomaliAutoPlaying(true)
+      void resumeSomaliVoice()
+      return
+    }
+    if (!selectedKey) setUiVisible(false)
+    void startAudio(audioMode, selectedKey)
+  }
+
+  /** The mode the running session was started in, which can differ from the selector after a switch. */
+  const sessionMode: ReadAudioMode = bothActive
+    ? 'both'
+    : recitation.highlightedVerseKey
+      ? 'arabic'
+      : somaliVoiceState.verseKey
+        ? 'somali'
+        : audioMode
+
+  const cycleAudioMode = () => {
+    const next = READ_AUDIO_MODES[(READ_AUDIO_MODES.indexOf(audioMode) + 1) % READ_AUDIO_MODES.length]
+    setAudioMode(next)
+    try {
+      localStorage.setItem(AUDIO_MODE_KEY, next)
+    } catch {
+      /* storage blocked — the choice just won't persist */
+    }
+    if (!nowPlayingKey) return
+    if (audioPlaying) void startAudio(next, nowPlayingKey)
+    else stopAllAudio()
+  }
+
+  const skipAyah = (delta: 1 | -1) => {
+    const verseKey = nowPlayingKey
+    if (!verseKey) return
+    const verses = pageVersesRef.current
+    const target = verses[verses.findIndex((v) => v.verse_key === verseKey) + delta]
+    if (target) {
+      void startAudio(sessionMode, target.verse_key)
+      return
+    }
+    // Back past the first ayah just restarts it; forward past the last carries on to the next page.
+    if (delta < 0 || currentPageRef.current >= TOTAL_MUSHAF_PAGES) {
+      void startAudio(sessionMode, verseKey)
+      return
+    }
+    const mode = sessionMode
+    stopAllAudio()
+    if (mode === 'arabic') {
+      autoContinuePlaybackRef.current = 'recitation'
+      resumeRecitationOnPageRef.current = true
+    } else {
+      autoContinuePlaybackRef.current = mode
+    }
+    void navigatePageRef.current(currentPageRef.current + 1, { autoContinue: true })
   }
 
   useEffect(() => {
@@ -571,6 +719,9 @@ function ReadPageContent() {
     if (autoContinuePlaybackRef.current) return
     somaliAutoRef.current = false
     setSomaliAutoPlaying(false)
+    bothRef.current = false
+    setBothActive(false)
+    setBothVerseKey(null)
     stopSomaliVoice()
   }, [currentPage, stopSomaliVoice])
 
@@ -580,6 +731,12 @@ function ReadPageContent() {
     autoContinuePlaybackRef.current = null
 
     if (mode === 'recitation') {
+      return
+    }
+
+    if (mode === 'both') {
+      const first = pageVerses[0]?.verse_key
+      if (first) playBothFrom(first)
       return
     }
 
@@ -596,7 +753,7 @@ function ReadPageContent() {
         setSomaliAutoPlaying(false)
       })()
     }
-  }, [currentPage, pageVerses, findNextSomaliVerse])
+  }, [currentPage, pageVerses, findNextSomaliVerse, playBothFrom])
 
   useWakeLock(playbackActive)
   useHalaqaReadingTick(pageVerses.length ? currentPage : 0)
@@ -610,7 +767,6 @@ function ReadPageContent() {
     if (prevHighlightedVerseKeyRef.current === highlightedVerseKey) return
     prevHighlightedVerseKeyRef.current = highlightedVerseKey
     ayahChangeBlockTapUntilRef.current = Date.now() + 700
-    setUiVisible(false)
     if (!showTranslation) {
       contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
       window.scrollTo(0, 0)
@@ -620,10 +776,7 @@ function ReadPageContent() {
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
       longPressBlockTap.current = true
-      if (isActive) pauseRecitation()
-      stopSomaliVoice()
-      somaliAutoRef.current = false
-      setSomaliAutoPlaying(false)
+      pauseAllRef.current()
       const verse = pageVerses.find((v) => v.verse_key === verseKey)
       if (!verse) return
       setNavSelectedVerseKey(null)
@@ -634,7 +787,7 @@ function ReadPageContent() {
       })
       setAyahMenuBookmarked(isBookmarked(verseKey))
     },
-    [isActive, pageVerses, pauseRecitation, stopSomaliVoice]
+    [pageVerses]
   )
 
   useEffect(() => {
@@ -717,10 +870,11 @@ function ReadPageContent() {
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
           suppressHighlightScroll
+          tajweed={tajweed}
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode, tajweed]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -866,6 +1020,19 @@ function ReadPageContent() {
     )
   }
 
+  const nowPlaying = (() => {
+    if (!nowPlayingKey) return null
+    const [surahId, ayah] = nowPlayingKey.split(':').map(Number)
+    const chapter = chapters.find((c) => c.id === surahId)
+    return {
+      surahName: chapter?.englishName || t('Surah {currentSurahNum}', { currentSurahNum: surahId }),
+      ayah,
+      total: chapter?.versesCount ?? 0,
+    }
+  })()
+  // With a different ayah selected, Play means "play that one", not "pause".
+  const showPauseIcon = audioPlaying && !(ayahMenu && ayahMenu.verseKey !== nowPlayingKey)
+
   return (
     <main className="mushaf-reader-immersive relative flex h-[100dvh] flex-col overflow-hidden">
       <MushafFontPreload />
@@ -881,25 +1048,32 @@ function ReadPageContent() {
 
       <MushafBoundaryToast boundary={boundaryToast} onDismiss={() => setBoundaryToast(null)} />
 
-      {/* Top meta — fixed slot so mushaf height never jumps when chrome toggles */}
+      {/* Running head — fixed slot so mushaf height never jumps when chrome toggles */}
       {!uiVisible ? (
-        <div
-          className="relative z-10 flex shrink-0 items-center justify-between px-5 pb-1 pt-[max(0.65rem,env(safe-area-inset-top))]"
-          dir="ltr"
-        >
-          <span className="text-[15px] font-semibold text-[var(--mushaf-read-meta)]">
-            {surahTitle}
-          </span>
-          <span className="text-[15px] font-semibold text-[var(--mushaf-read-meta)]">
-            {t('Juz')} {juzPart}
-          </span>
+        <div className="relative z-10 shrink-0 px-5 pb-2 pt-[max(0.65rem,env(safe-area-inset-top))]">
+          <div className="mushaf-running-head" dir="rtl" lang="ar">
+            {surahTitleFontReady ? (
+              <span
+                className="mushaf-running-head__surah mushaf-running-head__surah--calligraphy"
+                role="img"
+                aria-label={`سورة ${arabicSurahName}`}
+              >
+                {`surah${String(currentSurahNum).padStart(3, '0')}`}
+              </span>
+            ) : (
+              <span className="mushaf-running-head__surah mushaf-running-head__surah--text">
+                سورة {arabicSurahName}
+              </span>
+            )}
+            <span className="mushaf-running-head__juz">الجزء {juzPart.toLocaleString('ar-EG')}</span>
+          </div>
         </div>
       ) : (
         <div
-          className="relative z-10 shrink-0 pt-[max(0.65rem,env(safe-area-inset-top))]"
+          className="relative z-10 shrink-0 pb-2 pt-[max(0.65rem,env(safe-area-inset-top))]"
           aria-hidden
         >
-          <div className="h-6" />
+          <div className="h-[26px]" />
         </div>
       )}
 
@@ -1018,6 +1192,18 @@ function ReadPageContent() {
           </button>
           <button
             type="button"
+            onClick={() => setAppSettings({ tajweed: !tajweed })}
+            className={cn(
+              'mushaf-read-chrome-btn rounded-lg p-2',
+              tajweed && 'bg-[var(--mushaf-read-accent-soft)]'
+            )}
+            aria-label={t('Tajweed colors')}
+            aria-pressed={tajweed}
+          >
+            <Palette className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
             onClick={cycleReadingMode}
             className="mushaf-read-chrome-btn rounded-lg p-2"
             aria-label={t('Page navigation')}
@@ -1033,23 +1219,23 @@ function ReadPageContent() {
         </div>
       </header>
 
-      {/* Bottom controls */}
+      {/* Bottom dock — notices float just above it */}
       <div
         className={cn(
-          'absolute inset-x-0 bottom-0 z-30 space-y-1.5 px-2.5 pb-[max(1.15rem,calc(env(safe-area-inset-bottom)+0.5rem))]',
+          'absolute inset-x-0 bottom-0 z-30',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : 'translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {somaliNotice ? (
-          <p className="mx-auto max-w-lg rounded-lg border border-amber-500/35 bg-amber-500/15 px-3 py-2 text-center text-xs font-medium text-amber-950 dark:text-amber-100">
+          <p className="mx-auto mb-1.5 max-w-lg rounded-lg border border-amber-500/35 bg-amber-500/15 px-3 py-2 text-center text-xs font-medium text-amber-950 dark:text-amber-100">
             {somaliNotice}
           </p>
         ) : null}
 
         {ayahMenu && showAyahTranslation ? (
-          <div className="mushaf-read-chrome-panel mx-auto max-w-lg rounded-xl px-3.5 py-2.5">
+          <div className="mushaf-read-chrome-panel mx-2.5 mb-1.5 rounded-xl px-3.5 py-2.5">
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mushaf-read-accent)]">
               {ayahMenu.verseKey}
             </p>
@@ -1060,203 +1246,124 @@ function ReadPageContent() {
             </p>
           </div>
         ) : null}
-        <div className="mx-auto flex w-fit max-w-full items-center gap-3">
-          <ReciterPicker reciterId={reciterId} />
-          <div className="mushaf-read-chrome-panel flex items-center gap-5 rounded-lg px-5 py-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                if (ayahMenu) {
-                  const key = ayahMenu.verseKey
-                  const isPlayingThis = isSomaliVoiceActive && somaliVoiceState.verseKey === key
-                  if (isPlayingThis) {
-                    somaliAutoRef.current = false
-                    setSomaliAutoPlaying(false)
-                    pauseSomaliVoice()
-                    return
-                  }
-                  stopRecitation()
-                  setSomaliNotice(null)
-                  somaliAutoRef.current = true
-                  setSomaliAutoPlaying(true)
-                  if (somaliVoiceState.paused && somaliVoiceState.verseKey === key) {
-                    void resumeSomaliVoice()
-                    return
-                  }
-                  void playSomaliVoice(key)
-                  return
-                }
-                setSomaliNotice(null)
-                void handleSomaliPageToggle()
-              }}
-              disabled={ayahMenu ? !somaliVoiceAvailable : pageVerses.length === 0}
-              className={cn(
-                'mushaf-read-chrome-btn flex h-7 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition-colors disabled:opacity-40',
-                (ayahMenu
-                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
-                  : somaliAutoPlaying || isSomaliVoiceActive)
-                  ? 'bg-[var(--mushaf-read-accent-soft)]'
-                  : undefined
-              )}
-              aria-label={
-                (ayahMenu
-                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
-                  : somaliAutoPlaying || isSomaliVoiceActive)
-                  ? t('Stop Somali voice')
-                  : t('Play Somali voice')
-              }
-            >
-              {somaliVoiceState.loading ? (
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
-              ) : (ayahMenu
-                  ? isSomaliVoiceActive && somaliVoiceState.verseKey === ayahMenu.verseKey
-                  : somaliAutoPlaying || isSomaliVoiceActive) ? (
-                <Square className="h-3.5 w-3.5 fill-current" />
-              ) : (
-                <Volume2 className="h-3.5 w-3.5" />
-              )}
-              <span>{t('Somali')}</span>
-            </button>
+
+        <div className="mushaf-read-dock">
+          {nowPlaying ? (
+            <div className="mushaf-read-dock__now">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="mushaf-dock-select__caption">
+                  {audioPlaying ? t('Now playing') : t('Paused')} · {t(AUDIO_MODE_LABELS[sessionMode])}
+                </span>
+                <span className="mushaf-read-dock__now-title">
+                  <span className="truncate">{nowPlaying.surahName}</span>
+                  <span className="mushaf-read-dock__now-ayah">
+                    {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
+                    {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={stopAllAudio}
+                className="mushaf-read-dock__stop"
+                aria-label={t('Stop')}
+              >
+                <X className="h-4 w-4" strokeWidth={2.4} />
+              </button>
+              {nowPlaying.total ? (
+                <span className="mushaf-read-dock__progress" aria-hidden>
+                  <span style={{ width: `${Math.min(100, (nowPlaying.ayah / nowPlaying.total) * 100)}%` }} />
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="mushaf-read-dock__selectors">
+              <ReciterPicker reciterId={reciterId} />
+              <span className="mushaf-read-dock__divider" aria-hidden />
+              <TranslationLanguagePicker language={translationLanguage} />
+            </div>
+          )}
+
+          <div className="mushaf-read-dock__actions">
+            <DockAction
+              label={t(AUDIO_MODE_LABELS[audioMode])}
+              active={audioMode !== 'arabic'}
+              aria-label={`${t('Audio')}: ${t(AUDIO_MODE_LABELS[audioMode])}`}
+              icon={<AudioLines className="h-[19px] w-[19px]" />}
+              onClick={cycleAudioMode}
+            />
 
             {ayahMenu ? (
-              <div className="flex shrink-0 items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={handleToggleBookmark}
-                  className={cn(
-                    'mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                    ayahMenuBookmarked && 'bg-[var(--mushaf-read-accent-soft)]'
-                  )}
-                  aria-label={ayahMenuBookmarked ? t('Saved') : t('Save')}
-                  aria-pressed={ayahMenuBookmarked}
-                >
-                  <Bookmark className={cn('h-3.5 w-3.5', ayahMenuBookmarked && 'fill-current')} />
-                </button>
+              <DockAction
+                label={ayahMenuBookmarked ? t('Saved') : t('Save')}
+                active={ayahMenuBookmarked}
+                aria-pressed={ayahMenuBookmarked}
+                icon={<Bookmark className={cn('h-[18px] w-[18px]', ayahMenuBookmarked && 'fill-current')} />}
+                onClick={handleToggleBookmark}
+              />
+            ) : (
+              <DockAction
+                label={t('Previous')}
+                disabled={!nowPlayingKey}
+                icon={<SkipBack className="h-[18px] w-[18px]" />}
+                onClick={() => skipAyah(-1)}
+              />
+            )}
 
-                <button
-                  type="button"
-                  onClick={() => setShowAyahTranslation((v) => !v)}
-                  className={cn(
-                    'mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                    showAyahTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
-                  )}
-                  aria-label={showAyahTranslation ? t('Hide translation') : t('Show translation')}
-                  aria-pressed={showAyahTranslation}
-                >
-                  <Languages className="h-3.5 w-3.5" />
-                </button>
-
-                {verseWallpapersEnabled ? (
-                  <button
-                    type="button"
-                    onClick={handleShareVerse}
-                    className="mushaf-read-chrome-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                    aria-label={t('Share')}
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={() => {
-                if (ayahMenu) {
-                  if (isActive || isPaused) {
-                    stopRecitation()
-                    return
-                  }
-                  stopSomaliVoice()
-                  somaliAutoRef.current = false
-                  setSomaliAutoPlaying(false)
-                  playVerse(ayahMenu.verseKey, { continueOnPage: true })
-                  return
-                }
-                handleRecitationToggle()
-              }}
-              disabled={ayahMenu ? false : pageVerses.length === 0}
-              className="mushaf-read-chrome-btn flex h-8 w-8 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
-              aria-label={
-                ayahMenu
-                  ? isActive || isPaused
-                    ? t('Stop')
-                    : t('Play')
-                  : isActive
-                    ? t('Pause recitation')
-                    : isPaused
-                      ? t('Resume recitation')
-                      : t('Play page recitation')
-              }
-            >
-              {recitation.loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--mushaf-read-accent)]/30 border-t-[var(--mushaf-read-accent)]" />
-              ) : isActive ? (
-                <Square className="h-3.5 w-3.5 fill-current" />
-              ) : (
-                <Play className="h-4 w-4 fill-current" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="mx-auto flex w-[72%] max-w-md items-center gap-2.5 px-3.5 py-2">
-          <div className="relative min-w-0 flex-1">
-            {sliderDragging && slidingSurahName ? (
-              <span
-                className="mushaf-slider-tooltip"
-                style={{ left: `${((sliderPage - 1) / (TOTAL_MUSHAF_PAGES - 1)) * 100}%` }}
+            <div className="flex flex-1 justify-center">
+              <button
+                type="button"
+                onClick={handlePlayToggle}
+                disabled={pageVerses.length === 0}
+                className="mushaf-dock-play"
+                aria-label={showPauseIcon ? t('Pause') : t('Play')}
               >
-                {slidingSurahName}
-              </span>
+                {showPauseIcon && audioLoading ? (
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : showPauseIcon ? (
+                  <Pause className="h-5 w-5 fill-current" />
+                ) : (
+                  <Play className="ml-0.5 h-5 w-5 fill-current" />
+                )}
+              </button>
+            </div>
+
+            {ayahMenu ? (
+              <DockAction
+                label={t('Meaning')}
+                active={showAyahTranslation}
+                aria-pressed={showAyahTranslation}
+                icon={<Languages className="h-[18px] w-[18px]" />}
+                onClick={() => setShowAyahTranslation((v) => !v)}
+              />
+            ) : (
+              <DockAction
+                label={t('Next')}
+                disabled={!nowPlayingKey}
+                icon={<SkipForward className="h-[18px] w-[18px]" />}
+                onClick={() => skipAyah(1)}
+              />
+            )}
+
+            {ayahMenu && verseWallpapersEnabled ? (
+              <DockAction
+                label={t('Share')}
+                icon={<Share2 className="h-[18px] w-[18px]" />}
+                onClick={handleShareVerse}
+              />
             ) : null}
-            <input
-              type="range"
-              min={1}
-              max={TOTAL_MUSHAF_PAGES}
-              value={sliderPage}
-              onChange={(e) => setSliderPage(Number(e.target.value))}
-              onMouseDown={() => setSliderDragging(true)}
-              onTouchStart={() => setSliderDragging(true)}
-              onMouseUp={() => {
-                setSliderDragging(false)
-                if (sliderPage !== currentPage) navigatePage(sliderPage)
-                setNavSelectedVerseKey(null)
+
+            <DockAction
+              label={t('Translate')}
+              active={showTranslation}
+              aria-pressed={showTranslation}
+              icon={<MessageSquareText className="h-[19px] w-[19px]" />}
+              onClick={() => {
+                stopAllAudio()
+                setShowTranslation((v) => !v)
               }}
-              onTouchEnd={() => {
-                setSliderDragging(false)
-                if (sliderPage !== currentPage) navigatePage(sliderPage)
-                setNavSelectedVerseKey(null)
-              }}
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[var(--mushaf-read-card-border)] accent-[var(--mushaf-read-accent)]"
-              aria-label={t('Page slider')}
             />
           </div>
-          <span className="mushaf-read-chrome-title shrink-0 text-[13px] font-semibold tabular-nums">
-            {sliderDragging && slidingSurahName ? slidingSurahName : currentPage}
-            {sliderDragging && slidingSurahName ? null : (
-              <span className="mushaf-read-chrome-subtitle font-normal"> / {TOTAL_MUSHAF_PAGES}</span>
-            )}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => {
-              stopRecitation()
-              stopSomaliVoice()
-              somaliAutoRef.current = false
-              setSomaliAutoPlaying(false)
-              setShowTranslation((v) => !v)
-            }}
-            className={cn(
-              'mushaf-read-chrome-btn -mr-1 shrink-0 rounded-lg p-1.5',
-              showTranslation && 'bg-[var(--mushaf-read-accent-soft)]'
-            )}
-            aria-label={showTranslation ? t('Hide translation') : t('Show translation')}
-            aria-pressed={showTranslation}
-          >
-            <MessageSquareText className="h-[18px] w-[18px]" />
-          </button>
         </div>
       </div>
 

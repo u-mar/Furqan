@@ -78,6 +78,20 @@ export function timeAgo(iso: string): string {
   return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 }
 
+/** "just now", "12 min ago", "3 hours ago", "6 days ago", then a date. */
+export function timeAgoLong(iso: string): string {
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const min = Math.floor((Date.now() - then) / 60000)
+  if (min < 1) return tr('just now')
+  if (min < 60) return tr('{count} min ago', { count: min })
+  const hours = Math.floor(min / 60)
+  if (hours < 24) return hours === 1 ? tr('an hour ago') : tr('{count} hours ago', { count: hours })
+  const days = Math.floor(hours / 24)
+  if (days < 7) return days === 1 ? tr('a day ago') : tr('{count} days ago', { count: days })
+  return new Date(then).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
+
 /* ------------------------------------------------------------------ memory */
 
 /*

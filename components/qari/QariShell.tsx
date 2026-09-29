@@ -19,6 +19,7 @@ export function QariHeader({
   backHref = '/qari',
   action,
   back,
+  hideBack = false,
 }: {
   title?: string
   sub?: string
@@ -26,15 +27,19 @@ export function QariHeader({
   action?: React.ReactNode
   /** Replaces the back link, e.g. a close button. */
   back?: React.ReactNode
+  /** No back button at all — for a screen the bottom bar already leads to. */
+  hideBack?: boolean
 }) {
   const t = useT()
   return (
     <header className="flex items-center gap-3">
-      {back ?? (
-        <Link href={backHref} className="home-round ed-focus" aria-label={t('Back')}>
-          <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
-        </Link>
-      )}
+      {hideBack
+        ? null
+        : (back ?? (
+            <Link href={backHref} className="home-round ed-focus" aria-label={t('Back')}>
+              <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+            </Link>
+          ))}
       <div className="min-w-0 flex-1">
         {title ? (
           <h1 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
@@ -48,7 +53,7 @@ export function QariHeader({
   )
 }
 
-/** The small tracked label above a card, with an optional action on the right. */
+/** A section heading — quiet, sentence case — with an optional action on the right. */
 export function QariLabel({
   children,
   action,
@@ -59,32 +64,34 @@ export function QariLabel({
   className?: string
 }) {
   return (
-    <div className={cn('mx-1 mb-2 mt-[22px] flex min-h-5 items-center justify-between gap-3', className)}>
-      <h2 className="home-label tabular-nums">{children}</h2>
+    <div className={cn('mx-0.5 mb-2 mt-6 flex min-h-5 items-center justify-between gap-3', className)}>
+      <h2 className="text-[13px] font-medium tabular-nums text-[var(--home-heading)]">{children}</h2>
       {action}
     </div>
   )
 }
 
-/** A search field in a white card, with a clear button once there is text. */
+/** A search field in a card, with a clear button once there is text. */
 export function QariSearch({
   value,
   onChange,
   placeholder,
   label,
   className,
+  autoFocus = false,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder: string
   label: string
   className?: string
+  autoFocus?: boolean
 }) {
   const t = useT()
   return (
     <label
       className={cn(
-        'home-card flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]',
+        'home-card flex h-11 items-center gap-2.5 rounded-full px-4 focus-within:ring-2 focus-within:ring-[var(--home-sage)]',
         className
       )}
     >
@@ -95,6 +102,7 @@ export function QariSearch({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={label}
+        autoFocus={autoFocus}
         enterKeyHint="search"
         className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)] [&::-webkit-search-cancel-button]:hidden"
       />
@@ -112,6 +120,41 @@ export function QariSearch({
         </button>
       ) : null}
     </label>
+  )
+}
+
+/** A row of pills for sorting or filtering a list; the chosen one is teal. */
+export function QariChips<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className,
+}: {
+  options: { id: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
+  label: string
+  className?: string
+}) {
+  return (
+    <div role="group" aria-label={label} className={cn('flex flex-wrap items-center gap-1.5', className)}>
+      {options.map(({ id, label: text }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={value === id}
+          onClick={() => {
+            if (value === id) return
+            tapFeedback()
+            onChange(id)
+          }}
+          className="qari-pill qari-press ed-focus"
+        >
+          {text}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -161,18 +204,35 @@ export function QariSegmented<T extends string>({
   )
 }
 
-export function QariScreen({ children, className }: { children: React.ReactNode; className?: string }) {
+export function QariScreen({
+  children,
+  className,
+  bare = false,
+  recordFab = true,
+}: {
+  children: React.ReactNode
+  className?: string
+  /** No padded column: the content lays itself out (the full-screen swipe view). */
+  bare?: boolean
+  /** Off where something else on the screen starts a recording. */
+  recordFab?: boolean
+}) {
   return (
-    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div
-        className={cn('mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]', className)}
-        // Clear of the main bottom bar, the record button and the mini player above it.
-        style={{ paddingBottom: 'calc(9rem + env(safe-area-inset-bottom))' }}
-      >
-        {children}
-      </div>
+    <main className="qari-theme min-h-[100dvh] text-[var(--app-text)]">
+      {bare ? (
+        children
+      ) : (
+        <div
+          className={cn('mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]', className)}
+          // Clear of the main bottom bar, the record button and the mini player above it,
+          // so the last card's share button never ends up underneath them.
+          style={{ paddingBottom: 'calc(11rem + env(safe-area-inset-bottom))' }}
+        >
+          {children}
+        </div>
+      )}
       <QariMiniPlayer />
-      <QariRecordFab />
+      {recordFab ? <QariRecordFab /> : null}
     </main>
   )
 }

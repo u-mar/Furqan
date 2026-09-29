@@ -29,7 +29,6 @@ import {
 import { SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
 import MushafReadAlong from '@/components/qari/MushafReadAlong'
-import RecitationCard from '@/components/qari/RecitationCard'
 import ShareSheet from '@/components/qari/ShareSheet'
 import Switch from '@/components/qari/Switch'
 import Waveform from '@/components/qari/Waveform'
@@ -529,23 +528,28 @@ function RecordFlow() {
 
         <div className="qari-step flex flex-1 flex-col justify-center pb-4">
           <div className="flex flex-col items-center text-center">
-            <span className="qari-done flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[var(--home-sage)] text-white shadow-[0_0_0_10px_var(--home-sage-soft),0_18px_40px_-14px_rgba(15,122,106,0.6)]">
+            <span className="qari-done flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[var(--home-sage)] text-[var(--qari-on-teal)] shadow-[0_0_0_10px_var(--home-sage-soft),0_18px_40px_-14px_rgba(13,107,99,0.6)]">
               <Check className="h-10 w-10" strokeWidth={3} />
             </span>
-            <h1 className="home-serif mt-[26px] text-[1.9375rem] font-semibold tracking-[-0.02em] text-[var(--home-heading)]">
+            <h1 className="home-serif mt-[26px] text-[1.9375rem] font-medium tracking-[-0.02em] text-[var(--home-heading)]">
               {published.isPrivate ? t('Saved') : t('Published')}
             </h1>
             <p className="mt-1.5 max-w-[32ch] text-[15px] leading-normal text-[var(--home-muted)]">
               {published.isPrivate
                 ? t('It is on your profile. Only you can hear it.')
                 : published.imitating && sheikh
-                  ? t('It is in the Qari feed and on {shortName}\'s page.', { shortName: sheikh.shortName })
+                  ? t("It is in the Qari feed and on {shortName}'s page.", { shortName: sheikh.shortName })
                   : t('It is in the Qari feed.')}
             </p>
           </div>
 
-          <div className="mt-7">
-            <RecitationCard recitation={published} viewerId={viewer?.id ?? null} viewerUsername={viewer?.username ?? null} onNotice={qariNotice} />
+          {/* Its own voice, drawn as it was recorded, with a wave of gold moving through it. */}
+          <div className="home-card mt-7 rounded-[18px] px-4 pb-3.5 pt-4">
+            <p className="home-serif truncate text-center text-[17px] font-medium text-[var(--home-heading)]">{published.title}</p>
+            <div className="mt-3">
+              <GoldWave peaks={published.peaks} seed={published.id} />
+            </div>
+            <p className="mt-2 text-center text-[11px] tabular-nums text-[var(--home-muted)]">{formatDuration(published.durationSec)}</p>
           </div>
 
           <div className="mt-[26px] flex flex-col gap-2.5">
@@ -555,14 +559,14 @@ function RecordFlow() {
                 tapFeedback()
                 setShareOpen(true)
               }}
-              className="ed-ink ed-focus qari-press flex h-[52px] items-center justify-center gap-2 rounded-full text-[15px] font-semibold"
+              className="ed-ink ed-focus qari-press flex h-14 items-center justify-center gap-2 rounded-full text-base font-medium"
             >
-              <Film className="h-[17px] w-[17px]" strokeWidth={2.1} />
+              <Film className="h-[18px] w-[18px]" strokeWidth={2} />
               {t('Share as a video')}</button>
             <Link
               href={`/qari/${encodeURIComponent(published.userUsername)}`}
               onClick={tapFeedback}
-              className="qari-press ed-focus flex h-12 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[14.5px] font-semibold text-[var(--home-heading)]"
+              className="ed-focus flex h-10 items-center justify-center text-sm font-medium text-[var(--home-sage-deep)]"
             >
               {t('See it on your profile')}</Link>
             <button
@@ -571,7 +575,7 @@ function RecordFlow() {
                 tapFeedback()
                 startOver()
               }}
-              className="ed-focus h-10 text-sm font-semibold text-[var(--home-muted)] hover:text-[var(--home-heading)]"
+              className="ed-focus h-10 text-sm font-medium text-[var(--home-muted)] hover:text-[var(--home-heading)]"
             >
               {t('Record another')}</button>
           </div>
@@ -774,18 +778,20 @@ function RecordFlow() {
     </Link>
   )
 
+  const studio = recording || countingDown
+
   return (
-    <Screen>
-      {recording || countingDown ? (
+    <Screen studio={studio}>
+      {studio ? (
         <>
           <div className="flex items-center justify-between">
             {closeButton}
             {recording ? (
-              <span className="qari-step flex h-[34px] items-center gap-2 rounded-full bg-rose-500/[0.12] px-3.5 text-[13px] font-bold text-rose-600 dark:text-rose-400">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+              <span className="qari-step flex h-[34px] items-center gap-2 rounded-full bg-rose-500/20 px-3.5 text-[13px] font-medium text-rose-200">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
                 {t('Recording')}</span>
             ) : (
-              <span className="text-[15px] font-semibold text-[var(--home-heading)]">{t('Get ready')}</span>
+              <span className="text-[15px] font-medium text-[var(--home-heading)]">{t('Get ready')}</span>
             )}
             {recording ? (
               <button
@@ -806,120 +812,87 @@ function RecordFlow() {
           <p className="qari-step mt-3.5 text-center text-[13px] text-[var(--home-muted)]">
             {t(space.label)} {t('sound')}{imitate && sheikh ? t(' · Imitating {shortName}', { shortName: sheikh.shortName }) : ''}
           </p>
-        </>
-      ) : (
-        <>
-          <QariHeader title={t('New recitation')} back={closeButton} />
-          {draftMeta ? (
-            <div className="qari-step home-card mt-3.5 flex items-center gap-3 rounded-2xl px-3.5 py-3">
-              <span className="set-row__icon" aria-hidden>
-                <FileAudio className="h-[17px] w-[17px]" strokeWidth={1.9} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-                  {draftMeta.title ? `“${draftMeta.title}”` : t('Unfinished recitation')}
+
+          {/* Stage */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-5 py-4">
+            {state.polishing ? (
+              <>
+                <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[var(--home-rule-strong)] border-t-[var(--qari-gold-hi)]" role="status" aria-label={t('Polishing your recitation…')} />
+                <div className="w-full max-w-[16rem] text-center">
+                  <p className="home-serif text-[1.25rem] font-medium text-[var(--home-heading)]">{t('Polishing your recitation…')}</p>
+                  <p className="mt-1 text-[13px] text-[var(--home-muted)]" aria-live="polite">
+                    {state.polishStage === 'cleaning'
+                      ? t('Removing room noise')
+                      : state.polishStage === 'shaping'
+                        ? t('Shaping the voice')
+                        : state.polishStage === 'saving'
+                          ? t('Saving')
+                          : t('Levelling the sound')}
+                  </p>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--qari-gold-hi)] transition-[width] duration-200"
+                      style={{ width: `${Math.round(Math.min(1, Math.max(0.03, state.polishProgress)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : countingDown ? (
+              <>
+                <LevelRing level={0} live={false}>
+                  <span key={count} className="qari-count home-serif text-[6rem] font-medium leading-none tabular-nums text-[var(--home-heading)]">
+                    {count}
+                  </span>
+                </LevelRing>
+                <p className="text-sm text-[var(--home-muted)]">{t('Get ready…')}</p>
+              </>
+            ) : (
+              <>
+                <span
+                  className="home-serif text-[3.5rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
+                  aria-live="polite"
+                >
+                  {clock(elapsed)}
                 </span>
-                <span className="block text-[0.78125rem] text-[var(--home-muted)]">
-                  {formatDuration(draftMeta.durationSec)} · {t('not yet published')}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={discardDraft}
-                aria-label={t('Discard draft')}
-                className="ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-rose-500"
-              >
-                <Trash2 className="h-4 w-4" strokeWidth={1.9} />
-              </button>
-              <button
-                type="button"
-                onClick={() => void resumeDraft()}
-                className="ed-ink ed-focus qari-press h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold"
-              >
-                {t('Resume')}
-              </button>
-            </div>
-          ) : null}
-          <div className="qari-step">
-            <QariLabel>{t('Before you start')}</QariLabel>
-            {settings(true)}
+                <LiveWave levels={levels} />
+                <LevelRing level={state.level} live={!state.paused}>
+                  <button
+                    type="button"
+                    onClick={() => recorder.stop()}
+                    aria-label={t('Finish recording')}
+                    className="qari-rec qari-rec--stop ed-focus"
+                  >
+                    <Square className="h-6 w-6" fill="currentColor" strokeWidth={0} />
+                  </button>
+                </LevelRing>
+                <p
+                  key={state.inputHint ?? 'ok'}
+                  className={cn(
+                    'qari-step text-center text-[13px]',
+                    state.inputHint === 'loud'
+                      ? 'font-medium text-rose-300'
+                      : state.inputHint === 'quiet'
+                        ? 'font-medium text-amber-300'
+                        : 'text-[var(--home-muted)]'
+                  )}
+                  aria-live="polite"
+                >
+                  {state.paused
+                    ? t('Paused')
+                    : state.inputHint === 'loud'
+                      ? t('Too loud — hold the phone a little further away')
+                      : state.inputHint === 'quiet'
+                        ? t('We can barely hear you — come a little closer')
+                        : left <= 60
+                          ? t('{left} seconds left', { left })
+                          : t('Recite now — tap the square when you finish')}
+                </p>
+              </>
+            )}
           </div>
-        </>
-      )}
 
-      {/* Stage */}
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
-        {state.polishing ? (
-          <>
-            <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[var(--home-rule-strong)] border-t-[var(--home-heading)]" role="status" aria-label={t('Polishing your recitation…')} />
-            <div className="w-full max-w-[16rem] text-center">
-              <p className="home-serif text-[1.25rem] font-semibold text-[var(--home-heading)]">{t('Polishing your recitation…')}</p>
-              <p className="mt-1 text-[13px] text-[var(--home-muted)]" aria-live="polite">
-                {state.polishStage === 'cleaning'
-                  ? t('Removing room noise')
-                  : state.polishStage === 'shaping'
-                    ? t('Shaping the voice')
-                    : state.polishStage === 'saving'
-                      ? t('Saving')
-                      : t('Levelling the sound')}
-              </p>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-                <div
-                  className="h-full rounded-full bg-[var(--home-heading)] transition-[width] duration-200"
-                  style={{ width: `${Math.round(Math.min(1, Math.max(0.03, state.polishProgress)) * 100)}%` }}
-                />
-              </div>
-            </div>
-          </>
-        ) : countingDown ? (
-          <>
-            <span key={count} className="qari-count home-serif text-[7rem] font-medium leading-none tabular-nums text-[var(--home-heading)]">
-              {count}
-            </span>
-            <p className="text-sm text-[var(--home-muted)]">{t('Get ready…')}</p>
-          </>
-        ) : (
-          <>
-            <span
-              className="home-serif text-[3.75rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
-              aria-live="polite"
-            >
-              {clock(elapsed)}
-            </span>
-            {recording ? <LiveWave levels={levels} /> : <IdleLine />}
-            <p
-              key={recording ? (state.inputHint ?? 'ok') : 'ready'}
-              className={cn(
-                'qari-step text-center text-[13px]',
-                recording && state.inputHint === 'loud'
-                  ? 'font-semibold text-rose-600 dark:text-rose-400'
-                  : recording && state.inputHint === 'quiet'
-                    ? 'font-semibold text-amber-600 dark:text-amber-400'
-                    : 'text-[var(--home-muted)]'
-              )}
-              aria-live="polite"
-            >
-              {recording
-                ? state.paused
-                  ? t('Paused')
-                  : state.inputHint === 'loud'
-                  ? t('Too loud — hold the phone a little further away')
-                  : state.inputHint === 'quiet'
-                    ? t('We can barely hear you — come a little closer')
-                    : left <= 60
-                      ? t('{left} seconds left', { left })
-                      : t('Recite now — tap the square when you finish')
-                : t('Hold the phone a hand-span away, then tap to begin')}
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Record / stop */}
-      <div className={cn('flex flex-col items-center pb-2', state.polishing && 'invisible')}>
-        <div className="flex items-center justify-center gap-7">
           {/* Pause holds the take, so a reciter can breathe, cough or look something up. */}
-          {recording ? (
+          <div className={cn('flex flex-col items-center pb-2', (state.polishing || countingDown) && 'invisible')}>
             <button
               type="button"
               onClick={() => {
@@ -937,38 +910,79 @@ function RecordFlow() {
                 <Pause className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
               )}
             </button>
-          ) : (
-            <span className="h-12 w-12" aria-hidden />
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              if (recording) {
-                recorder.stop()
-              } else if (!countingDown) {
-                void begin()
-              }
-            }}
-            disabled={countingDown}
-            aria-label={recording ? t('Finish recording') : t('Start recording')}
-            className={cn('hifdh-rec ed-focus disabled:opacity-60', recording && !state.paused && 'hifdh-rec--listening')}
-          >
-            {recording ? (
-              <Square className="h-4 w-4" fill="currentColor" strokeWidth={0} />
-            ) : (
-              <Mic className="h-7 w-7" strokeWidth={2.2} />
-            )}
-          </button>
-          <span className="h-12 w-12" aria-hidden />
-        </div>
-        <p className="mt-3.5 text-[12.5px] text-[var(--home-muted)]">
-          {recording
-            ? state.paused
-              ? t('Paused. Tap play to carry on, or the square to finish.')
-              : t('Tap to finish')
-            : t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
-        </p>
-      </div>
+            <p className="mt-3 text-center text-[12.5px] text-[var(--home-muted)]">
+              {state.paused ? t('Paused. Tap play to carry on, or the square to finish.') : t('Tap the square to finish')}
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <QariHeader title={t('New recitation')} back={closeButton} />
+          {draftMeta ? (
+            <div className="qari-step home-card mt-3.5 flex items-center gap-3 rounded-2xl px-3.5 py-3">
+              <span className="set-row__icon" aria-hidden>
+                <FileAudio className="h-[17px] w-[17px]" strokeWidth={1.9} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
+                  {draftMeta.title ? `“${draftMeta.title}”` : t('Unfinished recitation')}
+                </span>
+                <span className="block text-[0.78125rem] text-[var(--home-muted)]">
+                  {formatDuration(draftMeta.durationSec)} · {t('not yet published')}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                aria-label={t('Discard draft')}
+                className="ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-rose-500"
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+              </button>
+              <button
+                type="button"
+                onClick={() => void resumeDraft()}
+                className="ed-ink ed-focus qari-press h-9 shrink-0 rounded-full px-4 text-[13px] font-medium"
+              >
+                {t('Resume')}
+              </button>
+            </div>
+          ) : null}
+          <div className="qari-step">
+            <QariLabel>{t('Before you start')}</QariLabel>
+            {settings(true)}
+          </div>
+
+          {/* Stage */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
+            <span
+              className="home-serif text-[3.75rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
+              aria-live="polite"
+            >
+              {clock(0)}
+            </span>
+            <IdleLine />
+            <p className="qari-step text-center text-[13px] text-[var(--home-muted)]" aria-live="polite">
+              {t('Hold the phone a hand-span away, then tap to begin')}
+            </p>
+          </div>
+
+          {/* Record */}
+          <div className="flex flex-col items-center pb-2">
+            <button
+              type="button"
+              onClick={() => void begin()}
+              aria-label={t('Start recording')}
+              className="qari-rec ed-focus"
+            >
+              <Mic className="h-8 w-8" strokeWidth={2} />
+            </button>
+            <p className="mt-5 text-[12.5px] text-[var(--home-muted)]">
+              {t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
+            </p>
+          </div>
+        </>
+      )}
       <MushafReadAlong
         open={mushafOpen}
         onClose={() => setMushafOpen(false)}
@@ -986,13 +1000,26 @@ function RecordFlow() {
 
 /* ------------------------------------------------------------ pieces */
 
-function Screen({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) {
+/**
+ * The page. While recording or counting down it turns into the deep-teal
+ * studio: the same tokens as the swipe view, ivory on dark.
+ */
+function Screen({
+  children,
+  scroll = false,
+  studio = false,
+}: {
+  children: React.ReactNode
+  scroll?: boolean
+  studio?: boolean
+}) {
   return (
-    <main className="relative min-h-[100dvh] w-full bg-[var(--app-bg)] text-[var(--app-text)]">
+    <main className={cn('qari-theme relative min-h-[100dvh] w-full text-[var(--app-text)]', studio && 'qari-studio')}>
       <div
         className={cn(
           'relative mx-auto flex w-full max-w-lg flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]',
-          scroll ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'min-h-[100dvh] pb-[max(1.5rem,env(safe-area-inset-bottom))]'
+          scroll ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'min-h-[100dvh] pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+          studio && 'qari-swipe'
         )}
       >
         {children}
@@ -1019,11 +1046,41 @@ function IdleLine() {
   )
 }
 
+/**
+ * Two thin gold rings that swell with the voice around whatever sits in the
+ * middle. `live` off holds them still (paused, or counting down).
+ */
+function LevelRing({ level, live, children }: { level: number; live: boolean; children: React.ReactNode }) {
+  // Square root, so a soft voice still moves the rings visibly.
+  const v = live ? Math.sqrt(Math.min(1, Math.max(0, level))) : 0
+  return (
+    <div className="relative flex h-[176px] w-[176px] shrink-0 items-center justify-center" aria-hidden={false}>
+      <span
+        className="absolute inset-0 rounded-full transition-[transform,opacity] duration-100"
+        style={{
+          background: 'radial-gradient(closest-side, rgba(217, 184, 106, 0.3), transparent)',
+          transform: `scale(${0.7 + v * 0.3})`,
+          opacity: 0.35 + v * 0.65,
+        }}
+      />
+      <span
+        className="absolute inset-0 rounded-full border border-[var(--qari-gold-hi)] transition-[transform,opacity] duration-100"
+        style={{ transform: `scale(${0.66 + v * 0.34})`, opacity: 0.3 + v * 0.6 }}
+      />
+      <span
+        className={cn('absolute inset-[26px] rounded-full border border-[var(--home-heading)] transition-[transform,opacity] duration-100', live && 'qari-beat')}
+        style={{ transform: `scale(${1 + v * 0.16})`, opacity: 0.18 + v * 0.4 }}
+      />
+      <div className="relative">{children}</div>
+    </div>
+  )
+}
+
 /** The take so far scrolling in from the right, towards a fixed playhead. */
 function LiveWave({ levels }: { levels: number[] }) {
   const padded = [...Array.from({ length: Math.max(0, LIVE_BARS - levels.length) }, () => -1), ...levels]
   return (
-    <div className="flex h-[120px] w-full max-w-[22rem] items-center" aria-hidden>
+    <div className="flex h-[72px] w-full max-w-[22rem] items-center" aria-hidden>
       <div className="flex h-full flex-1 items-center justify-end gap-[3px] pr-1.5">
         {padded.map((level, i) =>
           level < 0 ? (
@@ -1031,7 +1088,7 @@ function LiveWave({ levels }: { levels: number[] }) {
           ) : (
             <span
               key={i}
-              className="w-[3px] shrink-0 rounded-full bg-[var(--home-sage)] transition-[height] duration-100"
+              className="w-[3px] shrink-0 rounded-full bg-[var(--qari-gold-hi)] transition-[height] duration-100"
               // Square root, so a soft voice still moves the bars visibly.
               style={{ height: `${Math.max(6, Math.min(100, Math.sqrt(level) * 120))}%` }}
             />
@@ -1046,6 +1103,20 @@ function LiveWave({ levels }: { levels: number[] }) {
       </div>
     </div>
   )
+}
+
+/** The published recording's own shape, with a wave of gold running through it. */
+function GoldWave({ peaks, seed }: { peaks: number[]; seed: string }) {
+  const [progress, setProgress] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setProgress(1)
+      return
+    }
+    const id = window.setInterval(() => setProgress((p) => (p >= 1.25 ? 0 : p + 0.02)), 60)
+    return () => window.clearInterval(id)
+  }, [])
+  return <Waveform peaks={peaks} seed={seed} progress={Math.min(1, progress)} bars={44} tone="gold" className="h-[60px] w-full" />
 }
 
 export default function QariRecordPage() {
