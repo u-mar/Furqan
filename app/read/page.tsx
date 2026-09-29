@@ -26,7 +26,6 @@ import {
   Share2,
   Languages,
   AudioLines,
-  Palette,
   SkipBack,
   SkipForward,
   X,
@@ -75,7 +74,7 @@ import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/l
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
 import { getVerseQcfGlyphs, getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
-import { loadSurahTitleFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
+import { qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import {
   hasSomaliVoiceForVerse,
   loadSomaliVoiceManifest,
@@ -378,10 +377,6 @@ function ReadPageContent() {
     void loadSomaliVoiceManifest()
   }, [])
 
-  const [surahTitleFontReady, setSurahTitleFontReady] = useState(false)
-  useEffect(() => {
-    void loadSurahTitleFont().then(setSurahTitleFontReady)
-  }, [])
 
   const arabicByKey = useMemo(
     () => Object.fromEntries(pageVerses.map((v) => [v.verse_key, v.text_uthmani])),
@@ -511,7 +506,6 @@ function ReadPageContent() {
   )
   const surahTitle =
     chapters.find((c) => c.id === currentSurahNum)?.englishName || t('Surah {currentSurahNum}', { currentSurahNum })
-  const arabicSurahName = chapters.find((c) => c.id === currentSurahNum)?.name || ''
   /**
    * Juz shown in the page header. Taken from the verses actually on this page
    * (`juz_number`), not from the surah — a surah can span several juz, so the
@@ -773,21 +767,47 @@ function ReadPageContent() {
     }
   }, [playbackActive, highlightedVerseKey, showTranslation])
 
+  const openAyahMenu = useCallback(
+    (verseKey: string) => {
+      pauseAllRef.current()
+      const select = (verse: Verse) => {
+        setNavSelectedVerseKey(null)
+        setUiVisible(true)
+        setAyahMenu({
+          verseKey,
+          arabic: getVerseArabicText(verse),
+        })
+        setAyahMenuBookmarked(isBookmarked(verseKey))
+      }
+      const verse = pageVerses.find((v) => v.verse_key === verseKey)
+      if (verse) {
+        select(verse)
+        return
+      }
+      // In continuous scroll the ayah can sit on a neighbouring page, not the one counted as current.
+      void getVerseByKey(verseKey)
+        .then(select)
+        .catch(() => {})
+    },
+    [pageVerses]
+  )
+
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
       longPressBlockTap.current = true
-      pauseAllRef.current()
-      const verse = pageVerses.find((v) => v.verse_key === verseKey)
-      if (!verse) return
-      setNavSelectedVerseKey(null)
-      setUiVisible(true)
-      setAyahMenu({
-        verseKey,
-        arabic: getVerseArabicText(verse),
-      })
-      setAyahMenuBookmarked(isBookmarked(verseKey))
+      openAyahMenu(verseKey)
     },
-    [pageVerses]
+    [openAyahMenu]
+  )
+
+  // With an ayah already selected, one tap on another moves the selection to it —
+  // no need to dismiss the first. (Tapping empty space still dismisses.)
+  const handleAyahSelect = useCallback(
+    (verseKey: string) => {
+      if (ayahMenu?.verseKey === verseKey) return
+      openAyahMenu(verseKey)
+    },
+    [ayahMenu?.verseKey, openAyahMenu]
   )
 
   useEffect(() => {
@@ -797,8 +817,13 @@ function ReadPageContent() {
   // Playing from the ayah menu continues on to the next verse; once it does,
   // the tapped ayah is no longer "selected" — without this its highlight came
   // back the moment playback moved past it (only suppressed while reciting).
+  // Only when the highlight actually moves — a highlight left over from earlier playback must
+  // not cancel the selection someone has just made on another ayah.
+  const lastHighlightRef = useRef(highlightedVerseKey)
   useEffect(() => {
-    if (ayahMenu && highlightedVerseKey && highlightedVerseKey !== ayahMenu.verseKey) {
+    const moved = lastHighlightRef.current !== highlightedVerseKey
+    lastHighlightRef.current = highlightedVerseKey
+    if (moved && ayahMenu && highlightedVerseKey && highlightedVerseKey !== ayahMenu.verseKey) {
       setAyahMenu(null)
     }
   }, [ayahMenu, highlightedVerseKey])
@@ -869,12 +894,23 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
+          onAyahSelect={handleAyahSelect}
+          ayahSelectMode={Boolean(ayahMenu)}
           suppressHighlightScroll
           tajweed={tajweed}
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode, tajweed]
+    [
+      ayahMenu,
+      chapterNamesById,
+      handleAyahLongPress,
+      handleAyahSelect,
+      highlightedVerseKey,
+      mushafSelectedVerseKey,
+      readingMode,
+      tajweed,
+    ]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -1051,21 +1087,11 @@ function ReadPageContent() {
       {/* Running head — fixed slot so mushaf height never jumps when chrome toggles */}
       {!uiVisible ? (
         <div className="relative z-10 shrink-0 px-5 pb-2 pt-[max(0.65rem,env(safe-area-inset-top))]">
-          <div className="mushaf-running-head" dir="rtl" lang="ar">
-            {surahTitleFontReady ? (
-              <span
-                className="mushaf-running-head__surah mushaf-running-head__surah--calligraphy"
-                role="img"
-                aria-label={`سورة ${arabicSurahName}`}
-              >
-                {`surah${String(currentSurahNum).padStart(3, '0')}`}
-              </span>
-            ) : (
-              <span className="mushaf-running-head__surah mushaf-running-head__surah--text">
-                سورة {arabicSurahName}
-              </span>
-            )}
-            <span className="mushaf-running-head__juz">الجزء {juzPart.toLocaleString('ar-EG')}</span>
+          <div className="mushaf-running-head" dir="ltr">
+            <span className="mushaf-running-head__surah mushaf-running-head__surah--text truncate">{surahTitle}</span>
+            <span className="mushaf-running-head__juz">
+              {t('Juz')} {juzPart}
+            </span>
           </div>
         </div>
       ) : (
@@ -1189,18 +1215,6 @@ function ReadPageContent() {
             aria-label={t('Change theme')}
           >
             <Moon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setAppSettings({ tajweed: !tajweed })}
-            className={cn(
-              'mushaf-read-chrome-btn rounded-lg p-2',
-              tajweed && 'bg-[var(--mushaf-read-accent-soft)]'
-            )}
-            aria-label={t('Tajweed colors')}
-            aria-pressed={tajweed}
-          >
-            <Palette className="h-5 w-5" />
           </button>
           <button
             type="button"

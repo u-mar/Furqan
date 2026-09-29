@@ -23,7 +23,14 @@ import {
   type VerseTimelineEntry,
 } from '@/lib/qari'
 import { loadAyah, peekAyah, type AyahView } from '@/lib/qari-ayah'
-import { playRecitation, seekPlayback, setPlaybackRate, togglePlayback, type PlayerSnapshot } from '@/lib/qari-player'
+import {
+  pausePlayback,
+  playRecitation,
+  seekPlayback,
+  setPlaybackRate,
+  togglePlayback,
+  type PlayerSnapshot,
+} from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
 import { askToSignIn } from '@/lib/account-prompt'
 import { cn } from '@/lib/cn'
@@ -477,7 +484,7 @@ const Slide = memo(function Slide({
               <Link
                 href={profileHref}
                 aria-label={t('{userName}’s profile', { userName: recitation.userName })}
-                className="qari-press ed-focus block rounded-full bg-white p-[2px]"
+                className="qari-press ed-focus isolate block rounded-full bg-white p-[2px]"
               >
                 <QariAvatar username={recitation.userUsername} name={recitation.userName} size={46} />
               </Link>
@@ -526,7 +533,7 @@ const Slide = memo(function Slide({
         onSeek={active && isCurrent ? seekPlayback : undefined}
       />
 
-      <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
+      <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} videoView />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
     </section>
   )
@@ -617,6 +624,20 @@ export default function SwipeFeed({
     if (autoplay && first && playerIdRef.current !== first.id) playRecitation(first, { queue: list, viewerId })
   }, [autoplay, hasItems, viewerId])
 
+  // True while the one that was playing has been paused because a swipe left it.
+  const pausedBySwipe = useRef(false)
+
+  const settle = useCallback(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const landed = itemsRef.current[Math.round(el.scrollTop / pageHeight())]
+    if (!landed || !armed.current) return
+    if (playerIdRef.current !== landed.id || pausedBySwipe.current) {
+      pausedBySwipe.current = false
+      playRecitation(landed, { queue: itemsRef.current, viewerId })
+    }
+  }, [viewerId])
+
   const onScroll = useCallback(() => {
     const el = scrollerRef.current
     if (!el) return
@@ -624,6 +645,12 @@ export default function SwipeFeed({
     if (index !== activeRef.current) {
       activeRef.current = index
       setActive(index)
+      // The moment a swipe carries the next page past halfway, the last voice stops —
+      // it does not wait for the new one to load.
+      if (playerIdRef.current && itemsRef.current[index]?.id !== playerIdRef.current) {
+        pausedBySwipe.current = true
+        pausePlayback()
+      }
       if (index > 0) {
         try {
           localStorage.setItem(HINT_KEY, '1')
@@ -633,16 +660,10 @@ export default function SwipeFeed({
         setHintSeen(true)
       }
     }
-    // Once the swipe has settled, play whatever it landed on — unless that is already
-    // the one playing (the feed moved on by itself), or it is the "all caught up" page.
+    // Once the swipe has come to rest, play whatever it landed on.
     window.clearTimeout(settleTimer.current)
-    settleTimer.current = window.setTimeout(() => {
-      const landed = itemsRef.current[Math.round(el.scrollTop / pageHeight())]
-      if (landed && armed.current && playerIdRef.current !== landed.id) {
-        playRecitation(landed, { queue: itemsRef.current, viewerId })
-      }
-    }, 140)
-  }, [viewerId])
+    settleTimer.current = window.setTimeout(settle, 90)
+  }, [settle])
 
   useEffect(() => () => window.clearTimeout(settleTimer.current), [])
 
@@ -662,8 +683,10 @@ export default function SwipeFeed({
   // Keep the next one's audio warm, and ask for more before the end.
   const askedAt = useRef(-1)
   useEffect(() => {
-    const next = items[clampedActive + 1]
-    if (next) void prefetchRecitationAudio(next.id)
+    // Download the ones a swipe will land on next, so they start the instant they settle.
+    for (const near of [items[clampedActive], items[clampedActive + 1], items[clampedActive + 2], items[clampedActive - 1]]) {
+      if (near) void prefetchRecitationAudio(near.id)
+    }
     // Once per length of the list, so a failed request is not retried in a loop.
     if (hasMore && !loadingMore && items.length > 0 && clampedActive >= items.length - 3 && askedAt.current !== items.length) {
       askedAt.current = items.length

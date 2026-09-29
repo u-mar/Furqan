@@ -19,6 +19,8 @@ import {
 import {
   DEFAULT_TRANSLATION_EDITION,
   getTranslationOption,
+  isRtlTranslationLanguage,
+  languageForEdition,
   type TranslationLanguageId,
 } from '@/lib/translations'
 import type { Chapter, Verse, VerseWord } from '@/types'
@@ -73,6 +75,8 @@ interface TranslationAyahArticleProps {
   num: number
   surahLabel: string | null
   translator: string
+  /** The translation is in a language read right to left. */
+  rtl?: boolean
   showBasmalah: boolean
   showArabic: boolean
   showGlyphAyah: boolean
@@ -92,6 +96,7 @@ function TranslationAyahArticle({
   num,
   surahLabel,
   translator,
+  rtl = false,
   showBasmalah,
   showArabic,
   showGlyphAyah,
@@ -213,7 +218,7 @@ function TranslationAyahArticle({
           </div>
         )}
 
-        <p className="mushaf-translation-text">
+        <p className="mushaf-translation-text" dir={rtl ? 'rtl' : undefined}>
           {row.translation || (loading ? t('Loading…') : t('Translation unavailable.'))}
         </p>
 
@@ -283,6 +288,7 @@ export default function MushafTranslationView({
   )
   const activeEdition = translationEditionId || DEFAULT_TRANSLATION_EDITION[translationLanguage]
   const translator = getTranslationOption(activeEdition).label
+  const rtl = isRtlTranslationLanguage(languageForEdition(activeEdition))
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(
     verses.map((v) => [v.verse_key, getVerseArabicText(v, { omitEndMark: true })])
@@ -372,6 +378,7 @@ export default function MushafTranslationView({
             num={num}
             surahLabel={surahLabel}
             translator={translator}
+            rtl={rtl}
             showBasmalah={showBasmalah}
             showArabic={showArabic}
             showGlyphAyah={showGlyphAyah}

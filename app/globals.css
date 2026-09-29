@@ -545,15 +545,6 @@ html.dark .mushaf-read-chrome-btn:hover {
   gap: 12px;
 }
 
-.mushaf-running-head::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 -4px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--mushaf-gold) 20%, var(--mushaf-gold) 80%, transparent);
-  opacity: 0.4;
-}
-
 .mushaf-running-head__surah {
   min-width: 0;
   overflow: hidden;
@@ -570,8 +561,10 @@ html.dark .mushaf-read-chrome-btn:hover {
 
 .mushaf-running-head__surah--text,
 .mushaf-running-head__juz {
-  font-family: var(--font-amiri), Amiri, serif;
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
   font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .mushaf-running-head__juz {
@@ -821,7 +814,8 @@ html.dark .mushaf-dock-menu {
 .mushaf-read-dock__actions {
   display: flex;
   align-items: center;
-  padding: 6px 6px max(8px, env(safe-area-inset-bottom));
+  /* Lifted clear of the iPhone's home-indicator line, which the safe-area value alone does not always report. */
+  padding: 6px 6px max(20px, calc(env(safe-area-inset-bottom) + 8px));
 }
 
 .mushaf-dock-action {

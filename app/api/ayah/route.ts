@@ -4,7 +4,7 @@ import {
   getVerseByKeyServer,
   getVersesByPageServer,
 } from '@/lib/quran-server'
-import { DEFAULT_TRANSLATION_EDITION, isTranslationEditionId } from '@/lib/translations'
+import { DEFAULT_TRANSLATION_EDITION, isTranslationEditionId, quranComTranslationId } from '@/lib/translations'
 import type { Verse } from '@/types'
 
 const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
@@ -143,7 +143,54 @@ async function fetchTranslationsFromAlQuranCloud(
   })
 }
 
+/** Quran.com marks footnotes and emphasis with HTML; the app shows plain text. */
+function plainTranslation(html: string): string {
+  return html
+    .replace(/<sup[^>]*>.*?<\/sup>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** One mushaf page of one Quran.com translation, verse by verse. */
+async function fetchTranslationsFromQuranCom(page: number, translationId: number): Promise<TranslationItem[]> {
+  const params = new URLSearchParams({ translations: String(translationId), per_page: '50', fields: 'verse_key' })
+  const response = await fetch(`${QURAN_API_BASE}/verses/by_page/${page}?${params.toString()}`, {
+    // Translations do not change, so a page is kept for a month.
+    next: { revalidate: 60 * 60 * 24 * 30 },
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
+  })
+  if (!response.ok) throw new Error('Quran.com translation failed')
+
+  const payload = (await response.json()) as {
+    verses?: Array<{ verse_key: string; translations?: Array<{ text?: string }> }>
+  }
+  const offline = await getVersesByPageServer(page)
+  const arabicByKey = Object.fromEntries(offline.map((v) => [v.verse_key, v.text_uthmani]))
+
+  return (payload.verses || []).map((verse) => ({
+    verse_key: verse.verse_key,
+    text_uthmani: arabicByKey[verse.verse_key] || '',
+    translation: plainTranslation(verse.translations?.[0]?.text || ''),
+  }))
+}
+
 async function fetchTranslationsForPage(page: number, editionId: string): Promise<TranslationItem[]> {
+  const quranComId = quranComTranslationId(editionId)
+  if (quranComId !== null) {
+    try {
+      const rows = await fetchTranslationsFromQuranCom(page, quranComId)
+      if (rows.some((r) => r.translation.length > 0)) return rows
+    } catch (err) {
+      console.warn('Quran.com translations failed:', err)
+    }
+    return []
+  }
+
   try {
     const cloud = await fetchTranslationsFromAlQuranCloud(page, editionId)
     if (cloud.length > 0 && cloud.some((r) => r.translation.length > 0)) {
@@ -218,6 +265,52 @@ export async function GET(request: NextRequest) {
         : DEFAULT_TRANSLATION_EDITION[lang]
       const items = await fetchTranslationsForPage(page, editionId)
       return NextResponse.json(items)
+    }
+
+    if (type === 'chapter-audio') {
+      const reciter = Number(searchParams.get('reciter'))
+      const chapter = Number(searchParams.get('chapter'))
+      if (!reciter || !chapter || chapter < 1 || chapter > 114) {
+        return NextResponse.json({ error: 'reciter and chapter (1-114) required' }, { status: 400 })
+      }
+      if (searchParams.get('source') === 'mp3quran') {
+        const timing = await fetch(`https://mp3quran.net/api/v3/ayat_timing?surah=${chapter}&read=${reciter}`, {
+          next: { revalidate: 60 * 60 * 24 * 30 },
+          signal: AbortSignal.timeout(API_TIMEOUT_MS),
+        })
+        if (!timing.ok) return NextResponse.json({ error: 'Audio timings unavailable' }, { status: 502 })
+        const rows = (await timing.json()) as Array<{ ayah: number; start_time: number; end_time: number }>
+        if (!Array.isArray(rows) || rows.length === 0) {
+          return NextResponse.json({ error: 'No timings for this recitation' }, { status: 404 })
+        }
+        return NextResponse.json(
+          { ayat: rows.map((r) => ({ key: `${chapter}:${r.ayah}`, from: r.start_time, to: r.end_time })) },
+          { headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=2592000' } }
+        )
+      }
+      const response = await fetch(`${QURAN_API_BASE}/chapter_recitations/${reciter}/${chapter}?segments=true`, {
+        next: { revalidate: 60 * 60 * 24 * 30 },
+        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+      })
+      if (!response.ok) return NextResponse.json({ error: 'Audio timings unavailable' }, { status: 502 })
+      const payload = (await response.json()) as {
+        audio_file?: {
+          audio_url?: string
+          timestamps?: Array<{ verse_key: string; timestamp_from: number; timestamp_to: number }>
+        }
+      }
+      const file = payload.audio_file
+      if (!file?.audio_url || !file.timestamps?.length) {
+        return NextResponse.json({ error: 'No timings for this recitation' }, { status: 404 })
+      }
+      // Only the start and end of each ayah: the word-by-word segments are not needed here.
+      return NextResponse.json(
+        {
+          url: file.audio_url,
+          ayat: file.timestamps.map((t) => ({ key: t.verse_key, from: t.timestamp_from, to: t.timestamp_to })),
+        },
+        { headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=2592000' } }
+      )
     }
 
     if (type === 'visual-page') {

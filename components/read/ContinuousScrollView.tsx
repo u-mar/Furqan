@@ -13,6 +13,20 @@ const PRUNE_RADIUS = 6
  *  a single [0.5] threshold only fires when a target's own ratio crosses
  *  0.5, which a page taller than the viewport may never do. */
 const DENSE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
+/** How far a pinch can shrink or enlarge the script, and where it is remembered. */
+const MIN_SCALE = 0.7
+const MAX_SCALE = 2.2
+const SCALE_KEY = 'mushaf_flow_scale'
+
+function readSavedScale(): number {
+  try {
+    const saved = parseFloat(localStorage.getItem(SCALE_KEY) ?? '')
+    return Number.isFinite(saved) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, saved)) : 1
+  } catch {
+    return 1
+  }
+}
+
 /** Seed estimate for pages not yet measured — close to a typical rendered
  *  page's height, refined from real measurements as they come in. */
 const DEFAULT_PAGE_HEIGHT = 1250
@@ -79,6 +93,8 @@ export default function ContinuousScrollView({
   const anchorScrollTop = useRef(0)
   const pendingJump = useRef<number | null>(currentPage)
   const loadDebounceRef = useRef<number | null>(null)
+  const scaleRef = useRef(1)
+  const scaleSaveRef = useRef<number | null>(null)
 
   const ensureLoaded = useCallback(
     (center: number) => {
@@ -261,6 +277,75 @@ export default function ContinuousScrollView({
     }
   }, [ensureLoaded, totalPages])
 
+  // Pinch with two fingers to make the script smaller or larger. One finger still
+  // scrolls as before. The size is a CSS variable the flowing text is multiplied by.
+  useEffect(() => {
+    const root = containerRef.current
+    if (!root) return
+
+    const setScale = (next: number) => {
+      const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next))
+      if (Math.abs(scale - scaleRef.current) < 0.002) return
+      // Keep what is on screen where it is: note how far down the page in view the top
+      // edge of the screen is, resize, then put it back at the same fraction.
+      const el = pageEls.current.get(lastReported.current)
+      let fraction = 0
+      if (el) {
+        const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
+        fraction = (root.scrollTop - top) / Math.max(1, el.offsetHeight)
+      }
+      scaleRef.current = scale
+      root.style.setProperty('--mushaf-flow-scale', String(scale))
+      if (el) {
+        const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
+        root.scrollTop = top + fraction * el.offsetHeight
+      }
+      // Every page changed height: measure again, and forget the old "height above" baseline.
+      aboveAnchorHeight.current = null
+      if (scaleSaveRef.current !== null) window.clearTimeout(scaleSaveRef.current)
+      scaleSaveRef.current = window.setTimeout(() => {
+        scaleSaveRef.current = null
+        setVersion((n) => n + 1)
+        try {
+          localStorage.setItem(SCALE_KEY, String(scaleRef.current))
+        } catch {
+          // The size just is not remembered.
+        }
+      }, 250)
+    }
+
+    setScale(readSavedScale())
+
+    let start: { distance: number; scale: number } | null = null
+    const distance = (e: TouchEvent) =>
+      Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) start = { distance: distance(e), scale: scaleRef.current }
+    }
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !start) return
+      // The browser must not also treat this as a scroll or a page zoom.
+      e.preventDefault()
+      setScale(start.scale * (distance(e) / Math.max(1, start.distance)))
+    }
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) start = null
+    }
+
+    root.addEventListener('touchstart', onStart, { passive: true })
+    root.addEventListener('touchmove', onMove, { passive: false })
+    root.addEventListener('touchend', onEnd, { passive: true })
+    root.addEventListener('touchcancel', onEnd, { passive: true })
+    return () => {
+      root.removeEventListener('touchstart', onStart)
+      root.removeEventListener('touchmove', onMove)
+      root.removeEventListener('touchend', onEnd)
+      root.removeEventListener('touchcancel', onEnd)
+      if (scaleSaveRef.current !== null) window.clearTimeout(scaleSaveRef.current)
+    }
+  }, [])
+
   const orderedPages = [...dataRef.current.keys()].sort((a, b) => a - b)
   const firstLoaded = orderedPages[0] ?? currentPage
   const lastLoaded = orderedPages[orderedPages.length - 1] ?? currentPage
@@ -268,7 +353,7 @@ export default function ContinuousScrollView({
   const bottomSpacerHeight = Math.max(0, totalPages - lastLoaded) * avgHeight.current
 
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain">
+    <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain [touch-action:pan-y]">
       {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} aria-hidden />}
       {orderedPages.map((page) => (
         <div

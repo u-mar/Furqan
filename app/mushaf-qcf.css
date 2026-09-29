@@ -117,16 +117,19 @@
 }
 
 .mushaf-qcf-flow {
-  padding: 14px clamp(20px, 6vw, 36px) 6px;
+  padding: 14px clamp(14px, 4vw, 28px) 6px;
 }
 
 .mushaf-qcf-flow__text {
   margin: 0;
-  font-size: clamp(28px, 7.8vw, 42px);
+  /* --mushaf-flow-scale is set by pinching the page (see ContinuousScrollView). */
+  font-size: calc(clamp(28px, 7.8vw, 42px) * var(--mushaf-flow-scale, 1));
   line-height: 2.2;
-  /* Not justified: with only ~5 large words a line and no kashida stretching,
-     justify opens big holes between words. A clean right edge reads better. */
-  text-align: start;
+  /* Justified, so both edges are straight and no gap is left down the left side;
+     the last line of a paragraph stays where it falls. */
+  text-align: justify;
+  text-align-last: start;
+  text-justify: inter-word;
   white-space: normal;
   letter-spacing: 0;
   /* Each QCF word glyph already carries its own spacing — the real space

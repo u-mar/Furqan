@@ -1,38 +1,74 @@
-/** Translation languages and their available editions (AlQuran Cloud identifiers). */
+import { CATALOG_LANGUAGE_LABELS, CATALOG_TRANSLATIONS } from '@/lib/translations-catalog'
 
-export type TranslationLanguageId = 'en' | 'so'
+/**
+ * Translation languages and their editions.
+ *
+ * Two sources: the editions the app has always had (AlQuran Cloud identifiers
+ * such as "en.sahih"), which also work offline, and everything the Quran.com API
+ * offers (`qf.<id>`, see translations-catalog.ts), which needs a connection.
+ */
+
+/** A language code, e.g. "en", "so", "ur", "fr". */
+export type TranslationLanguageId = string
 
 export interface TranslationOption {
-  /** AlQuran Cloud edition identifier, e.g. "en.sahih". Doubles as a unique id. */
+  /** Unique edition id: an AlQuran Cloud identifier ("en.sahih") or a Quran.com one ("qf.85"). */
   id: string
   languageId: TranslationLanguageId
   /** Translator/edition display name. */
   label: string
 }
 
-/** Every translation edition the app can show, grouped implicitly by languageId. */
-export const TRANSLATION_OPTIONS: TranslationOption[] = [
+/** The editions that are also kept for offline reading. */
+const CORE_OPTIONS: TranslationOption[] = [
   { id: 'en.sahih', languageId: 'en', label: 'Saheeh International' },
   { id: 'en.yusufali', languageId: 'en', label: 'Abdullah Yusuf Ali' },
   { id: 'en.pickthall', languageId: 'en', label: 'Marmaduke Pickthall' },
   { id: 'so.abduh', languageId: 'so', label: 'Mahmud Muhammad Abduh' },
 ]
 
+/** Every translation edition the app can show, grouped implicitly by languageId. */
+export const TRANSLATION_OPTIONS: TranslationOption[] = [
+  ...CORE_OPTIONS,
+  ...CATALOG_TRANSLATIONS.map((t): TranslationOption => ({ id: t.id, languageId: t.languageId, label: t.label })),
+]
+
 export const DEFAULT_TRANSLATION_LANGUAGE: TranslationLanguageId = 'en'
 
-/** The edition each language falls back to — also the only one available offline. */
-export const DEFAULT_TRANSLATION_EDITION: Record<TranslationLanguageId, string> = {
-  en: 'en.sahih',
-  so: 'so.abduh',
-}
+/** The edition each language falls back to — for English and Somali also the one available offline. */
+export const DEFAULT_TRANSLATION_EDITION: Record<TranslationLanguageId, string> = (() => {
+  const map: Record<string, string> = {}
+  for (const option of TRANSLATION_OPTIONS) if (!map[option.languageId]) map[option.languageId] = option.id
+  return map
+})()
+
+/** Languages that keep their own translation editions for offline use. */
+export const OFFLINE_TRANSLATION_LANGUAGES: TranslationLanguageId[] = ['en', 'so']
 
 const LANGUAGE_LABELS: Record<TranslationLanguageId, string> = {
+  ...CATALOG_LANGUAGE_LABELS,
   en: 'English',
   so: 'Somali',
 }
 
+/** Every language there is a translation in: English and Somali first, then A to Z. */
+export const TRANSLATION_LANGUAGES: TranslationLanguageId[] = [
+  'en',
+  'so',
+  ...Object.keys(DEFAULT_TRANSLATION_EDITION)
+    .filter((id) => id !== 'en' && id !== 'so')
+    .sort((a, b) => translationLanguageLabel(a).localeCompare(translationLanguageLabel(b))),
+]
+
 export function translationLanguageLabel(lang: TranslationLanguageId): string {
-  return LANGUAGE_LABELS[lang]
+  return LANGUAGE_LABELS[lang] ?? lang
+}
+
+/** Read right to left: their translation text is set that way. */
+const RTL_LANGUAGES = new Set(['ar', 'ur', 'fa', 'ps', 'sd', 'ug', 'ku', 'dari', 'he', 'dv'])
+
+export function isRtlTranslationLanguage(lang: TranslationLanguageId): boolean {
+  return RTL_LANGUAGES.has(lang)
 }
 
 export function translationsForLanguage(lang: TranslationLanguageId): TranslationOption[] {
@@ -44,7 +80,7 @@ export function getTranslationOption(id: string): TranslationOption {
 }
 
 export function isTranslationLanguageId(id: unknown): id is TranslationLanguageId {
-  return id === 'en' || id === 'so'
+  return typeof id === 'string' && id in DEFAULT_TRANSLATION_EDITION
 }
 
 export function isTranslationEditionId(id: unknown): id is string {
@@ -54,4 +90,10 @@ export function isTranslationEditionId(id: unknown): id is string {
 /** Language a given edition id belongs to, e.g. "en.pickthall" → "en". */
 export function languageForEdition(editionId: string): TranslationLanguageId {
   return getTranslationOption(editionId).languageId
+}
+
+/** The Quran.com translation number inside an id like "qf.85", or null for the older editions. */
+export function quranComTranslationId(editionId: string): number | null {
+  const match = /^qf\.(\d+)$/.exec(editionId)
+  return match ? Number(match[1]) : null
 }

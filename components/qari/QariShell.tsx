@@ -231,7 +231,8 @@ export function QariScreen({
           {children}
         </div>
       )}
-      <QariMiniPlayer />
+      {/* The full-screen view is the player: a mini one flashing up mid-swipe would be a second one. */}
+      {bare ? null : <QariMiniPlayer />}
       {recordFab ? <QariRecordFab /> : null}
     </main>
   )

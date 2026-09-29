@@ -314,22 +314,44 @@ export function createSpaceMixer(ctx: BaseAudioContext, source: AudioNode): Spac
 
   // Rebuilding an impulse response is not free, so each one is kept.
   const impulses = new Map<SpaceId, AudioBuffer>()
+  // Live playback only: an offline render has no ears to click, and must stay exact.
+  const live = !(typeof OfflineAudioContext !== 'undefined' && ctx instanceof OfflineAudioContext)
+  let applied: SpaceId | null = null
+  let swapTimer: ReturnType<typeof setTimeout> | null = null
 
   return {
     output: ceiling,
     setSpace(space: Space) {
-      if (space.seconds <= 0 || space.wet <= 0) {
-        wet.gain.value = 0
+      // Choosing the room it is already in must do nothing: putting the same impulse
+      // response back resets the convolver and gives the voice an audible click.
+      if (applied === space.id) return
+      const first = applied === null
+      applied = space.id
+
+      const apply = () => {
+        if (space.seconds <= 0 || space.wet <= 0) {
+          wet.gain.value = 0
+          return
+        }
+        let impulse = impulses.get(space.id)
+        if (!impulse) {
+          impulse = createImpulseResponse(ctx, space)
+          impulses.set(space.id, impulse)
+        }
+        convolver.buffer = impulse
+        preDelay.delayTime.value = space.preDelay
+        if (live) wet.gain.setTargetAtTime(space.wet, ctx.currentTime, 0.02)
+        else wet.gain.value = space.wet
+      }
+
+      if (!live || first) {
+        apply()
         return
       }
-      let impulse = impulses.get(space.id)
-      if (!impulse) {
-        impulse = createImpulseResponse(ctx, space)
-        impulses.set(space.id, impulse)
-      }
-      convolver.buffer = impulse
-      preDelay.delayTime.value = space.preDelay
-      wet.gain.value = space.wet
+      // A different room mid-playback: fade the old one out, swap it while silent, fade the new one in.
+      wet.gain.setTargetAtTime(0, ctx.currentTime, 0.012)
+      if (swapTimer) clearTimeout(swapTimer)
+      swapTimer = setTimeout(apply, 50)
     },
   }
 }

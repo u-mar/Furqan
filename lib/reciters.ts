@@ -1023,8 +1023,49 @@ export function topReciters(): Reciter[] {
   return RECITERS.filter((r) => r.top)
 }
 
+/**
+ * Reciters whose whole-surah recording comes with the start and end of every ayah
+ * (Quran.com's chapter recitations, which carry the timings). Read plays these
+ * as one continuous recording and follows the timings, so there is no gap between
+ * ayat. The number is Quran.com's reciter id.
+ */
+const TIMED_SURAH_RECITERS: Record<string, number> = {
+  alafasy: 7,
+  husary: 6,
+  minshawi: 9,
+  abdulbasit: 2,
+  sudais: 3,
+  shatri: 4,
+  shuraim: 10,
+  hani: 5,
+  ghamadi: 13,
+  fares_abbad: 14,
+  sahl_yassin: 17,
+  bukhatir: 18,
+  ajmi: 19,
+}
+
+/**
+ * The same for reciters MP3Quran keeps timings for (its ayat_timing endpoint), keyed to the id of
+ * the recording there. Only Hafs 'an 'Asim: the other narrations number their ayat differently.
+ */
+const MP3QURAN_TIMED_RECITERS: Record<string, number> = {
+  soufi: 258,
+}
+
+export type TimedSurahSource = { source: 'quran.com' | 'mp3quran'; id: number }
+
+/** Where this reciter's ayah timings come from, or null when there are none. */
+export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {
+  const quranCom = TIMED_SURAH_RECITERS[reciter.id]
+  if (quranCom !== undefined) return { source: 'quran.com', id: quranCom }
+  const mp3quran = MP3QURAN_TIMED_RECITERS[reciter.id]
+  if (mp3quran !== undefined) return { source: 'mp3quran', id: mp3quran }
+  return null
+}
+
 export function isSurahOnlyReciter(reciter: Reciter): boolean {
-  return reciter.source === 'mp3quran'
+  return reciter.source === 'mp3quran' && timedSurahSource(reciter) === null
 }
 
 /** Reciters that support ayah-by-ayah audio (Read highlighting). */

@@ -355,4 +355,10 @@ export const QARI: Dict = {
   'Follow {name}': { so: 'Raac {name}', ar: 'متابعة {name}' },
   '{rate}× speed': { so: 'Xawaare {rate}×', ar: 'سرعة {rate}×' },
   'For You': { so: 'Adiga u gaar ah', ar: 'لك' },
+  'Share link': { so: 'La wadaag xiriirka', ar: 'مشاركة الرابط' },
+  'Send it in any app': { so: 'Ka dir app kasta', ar: 'أرسله في أي تطبيق' },
+  'Download video': { so: 'Soo deji muuqaalka', ar: 'تنزيل الفيديو' },
+  'Saves the video to your phone': { so: 'Muuqaalka ku keydi taleefankaaga', ar: 'يحفظ الفيديو في هاتفك' },
+  'Save video': { so: 'Keydi muuqaalka', ar: 'حفظ الفيديو' },
+  'Share to…': { so: 'La wadaag…', ar: 'مشاركة إلى…' },
 }

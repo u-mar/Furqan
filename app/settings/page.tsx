@@ -41,6 +41,8 @@ import {
   DEFAULT_TRANSLATION_EDITION,
   translationLanguageLabel,
   translationsForLanguage,
+  OFFLINE_TRANSLATION_LANGUAGES,
+  TRANSLATION_LANGUAGES,
   type TranslationLanguageId,
 } from '@/lib/translations'
 import {
@@ -643,16 +645,24 @@ export default function SettingsPage() {
         onClose={closeSheet}
       >
         <p className="mb-2 text-xs font-semibold text-[var(--home-heading)]">{t('Language')}</p>
-        <div className="ed-seg grid-cols-2">
-          {(['en', 'so'] as const).map((lang) => (
+        <div
+          className="max-h-64 divide-y divide-[var(--home-rule)] overflow-y-auto overscroll-contain rounded-2xl border border-[var(--home-rule)]"
+          role="radiogroup"
+          aria-label={t('Language')}
+        >
+          {TRANSLATION_LANGUAGES.map((lang) => (
             <button
               key={lang}
               type="button"
+              role="radio"
+              aria-checked={translationLanguage === lang}
               onClick={() => saveTranslationLanguage(lang)}
-              className="ed-seg__item ed-focus flex min-h-[44px] items-center justify-center text-sm font-semibold"
-              aria-pressed={translationLanguage === lang}
+              className="set-row"
             >
-              {t(translationLanguageLabel(lang))}
+              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium">{t(translationLanguageLabel(lang))}</span>
+              {translationLanguage === lang ? (
+                <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
+              ) : null}
             </button>
           ))}
         </div>
@@ -677,7 +687,8 @@ export default function SettingsPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.9375rem] font-medium">{option.label}</span>
                   <span className="block text-xs text-[var(--home-muted)]">
-                    {option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage]
+                    {option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage] &&
+                    OFFLINE_TRANSLATION_LANGUAGES.includes(translationLanguage)
                       ? t('Also available offline')
                       : t('Online only')}
                   </span>
@@ -701,7 +712,7 @@ export default function SettingsPage() {
         ) : null}
 
         <div className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]">
-          {(['en', 'so'] as const).map((lang) => {
+          {OFFLINE_TRANSLATION_LANGUAGES.map((lang) => {
             const label = t(translationLanguageLabel(lang))
             const cached = translationCached[lang]
             return (

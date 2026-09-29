@@ -85,7 +85,7 @@ export default function QariAvatar({
   return (
     <span
       className={cn(
-        'home-serif qari-avatar relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
+        'home-serif qari-avatar relative isolate flex shrink-0 items-center justify-center overflow-hidden rounded-full font-medium',
         tone > 0 && `qari-avatar--${tone}`,
         className
       )}
@@ -104,7 +104,7 @@ export default function QariAvatar({
         src={src}
         alt=""
         onLoad={() => setLoadedSrc(src)}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full rounded-full object-cover"
         // Inline so the fade cannot depend on a utility class surviving the build.
         style={{
           opacity: hasPicture ? 1 : 0,

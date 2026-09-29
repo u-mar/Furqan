@@ -28,6 +28,7 @@ function useFitQcfPageLines(
   layout: QcfPageLayout,
   fontFamily: string
 ) {
+  const isTajweed = /^QCF_T/.test(fontFamily)
   useLayoutEffect(() => {
     const container = containerRef.current
     const grid = container?.querySelector<HTMLElement>('.mushaf-fit-grid')
@@ -46,6 +47,8 @@ function useFitQcfPageLines(
       const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
 
       let minRatio = 1
+      // The ratio the widest line could grow by, for a page whose lines all come up short.
+      let widestRatio = Infinity
       let basePx = 0
       for (const inner of inners) {
         if (!basePx) {
@@ -59,6 +62,7 @@ function useFitQcfPageLines(
           : 0
         const available = (grid.clientWidth - inset) * fitFactor
         const needed = inner.scrollWidth
+        if (available > 0 && needed > 0) widestRatio = Math.min(widestRatio, available / needed)
         if (available <= 0 || needed <= available) continue
         const ratio = (available / needed) * 0.995
         if (ratio < minRatio) minRatio = ratio
@@ -66,6 +70,12 @@ function useFitQcfPageLines(
 
       if (minRatio < 1 && basePx > 0) {
         const size = `${Math.max(14, basePx * minRatio)}px`
+        for (const inner of inners) inner.style.fontSize = size
+      } else if (isTajweed && basePx > 0 && Number.isFinite(widestRatio) && widestRatio > 1.02) {
+        // The colour font's lines can run narrower than the plain one's, which left the
+        // page thin with wide margins. Grow it to fill the width, a little at most so
+        // it still fits between its neighbours.
+        const size = `${basePx * Math.min(widestRatio * 0.995, 1.08)}px`
         for (const inner of inners) inner.style.fontSize = size
       }
     }
@@ -91,7 +101,7 @@ function useFitQcfPageLines(
     }
     // A family swap (e.g. into the wider tajweed font) keeps the same layout
     // but changes every glyph width, so it has to trigger a re-fit too.
-  }, [containerRef, layout, fontFamily])
+  }, [containerRef, layout, fontFamily, isTajweed])
 }
 
 type FlowBlock =

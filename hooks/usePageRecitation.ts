@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
+import { getChapterAudio, hasTimedAudio, type ChapterAudio } from '@/lib/chapter-audio'
 import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 import type { Verse } from '@/types'
 import { tr } from '@/lib/i18n-core'
@@ -93,6 +94,12 @@ export function usePageRecitation({
   const preloadingKeysRef = useRef<Set<string>>(new Set())
   const pausedRef = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
+  // Gapless mode: the whole surah is one recording and the ayat are followed by their timings,
+  // so nothing is loaded between them and there is no silence to hear.
+  const timedRef = useRef<ChapterAudio | null>(null)
+  const timedDisabledRef = useRef(false)
+  const pageEndFiredRef = useRef(false)
+  const tickRef = useRef<number | null>(null)
 
   versesRef.current = verses
   reciterRef.current = reciterId
@@ -187,6 +194,7 @@ export function usePageRecitation({
     }
     clearPreload()
     abortingRef.current = false
+    timedRef.current = null
     indexRef.current = 0
     playModeRef.current = 'page'
     playbackSessionRef.current = 0
@@ -207,6 +215,7 @@ export function usePageRecitation({
     }
     clearPreload()
     abortingRef.current = false
+    timedRef.current = null
     indexRef.current = 0
     playModeRef.current = 'page'
     playbackSessionRef.current = 0
@@ -223,6 +232,73 @@ export function usePageRecitation({
     return false
   }, [finishPlayback])
 
+  /**
+   * Plays `verseKey` from the surah's one recording, starting at that ayah's timing. If the
+   * recording is already loaded and playing, this only moves the position — usually not at
+   * all, since the voice is already there. Returns false when there is no timing to use.
+   */
+  const playTimed = useCallback(
+    async (index: number, session: number, verseKey: string, surah: number): Promise<boolean> => {
+      const audio = audioRef.current
+      if (!audio) return false
+      const chapter = await getChapterAudio(reciterRef.current, surah)
+      if (session !== sessionRef.current) return true
+      const timing = chapter?.byKey.get(verseKey)
+      if (!chapter || !timing) return false
+
+      indexRef.current = index
+      playbackSessionRef.current = session
+      timedRef.current = chapter
+      pageEndFiredRef.current = false
+
+      const loaded = audio.getAttribute('src') === chapter.url && !audio.ended
+      setState((s) => ({
+        ...s,
+        playing: true,
+        loading: !loaded,
+        highlightedVerseKey: verseKey,
+        error: null,
+      }))
+
+      clearMainObjectUrl()
+      const target = timing.from / 1000
+      try {
+        if (loaded) {
+          // Already in the right place, so leave it alone: seeking would cause the very gap this avoids.
+          if (Math.abs(audio.currentTime - target) > 0.45) audio.currentTime = target
+        } else {
+          audio.src = chapter.url
+          await new Promise<void>((resolve, reject) => {
+            const onMeta = () => {
+              audio.removeEventListener('error', onFail)
+              resolve()
+            }
+            const onFail = () => {
+              audio.removeEventListener('loadedmetadata', onMeta)
+              reject(new Error(tr('Audio preload failed')))
+            }
+            audio.addEventListener('loadedmetadata', onMeta, { once: true })
+            audio.addEventListener('error', onFail, { once: true })
+          })
+          if (session !== sessionRef.current) return true
+          audio.currentTime = target
+        }
+        await audio.play()
+        if (session !== sessionRef.current) return true
+        setState((s) => ({ ...s, loading: false }))
+        return true
+      } catch {
+        if (session !== sessionRef.current) return true
+        // The whole-surah recording would not play: use the ayah-by-ayah files for this reciter.
+        timedDisabledRef.current = true
+        timedRef.current = null
+        audio.removeAttribute('src')
+        return false
+      }
+    },
+    [clearMainObjectUrl]
+  )
+
   const playIndex = useCallback(
     async (index: number, session: number, options?: { seamless?: boolean }) => {
       const audio = audioRef.current
@@ -237,6 +313,12 @@ export function usePageRecitation({
       const verse = list[index]
       const parsed = parseVerseKey(verse.verse_key)
       if (!parsed) return
+
+      if (hasTimedAudio(reciterRef.current) && !timedDisabledRef.current) {
+        const handled = await playTimed(index, session, verse.verse_key, parsed.surah)
+        if (handled || session !== sessionRef.current) return
+      }
+      timedRef.current = null
 
       indexRef.current = index
       playbackSessionRef.current = session
@@ -297,7 +379,7 @@ export function usePageRecitation({
         }))
       }
     },
-    [clearMainObjectUrl, handlePageEnd, preloadAheadFromIndex, takePreloaded]
+    [clearMainObjectUrl, handlePageEnd, playTimed, preloadAheadFromIndex, takePreloaded]
   )
 
   const pause = useCallback(() => {
@@ -381,10 +463,80 @@ export function usePageRecitation({
       if (verseKey) onSingleVerseEndRef.current?.(verseKey)
     }
 
+    /** Follows the voice frame by frame: which ayah it is in, and when the page or a single ayah is done. */
+    const tick = () => {
+      tickRef.current = requestAnimationFrame(tick)
+      const chapter = timedRef.current
+      if (!chapter || abortingRef.current || audio.paused || pageEndFiredRef.current) return
+      const session = playbackSessionRef.current
+      if (session !== sessionRef.current) return
+
+      const list = versesRef.current
+      const from = indexRef.current
+      const now = audio.currentTime * 1000
+      const current = chapter.byKey.get(list[from]?.verse_key ?? '')
+      if (!current) return
+
+      if (playModeRef.current === 'single') {
+        // One ayah only: stop exactly where it ends.
+        if (now >= current.to - 20) {
+          audio.pause()
+          finishSingle()
+        }
+        return
+      }
+
+      let index = from
+      while (index + 1 < list.length) {
+        const next = chapter.byKey.get(list[index + 1].verse_key)
+        if (next && now >= next.from - 15) index += 1
+        else break
+      }
+      if (index !== from) {
+        indexRef.current = index
+        setState((s) => ({ ...s, highlightedVerseKey: list[index].verse_key }))
+      }
+
+      const last = chapter.byKey.get(list[list.length - 1]?.verse_key ?? '')
+      const surahContinues = last ? chapter.ayat[chapter.ayat.length - 1].key !== last.key : false
+      if (index === list.length - 1 && last && now >= last.to - 30 && surahContinues) {
+        pageEndFiredRef.current = true
+        // The recording keeps playing into the next page's first ayah; only the page turns.
+        if (onPageFinishedRef.current) onPageFinishedRef.current()
+        else {
+          finishPlayback()
+        }
+      }
+    }
+    const startTick = () => {
+      if (tickRef.current === null) tickRef.current = requestAnimationFrame(tick)
+    }
+    const stopTick = () => {
+      if (tickRef.current !== null) cancelAnimationFrame(tickRef.current)
+      tickRef.current = null
+    }
+
     const onEnded = () => {
       if (abortingRef.current) return
       const session = playbackSessionRef.current
       if (session !== sessionRef.current) return
+
+      if (timedRef.current) {
+        // The surah's recording is over. A page that runs on into the next surah carries on with that one.
+        stopTick()
+        if (pageEndFiredRef.current) return
+        if (playModeRef.current === 'single') {
+          finishSingle()
+          return
+        }
+        const next = indexRef.current + 1
+        if (next < versesRef.current.length && !pageEndFiredRef.current) {
+          void playIndex(next, session)
+          return
+        }
+        handlePageEnd()
+        return
+      }
 
       if (playModeRef.current === 'single') {
         finishSingle()
@@ -394,7 +546,7 @@ export function usePageRecitation({
     }
 
     const onTimeUpdate = () => {
-      if (abortingRef.current || playModeRef.current !== 'page') return
+      if (abortingRef.current || playModeRef.current !== 'page' || timedRef.current) return
       const session = playbackSessionRef.current
       if (session !== sessionRef.current) return
       const duration = audio.duration
@@ -407,6 +559,15 @@ export function usePageRecitation({
       if (abortingRef.current) return
       const session = playbackSessionRef.current
       if (session !== sessionRef.current) return
+
+      if (timedRef.current) {
+        // The whole-surah recording failed part-way: carry on with the ayah-by-ayah files from here.
+        timedDisabledRef.current = true
+        timedRef.current = null
+        stopTick()
+        void playIndex(indexRef.current, session)
+        return
+      }
 
       if (playModeRef.current === 'single') {
         finishSingle()
@@ -423,12 +584,18 @@ export function usePageRecitation({
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('error', onError)
     audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('play', startTick)
+    audio.addEventListener('pause', stopTick)
 
     return () => {
       abortingRef.current = true
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('error', onError)
       audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('play', startTick)
+      audio.removeEventListener('pause', stopTick)
+      stopTick()
+      timedRef.current = null
       audio.pause()
       clearMainObjectUrl()
       clearPreload()
@@ -467,11 +634,13 @@ export function usePageRecitation({
   }, [verses.map((v) => v.verse_key).join(',')])
 
   useEffect(() => {
+    timedDisabledRef.current = false
     if (!state.playing && !state.loading) return
     pausedRef.current = false
     setIsPaused(false)
     sessionRef.current += 1
     clearPreload()
+    timedRef.current = null
     void playIndex(indexRef.current, sessionRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId])

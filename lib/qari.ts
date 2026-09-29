@@ -296,6 +296,7 @@ const audioBlobs = new Map<string, Promise<Blob | null>>()
 /** Hand over a recording already on the phone — just published — so sharing it needs no download. */
 export function primeRecitationAudio(id: string, blob: Blob): void {
   audioBlobs.set(id, Promise.resolve(blob))
+  readyBlobs.set(id, blob)
 }
 
 /**
@@ -316,6 +317,13 @@ export function tidyHashtags(raw: string): string[] {
   return [...seen]
 }
 
+/** Recordings already on the phone, readable at once — a player can start from these with no wait. */
+const readyBlobs = new Map<string, Blob>()
+
+export function getCachedRecitationAudio(id: string): Blob | null {
+  return readyBlobs.get(id) ?? null
+}
+
 export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
   let pending = audioBlobs.get(id)
   if (!pending) {
@@ -324,6 +332,9 @@ export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
       .catch(() => null)
     audioBlobs.set(id, pending)
   }
+  void pending.then((blob) => {
+    if (blob && blob.size > 0) readyBlobs.set(id, blob)
+  })
   return pending
 }
 

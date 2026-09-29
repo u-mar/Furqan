@@ -27,6 +27,7 @@ import {
 import Switch from '@/components/qari/Switch'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
+import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
 type Stage =
@@ -41,6 +42,8 @@ interface ShareSheetProps {
   open: boolean
   onClose: () => void
   onNotice?: (message: string) => void
+  /** The full-screen video view: just "share the link" or "download the video". */
+  videoView?: boolean
 }
 
 /**
@@ -50,12 +53,13 @@ interface ShareSheetProps {
  * Making the file and sharing it are two taps on purpose — a phone only opens
  * its share sheet inside a fresh tap, and making a video takes a few seconds.
  */
-export default function ShareSheet({ recitation, open, onClose, onNotice }: ShareSheetProps) {
+export default function ShareSheet({ recitation, open, onClose, onNotice, videoView = false }: ShareSheetProps) {
   const t = useT()
   const [stage, setStage] = useState<Stage>({ name: 'choose' })
   const [videoOptions, setVideoOptions] = useState<VideoOptions>(DEFAULT_VIDEO_OPTIONS)
   const abortRef = useRef<AbortController | null>(null)
   const videoPossible = useMemo(() => (open ? canMakeVideo() : true), [open])
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   useEffect(() => {
     if (!open) return
@@ -99,6 +103,13 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
             : await makeRecitationAudio(recitation, onProgress, controller.signal)
         if (controller.signal.aborted) return
         successFeedback()
+        if (videoView && kind === 'video') {
+          // "Download video" means exactly that: no second step, it goes straight to the phone.
+          saveMedia(media)
+          onNotice?.(tr('Video saved to your phone.'))
+          onClose()
+          return
+        }
         setStage({ name: 'ready', media })
       } catch (err) {
         if (err instanceof ShareCancelled || controller.signal.aborted) return
@@ -114,7 +125,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
         })
       }
     },
-    [recitation, videoOptions]
+    [onClose, onNotice, recitation, videoOptions, videoView]
   )
 
   const cancel = useCallback(() => {
@@ -154,6 +165,26 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
     if (ok) close()
   }, [close, onNotice, recitation])
 
+  /** Hands the link to the phone's own share sheet, or copies it where there is none. */
+  const handleShareLink = useCallback(async () => {
+    tapFeedback()
+    const url = recitationLink(recitation)
+    const title = `${recitation.userName} — ${recitation.title}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: title, url })
+        close()
+        return
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+    }
+    const ok = await copyText(`${title}
+${url}`)
+    onNotice?.(ok ? tr('Link copied.') : tr('Could not copy the link.'))
+    if (ok) close()
+  }, [close, onNotice, recitation])
+
   if (!open || typeof document === 'undefined') return null
 
   // Rendered on the page itself: a card that animates in has its own layer,
@@ -167,7 +198,13 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
       onClick={close}
     >
       <div
-        className="qari-sheet__panel relative w-full max-w-md rounded-t-[1.75rem] bg-[var(--home-card-bg)] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-[var(--home-card-shadow)] sm:rounded-[1.75rem]"
+        className={cn(
+          'qari-sheet__panel relative w-full max-w-md rounded-t-[1.75rem] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:rounded-[1.75rem]',
+          videoView
+            ? // Over the video, not a white card on it: dark glass, like the rest of the full-screen view.
+              'qari-swipe bg-[#141a18]/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl'
+            : 'bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]'
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--home-rule-strong)] sm:hidden" aria-hidden />
@@ -195,7 +232,22 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
           </button>
         </div>
 
-        {stage.name === 'choose' ? (
+        {stage.name === 'choose' && videoView ? (
+          <div className="mt-5 flex items-start justify-center gap-7 pb-2">
+            <ShareIconAction
+              icon={Download}
+              label={t('Save video')}
+              disabled={!videoPossible}
+              onClick={() => void make('video')}
+            />
+            <ShareIconAction icon={Link2} label={t('Copy link')} onClick={() => void handleCopy()} />
+            {canNativeShare ? (
+              <ShareIconAction icon={Share2} label={t('Share to…')} onClick={() => void handleShareLink()} />
+            ) : null}
+          </div>
+        ) : null}
+
+        {stage.name === 'choose' && !videoView ? (
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
             <ShareOption
               icon={Film}
@@ -304,6 +356,33 @@ export default function ShareSheet({ recitation, open, onClose, onNotice }: Shar
       </div>
     </div>,
     document.body
+  )
+}
+
+/** A round icon with its name underneath — the way TikTok lays out its share sheet. */
+function ShareIconAction({
+  icon: Icon,
+  label,
+  disabled,
+  onClick,
+}: {
+  icon: typeof Film
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="qari-press ed-focus flex w-[4.5rem] flex-col items-center gap-2 rounded-2xl disabled:opacity-40"
+    >
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/12 text-[var(--home-heading)]">
+        <Icon className="h-6 w-6" strokeWidth={1.8} />
+      </span>
+      <span className="text-center text-[12px] font-medium leading-tight text-[var(--home-heading)]">{label}</span>
+    </button>
   )
 }
 

@@ -12,7 +12,7 @@
 
 import { APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
-import { countPlay, recitationAudioUrl, type Recitation } from '@/lib/qari'
+import { countPlay, getCachedRecitationAudio, recitationAudioUrl, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused'
@@ -41,6 +41,11 @@ let mixer: SpaceMixer | null = null
 let queue: Recitation[] = []
 let viewerId: string | null = null
 let rate = 1
+/** Every recitation passes through this one gain, so a switch can fade rather than cut (a cut clicks). */
+let master: GainNode | null = null
+let pauseTimer: number | null = null
+/** The object URL the element is playing from, when it is playing a downloaded copy. */
+let objectUrl: string | null = null
 /** Plays are counted once per recitation per visit, not per tap. */
 const counted = new Set<string>()
 
@@ -121,7 +126,9 @@ async function applySpace(r: Recitation) {
     if (context.state !== 'running') return
     if (!mixer) {
       mixer = createSpaceMixer(context, context.createMediaElementSource(el))
-      mixer.output.connect(context.destination)
+      master = context.createGain()
+      mixer.output.connect(master)
+      master.connect(context.destination)
     }
     mixer.setSpace(space)
   } catch {
@@ -161,8 +168,14 @@ export function playRecitation(
   if (options.queue) queue = options.queue
   if (options.viewerId !== undefined) viewerId = options.viewerId
 
-  if (snapshot.current?.id !== r.id) {
-    el.src = recitationAudioUrl(r.id)
+  const switching = snapshot.current?.id !== r.id
+  if (switching) {
+    // A copy already on the phone starts at once and can be sought anywhere; otherwise stream it.
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    objectUrl = null
+    const cached = getCachedRecitationAudio(r.id)
+    if (cached) objectUrl = URL.createObjectURL(cached)
+    el.src = objectUrl ?? recitationAudioUrl(r.id)
     // A new source can reset the speed to the default; the default is kept in step with it.
     el.playbackRate = rate
     emit({ current: r, status: 'loading', position: 0, duration: r.durationSec })
@@ -170,6 +183,13 @@ export function playRecitation(
     emit({ status: 'loading' })
   }
   describeToLockScreen(r)
+
+  // Cancel a fade-out that was about to pause this, and let the voice in gently.
+  if (pauseTimer !== null) {
+    window.clearTimeout(pauseTimer)
+    pauseTimer = null
+  }
+  fadeMaster(1, 0.035, switching || el.paused ? 0 : undefined)
 
   void el
     .play()
@@ -199,8 +219,32 @@ export function togglePlayback(
   playRecitation(r, options)
 }
 
+/**
+ * Ease `master` to `target`. `from` first drops it to that level, so a voice can start from silence.
+ * Without the graph yet (the very first play) there is nothing to ease, and it starts as it is.
+ */
+function fadeMaster(target: number, timeConstant: number, from?: number) {
+  if (!master || !context) return
+  const now = context.currentTime
+  master.gain.cancelScheduledValues(now)
+  if (from !== undefined) master.gain.setValueAtTime(from, now)
+  master.gain.setTargetAtTime(target, now, timeConstant)
+}
+
 export function pausePlayback(): void {
-  audio?.pause()
+  const el = audio
+  if (!el || el.paused) return
+  if (!master || !context) {
+    el.pause()
+    return
+  }
+  // Fade out over a few milliseconds, then pause: stopping a voice mid-wave is a click.
+  fadeMaster(0, 0.02)
+  if (pauseTimer !== null) window.clearTimeout(pauseTimer)
+  pauseTimer = window.setTimeout(() => {
+    pauseTimer = null
+    el.pause()
+  }, 90)
 }
 
 export function resumePlayback(): void {
@@ -250,11 +294,16 @@ export function skipToNextRecitation(): boolean {
 
 /** Silence Qari entirely, for when you leave it or start recording. */
 export function stopPlayback(): void {
+  if (pauseTimer !== null) window.clearTimeout(pauseTimer)
+  pauseTimer = null
   if (audio) {
     audio.pause()
     audio.removeAttribute('src')
     audio.load()
   }
+  fadeMaster(1, 0.01)
+  if (objectUrl) URL.revokeObjectURL(objectUrl)
+  objectUrl = null
   queue = []
   emit({ ...IDLE, rate })
 }

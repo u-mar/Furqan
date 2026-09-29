@@ -6,12 +6,11 @@ import { cn } from '@/lib/cn'
 import { setAppSettings } from '@/lib/app-settings'
 import {
   DEFAULT_TRANSLATION_EDITION,
+  TRANSLATION_LANGUAGES,
   type TranslationLanguageId,
   translationLanguageLabel,
 } from '@/lib/translations'
 import { useT } from '@/lib/i18n'
-
-const LANGUAGES: TranslationLanguageId[] = ['en', 'so']
 
 interface TranslationLanguagePickerProps {
   language: TranslationLanguageId
@@ -53,11 +52,11 @@ export default function TranslationLanguagePicker({
       </button>
       {open && (
         <ul
-          className="mushaf-dock-menu absolute bottom-full right-2 z-50 mb-2 w-48 overflow-hidden rounded-2xl py-1.5"
+          className="mushaf-dock-menu absolute bottom-full right-2 z-50 mb-2 max-h-[min(50vh,22rem)] w-52 overflow-y-auto overscroll-contain rounded-2xl py-1.5"
           role="listbox"
           aria-label={t('Translation language')}
         >
-          {LANGUAGES.map((lang) => (
+          {TRANSLATION_LANGUAGES.map((lang) => (
             <li key={lang}>
               <button
                 type="button"
