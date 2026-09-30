@@ -10,7 +10,6 @@ import {
   useState,
   type TouchEvent,
 } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   ArrowLeftRight,
@@ -800,16 +799,6 @@ function ReadPageContent() {
     [openAyahMenu]
   )
 
-  // With an ayah already selected, one tap on another moves the selection to it —
-  // no need to dismiss the first. (Tapping empty space still dismisses.)
-  const handleAyahSelect = useCallback(
-    (verseKey: string) => {
-      if (ayahMenu?.verseKey === verseKey) return
-      openAyahMenu(verseKey)
-    },
-    [ayahMenu?.verseKey, openAyahMenu]
-  )
-
   useEffect(() => {
     setShowAyahTranslation(false)
   }, [ayahMenu?.verseKey])
@@ -894,23 +883,12 @@ function ReadPageContent() {
           highlightedVerseKey={highlightedVerseKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
-          onAyahSelect={handleAyahSelect}
-          ayahSelectMode={Boolean(ayahMenu)}
           suppressHighlightScroll
           tajweed={tajweed}
         />
       )
     },
-    [
-      ayahMenu,
-      chapterNamesById,
-      handleAyahLongPress,
-      handleAyahSelect,
-      highlightedVerseKey,
-      mushafSelectedVerseKey,
-      readingMode,
-      tajweed,
-    ]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode, tajweed]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -1142,6 +1120,7 @@ function ReadPageContent() {
             fetchPage={fetchVersesForPage}
             renderPage={renderMushafPage}
             onPageChange={(page) => void navigatePage(page, { autoContinue: true })}
+            followVerseKey={playbackActive ? highlightedVerseKey : null}
           />
         ) : (
           <GallerySwipeView
@@ -1408,14 +1387,6 @@ function ReadPageContent() {
         onClose={() => setShareTarget(null)}
       />
 
-      {uiVisible && (
-        <Link
-          href="/"
-          className="mushaf-read-chrome-panel absolute left-4 top-16 z-20 rounded-full px-3 py-1 text-xs text-[var(--mushaf-read-meta)]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {t('Home')}</Link>
-      )}
     </main>
   )
 }

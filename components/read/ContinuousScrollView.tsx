@@ -38,6 +38,8 @@ export interface ContinuousScrollViewProps {
   renderPage: (verses: Verse[], page: number) => ReactNode
   /** Fired when scrolling makes a different page the one showing. */
   onPageChange: (page: number) => void
+  /** The ayah being recited, while something plays: the view scrolls to keep it on screen. */
+  followVerseKey?: string | null
 }
 
 /**
@@ -69,6 +71,7 @@ export default function ContinuousScrollView({
   fetchPage,
   renderPage,
   onPageChange,
+  followVerseKey = null,
 }: ContinuousScrollViewProps) {
   // The source of truth lives in refs, not state — state only forces a
   // re-render once data actually changes, so the fetch/prune logic below
@@ -93,6 +96,8 @@ export default function ContinuousScrollView({
   const anchorScrollTop = useRef(0)
   const pendingJump = useRef<number | null>(currentPage)
   const loadDebounceRef = useRef<number | null>(null)
+  // Scrolling to follow the voice must not count as the reader moving to another page.
+  const followingUntil = useRef(0)
   const scaleRef = useRef(1)
   const scaleSaveRef = useRef<number | null>(null)
 
@@ -216,6 +221,7 @@ export default function ContinuousScrollView({
           const visiblePx = entry.intersectionRect.height
           if (!best || visiblePx > best.visiblePx) best = { page, visiblePx }
         }
+        if (best && performance.now() < followingUntil.current) return
         if (best && best.page !== lastReported.current && pendingJump.current === null) {
           lastReported.current = best.page
           // The anchor itself just changed, so "height above it" means
@@ -276,6 +282,21 @@ export default function ContinuousScrollView({
       if (debounce !== null) window.clearTimeout(debounce)
     }
   }, [ensureLoaded, totalPages])
+
+  // When the recitation moves on to the next ayah, bring it into view. It is left alone if it
+  // is already in the upper part of the screen, so a line-by-line read is not constantly nudged.
+  useEffect(() => {
+    if (!followVerseKey) return
+    const root = containerRef.current
+    if (!root) return
+    const el = root.querySelector<HTMLElement>(`[data-verse-key="${followVerseKey}"]`)
+    if (!el) return
+    const rootRect = root.getBoundingClientRect()
+    const top = el.getBoundingClientRect().top - rootRect.top
+    if (top >= rootRect.height * 0.1 && top <= rootRect.height * 0.6) return
+    followingUntil.current = performance.now() + 1200
+    root.scrollTo({ top: root.scrollTop + top - rootRect.height * 0.28, behavior: 'smooth' })
+  }, [followVerseKey])
 
   // Pinch with two fingers to make the script smaller or larger. One finger still
   // scrolls as before. The size is a CSS variable the flowing text is multiplied by.

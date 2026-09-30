@@ -613,7 +613,9 @@ export function usePageRecitation({
       void playIndex(0, sessionRef.current)
       return
     }
-    if (!state.playing && !state.loading) return
+    // A page change also ends a paused recitation: Play on the new page must start that page,
+    // not carry on from wherever the last one was left.
+    if (!state.playing && !state.loading && !pausedRef.current) return
     pausedRef.current = false
     setIsPaused(false)
     sessionRef.current += 1
