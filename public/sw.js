@@ -1,17 +1,20 @@
-const CACHE_VERSION = 'al-quran-v10'
-const STATIC_CACHE = 'al-quran-static-v10'
+const CACHE_VERSION = 'al-quran-v11'
+const STATIC_CACHE = 'al-quran-static-v11'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
 const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
-/** Must match lib/asr/model-cache.ts CACHE_NAME */
-const ASR_MODEL_CACHE = 'muyassar-asr-model-v1'
+/** The speech model for marking Qari ayat. Must match lib/asr/offline-model-cache.ts QARI_ASR_CACHE */
+const QARI_ASR_CACHE = 'muyassar-qari-asr-v1'
 /** Reciter portraits, bundled locally under /reciters/ — small, rarely
  *  change, so a dedicated stable cache keeps them offline across app updates
  *  the same way fonts/translations/the ASR model do. */
 const RECITER_PHOTOS_CACHE = 'muyassar-reciter-photos-v1'
 
+/** Shown for a screen opened offline that has never been opened online — the one page safe to precache, since it never goes stale. */
+const OFFLINE_PAGE = '/offline.html'
+
 /** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
-const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf']
+const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf', OFFLINE_PAGE]
 
 function isNavigationRequest(request) {
   return (
@@ -38,7 +41,7 @@ self.addEventListener('activate', (event) => {
               k !== CACHE_VERSION &&
               k !== QCF_FONT_CACHE &&
               k !== TRANSLATIONS_CACHE &&
-              k !== ASR_MODEL_CACHE &&
+              k !== QARI_ASR_CACHE &&
               k !== RECITER_PHOTOS_CACHE
           )
           .map((k) => caches.delete(k))
@@ -134,6 +137,8 @@ async function networkFirst(request) {
     if (isNav) {
       const byPath = await caches.match(pathKey)
       if (byPath) return byPath
+      const offline = await caches.match(OFFLINE_PAGE)
+      if (offline) return offline
     }
     return new Response('Offline', { status: 503, statusText: 'Offline' })
   }
@@ -177,7 +182,7 @@ async function cacheFirst(request, cacheName = STATIC_CACHE) {
 
 /** A notification from the server: someone liked a recitation or followed. */
 self.addEventListener('push', (event) => {
-  let message = { title: 'Al Furqaan', body: '', url: '/qari/notifications' }
+  let message = { title: 'Nadir', body: '', url: '/qari/notifications' }
   try {
     if (event.data) message = { ...message, ...event.data.json() }
   } catch {

@@ -22,6 +22,7 @@ export function ProfileTopBar({
   avatarVersion,
   showNotifications = false,
   onShare,
+  extra,
 }: {
   username: string
   name: string
@@ -29,6 +30,8 @@ export function ProfileTopBar({
   /** Your own profile carries the bell: notifications no longer have a button on the feed. */
   showNotifications?: boolean
   onShare: () => void
+  /** More actions beside Share, e.g. blocking someone else's profile. */
+  extra?: React.ReactNode
 }) {
   const t = useT()
   const [condensed, setCondensed] = useState(false)
@@ -65,6 +68,7 @@ export function ProfileTopBar({
         <button type="button" onClick={onShare} className="home-round ed-focus" aria-label={t('Share profile')}>
           <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
         </button>
+        {extra}
       </div>
     </header>
   )

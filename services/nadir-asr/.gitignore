@@ -1,0 +1,5 @@
+# The model files are large and come from Hugging Face; they are not kept in git.
+model/*
+!model/README.md
+__pycache__/
+.venv/

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
-import HifdhTestCard from '@/components/home/HifdhTestCard'
 import HomeHero from '@/components/home/HomeHero'
 import HomeScreen from '@/components/home/HomeScreen'
 import PrayerQiblaCard from '@/components/home/PrayerQiblaCard'
@@ -42,10 +41,6 @@ export default function Home() {
 
       <div className="reveal mt-[22px]" style={{ animationDelay: '200ms' }}>
         <ContinueReadingCard />
-      </div>
-
-      <div className="reveal mt-[22px]" style={{ animationDelay: '240ms' }}>
-        <HifdhTestCard />
       </div>
     </HomeScreen>
   )

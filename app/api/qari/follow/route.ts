@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
 import { notifyFollow } from '@/lib/notify'
+import { hasBlocked } from '@/lib/qari-blocks-server'
 
 export const runtime = 'nodejs'
 
@@ -66,6 +67,9 @@ export async function POST(request: NextRequest) {
   try {
     const caller = await readCaller(request)
     if ('error' in caller) return caller.error
+    if (await hasBlocked(caller.target, caller.username)) {
+      return NextResponse.json({ error: 'You can’t follow this qari.' }, { status: 403 })
+    }
 
     // No unique index on this connection, so guard against a double tap here.
     const existing = await prisma.qariFollow.findFirst({

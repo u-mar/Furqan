@@ -1,16 +1,18 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Ellipsis, Flag, Globe, Lock, Trash2 } from 'lucide-react'
+import { Ban, Ellipsis, Flag, Globe, Lock, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 
-/** The quieter actions on a recitation: who can hear it and delete for your own, report for anyone else's. */
+/** The quieter actions on a recitation: who can hear it and delete for your own, report and block for anyone else's. */
 export default function RowMenu({
   isOwner,
   isPrivate,
   onTogglePrivacy,
   onReport,
   onDelete,
+  blockUsername,
+  onBlock,
 }: {
   isOwner: boolean
   /** Only meaningful when `isOwner` — whether it's currently visible to everyone or only the reciter. */
@@ -18,15 +20,20 @@ export default function RowMenu({
   onTogglePrivacy?: () => void
   onReport: () => void
   onDelete: () => void
+  /** Who posted it, for "Block @name"; leave out to not offer blocking. */
+  blockUsername?: string
+  onBlock?: () => void
 }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [confirmingBlock, setConfirmingBlock] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!open) {
       setConfirming(false)
+      setConfirmingBlock(false)
       return
     }
     const onPointerDown = (e: PointerEvent) => {
@@ -85,16 +92,37 @@ export default function RowMenu({
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onReport()
-              }}
-              className="qari-dropdown__item ed-focus"
-            >
-              <Flag className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
-              {t('Report')}</button>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  onReport()
+                }}
+                className="qari-dropdown__item ed-focus"
+              >
+                <Flag className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
+                {t('Report')}</button>
+              {onBlock && blockUsername ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirmingBlock) {
+                      setConfirmingBlock(true)
+                      return
+                    }
+                    setOpen(false)
+                    onBlock()
+                  }}
+                  className="qari-dropdown__item ed-focus text-rose-500"
+                >
+                  <Ban className="h-4 w-4" strokeWidth={2} />
+                  <span className="truncate">
+                    {confirmingBlock ? t('Tap again to block') : t('Block @{username}', { username: blockUsername })}
+                  </span>
+                </button>
+              ) : null}
+            </>
           )}
         </div>
       ) : null}

@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Heart, Mic, Pause, Play } from 'lucide-react'
+import { Ban, ChevronLeft, Ellipsis, Heart, Mic, Pause, Play } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
@@ -22,6 +22,8 @@ import { cn } from '@/lib/cn'
 import { fetchFeed, fetchFollowState, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
 import { dismissUpload, useUploads } from '@/lib/qari-upload'
+import { blockUser, unblockUser, useBlockedUsers } from '@/lib/qari-blocks'
+import { askToSignIn } from '@/lib/account-prompt'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
@@ -38,6 +40,8 @@ export default function QariProfilePage() {
 
   // Usernames are stored lower-case; a link may arrive with any casing.
   const isMe = viewer?.username.toLowerCase() === username.toLowerCase()
+  const blockedUsers = useBlockedUsers(viewer)
+  const isBlocked = !isMe && blockedUsers.has(username.toLowerCase())
 
   const [tab, setTab] = useState<Tab>('recitations')
   const [recitations, setRecitations] = useState<Recitation[] | null>(null)
@@ -192,6 +196,27 @@ export default function QariProfilePage() {
     playRecitation(start, { queue: list, viewerId })
   }, [list, player, playingHere, playingNow, viewerId])
 
+  const toggleBlock = useCallback(async () => {
+    if (!viewer) {
+      askToSignIn({ reason: tr('Create a free account to block someone.') })
+      return
+    }
+    tapFeedback()
+    try {
+      if (isBlocked) {
+        await unblockUser(viewer, username)
+        qariNotice(tr('Unblocked @{username}.', { username }))
+        void loadRecitations()
+      } else {
+        await blockUser(viewer, username)
+        setFollow((prev) => (prev ? { ...prev, following: false } : prev))
+        qariNotice(tr('Blocked @{username}. You won’t see their posts.', { username }))
+      }
+    } catch (err) {
+      qariNotice(err instanceof Error ? err.message : tr('Could not change that.'))
+    }
+  }, [isBlocked, loadRecitations, username, viewer])
+
   const removeRecitation = useCallback((id: string) => {
     setRecitations((prev) => prev?.filter((r) => r.id !== id) ?? prev)
     setFavourites((prev) => prev?.filter((r) => r.id !== id) ?? prev)
@@ -264,6 +289,7 @@ export default function QariProfilePage() {
         avatarVersion={avatarVersion}
         showNotifications={isMe}
         onShare={() => void handleShare()}
+        extra={isMe ? null : <ProfileMenu blocked={isBlocked} username={username} onToggleBlock={() => void toggleBlock()} />}
       />
 
       <div className="mt-1">
@@ -291,7 +317,7 @@ export default function QariProfilePage() {
                 className="qari-press ed-focus flex h-11 w-full items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_8%,transparent)] text-[14.5px] font-semibold text-[var(--home-heading)]"
               >
                 {t('Edit profile')}</button>
-            ) : (
+            ) : isBlocked ? null : (
               <FollowButton
                 size="lg"
                 viewer={viewer}
@@ -312,8 +338,26 @@ export default function QariProfilePage() {
         />
       </div>
 
+      {isBlocked ? (
+        <div className="qari-card mt-6 px-4 py-5 text-center">
+          <p className="home-serif text-[1.1875rem] font-medium text-[var(--home-heading)]">
+            {t('You blocked @{username}', { username })}
+          </p>
+          <p className="mx-auto mt-1 max-w-[30ch] text-[13px] leading-relaxed text-[var(--home-muted)]">
+            {t('You don’t see their posts in Qari, and they can’t follow you.')}
+          </p>
+          <button
+            type="button"
+            onClick={() => void toggleBlock()}
+            className="qari-press ed-focus mx-auto mt-4 flex h-10 items-center rounded-full border border-[var(--home-rule-strong)] px-5 text-[14px] font-semibold text-[var(--home-heading)]"
+          >
+            {t('Unblock')}
+          </button>
+        </div>
+      ) : null}
+
       {/* Tabs and play all */}
-      <div className="mt-6 flex items-center justify-between border-b border-[var(--home-rule)]">
+      <div className={cn('mt-6 flex items-center justify-between border-b border-[var(--home-rule)]', isBlocked && 'hidden')}>
         <div className="flex gap-6" role="tablist" aria-label={t('Profile sections')}>
           {(tabs ?? [{ id: 'recitations' as const, label: t('Recitations') }]).map(({ id, label }) => (
             <button
@@ -363,7 +407,7 @@ export default function QariProfilePage() {
         ) : null}
       </div>
 
-      <div className="mt-3">
+      <div className={cn('mt-3', isBlocked && 'hidden')}>
         {tab === 'recitations' && myUploads.length > 0 ? (
           <div className={cn('flex flex-col gap-2.5', list && list.length > 0 && 'mb-2.5')}>
             {myUploads.map((upload) => (
@@ -466,5 +510,64 @@ function AyahCardRow({ cards, onOpen }: { cards: Recitation[]; onOpen: (id: stri
         ))}
       </div>
     </section>
+  )
+}
+
+/** Someone else's profile: Block (or Unblock) behind a "more" button, asked twice before blocking. */
+function ProfileMenu({ blocked, username, onToggleBlock }: { blocked: boolean; username: string; onToggleBlock: () => void }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      setConfirming(false)
+      return
+    }
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={t('More')}
+        aria-expanded={open}
+        className="home-round ed-focus"
+      >
+        <Ellipsis className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      </button>
+      {open ? (
+        <div className="qari-dropdown__menu right-0 top-[calc(100%+0.3rem)] w-[13rem] origin-top-right">
+          <button
+            type="button"
+            onClick={() => {
+              if (!blocked && !confirming) {
+                setConfirming(true)
+                return
+              }
+              setOpen(false)
+              onToggleBlock()
+            }}
+            className={cn('qari-dropdown__item ed-focus', !blocked && 'text-rose-500')}
+          >
+            <Ban className="h-4 w-4" strokeWidth={2} />
+            <span className="truncate">
+              {blocked
+                ? t('Unblock @{username}', { username })
+                : confirming
+                  ? t('Tap again to block')
+                  : t('Block @{username}', { username })}
+            </span>
+          </button>
+        </div>
+      ) : null}
+    </div>
   )
 }

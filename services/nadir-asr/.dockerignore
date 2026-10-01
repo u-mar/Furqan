@@ -1,0 +1,9 @@
+.venv
+__pycache__
+*.pyc
+selftest.py
+quantize.py
+model/demo
+model/*.nemo
+model/head
+model/tajweed

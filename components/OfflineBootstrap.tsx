@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { bootstrapOfflineReader, isStandaloneDisplayMode } from '@/lib/offline-bootstrap'
 import { isOfflineReady } from '@/lib/local-quran-store'
 import { getAppSettings } from '@/lib/app-settings'
+import { forgetAsrModel } from '@/lib/asr/model-cache'
 
 /**
  * Puts the whole Quran on the phone without anyone asking: the text (about
@@ -12,6 +13,11 @@ import { getAppSettings } from '@/lib/app-settings'
  * leaves a metered connection alone until the app is installed or on Wi‑Fi.
  */
 export default function OfflineBootstrap() {
+  // The speech model the Hifdh Test used is no longer part of the app; free the space where it was saved.
+  useEffect(() => {
+    void forgetAsrModel()
+  }, [])
+
   useEffect(() => {
     if (isOfflineReady() || getAppSettings().offlineDownloaded) return
 

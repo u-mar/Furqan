@@ -33,11 +33,16 @@ export const CTC_BLANK_ID = 1024
 
 export interface QuranTokenizer {
   decode(ids: number[]): string
+  /** True when this piece starts a new word (it carries the ▁ marker). */
+  startsWord(id: number): boolean
 }
 
 export async function loadQuranTokenizer(): Promise<QuranTokenizer> {
   const pieces = await loadVocab()
   return {
+    startsWord(id: number): boolean {
+      return (pieces[id] ?? '').startsWith(WORD_BOUNDARY)
+    },
     decode(ids: number[]): string {
       let text = ''
       for (const id of ids) {

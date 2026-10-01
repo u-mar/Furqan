@@ -24,6 +24,7 @@ import { useStartRecording } from '@/components/qari/QariRecordFab'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import { SheikhCard, SheikhHeader } from '@/components/qari/SheikhCards'
 import SwipeFeed from '@/components/qari/SwipeFeed'
+import { useBlockedUsers } from '@/lib/qari-blocks'
 import {
   QariChips,
   QariHeader,
@@ -230,9 +231,21 @@ function QariHomeContent() {
 
   const openFromFeed = useCallback((recitation: Recitation) => openSwipe(items, recitation.id), [items, openSwipe])
 
-  const swipeItems = overlay ? overlay.items : items
+  // Someone just blocked disappears straight away; the next fetch leaves them out on the server.
+  const blockedUsers = useBlockedUsers(viewer)
+  const shownItems = useMemo(
+    () => (blockedUsers.size ? items.filter((r) => !blockedUsers.has(r.userUsername.toLowerCase())) : items),
+    [blockedUsers, items]
+  )
+  const swipeItems = overlay
+    ? overlay.items.filter((r) => !blockedUsers.has(r.userUsername.toLowerCase()))
+    : shownItems
+  const shownQaris = useMemo(
+    () => (discover?.lovedQaris ?? []).filter((q) => !blockedUsers.has(q.username.toLowerCase())),
+    [blockedUsers, discover]
+  )
   // The list is for listening: ayah cards are pictures, so they are only in the swipe view.
-  const listItems = useMemo(() => items.filter((r) => r.kind !== 'ayah'), [items])
+  const listItems = useMemo(() => shownItems.filter((r) => r.kind !== 'ayah'), [shownItems])
 
   const switchBtn = overlay ? null : (
     <button
@@ -474,11 +487,11 @@ function QariHomeContent() {
             ) : null}
           </div>
 
-          {discover && discover.lovedQaris.length > 0 ? (
+          {shownQaris.length > 0 ? (
             <section>
               <QariLabel action={<SeeAll href="/qari/qaris" />}>{t('Reciters')}</QariLabel>
               <div className="qari-no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-1 overflow-x-auto px-4 pb-1">
-                {discover.lovedQaris.map((qari, i) => (
+                {shownQaris.map((qari, i) => (
                   <Link
                     key={qari.username}
                     href={`/qari/${encodeURIComponent(qari.username)}`}
@@ -646,10 +659,11 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
     }
   }, [sheikh])
 
-  const others = useMemo(
-    () => (results && sheikh ? results.filter((r) => r.imitating !== sheikh.id) : results),
-    [results, sheikh]
-  )
+  const blockedUsers = useBlockedUsers(viewer)
+  const others = useMemo(() => {
+    const list = results && sheikh ? results.filter((r) => r.imitating !== sheikh.id) : results
+    return list?.filter((r) => !blockedUsers.has(r.userUsername.toLowerCase())) ?? list
+  }, [blockedUsers, results, sheikh])
 
   const onRemoved = useCallback((id: string) => {
     setResults((prev) => prev?.filter((x) => x.id !== id) ?? prev)

@@ -41,6 +41,9 @@ import { tr, useT } from '@/lib/i18n'
 
 const HINT_KEY = 'muyassar_qari_swipe_hint'
 
+/** Swipe views mounted right now — one replacing another must not drop the dark bar between them. */
+let swipeViewsOpen = 0
+
 /** The ayah being recited: the last one marked at or before `position`, or the first before that. */
 function currentEntry(timeline: VerseTimelineEntry[], position: number): VerseTimelineEntry | undefined {
   let found: VerseTimelineEntry | undefined = timeline[0]
@@ -325,6 +328,7 @@ const Slide = memo(function Slide({
     handleTogglePrivacy,
     handleReportTap,
     handleReportReason,
+    handleBlock,
   } = useRecitationActions({ recitation, viewerId, viewerUsername, onRemoved, onUpdated, onNotice })
 
   const isCurrent = playback?.current?.id === recitation.id
@@ -562,6 +566,8 @@ const Slide = memo(function Slide({
                 onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
                 onReport={handleReportTap}
                 onDelete={() => void handleDelete()}
+                blockUsername={recitation.userUsername}
+                onBlock={() => void handleBlock()}
               />
             </div>
           </div>
@@ -642,6 +648,16 @@ export default function SwipeFeed({
   const clampedActive = Math.min(active, Math.max(0, items.length - 1))
 
   const pageHeight = () => scrollerRef.current?.clientHeight || 1
+
+  // While this is on screen the bottom bar turns black with it (see .qari-swipe-open in globals.css).
+  useEffect(() => {
+    swipeViewsOpen += 1
+    document.documentElement.classList.add('qari-swipe-open')
+    return () => {
+      swipeViewsOpen -= 1
+      if (swipeViewsOpen === 0) document.documentElement.classList.remove('qari-swipe-open')
+    }
+  }, [])
 
   // Open on the chosen recitation, without animating there.
   useLayoutEffect(() => {

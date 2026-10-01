@@ -15,6 +15,7 @@ import {
   Globe,
   Hash,
   ImageIcon,
+  Loader2,
   LayoutGrid,
   Lock,
   MicVocal,
@@ -52,6 +53,7 @@ import {
   lastRecitationBackground,
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
+import { useAyahMarking } from '@/hooks/useAyahMarking'
 import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
 import { postRecitation } from '@/lib/qari-upload'
 import { measurePeaks } from '@/lib/qari-waveform'
@@ -147,6 +149,9 @@ function RecordFlow() {
   const [mushafOpen, setMushafOpen] = useState(false)
   // Ayat marked "now reciting" while the Mushaf overlay is open.
   const [verseTimeline, setVerseTimeline] = useState<VerseTimelineEntry[]>([])
+  // Ayat found by listening to the take on the phone, when the recitation model is saved.
+  const marking = useAyahMarking(setVerseTimeline)
+  const autoMarkRef = useRef(false)
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -249,6 +254,8 @@ function RecordFlow() {
     if (!state.blob || step !== 'recording') return
     strongFeedback()
     freshTakeRef.current = true
+    autoMarkRef.current = true
+    marking.reset()
     setStep('edit')
     setPeaks([])
     measurePeaks(state.blob)
@@ -258,7 +265,14 @@ function RecordFlow() {
     if (state.quality === 'noisy') qariNotice(tr('The room was a little noisy. A quieter room sounds better.'))
     else if (state.quality === 'quiet') qariNotice(tr('The recording is quiet. Hold the phone closer next time.'))
     else if (state.quality === 'clipped') qariNotice(tr('The recording was too loud in places. Hold the phone further away next time.'))
-  }, [state.blob, state.quality, step])
+  }, [state.blob, state.quality, step, marking.reset])
+
+  // A new take gets its ayat marked on its own, unless some were marked by hand from the Mushaf.
+  useEffect(() => {
+    if (!autoMarkRef.current || !state.blob || step !== 'edit' || !marking.modelReady) return
+    autoMarkRef.current = false
+    if (verseTimeline.length === 0) void marking.start(state.blob)
+  }, [marking.modelReady, marking.start, state.blob, step, verseTimeline.length])
 
   /* ---------------------------------------------------------- draft */
 
@@ -404,13 +418,14 @@ function RecordFlow() {
   /** Clears what was typed for a take, so the next one starts empty. */
   const forgetTake = useCallback(() => {
     stopPreview()
+    marking.reset()
     recorder.reset()
     setPeaks([])
     setVerseTimeline([])
     setTitle('')
     setHashtags('')
     setCaption('')
-  }, [recorder, stopPreview])
+  }, [marking.reset, recorder, stopPreview])
 
   /** Back to the camera. The take stays as the draft, one tap away. */
   const backToCamera = useCallback(() => {
@@ -664,6 +679,41 @@ function RecordFlow() {
                   </button>
                 </div>
               ) : null}
+              {verseTimeline.length === 0 && marking.modelReady ? (
+                <>
+                  <RowDivider />
+                  <button
+                    type="button"
+                    className="set-row"
+                    style={{ paddingBlock: 10 }}
+                    disabled={marking.status === 'running'}
+                    onClick={() => {
+                      tapFeedback()
+                      void marking.start(state.blob as Blob)
+                    }}
+                  >
+                    <span className="set-row__icon">
+                      {marking.status === 'running' ? (
+                        <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={1.9} />
+                      ) : (
+                        <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="block text-[15px] font-medium">{t('Mark ayat automatically')}</span>
+                      <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">
+                        {marking.status === 'running'
+                          ? t('Listening… {percent}%', { percent: Math.round(marking.progress * 100) })
+                          : marking.status === 'none'
+                            ? t('No ayat were recognised')
+                            : marking.status === 'failed'
+                              ? marking.error
+                              : t('So each ayah shows as you recite it')}
+                      </span>
+                    </span>
+                  </button>
+                </>
+              ) : null}
               {verseTimeline.length > 0 ? (
                 <>
                   <RowDivider />
@@ -737,6 +787,34 @@ function RecordFlow() {
           <span className="qari-cam-text text-[15px] font-semibold">{t('Preview')}</span>
           <span className="w-[2.625rem]" aria-hidden />
         </div>
+
+        {marking.status !== 'idle' ? (
+          <div className="mt-3 flex justify-center" aria-live="polite">
+            <button
+              type="button"
+              disabled={marking.status === 'running' || marking.status === 'done'}
+              onClick={() => void marking.start(state.blob as Blob)}
+              className="qari-glass flex h-8 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold"
+            >
+              {marking.status === 'running' ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} />
+                  {t('Marking ayat… {percent}%', { percent: Math.round(marking.progress * 100) })}
+                </>
+              ) : marking.status === 'done' ? (
+                <>
+                  <BookOpen className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  {t('{count} ayat marked', { count: marking.count })}
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  {marking.status === 'none' ? t('No ayat recognised · try again') : t('Could not mark ayat · try again')}
+                </>
+              )}
+            </button>
+          </div>
+        ) : null}
 
         <div className="relative flex min-h-0 flex-1">
           {/* Tap anywhere on the picture to listen. */}

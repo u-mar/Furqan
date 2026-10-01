@@ -34,6 +34,19 @@ export function isAsrModelDownloaded(): boolean {
   }
 }
 
+/**
+ * Deletes the downloaded model (~130 MB) from this phone. The app no longer
+ * uses it, so phones that saved it get the space back.
+ */
+export async function forgetAsrModel(): Promise<void> {
+  clearAsrModelDownloadedFlag()
+  try {
+    if (typeof caches !== 'undefined') await caches.delete(CACHE_NAME)
+  } catch {
+    /* nothing to free */
+  }
+}
+
 export function clearAsrModelDownloadedFlag(): void {
   try {
     localStorage.removeItem(FLAG_KEY)

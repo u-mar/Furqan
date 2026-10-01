@@ -20,6 +20,7 @@ import {
   Palette,
   Trash,
   UserRound,
+  UserX,
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -28,6 +29,8 @@ import AccountSheet from '@/components/settings/AccountSheet'
 import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import QariAvatar from '@/components/qari/QariAvatar'
+import BlockedAccountsSheet from '@/components/qari/BlockedAccountsSheet'
+import QariModelSection from '@/components/settings/QariModelSection'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
@@ -49,7 +52,6 @@ import {
   areTranslationsCached,
   downloadOfflineTranslations,
 } from '@/lib/offline-translations'
-import { downloadAsrModel, isAsrModelDownloaded } from '@/lib/asr/model-cache'
 import { addFeedbackMessage } from '@/lib/admin'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@/lib/i18n'
@@ -137,6 +139,7 @@ export default function SettingsPage() {
   const language = useLanguage()
   const [returnHref, setReturnHref] = useState('/')
   const [user, setUser] = useState<AppUser | null>(null)
+  const [blockedOpen, setBlockedOpen] = useState(false)
   const [theme, setTheme] = useState<ThemeMode>('light')
   const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('spaced')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
@@ -152,11 +155,6 @@ export default function SettingsPage() {
   const [translationProgress, setTranslationProgress] = useState(0)
   const [translationProgressLabel, setTranslationProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [asrModelDownloaded, setAsrModelDownloaded] = useState(false)
-  const [downloadingAsrModel, setDownloadingAsrModel] = useState(false)
-  const [asrProgress, setAsrProgress] = useState(0)
-  const [asrProgressLabel, setAsrProgressLabel] = useState('')
-  const [asrError, setAsrError] = useState<string | null>(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [sendingFeedback, setSendingFeedback] = useState(false)
   const [sheet, setSheet] = useState<SheetName | null>(null)
@@ -185,7 +183,6 @@ export default function SettingsPage() {
     setVerseWallpapers(s.verseWallpapersEnabled)
     setTajweed(s.tajweed)
     setReadingMode(s.readingMode)
-    setAsrModelDownloaded(isAsrModelDownloaded())
     refreshProfile()
     window.addEventListener('auth-user-changed', refreshProfile)
     return () => {
@@ -271,24 +268,6 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : tr('Translation download failed'))
     } finally {
       setDownloadingEdition(null)
-    }
-  }
-
-  async function handleDownloadAsrModel() {
-    setDownloadingAsrModel(true)
-    setAsrError(null)
-    setAsrProgress(0)
-    setAsrProgressLabel('')
-    try {
-      await downloadAsrModel((p) => {
-        setAsrProgress(p.percent)
-        setAsrProgressLabel(p.label)
-      })
-      setAsrModelDownloaded(true)
-    } catch (err) {
-      setAsrError(err instanceof Error ? err.message : tr('Speech model download failed'))
-    } finally {
-      setDownloadingAsrModel(false)
     }
   }
 
@@ -439,55 +418,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* Hifdh Test */}
-        <SectionLabel>{t('Hifdh Test')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
-          <div className="flex items-center justify-between gap-3 px-3.5 py-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                  asrModelDownloaded
-                    ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
-                    : 'bg-[var(--home-track)] text-[var(--home-muted)]'
-                )}
-                aria-hidden
-              >
-                {asrModelDownloaded ? (
-                  <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-                ) : (
-                  <Download className="h-4 w-4" strokeWidth={1.9} />
-                )}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--home-heading)]">{t('Speech recognition')}</p>
-                <p className="text-xs text-[var(--home-muted)]">
-                  {asrModelDownloaded ? t('Saved offline') : t('Needed for voice recitation checking')}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={downloadingAsrModel}
-              onClick={() => void handleDownloadAsrModel()}
-              aria-label={asrModelDownloaded ? t('Re-download {label}', { label: t('Speech recognition') }) : t('Download {label}', { label: t('Speech recognition') })}
-              className={cn(
-                'ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
-                asrModelDownloaded
-                  ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
-                  : 'ed-ink'
-              )}
-            >
-              {asrModelDownloaded ? t('Re-download') : t('Download')}
-            </button>
-          </div>
-          {downloadingAsrModel ? (
-            <div className="px-3.5 pb-3">
-              <ProgressBar percent={asrProgress} label={asrProgressLabel} />
-            </div>
-          ) : null}
-        </div>
-        {asrError ? <ErrorNote>{asrError}</ErrorNote> : null}
+        <QariModelSection />
 
         {/* Language */}
         <SectionLabel>{t('App language')}</SectionLabel>
@@ -525,6 +456,12 @@ export default function SettingsPage() {
         {/* Account actions */}
         {user ? (
           <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
+            <button type="button" className="set-row" onClick={() => setBlockedOpen(true)}>
+              <RowIcon icon={UserX} tone="neutral" />
+              <span className="set-row__label">{t('Blocked accounts')}</span>
+              <RowChevron />
+            </button>
+            <Divider />
             <button type="button" className="set-row" onClick={handleLogout}>
               <RowIcon icon={LogOut} tone="neutral" />
               <span className="set-row__label">{t('Sign out')}</span>
@@ -539,6 +476,8 @@ export default function SettingsPage() {
 
         <p className="home-serif mt-8 text-center text-sm italic text-[var(--home-muted)]">{t('For Sadaqah Jariyah')}</p>
       </div>
+
+      <BlockedAccountsSheet open={blockedOpen} viewer={user} onClose={() => setBlockedOpen(false)} />
 
       {/* Mushaf page */}
       <SettingsSheet

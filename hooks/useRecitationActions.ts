@@ -5,6 +5,7 @@ import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import { tr } from '@/lib/i18n-core'
 import { deleteRecitation, reportRecitation, setRecitationPrivacy, type Recitation } from '@/lib/qari'
+import { blockUser } from '@/lib/qari-blocks'
 
 /**
  * What can be done to one recitation besides playing it — delete, make
@@ -86,8 +87,24 @@ export function useRecitationActions({
     [onNotice, recitation.id, viewerId]
   )
 
+  /** Blocks whoever posted it: their posts leave every list at once, this one included. */
+  const handleBlock = useCallback(async () => {
+    if (!viewerId || !viewerUsername) {
+      askToSignIn({ reason: tr('Create a free account to block someone.') })
+      return
+    }
+    try {
+      await blockUser({ id: viewerId, username: viewerUsername }, recitation.userUsername)
+      onNotice?.(tr('Blocked @{username}. You won’t see their posts.', { username: recitation.userUsername }))
+      onRemoved?.(recitation.id)
+    } catch (err) {
+      onNotice?.(err instanceof Error ? err.message : tr('Could not change that.'))
+    }
+  }, [onNotice, onRemoved, recitation.id, recitation.userUsername, viewerId, viewerUsername])
+
   return {
     isOwner,
+    handleBlock,
     isPrivate,
     removing,
     shareOpen,

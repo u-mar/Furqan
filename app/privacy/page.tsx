@@ -67,7 +67,6 @@ export default function PrivacyPage() {
         <li>Surahs, recitations and translations you download for offline use</li>
         <li>The location you choose for prayer times, and the times calculated from it</li>
         <li>A Qari recording you have made but not yet posted (a draft)</li>
-        <li>The voice-search model, once downloaded (see section 4)</li>
       </ul>
 
       <h2 id="collect">3. Information we collect</h2>
@@ -104,6 +103,7 @@ export default function PrivacyPage() {
       <ul>
         <li>The posts you like, so they appear in your Favourites</li>
         <li>The people you follow, and who follows you</li>
+        <li>The people you block, so their posts and notifications stay out of sight</li>
         <li>Notifications about your posts and followers (for example, a new like or follower)</li>
         <li>
           Reports you make about a post: who made the report, which post it concerns, and the reason
@@ -159,8 +159,10 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Microphone.</strong> Used only while you are recording in Qari or using voice search.
-          Recordings are uploaded only when you choose to post them. Voice search runs entirely on your
-          device: the model is downloaded once, and what you say is never sent to us or anyone else.
+          Recordings are uploaded only when you choose to post them. Voice search uses your device&rsquo;s
+          own speech recognition, provided by your browser or phone (for example Google or Apple), which
+          may process what you say on its own servers under its own privacy policy. We do not receive or
+          keep it &mdash; only the words it recognises are used, to search the Quran on your device.
         </li>
         <li>
           <strong>Location.</strong> Used only to calculate prayer times and the qibla direction, on your
@@ -222,9 +224,6 @@ export default function PrivacyPage() {
           videos.
         </li>
         <li>
-          <strong>Cloudflare</strong> &mdash; serves the voice-search model when it is first downloaded.
-        </li>
-        <li>
           <strong>Hugging Face</strong> &mdash; when you share part of an ayah, the ayah&rsquo;s reference, its
           Arabic words and its published translation may be sent to an AI model hosted through Hugging
           Face to find the matching part of the translation. Nothing about you is included.
@@ -281,7 +280,8 @@ export default function PrivacyPage() {
           <strong>Delete your account</strong> in Settings &rarr; Delete account. This permanently removes
           your account, every post you published with its audio or picture, your profile picture, your
           likes, follows and notifications, and reports you made or that concern your posts. It cannot
-          be undone.
+          be undone. If you can&rsquo;t open the app, see{' '}
+          <a href="/delete-account">how to ask us to delete it</a>.
         </li>
         <li>
           <strong>Delete or hide a post</strong> from its menu, by deleting it or making it private.

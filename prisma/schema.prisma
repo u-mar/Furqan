@@ -125,6 +125,21 @@ model QariFollow {
   @@index([followingUsername])
 }
 
+/// One person blocking another in Qari. The blocker stops seeing the blocked
+/// person's posts and notifications, follows between them end, and the blocked
+/// person can no longer follow the blocker. Usernames are lower-case.
+model QariBlock {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  blockerId       String
+  blockerUsername String
+  blockedUsername String
+  createdAt       DateTime @default(now())
+
+  @@index([blockerId])
+  @@index([blockerUsername])
+  @@index([blockedUsername])
+}
+
 /// Profile picture for a qari. Keyed by username because accounts can be
 /// local-only (`local_<username>` ids) as well as database-backed.
 model QariAvatar {

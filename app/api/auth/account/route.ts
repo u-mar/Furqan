@@ -80,6 +80,7 @@ export async function DELETE(req: Request) {
       where: { OR: [{ recipientUsername: username }, { actorUsername: username }, { recitationId: { in: recitationIds } }] },
     })
     await prisma.pushSubscription.deleteMany({ where: { username } })
+    await prisma.qariBlock.deleteMany({ where: { OR: [{ blockerUsername: username }, { blockedUsername: username }] } })
     if (avatar) await prisma.qariAvatar.delete({ where: { username } })
     if (account) await prisma.user.delete({ where: { id: account.id } })
 

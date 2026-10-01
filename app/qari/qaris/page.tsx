@@ -15,6 +15,7 @@ import {
   useViewer,
 } from '@/components/qari/QariShell'
 import { fetchQaris, type QariSummary } from '@/lib/qari'
+import { useBlockedUsers } from '@/lib/qari-blocks'
 import { useT } from '@/lib/i18n'
 
 type Tab = 'all' | 'following'
@@ -27,6 +28,8 @@ export default function QarisPage() {
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<QariSummary[] | null>(null)
+  // Someone you blocked isn't offered here either.
+  const blockedUsers = useBlockedUsers(viewer)
   const [failed, setFailed] = useState(false)
   const loads = useRef(0)
 
@@ -106,7 +109,7 @@ export default function QarisPage() {
           )
         ) : (
           <div className="home-card overflow-hidden rounded-2xl">
-            {items.map((qari, i) => {
+            {items.filter((q) => !blockedUsers.has(q.username.toLowerCase())).map((qari, i) => {
               const isMe = me === qari.username.toLowerCase()
               return (
                 <Fragment key={qari.username}>

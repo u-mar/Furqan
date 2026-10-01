@@ -5,6 +5,7 @@ import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
 import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, MAX_IMAGE_BYTES, putAudio, putImage } from '@/lib/qari-storage'
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
+import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
 
 export const runtime = 'nodejs'
 
@@ -100,6 +101,10 @@ export async function GET(request: NextRequest) {
   const sheikhQuery = query && !imitating ? matchSheikh(query) : null
 
   try {
+    // People this viewer blocked are left out everywhere; their own profile shows nothing.
+    const blocked = await blockedUsernamesFor(viewerId)
+    if (username && blocked.includes(username.toLowerCase())) return NextResponse.json({ items: [], hasMore: false })
+
     // Only the people this viewer follows.
     let followingFilter: { userUsername: { in: string[] } } | null = null
     if (onlyFollowing) {
@@ -164,6 +169,7 @@ export async function GET(request: NextRequest) {
       ...(imitating ? { imitating } : {}),
       ...(likedFilter ?? {}),
       ...search,
+      ...(blocked.length ? { AND: [{ userUsername: { notIn: blocked } }] } : {}),
     }
 
     const recitations = await prisma.recitation.findMany({

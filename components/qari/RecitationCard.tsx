@@ -68,6 +68,7 @@ function RecitationCard({
     handleTogglePrivacy,
     handleReportTap,
     handleReportReason,
+    handleBlock,
   } = useRecitationActions({ recitation, viewerId, viewerUsername, onRemoved, onUpdated, onNotice })
 
   const isCurrent = player.current?.id === recitation.id
@@ -119,6 +120,8 @@ function RecitationCard({
       onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
       onReport={handleReportTap}
       onDelete={() => void handleDelete()}
+      blockUsername={recitation.userUsername}
+      onBlock={() => void handleBlock()}
     />
   )
 

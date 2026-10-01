@@ -1,0 +1,13 @@
+# What `gcloud run deploy --source .` leaves behind. Unlike .gitignore, the
+# model IS uploaded: it is built into the image.
+.gcloudignore
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+selftest.py
+quantize.py
+model/demo/
+model/*.nemo
+model/head/
+model/tajweed/

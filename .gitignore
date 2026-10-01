@@ -43,5 +43,7 @@ download-quran-log.txt
 # The tiny CMVN/tokenizer JSON files next to it ARE committed (see
 # public/models/asr/.gitignore), since they're a few KB and always needed.
 public/models/asr/model.q8.onnx
+# The offline model Qari uses to mark ayat (served to phones, not kept in git)
+public/models/asr/qari-offline.onnx
 public/models/asr/*.npz
 public/models/asr/tokenizer.model

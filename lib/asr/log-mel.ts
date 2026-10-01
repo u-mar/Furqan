@@ -49,7 +49,7 @@ function reflectPad(x: Float32Array, pad: number): Float32Array {
 }
 
 /** In-place iterative radix-2 Cooley-Tukey FFT; `re`/`im` length must be a power of two. */
-function fft(re: Float64Array, im: Float64Array): void {
+export function fft(re: Float64Array, im: Float64Array): void {
   const n = re.length
   for (let i = 1, j = 0; i < n; i++) {
     let bit = n >> 1
@@ -135,7 +135,7 @@ function buildMelFilterbank(sampleRate: number, nFft: number, nMels: number): Fl
 }
 
 const WINDOW = hannWindowPeriodic(WIN_LENGTH)
-const MEL_FB = buildMelFilterbank(SAMPLE_RATE, N_FFT, N_MELS)
+export const MEL_FB = buildMelFilterbank(SAMPLE_RATE, N_FFT, N_MELS)
 // torch.stft pads a shorter window to n_fft, centered — so each frame's real
 // samples that get non-zero weight are offset by this much into the n_fft
 // window, not left-aligned. Getting this wrong silently shifts every frame

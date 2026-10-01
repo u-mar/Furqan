@@ -25,8 +25,12 @@ export async function GET(request: NextRequest) {
     const unread = await prisma.notification.count({ where: { recipientUsername: username, readAt: null } })
     if (countOnly) return NextResponse.json({ unread })
 
+    // Anything from someone this person blocked stays out of sight.
+    const blocked = (
+      await prisma.qariBlock.findMany({ where: { blockerUsername: username }, select: { blockedUsername: true } })
+    ).map((b) => b.blockedUsername)
     const rows = await prisma.notification.findMany({
-      where: { recipientUsername: username },
+      where: { recipientUsername: username, ...(blocked.length ? { actorUsername: { notIn: blocked } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: PAGE,
     })
