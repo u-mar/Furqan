@@ -3,6 +3,8 @@
 import { useSyncExternalStore } from 'react'
 import { rememberRecitationBackground } from '@/lib/qari-backgrounds'
 import { clearDraft } from '@/lib/qari-drafts'
+import { isQariAsrModelReady } from '@/lib/asr/offline-model-cache'
+import { startMarking } from '@/lib/qari-ayah-marks'
 import {
   primeRecitationAudio,
   publishAyahCard,
@@ -21,6 +23,8 @@ import { toast } from '@/lib/toast'
  * moves on, like TikTok: the upload carries on here, outside any one screen,
  * and the profile shows how far along it is.
  *
+ *   marking    → the recording is being listened to for its ayat, on the phone
+ *                (only when that has not finished by the time it is posted)
  *   uploading  → going up (progress 0–1)
  *   processing → all of it has arrived and the server is saving it. When the
  *                ayah-marking model is added, it runs in this stage too.
@@ -28,7 +32,7 @@ import { toast } from '@/lib/toast'
  *   failed     → kept, with the reason, until it is tried again or dropped
  */
 
-export type UploadStage = 'uploading' | 'processing' | 'done' | 'failed'
+export type UploadStage = 'marking' | 'uploading' | 'processing' | 'done' | 'failed'
 
 export interface QariUpload {
   /** A local id — the server's is only known once it is done. */
@@ -45,6 +49,8 @@ export interface QariUpload {
 }
 
 interface Job {
+  /** Anything to finish before sending, reporting 0–1 as it goes. */
+  prepare?: (onProgress: (fraction: number) => void) => Promise<void>
   send: (onProgress: (fraction: number) => void) => Promise<string>
   /** How it appears on the profile once it has its id. */
   posted: (id: string) => Recitation
@@ -71,7 +77,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
-const sending = () => uploads.some((u) => u.stage === 'uploading' || u.stage === 'processing')
+const sending = () => uploads.some((u) => u.stage === 'marking' || u.stage === 'uploading' || u.stage === 'processing')
 
 /** Leaving the app while something is still going up would lose it, so the browser asks first. */
 function guardUnload(event: BeforeUnloadEvent) {
@@ -83,11 +89,15 @@ function guardUnload(event: BeforeUnloadEvent) {
 async function run(key: string) {
   const job = jobs.get(key)
   if (!job) return
-  patch(key, { stage: 'uploading', progress: 0, error: null })
+  patch(key, { stage: job.prepare ? 'marking' : 'uploading', progress: 0, error: null })
   window.addEventListener('beforeunload', guardUnload)
 
   let shownAt = 0
   try {
+    if (job.prepare) {
+      await job.prepare((fraction) => patch(key, { progress: fraction }))
+      patch(key, { stage: 'uploading', progress: 0 })
+    }
     const id = await job.send((fraction) => {
       // Enough to move the number smoothly without re-drawing on every packet.
       const now = performance.now()
@@ -116,7 +126,10 @@ function start(upload: Omit<QariUpload, 'key' | 'stage' | 'progress' | 'error' |
 }
 
 /** Starts posting a recitation and returns at once; follow it with useUploads. */
-export function postRecitation(input: PublishInput): string {
+export function postRecitation(input: PublishInput, options: { markFrom?: Blob } = {}): string {
+  // Ayat found by listening to the recording, when it is posted before the screen finished doing that.
+  let verseTimeline = input.verseTimeline
+  const waitForMarking = options.markFrom && input.verseTimeline.length === 0 && isQariAsrModelReady() ? options.markFrom : null
   return start(
     {
       title: input.title,
@@ -125,7 +138,21 @@ export function postRecitation(input: PublishInput): string {
       userUsername: input.userUsername,
     },
     {
-      send: (onProgress) => publishRecitation(input, onProgress),
+      prepare: waitForMarking
+        ? async (onProgress) => {
+            try {
+              const marking = startMarking(waitForMarking)
+              marking.listeners.add(onProgress)
+              onProgress(marking.progress)
+              const result = await marking.promise
+              marking.listeners.delete(onProgress)
+              if (result) verseTimeline = result.timeline
+            } catch {
+              // Not hearing the ayat must never stop a recitation being posted.
+            }
+          }
+        : undefined,
+      send: (onProgress) => publishRecitation({ ...input, verseTimeline }, onProgress),
       afterPosted: (id) => {
         primeRecitationAudio(id, input.blob)
         rememberRecitationBackground(input.background)
@@ -144,7 +171,7 @@ export function postRecitation(input: PublishInput): string {
         isPrivate: input.isPrivate,
         imitating: input.imitating || null,
         peaks: input.peaks,
-        verseTimeline: input.verseTimeline,
+        verseTimeline,
         background: input.background,
         caption: input.caption,
         durationSec: input.durationSec,

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { downloadQariAsrModel, isQariAsrModelReady, onQariAsrModelChange } from '@/lib/asr/offline-model-cache'
-import { markRecitationAyat } from '@/lib/qari-ayah-marks'
+import { cancelMarking, startMarking } from '@/lib/qari-ayah-marks'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 import { toast } from '@/lib/toast'
@@ -29,6 +29,7 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
     return onQariAsrModelChange(() => setModelReady(isQariAsrModelReady()))
   }, [])
 
+  /** Stops following (leaving the screen). The marking itself carries on: an upload may be waiting on it. */
   const cancel = useCallback(() => {
     if (jobRef.current) jobRef.current.cancelled = true
     jobRef.current = null
@@ -36,8 +37,10 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
 
   useEffect(() => cancel, [cancel])
 
+  /** Starting over (a new take, or none): follow nothing, and stop the marking too. */
   const reset = useCallback(() => {
     cancel()
+    cancelMarking()
     setStatus('idle')
     setProgress(0)
     setCount(0)
@@ -52,13 +55,16 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
       setStatus('running')
       setProgress(0)
       setError(null)
+      let unsubscribe = () => {}
       try {
-        const result = await markRecitationAyat(blob, {
-          signal: job,
-          onProgress: (fraction) => {
-            if (!job.cancelled) setProgress(fraction)
-          },
-        })
+        const marking = startMarking(blob)
+        const listener = (fraction: number) => {
+          if (!job.cancelled) setProgress(fraction)
+        }
+        marking.listeners.add(listener)
+        unsubscribe = () => marking.listeners.delete(listener)
+        setProgress(marking.progress)
+        const result = await marking.promise
         if (job.cancelled) return
         if (!result) {
           setStatus('none')
@@ -75,6 +81,7 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
         // Said out loud: a marking that quietly does nothing looks like it never ran.
         toast(message, 'error')
       } finally {
+        unsubscribe()
         if (jobRef.current === job) jobRef.current = null
       }
     },

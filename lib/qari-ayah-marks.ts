@@ -68,3 +68,48 @@ export async function markRecitationAyat(blob: Blob, options: MarkingOptions = {
   if (marking.timeline.length === 0 || marking.coverage < MIN_COVERAGE) return null
   return { timeline: marking.timeline, marking, recognition }
 }
+
+/**
+ * The marking of one recording, owned here rather than by any screen: the
+ * record screen shows how it is going, and if the recording is posted before
+ * it is done, the upload waits for the same job instead of starting again or
+ * losing it when the screen closes.
+ */
+export interface MarkingJob {
+  blob: Blob
+  promise: Promise<MarkingResult | null>
+  progress: number
+  listeners: Set<(fraction: number) => void>
+  signal: { cancelled: boolean }
+}
+
+let currentJob: MarkingJob | null = null
+
+/** Starts marking `blob`, or hands back the job already doing it. Another recording's job is stopped. */
+export function startMarking(blob: Blob): MarkingJob {
+  if (currentJob && currentJob.blob === blob && !currentJob.signal.cancelled) return currentJob
+  cancelMarking()
+  const job: MarkingJob = { blob, promise: Promise.resolve(null), progress: 0, listeners: new Set(), signal: { cancelled: false } }
+  job.promise = markRecitationAyat(blob, {
+    signal: job.signal,
+    onProgress: (fraction) => {
+      job.progress = fraction
+      for (const listener of job.listeners) listener(fraction)
+    },
+  })
+  // A job nobody is waiting on must not leave an unhandled rejection behind.
+  job.promise.catch(() => {})
+  currentJob = job
+  return job
+}
+
+/** Stops the job in progress, if any (a new recording, or none wanted). */
+export function cancelMarking(): void {
+  if (currentJob) currentJob.signal.cancelled = true
+  currentJob = null
+}
+
+/** The job marking `blob`, if there is one. */
+export function markingJobFor(blob: Blob): MarkingJob | null {
+  return currentJob && currentJob.blob === blob && !currentJob.signal.cancelled ? currentJob : null
+}

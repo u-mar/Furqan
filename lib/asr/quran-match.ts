@@ -93,7 +93,10 @@ function similarity(a: string, b: string): number {
 
 const MATCH_AT_LEAST = 0.7
 const ANCHOR_WORDS = 16
-const COMMON_WORD = 300
+/** A word in more places than this says nothing about where we are. */
+const COMMON_WORD = 1500
+/** How much the words that line up must tell us together, in nats (sum of ln(total / occurrences)). */
+const ANCHOR_EVIDENCE = 20
 const LOST_AFTER = 6
 const BACK_MISSES = 2
 
@@ -111,7 +114,7 @@ function findAnchor(heard: string[], from: number, index: QuranWordIndex): Ancho
     const places = index.byWord.get(heard[i])
     if (!places || places.length > COMMON_WORD) continue
     // A word found in few places says more about where we are than a common one.
-    const weight = 1 / places.length
+    const weight = Math.log(index.norm.length / places.length)
     for (const p of places) votes.push({ offset: p - i, weight, word: i })
   }
   if (votes.length === 0) return null
@@ -136,7 +139,7 @@ function findAnchor(heard: string[], from: number, index: QuranWordIndex): Ancho
       best = { offset: Math.round((votes[left].offset + votes[right].offset) / 2), hits: inWindow.size, weight }
     }
   }
-  return best && best.weight >= 1.1 ? best : null
+  return best && best.weight >= ANCHOR_EVIDENCE ? best : null
 }
 
 export interface AyahMark {
@@ -161,6 +164,56 @@ export interface AyahMarking {
   heard: number
   /** matched / heard, 0–1. */
   coverage: number
+}
+
+const TAAWWUDH = ['اعوذ', 'بالله', 'من', 'الشيطان', 'الرجيم']
+const BASMALAH = ['بسم', 'الله', 'الرحمن', 'الرحيم']
+
+interface Preface {
+  /** Heard words that are the taʿawwudh or the basmalah, not part of what is recited. */
+  skip: Set<number>
+  /** Where the basmalah starts, in heard words, or -1. */
+  basmalahAt: number
+}
+
+/**
+ * Most recitations open with "I seek refuge in Allah from the accursed
+ * Satan" and "In the name of Allah, the Most Gracious, the Most Merciful".
+ * Neither belongs to the ayat that follow, and both are made of words that
+ * begin the Quran itself (the basmalah is the first ayah of Al-Fatiha), so
+ * left in they send the search to the wrong place. They are found, set aside,
+ * and the basmalah's position kept for when the recitation is Al-Fatiha.
+ */
+function findPreface(heard: string[]): Preface {
+  const skip = new Set<number>()
+  const hits = (from: number, words: string[]) => words.filter((w, k) => heard[from + k] !== undefined && similarity(heard[from + k], w) >= MATCH_AT_LEAST).length
+
+  let end = 0
+  let bestFrom = -1
+  let bestHits = 0
+  for (let from = 0; from <= 8 && from < heard.length; from++) {
+    const n = hits(from, TAAWWUDH)
+    if (n > bestHits) {
+      bestHits = n
+      bestFrom = from
+    }
+  }
+  if (bestHits >= 3) {
+    for (let k = 0; k < TAAWWUDH.length && bestFrom + k < heard.length; k++) skip.add(bestFrom + k)
+    end = Math.min(heard.length, bestFrom + TAAWWUDH.length)
+  }
+
+  let basmalahAt = -1
+  for (let from = end; from <= end + 5 && from + 2 < heard.length; from++) {
+    // "بسم" has three letters, so it is only ever taken exactly.
+    if (heard[from] !== BASMALAH[0]) continue
+    if (hits(from + 1, BASMALAH.slice(1)) >= 2) {
+      basmalahAt = from
+      for (let k = 0; k < BASMALAH.length && from + k < heard.length; k++) skip.add(from + k)
+      break
+    }
+  }
+  return { skip, basmalahAt }
 }
 
 /** A little before the word is heard, since a model places a word as it ends. */
@@ -333,6 +386,8 @@ function extendBackward(heard: string[], index: QuranWordIndex, assigned: number
 
 export function markAyat(heardWords: HeardWord[], index: QuranWordIndex, normalize: (text: string) => string): AyahMarking {
   const heard = heardWords.map((w) => normalize(w.word))
+  const preface = findPreface(heard)
+  for (const i of preface.skip) heard[i] = ''
   const assigned = followForward(heard, index)
   dropStrays(assigned)
   refitSmallRuns(heard, index, assigned)
@@ -394,7 +449,13 @@ export function markAyat(heardWords: HeardWord[], index: QuranWordIndex, normali
   // The basmalah is the first ayah of the Fatiha, but before any other surah it is not part of it.
   if (kept.length >= 2 && kept[0].verseKey === '1:1' && kept[1].verseKey.split(':')[0] !== '1') kept.shift()
 
+  // The basmalah is the first ayah of Al-Fatiha: when what follows it is the second, it was recited.
+  const basmalahFirst = preface.basmalahAt >= 0 && kept.length > 0 && kept[0].verseKey === '1:2'
+
   const timeline: AyahMark[] = []
+  if (basmalahFirst) {
+    timeline.push({ verseKey: '1:1', atSeconds: Math.round(Math.max(0, heardWords[preface.basmalahAt].start - LEAD_SECONDS) * 10) / 10 })
+  }
   for (const group of kept) {
     const at = Math.max(0, heardWords[group.first].start - LEAD_SECONDS)
     const previous = timeline[timeline.length - 1]

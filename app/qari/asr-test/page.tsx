@@ -117,6 +117,7 @@ export default function AsrTestPage() {
       const index = buildQuranWordIndex(data.verses, normalizeArabic)
       const marking = markAyat(recognition.words, index, normalizeArabic)
       setReport([
+        `Quran word list: ${index.norm.length} words from ${data.verses.length} ayat (first: ${index.norm.slice(0, 4).join(' ')})`,
         `${marking.timeline.length} ayat, ${marking.matched} of ${marking.heard} words matched (${Math.round(marking.coverage * 100)}%)`,
         ...marking.timeline.map((e) => `${e.verseKey}  at ${e.atSeconds.toFixed(1)}s`),
         '',

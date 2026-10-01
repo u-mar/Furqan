@@ -501,7 +501,7 @@ function RecordFlow() {
       userId: viewer.id,
       userName: viewer.name,
       userUsername: viewer.username,
-    })
+    }, { markFrom: state.blob })
     successFeedback()
     // To the profile, where it shows uploading at the top.
     router.replace(`/qari/${encodeURIComponent(viewer.username)}`)
