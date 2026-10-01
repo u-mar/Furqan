@@ -116,9 +116,10 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
         <p className="mt-2 text-[0.9rem] leading-relaxed text-[var(--home-muted)]">
           {t('This permanently removes @{username} and cannot be undone:', { username: user.username })}</p>
         <ul className="mt-3 space-y-1.5 text-[0.88rem] text-[var(--home-heading)]">
-          <li>{t('• Every recitation you published, and its audio')}</li>
+          <li>{t('• Every recitation and ayah card you posted')}</li>
           <li>{t('• Your profile picture')}</li>
-          <li>{t('• The recitations you saved to favourites')}</li>
+          <li>{t('• The posts you saved to favourites')}</li>
+          <li>{t('• Who you follow, your followers and your notifications')}</li>
         </ul>
         <p className="mt-3 text-[0.8rem] leading-relaxed text-[var(--home-muted)]">
           {t('Bookmarks and reading progress stored on this phone stay on this phone.')}</p>

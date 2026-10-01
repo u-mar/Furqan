@@ -27,8 +27,6 @@ export function usePageTranslations(
   const [loading, setLoading] = useState(false)
   const requestSeqRef = useRef(0)
   const activeEdition = editionId || DEFAULT_TRANSLATION_EDITION[translationLanguage]
-  /** Offline downloads only ever cache the language's default edition. */
-  const isDefaultEdition = activeEdition === DEFAULT_TRANSLATION_EDITION[translationLanguage]
 
   useEffect(() => {
     if (!enabled || page < 1) {
@@ -79,14 +77,13 @@ export function usePageTranslations(
     setLoading(true)
     void (async () => {
       try {
-        if (isDefaultEdition) {
-          const offlineRows = await getOfflineTranslations(page, translationLanguage)
-          if (offlineRows && offlineRows.length > 0) {
-            const normalized = normalizeRows(offlineRows)
-            if (!cancelled && seq === requestSeqRef.current) setRows(normalized)
-            if (normalized.length > 0) writeCache(normalized)
-            return
-          }
+        // A translator saved for offline reading is used before the network.
+        const offlineRows = await getOfflineTranslations(page, activeEdition)
+        if (offlineRows && offlineRows.length > 0) {
+          const normalized = normalizeRows(offlineRows)
+          if (!cancelled && seq === requestSeqRef.current) setRows(normalized)
+          if (normalized.length > 0) writeCache(normalized)
+          return
         }
 
         const response = await fetch(
@@ -110,7 +107,7 @@ export function usePageTranslations(
     return () => {
       cancelled = true
     }
-  }, [page, enabled, translationLanguage, activeEdition, isDefaultEdition, verseKeys.join(','), JSON.stringify(arabicByKey)])
+  }, [page, enabled, translationLanguage, activeEdition, verseKeys.join(','), JSON.stringify(arabicByKey)])
 
   const byKey = Object.fromEntries(rows.map((r) => [r.verse_key, r]))
 

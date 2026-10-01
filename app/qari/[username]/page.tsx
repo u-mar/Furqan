@@ -9,6 +9,7 @@ import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
+import UploadCard from '@/components/qari/UploadCard'
 import {
   QariScreen,
   qariNotice,
@@ -19,6 +20,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 import { fetchFeed, fetchFollowState, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
+import { dismissUpload, useUploads } from '@/lib/qari-upload'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
@@ -48,6 +50,28 @@ export default function QariProfilePage() {
   const [nameOverride, setNameOverride] = useState<string | null>(null)
 
   useEffect(() => onPlayerError(qariNotice), [])
+
+  // Recitations this reciter is posting right now, shown uploading at the top.
+  const uploads = useUploads()
+  const myUploads = useMemo(
+    () => (isMe ? uploads.filter((u) => u.userUsername.toLowerCase() === username.toLowerCase()) : []),
+    [isMe, uploads, username]
+  )
+
+  // A posted one joins the list proper, after a moment showing it is done.
+  useEffect(() => {
+    const finished = myUploads.filter((u) => u.stage === 'done' && u.recitation)
+    if (finished.length === 0) return
+    const id = window.setTimeout(() => {
+      setRecitations((prev) => {
+        const list = prev ?? []
+        const added = finished.flatMap((u) => (u.recitation ? [u.recitation] : [])).filter((r) => !list.some((x) => x.id === r.id))
+        return [...added, ...list]
+      })
+      for (const u of finished) dismissUpload(u.key)
+    }, 1200)
+    return () => window.clearTimeout(id)
+  }, [myUploads])
 
   const loadRecitations = useCallback(async () => {
     if (!username) return
@@ -292,6 +316,13 @@ export default function QariProfilePage() {
       </div>
 
       <div className="mt-3">
+        {tab === 'recitations' && myUploads.length > 0 ? (
+          <div className={cn('flex flex-col gap-2.5', list && list.length > 0 && 'mb-2.5')}>
+            {myUploads.map((upload) => (
+              <UploadCard key={upload.key} upload={upload} />
+            ))}
+          </div>
+        ) : null}
         {list === null ? (
           <RecitationSkeletons count={3} />
         ) : failed && tab === 'recitations' ? (
@@ -302,7 +333,7 @@ export default function QariProfilePage() {
             action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
         ) : list.length === 0 ? (
-          tab === 'favourites' ? (
+          tab === 'recitations' && myUploads.length > 0 ? null : tab === 'favourites' ? (
             <EmptyState
               Icon={Heart}
               title={t('Nothing saved yet')}

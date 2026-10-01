@@ -1184,6 +1184,9 @@ html.dark .ed-arabic .mushaf-ayah-end {
 .mushaf-root .mushaf-translation-basmalah,
 .mushaf-translation-basmalah {
   font-family: 'SurahNameV2', serif !important;
+  /* The page's own letter-spacing breaks the font's ligature, leaving only "بسم" of the ﷽. */
+  letter-spacing: 0 !important;
+  font-variant-ligatures: normal;
   font-size: clamp(1.35rem, 5vw, 1.85rem);
   line-height: 1.6;
   color: var(--mushaf-read-text);
@@ -1653,6 +1656,13 @@ html.dark .mushaf-reader {
   line-height: 1.25;
 }
 
+.privacy-prose h3 {
+  margin-top: 1.5rem;
+  font-size: 1.02rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .privacy-prose ul {
   padding-left: 1.2rem;
   list-style: disc;
@@ -1777,7 +1787,8 @@ html.dark .legal-summary li::before {
 .auth-screen {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Above every full-screen page that can ask for an account (the ayah share page is 120). */
+  z-index: 130;
   display: flex;
   flex-direction: column;
   background: var(--app-bg);
@@ -3377,6 +3388,270 @@ html.dark.black .qari-theme {
   }
 }
 
+/* ---- Qari studio: record and edit, full screen over the chosen background ---- */
+
+.qari-cam {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  background: #050707;
+  color: #f7f3ea;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Dark at the top and bottom for the controls, clear in the middle for the picture. */
+.qari-cam__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.58) 0%,
+    rgba(0, 0, 0, 0.14) 18%,
+    rgba(0, 0, 0, 0) 42%,
+    rgba(0, 0, 0, 0.16) 60%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  background-color: rgba(3, 6, 6, 0);
+  transition: background-color 0.45s ease;
+}
+
+/* While recording, the picture steps back so the voice is the focus. */
+.qari-cam__shade.is-deep {
+  background-color: rgba(3, 6, 6, 0.46);
+}
+
+.qari-cam__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
+  flex-direction: column;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.qari-glass {
+  background: rgba(14, 18, 17, 0.38);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.qari-cam-round {
+  display: flex;
+  width: 2.625rem;
+  height: 2.625rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: transform 0.12s ease;
+}
+
+.qari-cam-round:active {
+  transform: scale(0.92);
+}
+
+.qari-cam-text {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* The tools down the right edge, as in a camera app. */
+.qari-tool {
+  display: flex;
+  width: 4.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.qari-tool__icon {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: transform 0.12s ease;
+}
+
+.qari-tool:active .qari-tool__icon {
+  transform: scale(0.9);
+}
+
+.qari-tool__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* The record button: a white ring round a red dot that becomes a stop square. */
+.qari-shutter {
+  position: relative;
+  display: flex;
+  width: 5.25rem;
+  height: 5.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 5px rgba(255, 255, 255, 0.96),
+    0 8px 28px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.3s ease;
+}
+
+.qari-shutter:active {
+  transform: scale(0.94);
+}
+
+.qari-shutter:disabled {
+  opacity: 0.55;
+}
+
+.qari-shutter__core {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: #ef4f4c;
+  transition:
+    width 0.3s cubic-bezier(0.3, 0.8, 0.25, 1),
+    height 0.3s cubic-bezier(0.3, 0.8, 0.25, 1),
+    border-radius 0.3s cubic-bezier(0.3, 0.8, 0.25, 1);
+}
+
+.qari-shutter.is-live {
+  box-shadow:
+    inset 0 0 0 5px rgba(255, 255, 255, 0.28),
+    0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.qari-shutter.is-live .qari-shutter__core {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.5rem;
+}
+
+.qari-shutter__ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.qari-rec-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #ff5b57;
+  animation: qari-rec-blink 1.3s ease-in-out infinite;
+}
+
+@keyframes qari-rec-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The backgrounds to choose from, in a strip under the preview. */
+.qari-bg-strip {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  margin-inline: -1rem;
+  padding: 0.375rem 1rem 0.25rem;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+}
+
+.qari-bg-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.qari-bg-thumb {
+  display: flex;
+  width: 3.5rem;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  scroll-snap-align: center;
+}
+
+.qari-bg-thumb__img {
+  position: relative;
+  width: 3.5rem;
+  height: 4.75rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.qari-bg-thumb:active .qari-bg-thumb__img {
+  transform: scale(0.95);
+}
+
+.qari-bg-thumb[aria-checked='true'] .qari-bg-thumb__img {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 8px 18px rgba(0, 0, 0, 0.45);
+  transform: translateY(-3px);
+}
+
+.qari-bg-thumb__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.66);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.qari-bg-thumb[aria-checked='true'] .qari-bg-thumb__label {
+  color: #fff;
+}
+
+/* The post screen's buttons, kept in reach at the bottom. */
+.qari-post-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 20;
+  border-top: 1px solid var(--home-rule);
+  background: color-mix(in srgb, var(--app-bg) 90%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qari-rec-dot {
+    animation: none;
+  }
+}
+
 /* The segmented control on paper: a card with a hairline, not a sand-coloured tray. */
 .qari-theme .ed-seg {
   background: var(--home-card-bg);
@@ -3720,4 +3995,59 @@ html.dark .prayer-hero__ring-track {
   background: color-mix(in srgb, var(--app-bg) 90%, transparent);
   backdrop-filter: blur(12px) saturate(1.3);
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
+}
+
+/* ---------------- Opening splash (components/SplashScreen.tsx) ---------------- */
+
+.app-splash {
+  background: #000;
+  color: #f3ead6;
+}
+
+/* Seen this session: hidden from the first frame of a reload, before React runs. */
+html.splash-seen .app-splash {
+  display: none;
+}
+
+.app-splash__ayah {
+  overflow: visible;
+  animation: app-splash-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.app-splash__name {
+  font-family: var(--font-home-serif), Fraunces, Georgia, serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  padding-inline-start: 0.3em;
+  text-transform: uppercase;
+  color: rgba(243, 234, 214, 0.55);
+  animation: app-splash-fade 0.8s ease-out 0.3s both;
+}
+
+@keyframes app-splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes app-splash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-splash__ayah,
+  .app-splash__name {
+    animation: none;
+  }
 }

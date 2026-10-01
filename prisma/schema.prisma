@@ -61,8 +61,15 @@ model Recitation {
   userId      String
   userName    String
   userUsername String
-  /// GridFS file id for the audio.
-  audioId     String
+  /// What this post is: absent for a recitation, "ayah" for an ayah card —
+  /// a picture made on the Read screen's share page, with no audio.
+  kind        String?
+  /// GridFS file id for the audio. Absent on ayah cards.
+  audioId     String?
+  /// GridFS file id (qari_images) of an ayah card's picture.
+  imageId     String?
+  /// The ayah an ayah card shows, e.g. "13:28".
+  verseKey    String?
   mimeType    String
   durationSec Int
   sizeBytes   Int
@@ -88,6 +95,10 @@ model Recitation {
   /// made with "Read from Mushaf" open and at least one ayah marked; used to
   /// caption the share video with the real text as it's recited.
   verseTimeline Json?
+  /// What it is shown on in the swipe view and its share videos — an id from
+  /// lib/qari-backgrounds. Absent for recitations posted before it could be
+  /// chosen; those get one of the landscapes.
+  background  String?
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)

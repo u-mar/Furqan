@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const audio = await openAudio(recitation.audioId)
+    const audio = recitation.audioId ? await openAudio(recitation.audioId) : null
     if (!audio) return NextResponse.json({ error: 'Audio missing' }, { status: 404 })
 
     return new NextResponse(audio.stream as unknown as ReadableStream, {

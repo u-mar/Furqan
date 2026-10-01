@@ -11,6 +11,12 @@ export interface VerseTimelineEntry {
 
 export interface Recitation {
   id: string
+  /** 'ayah' for an ayah card — a picture made on the Read screen, with no audio. */
+  kind: 'recitation' | 'ayah'
+  /** The ayah an ayah card shows, e.g. "13:28". null for recitations. */
+  verseKey: string | null
+  /** An ayah card's picture. null for recitations. */
+  imageUrl: string | null
   userName: string
   userUsername: string
   /** What the reciter called this recording. */
@@ -27,6 +33,8 @@ export interface Recitation {
   peaks: number[]
   /** Empty unless the reciter marked ayat while reading from the Mushaf overlay. */
   verseTimeline: VerseTimelineEntry[]
+  /** What it is shown on — an id from lib/qari-backgrounds; null for those posted before it could be chosen. */
+  background: string | null
   caption: string
   durationSec: number
   likeCount: number
@@ -236,12 +244,42 @@ export interface PublishInput {
   peaks: number[]
   /** Empty when the reciter never opened the Mushaf overlay, or never tapped an ayah. */
   verseTimeline: VerseTimelineEntry[]
+  /** An id from lib/qari-backgrounds. */
+  background: string
   userId: string
   userName: string
   userUsername: string
 }
 
-export async function publishRecitation(input: PublishInput): Promise<string> {
+/**
+ * Sends a post, saying how much of it has gone (0–1) as it goes —
+ * XMLHttpRequest rather than fetch, because only it reports an upload's
+ * progress. Resolves with the new post's id.
+ */
+function sendPost(form: FormData, onProgress?: (fraction: number) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/qari')
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total)
+    }
+    xhr.onload = () => {
+      let data: { id?: string; error?: string } = {}
+      try {
+        data = JSON.parse(xhr.responseText) as typeof data
+      } catch {
+        /* not JSON — falls through to the generic message */
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data.id) resolve(data.id)
+      else reject(new Error(data.error || tr('Could not publish.')))
+    }
+    xhr.onerror = () => reject(new Error(tr('No connection. Your recitation is kept — try again.')))
+    xhr.send(form)
+  })
+}
+
+/** Sends a recording and everything about it. Resolves with the new recitation's id. */
+export function publishRecitation(input: PublishInput, onProgress?: (fraction: number) => void): Promise<string> {
   const form = new FormData()
   const ext = input.mimeType.includes('mp4') ? 'm4a' : input.mimeType.includes('ogg') ? 'ogg' : 'webm'
   form.append('audio', input.blob, `recitation.${ext}`)
@@ -254,14 +292,40 @@ export async function publishRecitation(input: PublishInput): Promise<string> {
   form.append('imitating', input.imitating)
   form.append('peaks', JSON.stringify(input.peaks))
   form.append('verseTimeline', JSON.stringify(input.verseTimeline))
+  form.append('background', input.background)
   form.append('userId', input.userId)
   form.append('userName', input.userName)
   form.append('userUsername', input.userUsername)
+  return sendPost(form, onProgress)
+}
 
-  const res = await fetch('/api/qari', { method: 'POST', body: form })
-  const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string }
-  if (!res.ok || !data.id) throw new Error(data.error || tr('Could not publish.'))
-  return data.id
+/** An ayah card made on the Read screen's share page, to post to Qari as a picture. */
+export interface AyahCardInput {
+  image: Blob
+  verseKey: string
+  /** e.g. "Ar-Ra'd 13:28". */
+  title: string
+  caption: string
+  hashtags: string
+  isPrivate: boolean
+  userId: string
+  userName: string
+  userUsername: string
+}
+
+export function publishAyahCard(input: AyahCardInput, onProgress?: (fraction: number) => void): Promise<string> {
+  const form = new FormData()
+  form.append('kind', 'ayah')
+  form.append('image', input.image, `ayah-${input.verseKey.replace(':', '-')}.jpg`)
+  form.append('verseKey', input.verseKey)
+  form.append('title', input.title)
+  form.append('caption', input.caption)
+  form.append('hashtags', input.hashtags)
+  form.append('isPrivate', String(input.isPrivate))
+  form.append('userId', input.userId)
+  form.append('userName', input.userName)
+  form.append('userUsername', input.userUsername)
+  return sendPost(form, onProgress)
 }
 
 /**

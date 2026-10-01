@@ -19,8 +19,7 @@ import {
 import {
   DEFAULT_TRANSLATION_EDITION,
   getTranslationOption,
-  isRtlTranslationLanguage,
-  languageForEdition,
+  isRtlTranslationEdition,
   type TranslationLanguageId,
 } from '@/lib/translations'
 import type { Chapter, Verse, VerseWord } from '@/types'
@@ -229,7 +228,8 @@ function TranslationAyahArticle({
 }
 
 const AYAH_STACK_GAP_PX = 20
-const SCROLL_TOP_PAD_PX = 12
+/** Room above a scrolled-to ayah, enough to clear the top bar when it is showing. */
+const SCROLL_TOP_PAD_PX = 28
 // The scroll container (app/read/page.tsx) reserves `pb-36` (144px) at its
 // bottom so the fixed playback bar never sits over real content once
 // scrolled to the end. That reserved strip is still part of clientHeight
@@ -288,7 +288,7 @@ export default function MushafTranslationView({
   )
   const activeEdition = translationEditionId || DEFAULT_TRANSLATION_EDITION[translationLanguage]
   const translator = getTranslationOption(activeEdition).label
-  const rtl = isRtlTranslationLanguage(languageForEdition(activeEdition))
+  const rtl = isRtlTranslationEdition(activeEdition)
   const verseKeys = verses.map((v) => v.verse_key)
   const arabicByKey = Object.fromEntries(
     verses.map((v) => [v.verse_key, getVerseArabicText(v, { omitEndMark: true })])

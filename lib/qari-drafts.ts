@@ -28,6 +28,8 @@ export interface QariDraftMeta {
   peaks: number[]
   /** Ayat marked while reading from the Mushaf, oldest first. Empty otherwise. */
   verseTimeline: { verseKey: string; atSeconds: number }[]
+  /** The background chosen for it — an id from lib/qari-backgrounds. Missing on drafts from before. */
+  background?: string
   savedAt: number
 }
 
@@ -53,13 +55,23 @@ function writeMeta(meta: QariDraftMeta): void {
   }
 }
 
-/** The recording itself — saved the moment a take is ready, before anything else is even filled in. */
-export async function saveDraftAudio(blob: Blob, mimeType: string, durationSec: number): Promise<void> {
+/**
+ * The recording itself — saved the moment a take is ready, before anything
+ * else is even filled in. `fresh` is a new take: it starts from `fields` (read
+ * once the audio is stored, so nothing chosen meanwhile is lost) rather than
+ * keeping the details of the draft it replaces.
+ */
+export async function saveDraftAudio(
+  blob: Blob,
+  mimeType: string,
+  durationSec: number,
+  { fresh = false, fields }: { fresh?: boolean; fields?: () => Partial<QariDraftMeta> } = {}
+): Promise<void> {
   if (typeof caches === 'undefined') return
   try {
     const cache = await caches.open(DRAFT_CACHE)
     await cache.put(DRAFT_AUDIO_URL, new Response(blob, { headers: { 'Content-Type': mimeType } }))
-    const existing = readMeta()
+    const existing = fresh ? null : readMeta()
     writeMeta({
       title: existing?.title ?? '',
       hashtags: existing?.hashtags ?? '',
@@ -69,6 +81,8 @@ export async function saveDraftAudio(blob: Blob, mimeType: string, durationSec: 
       space: existing?.space ?? 'reciter',
       peaks: existing?.peaks ?? [],
       verseTimeline: existing?.verseTimeline ?? [],
+      background: existing?.background,
+      ...fields?.(),
       mimeType,
       durationSec,
       savedAt: Date.now(),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { removeAudio } from '@/lib/qari-storage'
+import { removeAudio, removeImage } from '@/lib/qari-storage'
 import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
 
 export const runtime = 'nodejs'
@@ -119,7 +119,8 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       return NextResponse.json({ error: 'Not yours to delete.' }, { status: 403 })
     }
 
-    await removeAudio(recitation.audioId)
+    if (recitation.audioId) await removeAudio(recitation.audioId)
+    if (recitation.imageId) await removeImage(recitation.imageId)
     await prisma.recitationLike.deleteMany({ where: { recitationId: id } })
     await prisma.recitation.delete({ where: { id } })
 

@@ -52,6 +52,8 @@ export interface Reciter {
   folder: string
   /** Full-surah MP3 base URL on mp3quran.net (used by Listen). */
   mp3quranBase: string
+  /** Where a surah's file lives when it is not `<base>/001.mp3`; `{n}` is the surah number. */
+  surahUrlTemplate?: string
   /** Narration this recitation follows. */
   qiraat: QiraatId
   /** Recitation pace/style. */
@@ -413,6 +415,18 @@ export const RECITERS: Reciter[] = [
     qiraat: 'hafs',
     style: 'Murattal',
     accent: A.rose,
+  },
+  {
+    id: 'hadi_toure',
+    photoUrl: '/reciters/hadi-toure.jpg',
+    name: 'Hadi Toure',
+    source: 'mp3quran',
+    folder: 'https://download.quranicaudio.com/qdc/hadi_toure/mp3',
+    mp3quranBase: 'https://download.quranicaudio.com/qdc/hadi_toure/mp3',
+    surahUrlTemplate: 'https://download.quranicaudio.com/qdc/hadi_toure/mp3/{n}.mp3',
+    qiraat: 'hafs',
+    style: 'Murattal',
+    accent: A.teal,
   },
 
   // ---- Mujawwad / Mu'allim ----
@@ -1053,7 +1067,15 @@ const MP3QURAN_TIMED_RECITERS: Record<string, number> = {
   soufi: 258,
 }
 
-export type TimedSurahSource = { source: 'quran.com' | 'mp3quran'; id: number }
+/**
+ * Reciters whose timings ship with the app (lib/reciter-timings/<id>.json), for whole-surah
+ * recordings no public API has timings for.
+ */
+const BUNDLED_TIMED_RECITERS = new Set(['hadi_toure'])
+
+export type TimedSurahSource =
+  | { source: 'quran.com' | 'mp3quran'; id: number }
+  | { source: 'local'; id: string }
 
 /** Where this reciter's ayah timings come from, or null when there are none. */
 export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {
@@ -1061,6 +1083,7 @@ export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {
   if (quranCom !== undefined) return { source: 'quran.com', id: quranCom }
   const mp3quran = MP3QURAN_TIMED_RECITERS[reciter.id]
   if (mp3quran !== undefined) return { source: 'mp3quran', id: mp3quran }
+  if (BUNDLED_TIMED_RECITERS.has(reciter.id)) return { source: 'local', id: reciter.id }
   return null
 }
 
@@ -1091,6 +1114,11 @@ export function everyAyahAudioUrl(reciterFolder: string, surah: number, ayah: nu
   return `https://everyayah.com/data/${reciterFolder}/${surahPadded}${ayahPadded}.mp3`
 }
 
+/** A surah's file for reciters whose files are not named `001.mp3`. */
+function templatedSurahUrl(reciter: Reciter, surah: number): string | null {
+  return reciter.surahUrlTemplate ? reciter.surahUrlTemplate.replace('{n}', String(surah)) : null
+}
+
 export function mp3quranSurahUrl(serverBase: string, surah: number): string {
   const surahPadded = String(surah).padStart(3, '0')
   const base = serverBase.replace(/\/$/, '')
@@ -1115,12 +1143,12 @@ function correctedSurahFile(reciter: Reciter, surah: number): string | undefined
 
 /** Full-surah URL for Listen (always mp3quran). */
 export function listenSurahAudioUrl(reciter: Reciter, surah: number): string {
-  return correctedSurahFile(reciter, surah) ?? mp3quranSurahUrl(reciter.mp3quranBase, surah)
+  return correctedSurahFile(reciter, surah) ?? templatedSurahUrl(reciter, surah) ?? mp3quranSurahUrl(reciter.mp3quranBase, surah)
 }
 
 export function ayahAudioUrl(reciter: Reciter, surah: number, ayah: number): string {
   if (reciter.source === 'mp3quran') {
-    return correctedSurahFile(reciter, surah) ?? mp3quranSurahUrl(reciter.folder, surah)
+    return correctedSurahFile(reciter, surah) ?? templatedSurahUrl(reciter, surah) ?? mp3quranSurahUrl(reciter.folder, surah)
   }
   return everyAyahAudioUrl(resolveReciterFolder(reciter.folder), surah, ayah)
 }
@@ -1129,7 +1157,7 @@ export function surahAudioUrl(reciter: Reciter, surah: number): string {
   const corrected = correctedSurahFile(reciter, surah)
   if (corrected) return corrected
   if (reciter.source === 'mp3quran') {
-    return mp3quranSurahUrl(reciter.folder, surah)
+    return templatedSurahUrl(reciter, surah) ?? mp3quranSurahUrl(reciter.folder, surah)
   }
   return everyAyahAudioUrl(resolveReciterFolder(reciter.folder), surah, 1)
 }

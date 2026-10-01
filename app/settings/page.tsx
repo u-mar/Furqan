@@ -6,6 +6,7 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -41,7 +42,6 @@ import {
   DEFAULT_TRANSLATION_EDITION,
   translationLanguageLabel,
   translationsForLanguage,
-  OFFLINE_TRANSLATION_LANGUAGES,
   TRANSLATION_LANGUAGES,
   type TranslationLanguageId,
 } from '@/lib/translations'
@@ -146,12 +146,9 @@ export default function SettingsPage() {
   const [verseWallpapers, setVerseWallpapers] = useState(false)
   const [tajweed, setTajweed] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
-  const [translationCached, setTranslationCached] = useState<Record<TranslationLanguageId, boolean>>({
-    en: false,
-    so: false,
-  })
-  const [downloadingTranslationLang, setDownloadingTranslationLang] =
-    useState<TranslationLanguageId | null>(null)
+  // Which translators are saved for offline reading, by edition id.
+  const [translationCached, setTranslationCached] = useState<Record<string, boolean>>({})
+  const [downloadingEdition, setDownloadingEdition] = useState<string | null>(null)
   const [translationProgress, setTranslationProgress] = useState(0)
   const [translationProgressLabel, setTranslationProgressLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -188,10 +185,6 @@ export default function SettingsPage() {
     setVerseWallpapers(s.verseWallpapersEnabled)
     setTajweed(s.tajweed)
     setReadingMode(s.readingMode)
-    setTranslationCached({
-      en: areTranslationsCached('en'),
-      so: areTranslationsCached('so'),
-    })
     setAsrModelDownloaded(isAsrModelDownloaded())
     refreshProfile()
     window.addEventListener('auth-user-changed', refreshProfile)
@@ -262,22 +255,22 @@ export default function SettingsPage() {
     setAppSettings({ translationEditionId: next })
   }
 
-  async function handleDownloadTranslation(lang: TranslationLanguageId) {
-    setDownloadingTranslationLang(lang)
+  async function handleDownloadTranslation(editionId: string) {
+    setDownloadingEdition(editionId)
     setError(null)
     setTranslationProgress(0)
     setTranslationProgressLabel('')
     try {
-      await downloadOfflineTranslations(lang, (p) => {
+      await downloadOfflineTranslations(editionId, (p) => {
         setTranslationProgress(p.percent)
         setTranslationProgressLabel(p.label)
       })
-      setTranslationCached((prev) => ({ ...prev, [lang]: true }))
+      setTranslationCached((prev) => ({ ...prev, [editionId]: true }))
       setAppSettings({ translationsDownloaded: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : tr('Translation download failed'))
     } finally {
-      setDownloadingTranslationLang(null)
+      setDownloadingEdition(null)
     }
   }
 
@@ -314,7 +307,14 @@ export default function SettingsPage() {
     }
   }
 
-  const busy = downloadingTranslationLang !== null
+  const busy = downloadingEdition !== null
+
+  // What is saved is read fresh whenever the language shown changes, so the icons are always true.
+  useEffect(() => {
+    setTranslationCached(
+      Object.fromEntries(translationsForLanguage(translationLanguage).map((o) => [o.id, areTranslationsCached(o.id)]))
+    )
+  }, [translationLanguage])
 
   return (
     <main
@@ -668,6 +668,11 @@ export default function SettingsPage() {
         </div>
 
         <p className="mb-2 mt-5 text-xs font-semibold text-[var(--home-heading)]">{t('Translator')}</p>
+        {downloadingEdition ? (
+          <div className="mb-3">
+            <ProgressBar percent={translationProgress} label={translationProgressLabel} />
+          </div>
+        ) : null}
         <div
           className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]"
           role="radiogroup"
@@ -675,82 +680,48 @@ export default function SettingsPage() {
         >
           {translationsForLanguage(translationLanguage).map((option) => {
             const selected = translationEditionId === option.id
+            const cached = Boolean(translationCached[option.id])
+            const downloading = downloadingEdition === option.id
             return (
-              <button
-                key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => saveTranslationEdition(option.id)}
-                className="set-row"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.9375rem] font-medium">{option.label}</span>
-                  <span className="block text-xs text-[var(--home-muted)]">
-                    {option.id === DEFAULT_TRANSLATION_EDITION[translationLanguage] &&
-                    OFFLINE_TRANSLATION_LANGUAGES.includes(translationLanguage)
-                      ? t('Also available offline')
-                      : t('Online only')}
+              <div key={option.id} className="flex items-center">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => saveTranslationEdition(option.id)}
+                  className="set-row min-w-0 flex-1"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.9375rem] font-medium">{option.label}</span>
+                    <span className="block text-xs text-[var(--home-muted)]">
+                      {cached ? t('Saved offline') : t('Not downloaded')}
+                    </span>
                   </span>
-                </span>
-                {selected ? (
-                  <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
-                ) : null}
-              </button>
-            )
-          })}
-        </div>
-
-        <p className="mt-5 text-xs font-semibold text-[var(--home-heading)]">{t('Offline translations')}</p>
-        <p className="mb-3 mt-1 text-xs leading-relaxed text-[var(--home-muted)]">
-          {t('Each language downloads separately, 604 pages each. Use Wi‑Fi.')}</p>
-
-        {downloadingTranslationLang ? (
-          <div className="mb-3">
-            <ProgressBar percent={translationProgress} label={translationProgressLabel} />
-          </div>
-        ) : null}
-
-        <div className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]">
-          {OFFLINE_TRANSLATION_LANGUAGES.map((lang) => {
-            const label = t(translationLanguageLabel(lang))
-            const cached = translationCached[lang]
-            return (
-              <div key={lang} className="flex items-center justify-between gap-3 px-3.5 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                      cached
-                        ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]'
-                        : 'bg-[var(--home-track)] text-[var(--home-muted)]'
-                    )}
-                    aria-hidden
-                  >
-                    {cached ? (
-                      <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-                    ) : (
-                      <Download className="h-4 w-4" strokeWidth={1.9} />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--home-heading)]">{label}</p>
-                    <p className="text-xs text-[var(--home-muted)]">{cached ? t('Saved offline') : t('Not downloaded')}</p>
-                  </div>
-                </div>
+                  {selected ? (
+                    <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
+                  ) : null}
+                </button>
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void handleDownloadTranslation(lang)}
-                  aria-label={cached ? t('Re-download {label}', { label }) : t('Download {label}', { label })}
-                  className={cn(
-                    'ed-focus shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
+                  onClick={() => void handleDownloadTranslation(option.id)}
+                  aria-label={
                     cached
-                      ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
-                      : 'ed-ink'
+                      ? t('Re-download {label}', { label: option.label })
+                      : t('Download {label}', { label: option.label })
+                  }
+                  className={cn(
+                    'ed-focus mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50',
+                    cached ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-muted)] hover:text-[var(--home-heading)]'
                   )}
                 >
-                  {cached ? t('Re-download') : t('Download')}
+                  {downloading ? (
+                    <Loader2 className="h-[18px] w-[18px] animate-spin" strokeWidth={2.2} />
+                  ) : cached ? (
+                    <CheckCircle2 className="h-[19px] w-[19px]" strokeWidth={2} />
+                  ) : (
+                    <Download className="h-[19px] w-[19px]" strokeWidth={1.9} />
+                  )}
                 </button>
               </div>
             )

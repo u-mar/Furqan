@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { memo, useCallback } from 'react'
-import { Headphones, Lock, Share2 } from 'lucide-react'
+import { Headphones, ImageIcon, Lock, Share2 } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import PlayButton from '@/components/qari/PlayButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -83,6 +83,7 @@ function RecitationCard({
   }, [queue, recitation, viewerId])
 
   const firstTag = recitation.hashtags[0]
+  const isAyahCard = recitation.kind === 'ayah'
 
   // A tap on empty card space opens it full screen (or plays it, where there is no
   // full-screen view); links, buttons, the waveform and anything portaled out of the
@@ -130,7 +131,9 @@ function RecitationCard({
         removing && 'pointer-events-none opacity-50'
       )}
       style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
-      onPointerDown={() => void prefetchRecitationAudio(recitation.id)}
+      onPointerDown={() => {
+        if (!isAyahCard) void prefetchRecitationAudio(recitation.id)
+      }}
       onClick={onCardClick}
     >
       <div className="flex items-start gap-2">
@@ -138,42 +141,73 @@ function RecitationCard({
         <div className="-mr-2 -mt-1.5 shrink-0">{menu}</div>
       </div>
 
-      {sheikh || firstTag ? (
-        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-          {sheikh ? (
-            <Link href={`/qari/sheikh/${sheikh.id}`} className="qari-chip qari-chip--gold qari-press ed-focus">
-              {t('Imitating')} {sheikh.shortName}
-            </Link>
+      {isAyahCard ? (
+        // An ayah card: the picture itself, with what its poster said beside it.
+        <div className="mt-2 flex gap-3">
+          {recitation.imageUrl ? (
+            <img
+              src={recitation.imageUrl}
+              alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })}
+              loading="lazy"
+              decoding="async"
+              className="aspect-[4/5] w-[5.5rem] shrink-0 rounded-xl bg-[var(--home-track)] object-cover shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)]"
+            />
           ) : null}
-          {firstTag ? (
-            <Link href={`/qari?q=${encodeURIComponent(`#${firstTag}`)}`} className="qari-chip qari-press ed-focus">
-              #{firstTag}
-            </Link>
-          ) : null}
+          <div className="min-w-0 flex-1 pt-0.5">
+            <span className="qari-chip" style={{ height: '1.625rem', paddingInline: '0.5625rem', fontSize: '0.75rem' }}>
+              <ImageIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              {t('Ayah card')}
+            </span>
+            {recitation.caption ? (
+              <p className="mt-2 line-clamp-3 text-[13px] leading-snug text-[var(--home-heading)]">{recitation.caption}</p>
+            ) : null}
+            {firstTag ? (
+              <Link href={`/qari?q=${encodeURIComponent(`#${firstTag}`)}`} className="qari-chip qari-press ed-focus mt-2">
+                #{firstTag}
+              </Link>
+            ) : null}
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <>
+          {sheikh || firstTag ? (
+            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+              {sheikh ? (
+                <Link href={`/qari/sheikh/${sheikh.id}`} className="qari-chip qari-chip--gold qari-press ed-focus">
+                  {t('Imitating')} {sheikh.shortName}
+                </Link>
+              ) : null}
+              {firstTag ? (
+                <Link href={`/qari?q=${encodeURIComponent(`#${firstTag}`)}`} className="qari-chip qari-press ed-focus">
+                  #{firstTag}
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
 
-      <div className="mt-2.5 flex items-center gap-2.5">
-        <PlayButton status={status} onClick={toggle} label={recitation.title} size={30} />
-        <Waveform
-          peaks={recitation.peaks}
-          seed={recitation.id}
-          progress={progress}
-          bars={36}
-          onSeek={isCurrent ? seekPlayback : undefined}
-          className="h-[26px] min-w-0 flex-1"
-          label={t('Position in {title}', { title: recitation.title })}
-        />
-        <span className="shrink-0 text-[11px] tabular-nums text-[var(--home-muted)]">
-          {isCurrent && player.position > 0 ? formatDuration(player.position) : formatDuration(duration)}
-        </span>
-      </div>
+          <div className="mt-2.5 flex items-center gap-2.5">
+            <PlayButton status={status} onClick={toggle} label={recitation.title} size={30} />
+            <Waveform
+              peaks={recitation.peaks}
+              seed={recitation.id}
+              progress={progress}
+              bars={36}
+              onSeek={isCurrent ? seekPlayback : undefined}
+              className="h-[26px] min-w-0 flex-1"
+              label={t('Position in {title}', { title: recitation.title })}
+            />
+            <span className="shrink-0 text-[11px] tabular-nums text-[var(--home-muted)]">
+              {isCurrent && player.position > 0 ? formatDuration(player.position) : formatDuration(duration)}
+            </span>
+          </div>
 
-      {recitation.caption && isCurrent ? (
-        <p className="qari-enter mt-2 line-clamp-2 text-[12.5px] leading-snug text-[var(--home-muted)]">
-          {recitation.caption}
-        </p>
-      ) : null}
+          {recitation.caption && isCurrent ? (
+            <p className="qari-enter mt-2 line-clamp-2 text-[12.5px] leading-snug text-[var(--home-muted)]">
+              {recitation.caption}
+            </p>
+          ) : null}
+        </>
+      )}
 
       <div className="mt-1.5 flex h-8 items-center gap-1 text-[11px] text-[var(--home-muted)]">
         {hideAuthor ? null : (

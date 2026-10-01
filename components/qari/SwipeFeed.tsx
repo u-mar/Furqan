@@ -22,7 +22,8 @@ import {
   type Recitation,
   type VerseTimelineEntry,
 } from '@/lib/qari'
-import { loadAyah, peekAyah, type AyahView } from '@/lib/qari-ayah'
+import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
+import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   pausePlayback,
   playRecitation,
@@ -32,21 +33,11 @@ import {
   type PlayerSnapshot,
 } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
+import { recitationBackground } from '@/lib/qari-backgrounds'
+import BackgroundCover from '@/components/qari/BackgroundCover'
 import { askToSignIn } from '@/lib/account-prompt'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
-
-/** Slow landscapes that ship with the app, so nothing heavy is streamed while swiping. */
-const BACKDROPS = ['desert-dunes', 'canyon-pinnacles', 'mountain', 'valley'].map(
-  (id) => `/qari/video-backgrounds/${id}.avif`
-)
-
-/** The same recitation always gets the same landscape. */
-function backdropFor(seed: string): string {
-  let h = 0
-  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) | 0
-  return BACKDROPS[Math.abs(h) % BACKDROPS.length]
-}
 
 const HINT_KEY = 'muyassar_qari_swipe_hint'
 
@@ -92,7 +83,9 @@ function AyahStage({
     [recitation.verseTimeline]
   )
   const key = currentEntry(timeline, position)?.verseKey
-  const [ayah, setAyah] = useState<AyahView | null>(() => (key ? peekAyah(key) : null))
+  // In the viewer's own language: the translation they read the Quran with.
+  const edition = viewerTranslation(useAppSettings().translationEditionId)
+  const [ayah, setAyah] = useState<AyahView | null>(() => (key ? peekAyah(key, edition) : null))
 
   // The previous ayah stays up until the next one is ready, so the screen never blanks between them.
   useEffect(() => {
@@ -100,24 +93,24 @@ function AyahStage({
       setAyah(null)
       return
     }
-    const known = peekAyah(key)
+    const known = peekAyah(key, edition)
     if (known) {
       setAyah(known)
       return
     }
     let cancelled = false
-    void loadAyah(key).then((view) => {
+    void loadAyah(key, edition).then((view) => {
       if (!cancelled && view) setAyah(view)
     })
     return () => {
       cancelled = true
     }
-  }, [key])
+  }, [edition, key])
 
   // Every marked ayah is fetched up front, so each change lands instantly.
   useEffect(() => {
-    if (near) timeline.forEach((entry) => void loadAyah(entry.verseKey))
-  }, [near, timeline])
+    if (near) timeline.forEach((entry) => void loadAyah(entry.verseKey, edition))
+  }, [edition, near, timeline])
 
   return (
     <div
@@ -147,8 +140,11 @@ function AyahStage({
           </p>
           {ayah.translation ? (
             <p
+              dir={ayah.translationRtl ? 'rtl' : 'ltr'}
+              lang={ayah.translationLang}
               className="home-serif mt-3 max-w-[34ch] text-[15px] leading-relaxed text-[color-mix(in_srgb,var(--home-heading)_88%,transparent)]"
-              style={{ textShadow: TEXT_SHADOW }}
+              // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
+              style={{ textShadow: TEXT_SHADOW, ...(ayah.translationRtl ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontSize: 17 } : {}) }}
             >
               {ayah.translation}
             </p>
@@ -178,19 +174,23 @@ function AyahStage({
   )
 }
 
-/** The landscape behind a slide, drifting slowly; only mounted for the slides on or next to the screen. */
-function Backdrop({ seed, playing }: { seed: string; playing: boolean }) {
+/** The background its reciter chose, drifting slowly; only mounted for the slides on or next to the screen. */
+function Backdrop({ recitation, active, playing }: { recitation: Recitation; active: boolean; playing: boolean }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
-      <img
-        src={backdropFor(seed)}
-        alt=""
-        decoding="async"
-        draggable={false}
-        className={cn('qari-kenburns absolute inset-0 h-full w-full object-cover', !playing && 'is-paused')}
-      />
+      <BackgroundCover background={recitationBackground(recitation)} moving={active} drift paused={!playing} />
       <div className={cn('qari-mist', !playing && 'is-paused')} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/75" />
+    </div>
+  )
+}
+
+/** Behind an ayah card: the card itself, blurred and dimmed, so the picture sits in its own light. */
+function CardBackdrop({ src }: { src: string }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
+      <img src={src} alt="" decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-80 blur-2xl" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
     </div>
   )
 }
@@ -302,6 +302,8 @@ const Slide = memo(function Slide({
   const progress = duration > 0 ? Math.min(1, position / duration) : 0
   const playing = status === 'playing' || status === 'loading'
   const hasTimeline = (recitation.verseTimeline ?? []).length > 0
+  // A picture made on the Read screen: nothing to play, so no tap-to-play, hold or progress line.
+  const isAyahCard = recitation.kind === 'ayah'
   const sheikh = findSheikh(recitation.imitating)
   const firstTag = recitation.hashtags[0]
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
@@ -363,7 +365,7 @@ const Slide = memo(function Slide({
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
-      if (!active) return
+      if (!active || isAyahCard) return
       if ((event.target as HTMLElement).closest('a, button, input, [role="slider"], [role="dialog"]')) return
       window.clearTimeout(holdTimer.current)
       holdTimer.current = window.setTimeout(() => {
@@ -373,18 +375,18 @@ const Slide = memo(function Slide({
         tapFeedback()
       }, HOLD_MS)
     },
-    [active]
+    [active, isAyahCard]
   )
 
   const onTap = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      if (!active || justHeld.current) return
+      if (!active || justHeld.current || isAyahCard) return
       const target = event.target as HTMLElement
       if (!event.currentTarget.contains(target)) return
       if (target.closest('a, button, input, [role="slider"], [role="dialog"]')) return
       onToggle(recitation)
     },
-    [active, onToggle, recitation]
+    [active, isAyahCard, onToggle, recitation]
   )
 
   const showFollow = active && !isOwner && following === false
@@ -401,25 +403,49 @@ const Slide = memo(function Slide({
       onPointerLeave={endHold}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {near ? <Backdrop seed={recitation.id} playing={active && playing} /> : null}
+      {near ? (
+        isAyahCard && recitation.imageUrl ? (
+          <CardBackdrop src={recitation.imageUrl} />
+        ) : (
+          <Backdrop recitation={recitation} active={active} playing={active && playing} />
+        )
+      ) : null}
 
-      {/* The ayah, between the top bar and the controls. */}
-      <div
-        className="absolute inset-x-0 flex items-center justify-center px-6"
-        style={{ top: 'calc(5.5rem + env(safe-area-inset-top))', bottom: '15.5rem' }}
-      >
-        {near ? <AyahStage recitation={recitation} position={position} near={near} paused={active && !playing} /> : null}
-        {active && !playing ? (
-          <button
-            type="button"
-            onClick={() => onToggle(recitation)}
-            aria-label={t('Play {label}', { label: recitation.title })}
-            className="qari-press ed-focus absolute flex h-[68px] w-[68px] items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm"
-          >
-            <Play className="ml-1 h-8 w-8 fill-current" strokeWidth={0} />
-          </button>
-        ) : null}
-      </div>
+      {isAyahCard ? (
+        // The card itself, as large as the space above the details and the column of actions allows.
+        <div
+          className="absolute inset-x-0 flex items-center justify-center px-5"
+          style={{ top: 'calc(4.75rem + env(safe-area-inset-top))', bottom: '17.75rem' }}
+        >
+          {near && recitation.imageUrl ? (
+            <img
+              src={recitation.imageUrl}
+              alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })}
+              decoding="async"
+              draggable={false}
+              className="qari-ayah-in max-h-full max-w-full rounded-[18px] object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)]"
+            />
+          ) : null}
+        </div>
+      ) : (
+        // The ayah, between the top bar and the controls.
+        <div
+          className="absolute inset-x-0 flex items-center justify-center px-6"
+          style={{ top: 'calc(5.5rem + env(safe-area-inset-top))', bottom: '15.5rem' }}
+        >
+          {near ? <AyahStage recitation={recitation} position={position} near={near} paused={active && !playing} /> : null}
+          {active && !playing ? (
+            <button
+              type="button"
+              onClick={() => onToggle(recitation)}
+              aria-label={t('Play {label}', { label: recitation.title })}
+              className="qari-press ed-focus absolute flex h-[68px] w-[68px] items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm"
+            >
+              <Play className="ml-1 h-8 w-8 fill-current" strokeWidth={0} />
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {fast ? (
         <div
@@ -454,7 +480,7 @@ const Slide = memo(function Slide({
               ) : null}
             </p>
 
-            {hasTimeline ? (
+            {hasTimeline || isAyahCard ? (
               <h2 className="mt-2 line-clamp-2 text-[15.5px] font-medium leading-snug text-white">{recitation.title}</h2>
             ) : null}
 
@@ -526,12 +552,14 @@ const Slide = memo(function Slide({
         </div>
       </div>
 
-      <ProgressLine
-        progress={progress}
-        position={position}
-        duration={duration}
-        onSeek={active && isCurrent ? seekPlayback : undefined}
-      />
+      {isAyahCard ? null : (
+        <ProgressLine
+          progress={progress}
+          position={position}
+          duration={duration}
+          onSeek={active && isCurrent ? seekPlayback : undefined}
+        />
+      )}
 
       <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} videoView />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
@@ -621,7 +649,7 @@ export default function SwipeFeed({
     started.current = true
     const list = itemsRef.current
     const first = list[Math.min(activeRef.current, list.length - 1)]
-    if (autoplay && first && playerIdRef.current !== first.id) playRecitation(first, { queue: list, viewerId })
+    if (autoplay && first && first.kind !== 'ayah' && playerIdRef.current !== first.id) playRecitation(first, { queue: list, viewerId })
   }, [autoplay, hasItems, viewerId])
 
   // True while the one that was playing has been paused because a swipe left it.
@@ -631,7 +659,8 @@ export default function SwipeFeed({
     const el = scrollerRef.current
     if (!el) return
     const landed = itemsRef.current[Math.round(el.scrollTop / pageHeight())]
-    if (!landed || !armed.current) return
+    // An ayah card has nothing to play; whatever was playing already stopped on the way here.
+    if (!landed || !armed.current || landed.kind === 'ayah') return
     if (playerIdRef.current !== landed.id || pausedBySwipe.current) {
       pausedBySwipe.current = false
       playRecitation(landed, { queue: itemsRef.current, viewerId })
@@ -685,7 +714,7 @@ export default function SwipeFeed({
   useEffect(() => {
     // Download the ones a swipe will land on next, so they start the instant they settle.
     for (const near of [items[clampedActive], items[clampedActive + 1], items[clampedActive + 2], items[clampedActive - 1]]) {
-      if (near) void prefetchRecitationAudio(near.id)
+      if (near && near.kind !== 'ayah') void prefetchRecitationAudio(near.id)
     }
     // Once per length of the list, so a failed request is not retried in a loop.
     if (hasMore && !loadingMore && items.length > 0 && clampedActive >= items.length - 3 && askedAt.current !== items.length) {

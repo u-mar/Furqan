@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isAdminRequestAuthenticated, unauthorizedAdminResponse } from '@/lib/admin-auth-server'
-import { removeAudio } from '@/lib/qari-storage'
+import { removeAudio, removeImage } from '@/lib/qari-storage'
 
 type Action = 'dismiss' | 'removeRecitation'
 
@@ -31,7 +31,8 @@ export async function POST(req: Request) {
       if (!recitationId) return NextResponse.json({ error: 'Missing recitationId.' }, { status: 400 })
       const recitation = await prisma.recitation.findUnique({ where: { id: recitationId } })
       if (recitation) {
-        await removeAudio(recitation.audioId).catch(() => {})
+        if (recitation.audioId) await removeAudio(recitation.audioId).catch(() => {})
+        if (recitation.imageId) await removeImage(recitation.imageId).catch(() => {})
         await prisma.recitationLike.deleteMany({ where: { recitationId } })
       }
       await prisma.recitationReport.deleteMany({ where: { recitationId } })

@@ -164,8 +164,10 @@ export function playRecitation(
   r: Recitation,
   options: { queue?: Recitation[]; viewerId?: string | null } = {}
 ): void {
+  // Ayah cards are pictures: nothing to play, and not stops in a queue.
+  if (r.kind === 'ayah') return
   const el = ensureAudio()
-  if (options.queue) queue = options.queue
+  if (options.queue) queue = options.queue.filter((q) => q.kind !== 'ayah')
   if (options.viewerId !== undefined) viewerId = options.viewerId
 
   const switching = snapshot.current?.id !== r.id

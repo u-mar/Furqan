@@ -12,13 +12,15 @@ import { Readable } from 'node:stream'
  * swapped for S3, R2 or Vercel Blob later without touching the API routes.
  */
 
-export type QariBucket = 'qari_audio' | 'qari_avatars'
+export type QariBucket = 'qari_audio' | 'qari_avatars' | 'qari_images'
 
 /** Recordings are short; anything larger is almost certainly a mistake. */
 export const MAX_AUDIO_BYTES = 12 * 1024 * 1024
 export const MAX_DURATION_SEC = 600
 /** Avatars are resized client-side before upload, so this is just a backstop. */
 export const MAX_AVATAR_BYTES = 2 * 1024 * 1024
+/** An ayah card is one 1080×1350 JPEG, usually well under a megabyte. */
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 const globalForMongo = globalThis as unknown as { qariMongo?: MongoClient }
 
@@ -83,7 +85,7 @@ export async function openFile(
     stream: gfs.openDownloadStream(id),
     mimeType:
       (file.metadata?.mimeType as string) ||
-      (bucketName === 'qari_avatars' ? 'image/jpeg' : 'audio/webm'),
+      (bucketName === 'qari_audio' ? 'audio/webm' : 'image/jpeg'),
     length: file.length,
   }
 }
@@ -105,3 +107,7 @@ export const putAudio = (data: Buffer, meta: { filename: string; mimeType: strin
   putFile(data, { ...meta, bucket: 'qari_audio' })
 export const openAudio = (audioId: string) => openFile(audioId, 'qari_audio')
 export const removeAudio = (audioId: string) => removeFile(audioId, 'qari_audio')
+export const putImage = (data: Buffer, meta: { filename: string; mimeType: string }) =>
+  putFile(data, { ...meta, bucket: 'qari_images' })
+export const openImage = (imageId: string) => openFile(imageId, 'qari_images')
+export const removeImage = (imageId: string) => removeFile(imageId, 'qari_images')

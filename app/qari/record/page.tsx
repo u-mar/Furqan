@@ -6,34 +6,33 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { askToSignIn } from '@/lib/account-prompt'
 import { getSignedInUser } from '@/lib/auth'
 import {
+  ArrowRight,
   AudioLines,
   BookOpen,
-  Check,
   ChevronLeft,
   ChevronRight,
   FileAudio,
-  Film,
   Globe,
   Hash,
+  ImageIcon,
+  LayoutGrid,
   Lock,
-  Mic,
   MicVocal,
   Pause,
   Play,
   RotateCcw,
   Send,
-  Square,
-  Trash2,
   X,
 } from 'lucide-react'
-import { SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
-import { SheikhMonogram } from '@/components/qari/SheikhCards'
+import BackgroundCover from '@/components/qari/BackgroundCover'
 import MushafReadAlong from '@/components/qari/MushafReadAlong'
-import ShareSheet from '@/components/qari/ShareSheet'
+import { AudienceSheet, SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
+import { SheikhMonogram } from '@/components/qari/SheikhCards'
 import Switch from '@/components/qari/Switch'
 import Waveform from '@/components/qari/Waveform'
-import { QariHeader, QariLabel, QariSegmented, qariNotice, useViewer } from '@/components/qari/QariShell'
+import { qariNotice, useViewer } from '@/components/qari/QariShell'
 import AccountSheet from '@/components/settings/AccountSheet'
+import BackgroundGallery from '@/components/share/BackgroundGallery'
 import {
   microphoneError,
   prepareRecording,
@@ -44,29 +43,54 @@ import {
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
 import { errorFeedback, strongFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
+import { formatDuration, tidyHashtags, type VerseTimelineEntry } from '@/lib/qari'
 import {
-  formatDuration,
-  primeRecitationAudio,
-  publishRecitation,
-  tidyHashtags,
-  type Recitation,
-  type VerseTimelineEntry,
-} from '@/lib/qari'
+  FEATURED_RECITATION_BACKGROUND_IDS,
+  VIDEO_BACKGROUNDS,
+  VIDEO_BACKGROUND_GROUPS,
+  findVideoBackground,
+  lastRecitationBackground,
+  type VideoBackground,
+} from '@/lib/qari-backgrounds'
 import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
+import { postRecitation } from '@/lib/qari-upload'
 import { measurePeaks } from '@/lib/qari-waveform'
 import { findSheikh, SHEIKHS } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
-type Step = 'ready' | 'countdown' | 'recording' | 'review' | 'published'
+/**
+ * Recording a recitation, in three steps like posting on TikTok:
+ *
+ *   record  full screen over the background it will be shown on, with the
+ *           tools down the side and one big button
+ *   edit    the take played back on that background, with the backgrounds
+ *           to choose from in a strip underneath
+ *   post    title, note, hashtags, who can hear it — then Post hands it to
+ *           lib/qari-upload and goes to the profile, where it uploads
+ */
+type Step = 'ready' | 'countdown' | 'recording' | 'edit' | 'post'
 
 const MAX_SECONDS = 600
-const LIVE_BARS = 34
+const LIVE_BARS = 40
+const MAX_TAGS = 6
+const SUGGESTED_TAGS = ['tajweed', 'hifdh', 'murattal', 'fajr', 'juzamma', 'ramadan']
 
 function clock(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+/** A confirm-by-tapping-twice switch that disarms itself after a moment. */
+function useArmed(): [boolean, (on: boolean) => void] {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const id = window.setTimeout(() => setArmed(false), 2500)
+    return () => window.clearTimeout(id)
+  }, [armed])
+  return [armed, setArmed]
 }
 
 function RecordFlow() {
@@ -91,12 +115,18 @@ function RecordFlow() {
   const [spaceId, setSpaceId] = useState<SpaceId>('reciter')
   const [imitate, setImitate] = useState(Boolean(preset))
   const [sheikhId, setSheikhId] = useState(preset?.id ?? SHEIKHS[0].id)
+  // Plain black until the one the last recitation went out on is read — it
+  // lives on the phone, so only once mounted — rather than flashing another.
+  const [backgroundId, setBackgroundId] = useState('black')
+  useEffect(() => setBackgroundId(lastRecitationBackground()), [])
 
   const [step, setStep] = useState<Step>('ready')
   const [count, setCount] = useState(3)
   const preparedRef = useRef<PreparedRecording | null>(null)
   const countdownRef = useRef<number | null>(null)
-  const [discardArmed, setDiscardArmed] = useState(false)
+  const [discardArmed, setDiscardArmed] = useArmed()
+  const [draftDiscardArmed, setDraftDiscardArmed] = useArmed()
+  const [retakeArmed, setRetakeArmed] = useArmed()
 
   const [levels, setLevels] = useState<number[]>([])
 
@@ -105,12 +135,10 @@ function RecordFlow() {
   const [hashtags, setHashtags] = useState('')
   const [caption, setCaption] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
-  const [publishing, setPublishing] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-  const [published, setPublished] = useState<Recitation | null>(null)
-  const [shareOpen, setShareOpen] = useState(false)
   const [titleShake, setTitleShake] = useState(false)
-  const [picker, setPicker] = useState<'sound' | 'sheikh' | null>(null)
+  const [picker, setPicker] = useState<'sound' | 'sheikh' | 'audience' | null>(null)
+  const [galleryOpen, setGalleryOpen] = useState(false)
   const [draftMeta, setDraftMeta] = useState<QariDraftMeta | null>(null)
   // Some reciters read from the mushaf instead of memory — this opens a
   // read-only mushaf overlay on top of the record screen; the recording
@@ -122,6 +150,8 @@ function RecordFlow() {
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
+  const background = findVideoBackground(backgroundId)
+  const editing = step === 'edit' || step === 'post'
 
   /* ---------------------------------------------------------- countdown */
 
@@ -211,11 +241,15 @@ function RecordFlow() {
     }
   }, [state.error, step])
 
-  // When the take lands, move on to publishing and measure its shape.
+  // A take just recorded, rather than a draft picked back up.
+  const freshTakeRef = useRef(false)
+
+  // When the take lands, move on to editing and measure its shape.
   useEffect(() => {
     if (!state.blob || step !== 'recording') return
     strongFeedback()
-    setStep('review')
+    freshTakeRef.current = true
+    setStep('edit')
     setPeaks([])
     measurePeaks(state.blob)
       .then(setPeaks)
@@ -228,33 +262,38 @@ function RecordFlow() {
 
   /* ---------------------------------------------------------- draft */
 
-  // Offered on the start screen — checked fresh whenever we land back there.
+  // Offered on the record screen — checked fresh whenever we land back there.
   useEffect(() => {
     if (step === 'ready') setDraftMeta(peekDraftMeta())
   }, [step])
 
-  // The recording itself, saved the moment a take is ready — before a title
-  // is even typed, so backing out never costs the take. Re-saving the exact
-  // bytes just resumed is harmless, so this needs no guard against that.
-  useEffect(() => {
-    if (step !== 'review' || !state.blob) return
-    void saveDraftAudio(state.blob, state.mimeType, state.durationSec)
-  }, [step, state.blob, state.mimeType, state.durationSec])
+  const draftFieldsRef = useRef<Partial<QariDraftMeta>>({})
+  draftFieldsRef.current = {
+    title,
+    hashtags,
+    caption,
+    isPrivate,
+    imitating: imitate ? sheikhId : null,
+    space: spaceId,
+    peaks,
+    verseTimeline,
+    background: backgroundId,
+  }
 
-  // Everything typed while reviewing, kept in step with the saved audio.
+  // The recording itself, saved the moment a take is ready — before a title
+  // is even typed, so backing out never costs the take.
   useEffect(() => {
-    if (step !== 'review' || !state.blob) return
-    saveDraftMeta({
-      title,
-      hashtags,
-      caption,
-      isPrivate,
-      imitating: imitate ? sheikhId : null,
-      space: spaceId,
-      peaks,
-      verseTimeline,
-    })
-  }, [step, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, verseTimeline])
+    if (!editing || !state.blob) return
+    const fresh = freshTakeRef.current
+    freshTakeRef.current = false
+    void saveDraftAudio(state.blob, state.mimeType, state.durationSec, { fresh, fields: () => draftFieldsRef.current })
+  }, [editing, state.blob, state.mimeType, state.durationSec])
+
+  // Everything chosen or typed since, kept in step with the saved audio.
+  useEffect(() => {
+    if (!editing || !state.blob) return
+    saveDraftMeta(draftFieldsRef.current)
+  }, [editing, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, verseTimeline, backgroundId])
 
   const resumeDraft = useCallback(async () => {
     tapFeedback()
@@ -264,31 +303,33 @@ function RecordFlow() {
       qariNotice(tr('That draft is no longer there.'))
       return
     }
+    freshTakeRef.current = false
     recorder.adopt(draft.blob, draft.mimeType, draft.durationSec)
     setSpaceId((draft.space as SpaceId) || 'reciter')
     setImitate(Boolean(draft.imitating))
     if (draft.imitating) setSheikhId(draft.imitating)
+    if (draft.background) setBackgroundId(findVideoBackground(draft.background).id)
     setPeaks(draft.peaks)
     setVerseTimeline(draft.verseTimeline ?? [])
     setTitle(draft.title)
     setHashtags(draft.hashtags)
     setCaption(draft.caption)
     setIsPrivate(draft.isPrivate)
-    setStep('review')
+    setStep('edit')
   }, [recorder])
 
   const discardDraft = useCallback(() => {
-    tapFeedback()
+    if (!draftDiscardArmed) {
+      tapFeedback()
+      setDraftDiscardArmed(true)
+      qariNotice(tr('Tap again to discard the draft.'))
+      return
+    }
+    setDraftDiscardArmed(false)
     void clearDraft()
     setDraftMeta(null)
     qariNotice(tr('Draft discarded.'))
-  }, [])
-
-  useEffect(() => {
-    if (!discardArmed) return
-    const id = window.setTimeout(() => setDiscardArmed(false), 2500)
-    return () => window.clearTimeout(id)
-  }, [discardArmed])
+  }, [draftDiscardArmed, setDraftDiscardArmed])
 
   /* ---------------------------------------------------------- listen back */
 
@@ -360,22 +401,60 @@ function RecordFlow() {
     [state.durationSec]
   )
 
-  const recordAgain = useCallback(() => {
-    tapFeedback()
+  /** Clears what was typed for a take, so the next one starts empty. */
+  const forgetTake = useCallback(() => {
     stopPreview()
     recorder.reset()
     setPeaks([])
     setVerseTimeline([])
+    setTitle('')
+    setHashtags('')
+    setCaption('')
+  }, [recorder, stopPreview])
+
+  /** Back to the camera. The take stays as the draft, one tap away. */
+  const backToCamera = useCallback(() => {
+    tapFeedback()
+    forgetTake()
+    setStep('ready')
+    qariNotice(tr('Kept in your drafts.'))
+  }, [forgetTake])
+
+  const recordAgain = useCallback(() => {
+    if (!retakeArmed) {
+      tapFeedback()
+      setRetakeArmed(true)
+      qariNotice(tr('Tap again to record again. This take will be discarded.'))
+      return
+    }
+    setRetakeArmed(false)
+    tapFeedback()
+    forgetTake()
     setStep('ready')
     // This take is being abandoned on purpose, so the draft of it goes too.
     void clearDraft()
-  }, [recorder, stopPreview])
+  }, [forgetTake, retakeArmed, setRetakeArmed])
 
-  /* ---------------------------------------------------------- publish */
+  const toPost = useCallback(() => {
+    tapFeedback()
+    previewRef.current?.pause()
+    setStep('post')
+  }, [])
+
+  /* ---------------------------------------------------------- post */
 
   const tags = useMemo(() => tidyHashtags(hashtags), [hashtags])
 
-  const handlePublish = useCallback(async () => {
+  const addTag = useCallback(
+    (tag: string) => {
+      if (tags.includes(tag) || tags.length >= MAX_TAGS) return
+      tapFeedback()
+      setHashtags((prev) => `${prev.trim()} #${tag}`.trim())
+    },
+    [tags]
+  )
+
+  const handlePost = useCallback(() => {
     if (!state.blob) return
     if (!viewer) {
       setAccountOpen(true)
@@ -390,362 +469,365 @@ function RecordFlow() {
       return
     }
 
-    setPublishing(true)
     stopPreview()
-    try {
-      const imitating = imitate ? sheikhId : ''
-      const id = await publishRecitation({
-        blob: state.blob,
-        mimeType: state.mimeType,
-        durationSec: state.durationSec,
-        title: title.trim(),
-        space: spaceId,
-        hashtags: hashtags.trim(),
-        isPrivate,
-        caption: caption.trim(),
-        imitating,
-        peaks,
-        verseTimeline,
-        userId: viewer.id,
-        userName: viewer.name,
-        userUsername: viewer.username,
-      })
-      primeRecitationAudio(id, state.blob)
-      setPublished({
-        id,
-        userName: viewer.name,
-        userUsername: viewer.username,
-        title: title.trim(),
-        space: spaceId,
-        hashtags: tags,
-        isPrivate,
-        imitating: imitating || null,
-        peaks,
-        verseTimeline,
-        caption: caption.trim(),
-        durationSec: state.durationSec,
-        likeCount: 0,
-        playCount: 0,
-        createdAt: new Date().toISOString(),
-        liked: false,
-      })
-      successFeedback()
-      setStep('published')
-      void clearDraft()
-    } catch (err) {
-      qariNotice(err instanceof Error ? err.message : tr('Could not publish.'))
-    } finally {
-      setPublishing(false)
-    }
-  }, [caption, hashtags, imitate, isPrivate, peaks, sheikhId, spaceId, state, stopPreview, tags, title, verseTimeline, viewer])
+    postRecitation({
+      blob: state.blob,
+      mimeType: state.mimeType,
+      durationSec: state.durationSec,
+      title: title.trim(),
+      space: spaceId,
+      hashtags: hashtags.trim(),
+      isPrivate,
+      caption: caption.trim(),
+      imitating: imitate ? sheikhId : '',
+      peaks,
+      verseTimeline,
+      background: backgroundId,
+      userId: viewer.id,
+      userName: viewer.name,
+      userUsername: viewer.username,
+    })
+    successFeedback()
+    // To the profile, where it shows uploading at the top.
+    router.replace(`/qari/${encodeURIComponent(viewer.username)}`)
+  }, [backgroundId, caption, hashtags, imitate, isPrivate, peaks, router, sheikhId, spaceId, state, stopPreview, title, verseTimeline, viewer])
 
-  const startOver = useCallback(() => {
-    recorder.reset()
-    setPublished(null)
-    setTitle('')
-    setHashtags('')
-    setCaption('')
-    setPeaks([])
-    setVerseTimeline([])
-    setStep('ready')
-  }, [recorder])
+  const saveToDrafts = useCallback(() => {
+    tapFeedback()
+    saveDraftMeta(draftFieldsRef.current)
+    stopPreview()
+    toast(tr('Saved to drafts.'), 'success')
+    router.replace('/qari')
+  }, [router, stopPreview])
 
-  /* ---------------------------------------------------------- views */
+  /* ---------------------------------------------------------- shared pieces */
 
-  const settings = (hints: boolean) => (
+  const pickers = (
     <>
-      <Group>
-        <button type="button" className="set-row" style={{ paddingBlock: 8 }} onClick={() => { tapFeedback(); setPicker('sound') }}>
-          <span className="set-row__icon">
-            <AudioLines className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium">{t('Sound')}</span>
-            {hints ? <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{t('How the room sounds')}</span> : null}
-          </span>
-          <span className="set-row__value">{t(space.label)}</span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-        </button>
-        <Divider />
-        <div className="set-row" style={{ paddingBlock: 8 }}>
-          <span className="set-row__icon">
-            <MicVocal className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium">{t('Imitate a sheikh')}</span>
-            {hints ? <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{t('Also shows on his page')}</span> : null}
-          </span>
-          <Switch checked={imitate} onChange={setImitate} label={t('Imitate a sheikh')} />
-        </div>
-        {imitate && sheikh ? (
-          <div className="qari-enter">
-            <Divider />
-            <button type="button" className="set-row" style={{ paddingBlock: 8 }} onClick={() => { tapFeedback(); setPicker('sheikh') }}>
-              <SheikhMonogram sheikh={sheikh} size={30} />
-              <span className="set-row__label">{t('Sheikh')}</span>
-              <span className="set-row__value">{sheikh.shortName}</span>
-              <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-            </button>
-          </div>
-        ) : null}
-        <Divider />
-        <button
-          type="button"
-          className="set-row"
-          style={{ paddingBlock: 8 }}
-          onClick={() => {
-            tapFeedback()
-            setMushafOpen(true)
-          }}
-        >
-          <span className="set-row__icon">
-            <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium">{t('Read from Mushaf')}</span>
-            {hints ? (
-              <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">
-                {t('Open any page to read from while you record')}
-              </span>
-            ) : null}
-          </span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-        </button>
-      </Group>
       <SoundSheet open={picker === 'sound'} value={spaceId} onClose={() => setPicker(null)} onSelect={setSpaceId} />
-      <SheikhSheet open={picker === 'sheikh'} value={sheikhId} onClose={() => setPicker(null)} onSelect={setSheikhId} />
+      <SheikhSheet
+        open={picker === 'sheikh'}
+        value={sheikhId}
+        onClose={() => setPicker(null)}
+        onSelect={(id) => {
+          setSheikhId(id)
+          setImitate(true)
+        }}
+      />
+      <AudienceSheet open={picker === 'audience'} isPrivate={isPrivate} onClose={() => setPicker(null)} onSelect={setIsPrivate} />
+      <BackgroundGallery
+        open={galleryOpen}
+        items={VIDEO_BACKGROUNDS}
+        groups={VIDEO_BACKGROUND_GROUPS}
+        selectedId={backgroundId}
+        onSelect={setBackgroundId}
+        onClose={() => setGalleryOpen(false)}
+      />
     </>
   )
 
-  if (step === 'published' && published) {
-    return (
-      <Screen>
-        <div className="flex justify-end">
-          <Link href="/qari" onClick={tapFeedback} aria-label={t('Close')} className="home-round ed-focus">
-            <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
-          </Link>
-        </div>
-
-        <div className="qari-step flex flex-1 flex-col justify-center pb-4">
-          <div className="flex flex-col items-center text-center">
-            <span className="qari-done flex h-[88px] w-[88px] items-center justify-center rounded-full bg-[var(--home-sage)] text-[var(--qari-on-teal)] shadow-[0_0_0_10px_var(--home-sage-soft),0_18px_40px_-14px_rgba(13,107,99,0.6)]">
-              <Check className="h-10 w-10" strokeWidth={3} />
-            </span>
-            <h1 className="home-serif mt-[26px] text-[1.9375rem] font-medium tracking-[-0.02em] text-[var(--home-heading)]">
-              {published.isPrivate ? t('Saved') : t('Published')}
-            </h1>
-            <p className="mt-1.5 max-w-[32ch] text-[15px] leading-normal text-[var(--home-muted)]">
-              {published.isPrivate
-                ? t('It is on your profile. Only you can hear it.')
-                : published.imitating && sheikh
-                  ? t("It is in the Qari feed and on {shortName}'s page.", { shortName: sheikh.shortName })
-                  : t('It is in the Qari feed.')}
-            </p>
-          </div>
-
-          {/* Its own voice, drawn as it was recorded, with a wave of gold moving through it. */}
-          <div className="home-card mt-7 rounded-[18px] px-4 pb-3.5 pt-4">
-            <p className="home-serif truncate text-center text-[17px] font-medium text-[var(--home-heading)]">{published.title}</p>
-            <div className="mt-3">
-              <GoldWave peaks={published.peaks} seed={published.id} />
-            </div>
-            <p className="mt-2 text-center text-[11px] tabular-nums text-[var(--home-muted)]">{formatDuration(published.durationSec)}</p>
-          </div>
-
-          <div className="mt-[26px] flex flex-col gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                setShareOpen(true)
-              }}
-              className="ed-ink ed-focus qari-press flex h-14 items-center justify-center gap-2 rounded-full text-base font-medium"
-            >
-              <Film className="h-[18px] w-[18px]" strokeWidth={2} />
-              {t('Share as a video')}</button>
-            <Link
-              href={`/qari/${encodeURIComponent(published.userUsername)}`}
-              onClick={tapFeedback}
-              className="ed-focus flex h-10 items-center justify-center text-sm font-medium text-[var(--home-sage-deep)]"
-            >
-              {t('See it on your profile')}</Link>
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                startOver()
-              }}
-              className="ed-focus h-10 text-sm font-medium text-[var(--home-muted)] hover:text-[var(--home-heading)]"
-            >
-              {t('Record another')}</button>
-          </div>
-        </div>
-        <ShareSheet recitation={published} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={qariNotice} />
-      </Screen>
-    )
+  const openPicker = (which: 'sound' | 'sheikh' | 'audience') => {
+    tapFeedback()
+    setPicker(which)
   }
 
-  if (step === 'review' && state.blob) {
+  const openGallery = () => {
+    tapFeedback()
+    setGalleryOpen(true)
+  }
+
+  /* ---------------------------------------------------------- post view */
+
+  if (step === 'post' && state.blob) {
     return (
-      <Screen scroll>
-        <QariHeader
-          title={t('Publish')}
-          back={
-            <button type="button" onClick={recordAgain} aria-label={t('Record again')} className="home-round ed-focus">
+      <main className="qari-theme relative min-h-[100dvh] w-full text-[var(--app-text)]">
+        <div className="mx-auto w-full max-w-lg px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <header className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
+            <button type="button" onClick={() => setStep('edit')} aria-label={t('Back')} className="home-round ed-focus">
               <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
             </button>
-          }
-        />
+            <h1 className="home-serif text-center text-[1.3125rem] font-medium tracking-[-0.01em] text-[var(--home-heading)]">
+              {t('Post')}
+            </h1>
+            <span aria-hidden />
+          </header>
 
-        <div className="qari-step">
-          <QariLabel>{t('Your recording')}</QariLabel>
-          <Group>
-            <div className="p-3.5">
-              <div className="flex items-center gap-3">
+          <div className="qari-step">
+            {/* What people will read, beside what they will see. */}
+            <div className="home-card mt-5 rounded-[20px] p-3.5">
+              <div className="flex gap-3.5">
+                <div className="min-w-0 flex-1">
+                  <label className={cn('block', titleShake && 'fx-shake')} htmlFor="qari-title">
+                    <span className="sr-only">{t('Title')}</span>
+                    <input
+                      id="qari-title"
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+                      placeholder={t('Give it a title')}
+                      enterKeyHint="next"
+                      className="home-serif w-full bg-transparent text-[1.1875rem] font-medium leading-snug text-[var(--home-heading)] outline-none placeholder:text-[color-mix(in_srgb,var(--home-muted)_80%,transparent)]"
+                    />
+                  </label>
+                  <label className="mt-2 block" htmlFor="qari-caption">
+                    <span className="sr-only">{t('Note')}</span>
+                    <textarea
+                      id="qari-caption"
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value.slice(0, 280))}
+                      rows={4}
+                      placeholder={t('Add a note: what you recited, or a du’a to ask for')}
+                      className="w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+                    />
+                  </label>
+                </div>
                 <button
                   type="button"
-                  onClick={togglePreview}
-                  aria-label={previewing ? t('Pause') : t('Listen back')}
-                  className="ed-ink ed-focus qari-press flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                  onClick={() => {
+                    tapFeedback()
+                    setStep('edit')
+                  }}
+                  aria-label={t('Change background')}
+                  className="qari-press ed-focus relative aspect-[9/16] w-[5.75rem] shrink-0 self-start overflow-hidden rounded-[14px] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.6)]"
                 >
-                  {previewing ? (
-                    <Pause key="pause" className="qari-swap h-4 w-4 fill-current" strokeWidth={0} />
-                  ) : (
-                    <Play key="play" className="qari-swap ml-0.5 h-4 w-4 fill-current" strokeWidth={0} />
-                  )}
+                  <BackgroundCover background={background} />
+                  <span className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/70" />
+                  <span className="absolute inset-x-2 top-1/2 -translate-y-1/2">
+                    <Waveform peaks={peaks} seed={String(state.durationSec)} progress={0} bars={14} tone="dark" className="h-6 w-full" />
+                  </span>
+                  <span className="absolute inset-x-0 bottom-0 pb-1.5 text-center text-[11px] font-semibold text-white">
+                    {t('Change')}
+                  </span>
                 </button>
-                <Waveform
-                  peaks={peaks}
-                  seed={String(state.durationSec)}
-                  progress={previewProgress}
-                  onSeek={previewRef.current ? seekPreview : undefined}
-                  className="h-9 min-w-0 flex-1"
-                  label={t('Position in your recording')}
-                />
-                <span className="shrink-0 text-xs tabular-nums text-[var(--home-muted)]">
-                  {formatDuration(state.durationSec)}
-                </span>
               </div>
-              <button
-                type="button"
-                onClick={recordAgain}
-                className="qari-press ed-focus mt-3 flex h-[38px] w-full items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[13px] font-semibold text-[var(--home-heading)]"
-              >
-                <RotateCcw className="h-[15px] w-[15px]" strokeWidth={2.2} />
-                {t('Record again')}</button>
-            </div>
-          </Group>
 
-          <QariLabel>{t('Details')}</QariLabel>
-          <Group>
-            <label className={cn('block px-3.5 py-[11px]', titleShake && 'fx-shake')} htmlFor="qari-title">
-              <span className="flex items-center justify-between text-xs font-semibold text-[var(--home-muted)]">
-                {t('Title')}<span className="font-medium tabular-nums">{title.length}/80</span>
-              </span>
-              <input
-                id="qari-title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value.slice(0, 80))}
-                placeholder={t('Al-Mulk, first ten ayat')}
-                className="mt-1 w-full bg-transparent text-[15px] font-medium text-[var(--home-heading)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)]"
-              />
-            </label>
-            <Divider inset="0.875rem" />
-            <label className="block px-3.5 py-[11px]" htmlFor="qari-tags">
-              <span className="text-xs font-semibold text-[var(--home-muted)]">{t('Hashtags')}</span>
-              <span className="mt-1 flex items-center gap-2">
-                <Hash className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
-                <input
-                  id="qari-tags"
-                  type="text"
-                  value={hashtags}
-                  onChange={(e) => setHashtags(e.target.value.slice(0, 200))}
-                  placeholder={t('tajweed hifdh fajr')}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="w-full bg-transparent text-[15px] font-medium text-[var(--home-heading)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)]"
-                />
-              </span>
-              {tags.length > 0 ? (
-                <span className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-3 border-t border-[var(--home-rule)] pt-3">
+                <label className="flex items-center gap-2" htmlFor="qari-tags">
+                  <Hash className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+                  <span className="sr-only">{t('Hashtags')}</span>
+                  <input
+                    id="qari-tags"
+                    type="text"
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value.slice(0, 200))}
+                    placeholder={t('Hashtags')}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className="w-full bg-transparent text-[14.5px] font-medium text-[var(--home-heading)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)]"
+                  />
+                </label>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {tags.map((tag) => (
                     <span key={tag} className="qari-chip qari-enter" style={{ height: '1.75rem', paddingInline: '0.625rem', fontSize: '0.78125rem' }}>
                       #{tag}
                     </span>
                   ))}
+                  {tags.length < MAX_TAGS
+                    ? SUGGESTED_TAGS.filter((tag) => !tags.includes(tag)).map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => addTag(tag)}
+                          className="qari-press ed-focus flex h-7 items-center rounded-full border border-dashed border-[var(--home-rule-strong)] px-2.5 text-[12.5px] font-medium text-[var(--home-muted)]"
+                        >
+                          + #{tag}
+                        </button>
+                      ))
+                    : null}
+                </div>
+              </div>
+            </div>
+
+            <p className="mx-1 mb-2 mt-6 text-[13px] font-medium text-[var(--home-muted)]">{t('Recitation')}</p>
+            <div className="home-card overflow-hidden rounded-[20px]">
+              <PostRow Icon={AudioLines} label={t('Sound')} value={t(space.label)} onClick={() => openPicker('sound')} />
+              <RowDivider />
+              <div className="set-row" style={{ paddingBlock: 8 }}>
+                <span className="set-row__icon">
+                  <MicVocal className="h-[17px] w-[17px]" strokeWidth={1.9} />
                 </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-medium">{t('Imitate a sheikh')}</span>
+                  <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{t('Also shows on his page')}</span>
+                </span>
+                <Switch checked={imitate} onChange={setImitate} label={t('Imitate a sheikh')} />
+              </div>
+              {imitate && sheikh ? (
+                <div className="qari-enter">
+                  <RowDivider />
+                  <button type="button" className="set-row" style={{ paddingBlock: 8 }} onClick={() => openPicker('sheikh')}>
+                    <SheikhMonogram sheikh={sheikh} size={30} />
+                    <span className="set-row__label">{t('Sheikh')}</span>
+                    <span className="set-row__value">{sheikh.shortName}</span>
+                    <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+                  </button>
+                </div>
               ) : null}
-            </label>
-            <Divider inset="0.875rem" />
-            <label className="block px-3.5 py-[11px]" htmlFor="qari-caption">
-              <span className="text-xs font-semibold text-[var(--home-muted)]">{t('Note')}</span>
-              <textarea
-                id="qari-caption"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value.slice(0, 280))}
-                rows={2}
-                placeholder={t('Anything you would like to say about it')}
-                className="mt-1 w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+              {verseTimeline.length > 0 ? (
+                <>
+                  <RowDivider />
+                  <div className="set-row" style={{ paddingBlock: 10 }}>
+                    <span className="set-row__icon">
+                      <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium">{t('Ayat marked')}</span>
+                      <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{t('Shown as you recite them')}</span>
+                    </span>
+                    <span className="set-row__value">{new Set(verseTimeline.map((e) => e.verseKey)).size}</span>
+                  </div>
+                </>
+              ) : null}
+              <RowDivider />
+              <PostRow
+                Icon={isPrivate ? Lock : Globe}
+                label={t('Who can hear it')}
+                value={isPrivate ? t('Only me') : t('Everyone')}
+                onClick={() => openPicker('audience')}
               />
-            </label>
-          </Group>
-
-          <QariLabel>{t('Recitation')}</QariLabel>
-          {settings(false)}
-
-          <QariLabel>{t('Who can hear it')}</QariLabel>
-          <QariSegmented
-            label={t('Who can hear it')}
-            value={isPrivate ? 'private' : 'everyone'}
-            onChange={(value) => setIsPrivate(value === 'private')}
-            itemClassName="h-[38px]"
-            options={[
-              { id: 'everyone', label: t('Everyone'), Icon: Globe },
-              { id: 'private', label: t('Only me'), Icon: Lock },
-            ]}
-          />
-          <p className="mx-1 mt-2 text-[12.5px] leading-relaxed text-[var(--home-muted)]">
-            {isPrivate
-              ? t('Only you can hear it, on your profile.')
-              : imitate && sheikh
-                ? t('It appears in the Qari feed and on {shortName}\'s page.', { shortName: sheikh.shortName })
-                : t('It appears in the Qari feed.')}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => void handlePublish()}
-            disabled={publishing}
-            className="ed-ink ed-focus qari-press mt-6 flex h-[52px] w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold disabled:opacity-70"
-          >
-            {publishing ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            ) : (
-              <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
-            )}
-            {publishing
-              ? t('Publishing')
-              : !viewer
-                ? t('Sign in to publish')
-                : isPrivate
-                  ? t('Save to my profile')
-                  : t('Publish recitation')}
-          </button>
-          <p className="pb-6 pt-2.5 text-center text-[12.5px] text-[var(--home-muted)]">
-            {t('You can delete it any time from your profile.')}</p>
+            </div>
+            <p className="mx-1 mt-3 text-[12.5px] leading-relaxed text-[var(--home-muted)]">
+              {isPrivate
+                ? t('Only you can hear it, on your profile.')
+                : imitate && sheikh
+                  ? t("It appears in the Qari feed and on {shortName}'s page.", { shortName: sheikh.shortName })
+                  : t('It appears in the Qari feed.')}{' '}
+              {t('You can delete it any time from your profile.')}
+            </p>
+          </div>
         </div>
 
+        <div className="qari-post-bar">
+          <div className="mx-auto flex w-full max-w-lg gap-2.5">
+            <button
+              type="button"
+              onClick={saveToDrafts}
+              className="qari-press ed-focus flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[15px] font-semibold text-[var(--home-heading)]"
+            >
+              <FileAudio className="h-[17px] w-[17px]" strokeWidth={2} />
+              {t('Drafts')}
+            </button>
+            <button
+              type="button"
+              onClick={handlePost}
+              className="ed-ink ed-focus qari-press flex h-[52px] flex-[1.6] items-center justify-center gap-2 rounded-full text-[15px] font-semibold"
+            >
+              <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
+              {!viewer ? t('Sign in to post') : isPrivate ? t('Save') : t('Post')}
+            </button>
+          </div>
+        </div>
+
+        {pickers}
         <AccountSheet open={accountOpen} onClose={() => setAccountOpen(false)} onSuccess={() => {}} />
-      </Screen>
+      </main>
     )
   }
+
+  /* ---------------------------------------------------------- edit view */
+
+  if (step === 'edit' && state.blob) {
+    return (
+      <Studio background={background} moving>
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={backToCamera} aria-label={t('Back')} className="qari-cam-round qari-glass ed-focus">
+            <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+          </button>
+          <span className="qari-cam-text text-[15px] font-semibold">{t('Preview')}</span>
+          <span className="w-[2.625rem]" aria-hidden />
+        </div>
+
+        <div className="relative flex min-h-0 flex-1">
+          {/* Tap anywhere on the picture to listen. */}
+          <button
+            type="button"
+            onClick={togglePreview}
+            aria-label={previewing ? t('Pause') : t('Listen back')}
+            className="flex flex-1 items-center justify-center"
+          >
+            <span
+              className={cn(
+                'qari-glass flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full transition-[opacity,transform] duration-200',
+                previewing ? 'scale-90 opacity-0' : 'opacity-100'
+              )}
+            >
+              <Play className="ml-1 h-8 w-8 fill-current" strokeWidth={0} />
+            </span>
+          </button>
+          <div className="absolute -right-2 top-4 flex flex-col items-center gap-4">
+            <Tool Icon={AudioLines} label={t(space.label)} onClick={() => openPicker('sound')} />
+            <Tool
+              Icon={MicVocal}
+              label={imitate && sheikh ? sheikh.shortName : t('Imitate')}
+              active={imitate}
+              onClick={() => openPicker('sheikh')}
+            />
+          </div>
+        </div>
+
+        <div className="qari-glass flex items-center gap-3 rounded-2xl px-3 py-2.5">
+          <button
+            type="button"
+            onClick={togglePreview}
+            aria-label={previewing ? t('Pause') : t('Listen back')}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#111]"
+          >
+            {previewing ? (
+              <Pause key="pause" className="qari-swap h-4 w-4 fill-current" strokeWidth={0} />
+            ) : (
+              <Play key="play" className="qari-swap ml-0.5 h-4 w-4 fill-current" strokeWidth={0} />
+            )}
+          </button>
+          <Waveform
+            peaks={peaks}
+            seed={String(state.durationSec)}
+            progress={previewProgress}
+            onSeek={previewRef.current ? seekPreview : undefined}
+            tone="dark"
+            className="h-8 min-w-0 flex-1"
+            label={t('Position in your recording')}
+          />
+          <span className="shrink-0 text-xs font-medium tabular-nums text-white/80">{formatDuration(state.durationSec)}</span>
+        </div>
+
+        <p className="qari-cam-text mb-0.5 mt-4 text-[12.5px] font-semibold text-white/85">{t('Background')}</p>
+        <BackgroundStrip selectedId={backgroundId} onSelect={setBackgroundId} onMore={openGallery} />
+
+        <div className="mt-4 flex gap-2.5">
+          <button
+            type="button"
+            onClick={recordAgain}
+            className={cn(
+              'qari-glass qari-press ed-focus flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full text-[14.5px] font-semibold',
+              retakeArmed && 'text-rose-300'
+            )}
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
+            {t('Record again')}
+          </button>
+          <button
+            type="button"
+            onClick={toPost}
+            className="qari-press ed-focus flex h-[52px] flex-[1.3] items-center justify-center gap-2 rounded-full bg-[#0e7268] text-[15px] font-semibold text-white shadow-[0_10px_24px_-10px_rgba(14,114,104,0.8)]"
+          >
+            {t('Next')}
+            <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.2} />
+          </button>
+        </div>
+
+        {pickers}
+      </Studio>
+    )
+  }
+
+  /* ---------------------------------------------------------- record view */
 
   const recording = step === 'recording'
   const countingDown = step === 'countdown'
   const elapsed = recording ? state.elapsed : 0
   const left = MAX_SECONDS - elapsed
+  const draftBackground = draftMeta?.background ? findVideoBackground(draftMeta.background) : background
 
   const closeButton = recording ? (
     <button
@@ -764,225 +846,226 @@ function RecordFlow() {
         setStep('ready')
         qariNotice(tr('Recording discarded.'))
       }}
-      className={cn('home-round ed-focus', discardArmed && 'text-rose-500')}
+      className={cn('qari-cam-round qari-glass ed-focus', discardArmed && 'text-rose-300')}
     >
-      <X className="h-5 w-5" strokeWidth={1.9} />
+      <X className="h-5 w-5" strokeWidth={2} />
     </button>
   ) : countingDown ? (
-    <button type="button" aria-label={t('Cancel')} onClick={cancelCountdown} className="home-round ed-focus">
-      <X className="h-5 w-5" strokeWidth={1.9} />
+    <button type="button" aria-label={t('Cancel')} onClick={cancelCountdown} className="qari-cam-round qari-glass ed-focus">
+      <X className="h-5 w-5" strokeWidth={2} />
     </button>
   ) : (
-    <Link href="/qari" onClick={tapFeedback} aria-label={t('Close')} className="home-round ed-focus">
-      <X className="h-5 w-5" strokeWidth={1.9} />
+    <Link href="/qari" onClick={tapFeedback} aria-label={t('Close')} className="qari-cam-round qari-glass ed-focus">
+      <X className="h-5 w-5" strokeWidth={2} />
     </Link>
   )
 
-  const studio = recording || countingDown
-
   return (
-    <Screen studio={studio}>
-      {studio ? (
-        <>
-          <div className="flex items-center justify-between">
-            {closeButton}
-            {recording ? (
-              <span className="qari-step flex h-[34px] items-center gap-2 rounded-full bg-rose-500/20 px-3.5 text-[13px] font-medium text-rose-200">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
-                {t('Recording')}</span>
-            ) : (
-              <span className="text-[15px] font-medium text-[var(--home-heading)]">{t('Get ready')}</span>
-            )}
+    <Studio background={background} moving deep={recording || countingDown}>
+      <div className="flex items-center justify-between gap-2">
+        {closeButton}
+        {recording ? (
+          <span className="qari-glass flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-semibold tabular-nums">
+            <span className="qari-rec-dot" />
+            {state.paused ? t('Paused') : clock(elapsed)}
+          </span>
+        ) : countingDown ? (
+          <span className="qari-cam-text text-[15px] font-semibold">{t('Get ready')}</span>
+        ) : (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => openPicker('sheikh')}
+              className="qari-glass qari-press ed-focus flex h-9 min-w-0 items-center gap-2 rounded-full pl-2 pr-3.5 text-[13px] font-semibold"
+            >
+              {imitate && sheikh ? (
+                <SheikhMonogram sheikh={sheikh} size={24} />
+              ) : (
+                <span className="flex h-6 w-6 items-center justify-center">
+                  <MicVocal className="h-4 w-4" strokeWidth={2} />
+                </span>
+              )}
+              <span className="truncate">
+                {imitate && sheikh ? t('Imitating {shortName}', { shortName: sheikh.shortName }) : t('Imitate a sheikh')}
+              </span>
+            </button>
+            {imitate ? (
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  setImitate(false)
+                }}
+                aria-label={t('Stop imitating')}
+                className="qari-glass qari-press ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              >
+                <X className="h-4 w-4" strokeWidth={2.2} />
+              </button>
+            ) : null}
+          </div>
+        )}
+        {recording ? (
+          <button
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              setMushafOpen(true)
+            }}
+            aria-label={t('Read from Mushaf')}
+            className="qari-cam-round qari-glass ed-focus"
+          >
+            <BookOpen className="h-[18px] w-[18px]" strokeWidth={1.9} />
+          </button>
+        ) : (
+          <span className="w-[2.625rem] shrink-0" aria-hidden />
+        )}
+      </div>
+
+      <div className="relative flex min-h-0 flex-1">
+        {step === 'ready' ? (
+          <div className="qari-step absolute -right-2 top-5 flex flex-col items-center gap-4">
+            <Tool Icon={ImageIcon} label={t('Background')} onClick={openGallery} />
+            <Tool Icon={AudioLines} label={t(space.label)} onClick={() => openPicker('sound')} />
+            <Tool
+              Icon={BookOpen}
+              label={t('Mushaf')}
+              onClick={() => {
+                tapFeedback()
+                setMushafOpen(true)
+              }}
+            />
+          </div>
+        ) : null}
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-5">
+          {state.polishing ? (
+            <div className="qari-glass w-full max-w-[17rem] rounded-3xl px-5 py-5 text-center" role="status">
+              <span className="mx-auto block h-8 w-8 animate-spin rounded-full border-[3px] border-white/25 border-t-white" />
+              <p className="home-serif mt-3 text-[1.1875rem] font-medium">{t('Polishing your recitation…')}</p>
+              <p className="mt-1 text-[13px] text-white/75" aria-live="polite">
+                {state.polishStage === 'cleaning'
+                  ? t('Removing room noise')
+                  : state.polishStage === 'shaping'
+                    ? t('Shaping the voice')
+                    : state.polishStage === 'saving'
+                      ? t('Saving')
+                      : t('Levelling the sound')}
+              </p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full rounded-full bg-white transition-[width] duration-200"
+                  style={{ width: `${Math.round(Math.min(1, Math.max(0.03, state.polishProgress)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : countingDown ? (
+            <span key={count} className="qari-count home-serif qari-cam-text text-[7.5rem] font-medium leading-none tabular-nums">
+              {count}
+            </span>
+          ) : recording ? (
+            <>
+              <span className="home-serif qari-cam-text text-[3.75rem] font-medium leading-none tracking-[-0.03em] tabular-nums" aria-live="polite">
+                {clock(elapsed)}
+              </span>
+              <LiveWave levels={levels} />
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={cn('flex flex-col items-center', state.polishing && 'invisible')}>
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
+          <div className="flex justify-center">
             {recording ? (
               <button
                 type="button"
                 onClick={() => {
                   tapFeedback()
-                  setMushafOpen(true)
+                  if (state.paused) recorder.resume()
+                  else recorder.pause()
                 }}
-                aria-label={t('Read from Mushaf')}
-                className="home-round ed-focus"
+                aria-label={state.paused ? t('Resume recording') : t('Pause recording')}
+                aria-pressed={state.paused}
+                className="qari-glass qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full"
               >
-                <BookOpen className="h-[18px] w-[18px]" strokeWidth={1.9} />
+                {state.paused ? (
+                  <Play className="ml-0.5 h-[18px] w-[18px] fill-current" strokeWidth={0} />
+                ) : (
+                  <Pause className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
+                )}
               </button>
-            ) : (
-              <span className="w-[42px]" aria-hidden />
-            )}
-          </div>
-          <p className="qari-step mt-3.5 text-center text-[13px] text-[var(--home-muted)]">
-            {t(space.label)} {t('sound')}{imitate && sheikh ? t(' · Imitating {shortName}', { shortName: sheikh.shortName }) : ''}
-          </p>
-
-          {/* Stage */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-5 py-4">
-            {state.polishing ? (
-              <>
-                <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[var(--home-rule-strong)] border-t-[var(--qari-gold-hi)]" role="status" aria-label={t('Polishing your recitation…')} />
-                <div className="w-full max-w-[16rem] text-center">
-                  <p className="home-serif text-[1.25rem] font-medium text-[var(--home-heading)]">{t('Polishing your recitation…')}</p>
-                  <p className="mt-1 text-[13px] text-[var(--home-muted)]" aria-live="polite">
-                    {state.polishStage === 'cleaning'
-                      ? t('Removing room noise')
-                      : state.polishStage === 'shaping'
-                        ? t('Shaping the voice')
-                        : state.polishStage === 'saving'
-                          ? t('Saving')
-                          : t('Levelling the sound')}
-                  </p>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--qari-gold-hi)] transition-[width] duration-200"
-                      style={{ width: `${Math.round(Math.min(1, Math.max(0.03, state.polishProgress)) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : countingDown ? (
-              <>
-                <LevelRing level={0} live={false}>
-                  <span key={count} className="qari-count home-serif text-[6rem] font-medium leading-none tabular-nums text-[var(--home-heading)]">
-                    {count}
+            ) : step === 'ready' && draftMeta ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => void resumeDraft()}
+                  aria-label={t('Resume draft')}
+                  className="qari-press ed-focus flex flex-col items-center gap-1"
+                >
+                  <span className="relative block h-[3.25rem] w-[2.5rem] overflow-hidden rounded-[9px] shadow-[0_0_0_2px_rgba(255,255,255,0.9)]">
+                    <BackgroundCover background={draftBackground} small />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/55 py-px text-center text-[9.5px] font-semibold tabular-nums">
+                      {formatDuration(draftMeta.durationSec)}
+                    </span>
                   </span>
-                </LevelRing>
-                <p className="text-sm text-[var(--home-muted)]">{t('Get ready…')}</p>
-              </>
-            ) : (
-              <>
-                <span
-                  className="home-serif text-[3.5rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
-                  aria-live="polite"
-                >
-                  {clock(elapsed)}
-                </span>
-                <LiveWave levels={levels} />
-                <LevelRing level={state.level} live={!state.paused}>
-                  <button
-                    type="button"
-                    onClick={() => recorder.stop()}
-                    aria-label={t('Finish recording')}
-                    className="qari-rec qari-rec--stop ed-focus"
-                  >
-                    <Square className="h-6 w-6" fill="currentColor" strokeWidth={0} />
-                  </button>
-                </LevelRing>
-                <p
-                  key={state.inputHint ?? 'ok'}
+                  <span className="qari-cam-text text-[11px] font-semibold">{t('Draft')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={discardDraft}
+                  aria-label={t('Discard draft')}
                   className={cn(
-                    'qari-step text-center text-[13px]',
-                    state.inputHint === 'loud'
-                      ? 'font-medium text-rose-300'
-                      : state.inputHint === 'quiet'
-                        ? 'font-medium text-amber-300'
-                        : 'text-[var(--home-muted)]'
+                    'absolute -right-2.5 -top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white ring-1 ring-white/30',
+                    draftDiscardArmed && 'bg-rose-500'
                   )}
-                  aria-live="polite"
                 >
-                  {state.paused
-                    ? t('Paused')
-                    : state.inputHint === 'loud'
-                      ? t('Too loud — hold the phone a little further away')
-                      : state.inputHint === 'quiet'
-                        ? t('We can barely hear you — come a little closer')
-                        : left <= 60
-                          ? t('{left} seconds left', { left })
-                          : t('Recite now — tap the square when you finish')}
-                </p>
-              </>
-            )}
+                  <X className="h-3 w-3" strokeWidth={2.6} />
+                </button>
+              </div>
+            ) : null}
           </div>
 
-          {/* Pause holds the take, so a reciter can breathe, cough or look something up. */}
-          <div className={cn('flex flex-col items-center pb-2', (state.polishing || countingDown) && 'invisible')}>
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                if (state.paused) recorder.resume()
-                else recorder.pause()
-              }}
-              aria-label={state.paused ? t('Resume recording') : t('Pause recording')}
-              aria-pressed={state.paused}
-              className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)]"
-            >
-              {state.paused ? (
-                <Play className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
-              ) : (
-                <Pause className="h-[18px] w-[18px] fill-current" strokeWidth={0} />
-              )}
-            </button>
-            <p className="mt-3 text-center text-[12.5px] text-[var(--home-muted)]">
-              {state.paused ? t('Paused. Tap play to carry on, or the square to finish.') : t('Tap the square to finish')}
-            </p>
-          </div>
-        </>
-      ) : (
-        <>
-          <QariHeader title={t('New recitation')} back={closeButton} />
-          {draftMeta ? (
-            <div className="qari-step home-card mt-3.5 flex items-center gap-3 rounded-2xl px-3.5 py-3">
-              <span className="set-row__icon" aria-hidden>
-                <FileAudio className="h-[17px] w-[17px]" strokeWidth={1.9} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                  {draftMeta.title ? `“${draftMeta.title}”` : t('Unfinished recitation')}
-                </span>
-                <span className="block text-[0.78125rem] text-[var(--home-muted)]">
-                  {formatDuration(draftMeta.durationSec)} · {t('not yet published')}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={discardDraft}
-                aria-label={t('Discard draft')}
-                className="ed-focus flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-rose-500"
-              >
-                <Trash2 className="h-4 w-4" strokeWidth={1.9} />
-              </button>
-              <button
-                type="button"
-                onClick={() => void resumeDraft()}
-                className="ed-ink ed-focus qari-press h-9 shrink-0 rounded-full px-4 text-[13px] font-medium"
-              >
-                {t('Resume')}
-              </button>
-            </div>
-          ) : null}
-          <div className="qari-step">
-            <QariLabel>{t('Before you start')}</QariLabel>
-            {settings(true)}
-          </div>
+          <Shutter
+            live={recording}
+            disabled={countingDown}
+            level={recording && !state.paused ? state.level : 0}
+            progress={elapsed / MAX_SECONDS}
+            label={recording ? t('Finish recording') : t('Start recording')}
+            onClick={() => (recording ? recorder.stop() : void begin())}
+          />
 
-          {/* Stage */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
-            <span
-              className="home-serif text-[3.75rem] font-medium leading-none tracking-[-0.03em] tabular-nums text-[var(--home-heading)]"
-              aria-live="polite"
-            >
-              {clock(0)}
-            </span>
-            <IdleLine />
-            <p className="qari-step text-center text-[13px] text-[var(--home-muted)]" aria-live="polite">
-              {t('Hold the phone a hand-span away, then tap to begin')}
-            </p>
-          </div>
+          <span aria-hidden />
+        </div>
 
-          {/* Record */}
-          <div className="flex flex-col items-center pb-2">
-            <button
-              type="button"
-              onClick={() => void begin()}
-              aria-label={t('Start recording')}
-              className="qari-rec ed-focus"
-            >
-              <Mic className="h-8 w-8" strokeWidth={2} />
-            </button>
-            <p className="mt-5 text-[12.5px] text-[var(--home-muted)]">
-              {t('Up to 10 minutes · a quiet room with carpet or curtains sounds best')}
-            </p>
-          </div>
-        </>
-      )}
+        <p
+          key={state.inputHint ?? step}
+          className={cn(
+            'qari-step qari-cam-text mt-4 min-h-[1.25rem] px-6 text-center text-[12.5px] font-medium',
+            recording && state.inputHint === 'loud'
+              ? 'text-rose-200'
+              : recording && state.inputHint === 'quiet'
+                ? 'text-amber-200'
+                : 'text-white/85'
+          )}
+          aria-live="polite"
+        >
+          {countingDown
+            ? t('Get ready…')
+            : !recording
+              ? t('Tap to record · up to 10 minutes')
+              : state.paused
+                ? t('Paused. Tap play to carry on, or the square to finish.')
+                : state.inputHint === 'loud'
+                  ? t('Too loud — hold the phone a little further away')
+                  : state.inputHint === 'quiet'
+                    ? t('We can barely hear you — come a little closer')
+                    : left <= 60
+                      ? t('{left} seconds left', { left })
+                      : t('Tap the square when you finish')}
+        </p>
+      </div>
+
+      {pickers}
       <MushafReadAlong
         open={mushafOpen}
         onClose={() => setMushafOpen(false)}
@@ -994,84 +1077,155 @@ function RecordFlow() {
         onStop={() => recorder.stop()}
         onMarkVerse={handleMarkVerse}
       />
-    </Screen>
+    </Studio>
   )
 }
 
 /* ------------------------------------------------------------ pieces */
 
-/**
- * The page. While recording or counting down it turns into the deep-teal
- * studio: the same tokens as the swipe view, ivory on dark.
- */
-function Screen({
+/** Full screen over the background the recitation will be shown on. */
+function Studio({
+  background,
+  moving = false,
+  deep = false,
   children,
-  scroll = false,
-  studio = false,
 }: {
+  background: VideoBackground
+  moving?: boolean
+  deep?: boolean
   children: React.ReactNode
-  scroll?: boolean
-  studio?: boolean
 }) {
   return (
-    <main className={cn('qari-theme relative min-h-[100dvh] w-full text-[var(--app-text)]', studio && 'qari-studio')}>
-      <div
-        className={cn(
-          'relative mx-auto flex w-full max-w-lg flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]',
-          scroll ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'min-h-[100dvh] pb-[max(1.5rem,env(safe-area-inset-bottom))]',
-          studio && 'qari-swipe'
-        )}
-      >
-        {children}
-      </div>
+    <main className="qari-cam">
+      <BackgroundCover background={background} moving={moving} drift />
+      <div className={cn('qari-cam__shade', deep && 'is-deep')} />
+      <div className="qari-cam__body">{children}</div>
     </main>
   )
 }
 
-function Group({ children }: { children: React.ReactNode }) {
-  return <div className="home-card overflow-hidden rounded-2xl">{children}</div>
-}
-
-function Divider({ inset = '3.5rem' }: { inset?: string }) {
-  return <div className="set-row__divider" style={{ marginLeft: inset }} />
-}
-
-function IdleLine() {
+/** One of the tools down the right edge: a round glass icon with its name under it. */
+function Tool({
+  Icon,
+  label,
+  active = false,
+  onClick,
+}: {
+  Icon: typeof AudioLines
+  label: string
+  active?: boolean
+  onClick: () => void
+}) {
   return (
-    <div className="flex h-14 items-center gap-1" aria-hidden>
-      {Array.from({ length: 36 }, (_, i) => (
-        <span key={i} className="h-[3px] w-[3px] rounded-full bg-[var(--home-rule-strong)]" />
-      ))}
+    <button type="button" onClick={onClick} className="qari-tool ed-focus">
+      <span className={cn('qari-tool__icon qari-glass', active && '!bg-white !text-[#111]')}>
+        <Icon className="h-5 w-5" strokeWidth={1.9} />
+      </span>
+      <span className="qari-tool__label">{label}</span>
+    </button>
+  )
+}
+
+/** The record button: a red dot in a white ring, a stop square while recording, the ring filling as the time goes. */
+function Shutter({
+  live,
+  disabled,
+  level,
+  progress,
+  label,
+  onClick,
+}: {
+  live: boolean
+  disabled: boolean
+  level: number
+  progress: number
+  label: string
+  onClick: () => void
+}) {
+  // Square root, so a soft voice still visibly moves the glow.
+  const v = Math.sqrt(Math.min(1, Math.max(0, level)))
+  const r = 39.5
+  const circumference = 2 * Math.PI * r
+  return (
+    <div className="relative flex items-center justify-center">
+      <span
+        className="pointer-events-none absolute inset-[-14px] rounded-full bg-white/15 transition-[transform,opacity] duration-100"
+        style={{ transform: `scale(${0.82 + v * 0.3})`, opacity: live ? 0.35 + v * 0.65 : 0 }}
+        aria-hidden
+      />
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className={cn('qari-shutter ed-focus', live && 'is-live')}
+      >
+        {live ? (
+          <svg viewBox="0 0 84 84" className="qari-shutter__ring" aria-hidden>
+            <circle
+              cx="42"
+              cy="42"
+              r={r}
+              fill="none"
+              stroke="#fff"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - Math.min(1, Math.max(0.004, progress)))}
+              className="transition-[stroke-dashoffset] duration-300 ease-linear"
+            />
+          </svg>
+        ) : null}
+        <span className="qari-shutter__core" />
+      </button>
     </div>
   )
 }
 
-/**
- * Two thin gold rings that swell with the voice around whatever sits in the
- * middle. `live` off holds them still (paused, or counting down).
- */
-function LevelRing({ level, live, children }: { level: number; live: boolean; children: React.ReactNode }) {
-  // Square root, so a soft voice still moves the rings visibly.
-  const v = live ? Math.sqrt(Math.min(1, Math.max(0, level))) : 0
+/** The backgrounds to choose from at a glance; the one in use is always among them. */
+function BackgroundStrip({
+  selectedId,
+  onSelect,
+  onMore,
+}: {
+  selectedId: string
+  onSelect: (id: string) => void
+  onMore: () => void
+}) {
+  const t = useT()
+  const featured = FEATURED_RECITATION_BACKGROUND_IDS.map(findVideoBackground)
+  const items = featured.some((b) => b.id === selectedId) ? featured : [findVideoBackground(selectedId), ...featured]
   return (
-    <div className="relative flex h-[176px] w-[176px] shrink-0 items-center justify-center" aria-hidden={false}>
-      <span
-        className="absolute inset-0 rounded-full transition-[transform,opacity] duration-100"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(217, 184, 106, 0.3), transparent)',
-          transform: `scale(${0.7 + v * 0.3})`,
-          opacity: 0.35 + v * 0.65,
-        }}
-      />
-      <span
-        className="absolute inset-0 rounded-full border border-[var(--qari-gold-hi)] transition-[transform,opacity] duration-100"
-        style={{ transform: `scale(${0.66 + v * 0.34})`, opacity: 0.3 + v * 0.6 }}
-      />
-      <span
-        className={cn('absolute inset-[26px] rounded-full border border-[var(--home-heading)] transition-[transform,opacity] duration-100', live && 'qari-beat')}
-        style={{ transform: `scale(${1 + v * 0.16})`, opacity: 0.18 + v * 0.4 }}
-      />
-      <div className="relative">{children}</div>
+    <div className="qari-bg-strip" role="radiogroup" aria-label={t('Background')}>
+      {items.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          role="radio"
+          aria-checked={b.id === selectedId}
+          onClick={() => {
+            tapFeedback()
+            onSelect(b.id)
+          }}
+          className="qari-bg-thumb ed-focus"
+        >
+          <span className="qari-bg-thumb__img">
+            <BackgroundCover background={b} small />
+            {b.videoUrl ? (
+              <span className="absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/55">
+                <Play className="ml-px h-2.5 w-2.5 fill-white" strokeWidth={0} />
+              </span>
+            ) : null}
+          </span>
+          <span className="qari-bg-thumb__label">{t(b.label)}</span>
+        </button>
+      ))}
+      <button type="button" onClick={onMore} className="qari-bg-thumb ed-focus">
+        <span className="qari-bg-thumb__img flex items-center justify-center bg-white/15">
+          <LayoutGrid className="h-5 w-5 text-white" strokeWidth={1.9} />
+        </span>
+        <span className="qari-bg-thumb__label">{t('More')}</span>
+      </button>
     </div>
   )
 }
@@ -1080,43 +1234,56 @@ function LevelRing({ level, live, children }: { level: number; live: boolean; ch
 function LiveWave({ levels }: { levels: number[] }) {
   const padded = [...Array.from({ length: Math.max(0, LIVE_BARS - levels.length) }, () => -1), ...levels]
   return (
-    <div className="flex h-[72px] w-full max-w-[22rem] items-center" aria-hidden>
+    <div className="flex h-[76px] w-full max-w-[21rem] items-center" aria-hidden>
       <div className="flex h-full flex-1 items-center justify-end gap-[3px] pr-1.5">
         {padded.map((level, i) =>
           level < 0 ? (
-            <span key={i} className="h-[3px] w-[3px] shrink-0 rounded-full bg-[var(--home-rule-strong)]" />
+            <span key={i} className="h-[3px] w-[3px] shrink-0 rounded-full bg-white/35" />
           ) : (
             <span
               key={i}
-              className="w-[3px] shrink-0 rounded-full bg-[var(--qari-gold-hi)] transition-[height] duration-100"
+              className="w-[3px] shrink-0 rounded-full bg-white shadow-[0_0_6px_rgba(0,0,0,0.25)] transition-[height] duration-100"
               // Square root, so a soft voice still moves the bars visibly.
               style={{ height: `${Math.max(6, Math.min(100, Math.sqrt(level) * 120))}%` }}
             />
           )
         )}
       </div>
-      <span className="h-full w-0.5 shrink-0 rounded-full bg-[var(--home-heading)]" />
+      <span className="h-full w-0.5 shrink-0 rounded-full bg-[#ff5b57]" />
       <div className="flex h-full flex-1 items-center gap-[3px] overflow-hidden pl-2">
-        {Array.from({ length: 24 }, (_, i) => (
-          <span key={i} className="h-[3px] w-[3px] shrink-0 rounded-full bg-[var(--home-rule-strong)]" />
+        {Array.from({ length: 22 }, (_, i) => (
+          <span key={i} className="h-[3px] w-[3px] shrink-0 rounded-full bg-white/35" />
         ))}
       </div>
     </div>
   )
 }
 
-/** The published recording's own shape, with a wave of gold running through it. */
-function GoldWave({ peaks, seed }: { peaks: number[]; seed: string }) {
-  const [progress, setProgress] = useState(0)
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setProgress(1)
-      return
-    }
-    const id = window.setInterval(() => setProgress((p) => (p >= 1.25 ? 0 : p + 0.02)), 60)
-    return () => window.clearInterval(id)
-  }, [])
-  return <Waveform peaks={peaks} seed={seed} progress={Math.min(1, progress)} bars={44} tone="gold" className="h-[60px] w-full" />
+function PostRow({
+  Icon,
+  label,
+  value,
+  onClick,
+}: {
+  Icon: typeof AudioLines
+  label: string
+  value: string
+  onClick: () => void
+}) {
+  return (
+    <button type="button" className="set-row" style={{ paddingBlock: 10 }} onClick={onClick}>
+      <span className="set-row__icon">
+        <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+      </span>
+      <span className="set-row__label">{label}</span>
+      <span className="set-row__value">{value}</span>
+      <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+    </button>
+  )
+}
+
+function RowDivider() {
+  return <div className="set-row__divider" style={{ marginLeft: '3.5rem' }} />
 }
 
 export default function QariRecordPage() {

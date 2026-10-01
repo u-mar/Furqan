@@ -1,5 +1,5 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
-import { translationLanguageLabel, type TranslationLanguageId } from '@/lib/translations'
+import { getTranslationOption, languageForEdition } from '@/lib/translations'
 import { tr } from '@/lib/i18n-core'
 
 export interface TranslationRow {
@@ -17,51 +17,63 @@ export interface TranslationDownloadProgress {
 
 const CACHE_NAME = 'muyassar-translations-v1'
 
-function flagKey(lang: TranslationLanguageId): string {
-  return `muyassar_translations_cached_${lang}`
+/**
+ * Downloads used to be per language and only ever held its default translator, saved under
+ * the language ("en", "so"). Those copies still belong to these two, so they stay usable.
+ */
+const LEGACY_LANGUAGE: Record<string, string> = { 'en.sahih': 'en', 'so.abduh': 'so' }
+
+function flagKey(editionId: string): string {
+  return `muyassar_translations_cached_${editionId}`
 }
 
-function cacheKey(lang: TranslationLanguageId, page: number): string {
-  return `/offline/translations/${lang}/p${page}.json`
+function cacheKey(editionId: string, page: number): string {
+  return `/offline/translations/${editionId}/p${page}.json`
+}
+
+function legacyCacheKey(editionId: string, page: number): string | null {
+  const lang = LEGACY_LANGUAGE[editionId]
+  return lang ? `/offline/translations/${lang}/p${page}.json` : null
 }
 
 function migrateLegacyTranslationFlag(): void {
   try {
     if (localStorage.getItem('muyassar_translations_cached') !== '1') return
-    localStorage.setItem(flagKey('en'), '1')
-    localStorage.setItem(flagKey('so'), '1')
+    localStorage.setItem('muyassar_translations_cached_en', '1')
+    localStorage.setItem('muyassar_translations_cached_so', '1')
     localStorage.removeItem('muyassar_translations_cached')
   } catch {
     /* ignore */
   }
 }
 
-export function areTranslationsCached(lang: TranslationLanguageId): boolean {
+/** Whether this translator is saved on the phone for offline reading. */
+export function areTranslationsCached(editionId: string): boolean {
   if (typeof window === 'undefined') return false
   migrateLegacyTranslationFlag()
   try {
-    return localStorage.getItem(flagKey(lang)) === '1'
+    if (localStorage.getItem(flagKey(editionId)) === '1') return true
+    const legacy = LEGACY_LANGUAGE[editionId]
+    return legacy ? localStorage.getItem(flagKey(legacy)) === '1' : false
   } catch {
     return false
   }
 }
 
-export function clearTranslationsCachedFlag(lang: TranslationLanguageId): void {
+export function clearTranslationsCachedFlag(editionId: string): void {
   try {
-    localStorage.removeItem(flagKey(lang))
+    localStorage.removeItem(flagKey(editionId))
   } catch {
     /* ignore */
   }
 }
 
-export async function getOfflineTranslations(
-  page: number,
-  lang: TranslationLanguageId
-): Promise<TranslationRow[] | null> {
+export async function getOfflineTranslations(page: number, editionId: string): Promise<TranslationRow[] | null> {
   if (typeof caches === 'undefined' || page < 1) return null
   try {
     const cache = await caches.open(CACHE_NAME)
-    const hit = await cache.match(cacheKey(lang, page))
+    const legacy = legacyCacheKey(editionId, page)
+    const hit = (await cache.match(cacheKey(editionId, page))) ?? (legacy ? await cache.match(legacy) : undefined)
     if (!hit) return null
     const data = (await hit.json()) as unknown
     return Array.isArray(data) ? (data as TranslationRow[]) : null
@@ -70,16 +82,17 @@ export async function getOfflineTranslations(
   }
 }
 
-/** Download one translation language for all mushaf pages (offline read mode). */
+/** Download one translator for all mushaf pages (offline read mode). */
 export async function downloadOfflineTranslations(
-  lang: TranslationLanguageId,
+  editionId: string,
   onProgress?: (p: TranslationDownloadProgress) => void
 ): Promise<void> {
   if (typeof caches === 'undefined') {
     throw new Error(tr('Translation caching is not supported in this browser.'))
   }
 
-  const label = translationLanguageLabel(lang)
+  const label = getTranslationOption(editionId).label
+  const language = languageForEdition(editionId)
   const cache = await caches.open(CACHE_NAME)
   const total = TOTAL_MUSHAF_PAGES
   let done = 0
@@ -97,14 +110,14 @@ export async function downloadOfflineTranslations(
   report(tr('{label} · starting…', { label }))
 
   for (let page = 1; page <= TOTAL_MUSHAF_PAGES; page += 1) {
-    const key = cacheKey(lang, page)
+    const key = cacheKey(editionId, page)
     try {
       const existing = await cache.match(key)
       if (existing) {
         saved += 1
       } else {
         const response = await fetch(
-          `/api/ayah?type=translations&page=${page}&lang=${lang}`,
+          `/api/ayah?type=translations&page=${page}&lang=${language}&edition=${encodeURIComponent(editionId)}`,
           { cache: 'no-cache' }
         )
         if (response.ok) {
@@ -121,14 +134,14 @@ export async function downloadOfflineTranslations(
   }
 
   if (saved < total * 0.85) {
-    clearTranslationsCachedFlag(lang)
+    clearTranslationsCachedFlag(editionId)
     throw new Error(
       tr('Only {saved} of {total} pages saved for {label}. Stay on Wi‑Fi and try again.', { saved, total, label })
     )
   }
 
   try {
-    localStorage.setItem(flagKey(lang), '1')
+    localStorage.setItem(flagKey(editionId), '1')
   } catch {
     /* ignore */
   }

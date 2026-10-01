@@ -30,14 +30,30 @@ const CORE_OPTIONS: TranslationOption[] = [
 /** Every translation edition the app can show, grouped implicitly by languageId. */
 export const TRANSLATION_OPTIONS: TranslationOption[] = [
   ...CORE_OPTIONS,
-  ...CATALOG_TRANSLATIONS.map((t): TranslationOption => ({ id: t.id, languageId: t.languageId, label: t.label })),
+  ...CATALOG_TRANSLATIONS.filter(
+    // The same translators as the four above, which are the ones that also work offline.
+    (t) => !(t.languageId === 'en' && ['Saheeh International', 'M. Pickthall', 'A. Yusuf Ali'].includes(t.label))
+  ).map((t): TranslationOption => ({ id: t.id, languageId: t.languageId, label: t.label })),
 ]
 
 export const DEFAULT_TRANSLATION_LANGUAGE: TranslationLanguageId = 'en'
 
-/** The edition each language falls back to — for English and Somali also the one available offline. */
+/** Editions written in Latin letters rather than their language's own script, e.g. Roman Urdu. */
+function isLatinScriptEdition(option: TranslationOption): boolean {
+  return /\b(roman|latin|transliteration)\b/i.test(option.label)
+}
+
+/**
+ * The edition each language falls back to — for English and Somali also the
+ * one available offline. One in the language's own script when there is one,
+ * so Urdu opens in Urdu letters rather than Roman Urdu.
+ */
 export const DEFAULT_TRANSLATION_EDITION: Record<TranslationLanguageId, string> = (() => {
   const map: Record<string, string> = {}
+  for (const option of TRANSLATION_OPTIONS) {
+    if (isLatinScriptEdition(option)) continue
+    if (!map[option.languageId]) map[option.languageId] = option.id
+  }
   for (const option of TRANSLATION_OPTIONS) if (!map[option.languageId]) map[option.languageId] = option.id
   return map
 })()
@@ -69,6 +85,12 @@ const RTL_LANGUAGES = new Set(['ar', 'ur', 'fa', 'ps', 'sd', 'ug', 'ku', 'dari',
 
 export function isRtlTranslationLanguage(lang: TranslationLanguageId): boolean {
   return RTL_LANGUAGES.has(lang)
+}
+
+/** Whether an edition's text runs right to left: its language does, and it is not in Latin letters. */
+export function isRtlTranslationEdition(editionId: string): boolean {
+  const option = getTranslationOption(editionId)
+  return isRtlTranslationLanguage(option.languageId) && !isLatinScriptEdition(option)
 }
 
 export function translationsForLanguage(lang: TranslationLanguageId): TranslationOption[] {

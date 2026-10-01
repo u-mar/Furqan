@@ -15,6 +15,10 @@ export async function likedIdsFor(viewerId: string | null | undefined, ids: stri
 export function toClientRecitation(r: RecitationRecord, liked: boolean) {
   return {
     id: r.id,
+    kind: r.kind === 'ayah' ? ('ayah' as const) : ('recitation' as const),
+    verseKey: r.verseKey ?? null,
+    // Its picture through the app's own route, which hides it with the post.
+    imageUrl: r.imageId ? `/api/qari/image/${r.id}` : null,
     userName: r.userName,
     userUsername: r.userUsername,
     title: r.title || 'Recitation',
@@ -24,6 +28,7 @@ export function toClientRecitation(r: RecitationRecord, liked: boolean) {
     imitating: r.imitating ?? null,
     peaks: r.peaks ?? [],
     verseTimeline: Array.isArray(r.verseTimeline) ? (r.verseTimeline as { verseKey: string; atSeconds: number }[]) : [],
+    background: r.background ?? null,
     caption: r.caption,
     durationSec: r.durationSec,
     likeCount: r.likeCount,

@@ -17,12 +17,14 @@ import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { loadPageFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
-import { fetchPageTranslations, verseQcfWords } from '@/lib/qari-ayah'
+import { fetchPageTranslations, verseQcfWords, viewerTranslation } from '@/lib/qari-ayah'
+import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 import { pageHasQcfData, versePageNumber } from '@/lib/qcf-page'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { getVerseByKey } from '@/lib/quran'
-import { SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS } from '@/lib/share-backgrounds'
+import { isRtlTranslationEdition } from '@/lib/translations'
+import { findVideoBackground } from '@/lib/qari-backgrounds'
 import type { Verse } from '@/types'
 
 export type ShareKind = 'audio' | 'video'
@@ -122,73 +124,13 @@ export async function makeRecitationAudio(
  * corner. Nothing else.
  */
 
-export interface VideoBackground {
-  id: string
-  /** Shown under the swatch in the picker. */
-  label: string
-  /** null for the plain black background. */
-  url: string | null
-  /** A small copy for the pickers; null for the plain black one. */
-  thumb: string | null
-  /** The heading it is listed under in the full gallery. */
-  group: string
-  /** A moving clip, hosted on Cloudinary — takes priority over `url` when set. */
-  videoUrl?: string | null
-}
-
-/** What the picker strip shows before "More": black, one moving clip, and the four landscapes made for videos. */
-export const FEATURED_VIDEO_BACKGROUND_IDS = [
-  'black',
-  'motion-sunset-on-the-beach',
-  'desert-dunes',
-  'canyon-pinnacles',
-  'mountain',
-  'valley',
-]
-
-export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Motion', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
-
-const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
-
-/** Looping clips — Coverr footage, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle). */
-const MOTION_BACKGROUNDS: VideoBackground[] = (
-  [
-    ['sunset-in-auckland-new-zealand', 'Auckland sunset'],
-    ['sunset-on-sayulita-beach-in-mexico', 'Sayulita beach'],
-    ['river-surrounded-by-mountains', 'Mountain river'],
-    ['sunset-on-the-beach', 'Beach sunset'],
-    ['purple-flowers-at-sunset', 'Purple flowers'],
-    ['sun-setting-in-auckland-new-zealand', 'Auckland sun'],
-  ] as const
-).map(([id, label]) => ({
-  id: `motion-${id}`,
-  label,
-  // Cloudinary derives a JPG frame from the video on request — no separate upload needed.
-  url: `${MOTION_CLOUD_BASE}/${id}.jpg`,
-  thumb: `${MOTION_CLOUD_BASE}/${id}.jpg`,
-  videoUrl: `${MOTION_CLOUD_BASE}/${id}.mp4`,
-  group: 'Motion',
-}))
-
-export const VIDEO_BACKGROUNDS: VideoBackground[] = [
-  { id: 'black', label: 'Black', url: null, thumb: null, group: 'Plain' },
-  ...MOTION_BACKGROUNDS,
-  ...[
-    ['desert-dunes', 'Dunes'],
-    ['canyon-pinnacles', 'Canyon'],
-    ['mountain', 'Mountain'],
-    ['valley', 'Valley'],
-  ].map(([id, label]) => {
-    const url = `/qari/video-backgrounds/${id}.avif`
-    return { id, label, url, thumb: url, group: 'Landscapes' }
-  }),
-  // Everything the verse cards use, too.
-  ...SHARE_BACKGROUNDS.map((b) => ({ id: `photo-${b.id}`, label: b.label, url: b.src, thumb: b.thumb, group: b.group })),
-]
-
-export function findVideoBackground(id: string): VideoBackground {
-  return VIDEO_BACKGROUNDS.find((b) => b.id === id) ?? VIDEO_BACKGROUNDS[0]
-}
+export {
+  FEATURED_VIDEO_BACKGROUND_IDS,
+  VIDEO_BACKGROUND_GROUPS,
+  VIDEO_BACKGROUNDS,
+  findVideoBackground,
+  type VideoBackground,
+} from '@/lib/qari-backgrounds'
 
 export interface VideoOptions {
   /** One of VIDEO_BACKGROUNDS' ids. */
@@ -275,6 +217,8 @@ interface Scene {
    *  never tapped an ayah). */
   captions: CaptionBlock[]
   translationFont: string
+  /** The translation reads right to left (Urdu, Persian…). */
+  translationRtl: boolean
   /** Overall loudness per frame, 0–1 — still used for the avatar's breathing ring. */
   level: Float32Array
   frames: number
@@ -435,6 +379,11 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
   const arabicFont = cssFont('--font-amiri', "'Amiri', serif")
   const background = findVideoBackground(options.backgroundId)
+  // In the language of whoever is sharing it: the translation they read the Quran with.
+  const edition = viewerTranslation(getAppSettings().translationEditionId)
+  const translationRtl = isRtlTranslationEdition(edition)
+  // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
+  const translationFont = translationRtl ? arabicFont : serif
 
   const [picture, backgroundImage, backgroundVideo] = await Promise.all([
     options.includeAvatar
@@ -477,7 +426,7 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
     const pagesNeeded = new Set([...verses.values()].map((v) => versePageNumber(v)))
     const translationsByPage = new Map<number, Map<string, string>>()
     await Promise.all(
-      [...pagesNeeded].map(async (page) => translationsByPage.set(page, await fetchPageTranslations(page)))
+      [...pagesNeeded].map(async (page) => translationsByPage.set(page, await fetchPageTranslations(page, edition)))
     )
 
     const [, measureCtx] = makeCanvas(10, 10)
@@ -519,7 +468,7 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
           const translationText = translationsByPage.get(page)?.get(entry.verseKey)?.replace(/\s+/g, ' ').trim()
           const translation = translationText
             ? fitBlock(measureCtx, translationText.split(/\s+/), {
-                fontStack: serif,
+                fontStack: translationFont,
                 weight: '500',
                 maxWidth: W - CAPTION_SIDE_MARGIN * 2 - 40,
                 maxHeight: translationMaxHeight,
@@ -603,7 +552,8 @@ async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOp
     avatar,
     badge,
     captions,
-    translationFont: serif,
+    translationFont,
+    translationRtl,
     level,
     frames,
     seconds: buffer.duration,
@@ -657,7 +607,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
 
     if (caption.translation) {
       y += 56 - caption.arabic.lineHeight * 0.78 + caption.translation.lineHeight * 0.78
-      ctx.direction = 'ltr'
+      ctx.direction = scene.translationRtl ? 'rtl' : 'ltr'
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
       ctx.font = `500 ${caption.translation.fontSize}px ${scene.translationFont}`
       for (const line of caption.translation.lines) {

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
 import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
-import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, putAudio } from '@/lib/qari-storage'
+import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, MAX_IMAGE_BYTES, putAudio, putImage } from '@/lib/qari-storage'
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
+import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 
 export const runtime = 'nodejs'
 
@@ -185,9 +186,64 @@ export async function GET(request: NextRequest) {
 }
 
 /** POST /api/qari — publish a recording (multipart form). */
+const VERSE_KEY_ONLY_RE = /^\d{1,3}:\d{1,3}$/
+const ALLOWED_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp']
+
+/** An ayah card from the Read screen's share page, posted as a picture. */
+async function postAyahCard(form: FormData): Promise<NextResponse> {
+  const file = form.get('image')
+  if (!(file instanceof File) || file.size === 0) {
+    return NextResponse.json({ error: 'No picture was attached.' }, { status: 400 })
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return NextResponse.json({ error: 'That picture is too large.' }, { status: 413 })
+  }
+  const mimeType = (file.type || 'image/jpeg').split(';')[0]
+  if (!ALLOWED_IMAGE_MIME.includes(mimeType)) {
+    return NextResponse.json({ error: 'Unsupported picture format.' }, { status: 415 })
+  }
+
+  const userId = clean(form.get('userId'), 64)
+  const userName = clean(form.get('userName'), 60)
+  const userUsername = clean(form.get('userUsername'), 40)
+  if (!userId || !userUsername) {
+    return NextResponse.json({ error: 'Sign in to post.' }, { status: 401 })
+  }
+
+  const verseKey = clean(form.get('verseKey'), 7)
+  if (!VERSE_KEY_ONLY_RE.test(verseKey)) {
+    return NextResponse.json({ error: 'Which ayah is this?' }, { status: 400 })
+  }
+  const title = clean(form.get('title'), 80) || verseKey
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const imageId = await putImage(buffer, { filename: `${userUsername}-ayah-${Date.now()}`, mimeType })
+
+  const created = await prisma.recitation.create({
+    data: {
+      kind: 'ayah',
+      userId,
+      userName: userName || userUsername,
+      userUsername,
+      imageId,
+      verseKey,
+      mimeType,
+      durationSec: 0,
+      sizeBytes: buffer.length,
+      title,
+      hashtags: parseHashtags(clean(form.get('hashtags'), 200)),
+      isPrivate: clean(form.get('isPrivate'), 5) === 'true',
+      peaks: [],
+      caption: clean(form.get('caption'), 280),
+    },
+  })
+  return NextResponse.json({ id: created.id }, { status: 201 })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const form = await request.formData()
+    if (clean(form.get('kind'), 10) === 'ayah') return await postAyahCard(form)
     const file = form.get('audio')
 
     if (!(file instanceof File)) {
@@ -219,6 +275,8 @@ export async function POST(request: NextRequest) {
     const imitatingRaw = clean(form.get('imitating'), 40)
     const imitating = isSheikhId(imitatingRaw) ? imitatingRaw : null
     const peaks = parsePeaks(clean(form.get('peaks'), 1200))
+    const backgroundRaw = clean(form.get('background'), 80)
+    const background = isVideoBackgroundId(backgroundRaw) ? backgroundRaw : null
     const durationSec = Math.round(Number(form.get('durationSec') || 0))
     if (!title) {
       return NextResponse.json({ error: 'Give your recitation a title.' }, { status: 400 })
@@ -260,6 +318,7 @@ export async function POST(request: NextRequest) {
         // genuinely marked with nothing indistinguishable, which is fine
         // since both read back as "no caption text to show."
         ...(verseTimeline.length ? { verseTimeline } : {}),
+        ...(background ? { background } : {}),
         caption: clean(form.get('caption'), 280),
       },
     })

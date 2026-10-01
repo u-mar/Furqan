@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyPin } from '@/lib/pin-hash'
 import { ownsUsername } from '@/lib/qari-owner'
-import { removeAudio, removeFile } from '@/lib/qari-storage'
+import { removeAudio, removeFile, removeImage } from '@/lib/qari-storage'
 
 export const runtime = 'nodejs'
 
@@ -51,14 +51,15 @@ export async function DELETE(req: Request) {
 
     const recitations = await prisma.recitation.findMany({
       where: { userUsername: username },
-      select: { id: true, audioId: true },
+      select: { id: true, audioId: true, imageId: true },
     })
     const recitationIds = recitations.map((r) => r.id)
 
     // Stored files first: if a later step fails, re-running this finds the
     // rows still there and tries again, rather than leaving orphaned audio.
     for (const r of recitations) {
-      await removeAudio(r.audioId).catch(() => {})
+      if (r.audioId) await removeAudio(r.audioId).catch(() => {})
+      if (r.imageId) await removeImage(r.imageId).catch(() => {})
     }
     const avatar = await prisma.qariAvatar.findUnique({ where: { username } })
     if (avatar) await removeFile(avatar.imageId, 'qari_avatars').catch(() => {})
@@ -70,6 +71,15 @@ export async function DELETE(req: Request) {
       where: { OR: [{ userId }, { recitationId: { in: recitationIds } }] },
     })
     await prisma.recitation.deleteMany({ where: { userUsername: username } })
+    // Who they followed and who followed them, what they were told or were the
+    // subject of, and where their notifications were delivered.
+    await prisma.qariFollow.deleteMany({
+      where: { OR: [{ followerId: userId }, { followerUsername: username }, { followingUsername: username }] },
+    })
+    await prisma.notification.deleteMany({
+      where: { OR: [{ recipientUsername: username }, { actorUsername: username }, { recitationId: { in: recitationIds } }] },
+    })
+    await prisma.pushSubscription.deleteMany({ where: { username } })
     if (avatar) await prisma.qariAvatar.delete({ where: { username } })
     if (account) await prisma.user.delete({ where: { id: account.id } })
 

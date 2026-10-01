@@ -40,7 +40,7 @@ export async function getWordTranslations(
     try {
       const url = `${WORD_TRANSLATION_ENDPOINT}/${encodeURIComponent(
         verseKey
-      )}?words=true&word_translation_language=${encodeURIComponent(language)}`
+      )}?words=true&language=${encodeURIComponent(language)}&word_translation_language=${encodeURIComponent(language)}`
       const res = await fetch(url, { headers: { Accept: 'application/json' } })
       if (!res.ok) return null
 

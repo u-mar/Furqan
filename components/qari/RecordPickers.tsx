@@ -1,5 +1,6 @@
 'use client'
 
+import { Globe, Lock } from 'lucide-react'
 import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
@@ -92,6 +93,60 @@ export function SheikhSheet({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[0.9375rem] font-medium">{sheikh.shortName}</span>
                   <span className="mt-px block truncate text-[0.78125rem] text-[var(--home-muted)]">{sheikh.name}</span>
+                </span>
+                <Radio on={on} />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </SettingsSheet>
+  )
+}
+
+/** Who can hear a recitation: everyone in the feed, or only its reciter. */
+export function AudienceSheet({
+  open,
+  isPrivate,
+  onClose,
+  onSelect,
+}: {
+  open: boolean
+  isPrivate: boolean
+  onClose: () => void
+  onSelect: (isPrivate: boolean) => void
+}) {
+  const t = useT()
+  const options = [
+    { id: false, label: t('Everyone'), hint: t('In the Qari feed, for anyone to hear'), Icon: Globe },
+    { id: true, label: t('Only me'), hint: t('Only on your profile, for you alone'), Icon: Lock },
+  ]
+  return (
+    <SettingsSheet open={open} title={t('Who can hear it')} description={t('You can change this later from your profile.')} onClose={onClose}>
+      <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Who can hear it')}>
+        {options.map(({ id, label, hint, Icon }, i) => {
+          const on = id === isPrivate
+          return (
+            <div key={label}>
+              {i ? <div className="set-row__divider" style={{ marginLeft: 56 }} aria-hidden /> : null}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => {
+                  tapFeedback()
+                  onSelect(id)
+                  onClose()
+                }}
+                className="set-row"
+                style={{ paddingBlock: 9 }}
+              >
+                <span className="set-row__icon">
+                  <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.9375rem] font-medium">{label}</span>
+                  <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{hint}</span>
                 </span>
                 <Radio on={on} />
               </button>

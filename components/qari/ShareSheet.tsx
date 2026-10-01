@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronRight, Download, Film, LayoutGrid, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
+import { shareVerseBlob } from '@/lib/verse-image'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import {
   canMakeVideo,
@@ -64,14 +65,16 @@ export default function ShareSheet({ recitation, open, onClose, onNotice, videoV
   useEffect(() => {
     if (!open) return
     setStage({ name: 'choose' })
-    setVideoOptions(loadVideoOptions())
+    // A recitation posted on a background is shared on it too.
+    const saved = loadVideoOptions()
+    setVideoOptions(recitation.background ? { ...saved, backgroundId: recitation.background } : saved)
     // Start the download now; by the time an option is picked it is usually here.
-    void prefetchRecitationAudio(recitation.id)
+    if (recitation.kind !== 'ayah') void prefetchRecitationAudio(recitation.id)
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
     }
-  }, [open, recitation.id])
+  }, [open, recitation.id, recitation.background, recitation.kind])
 
   const previewUrl = useMemo(
     () => (stage.name === 'ready' ? URL.createObjectURL(stage.media.blob) : null),
@@ -185,7 +188,56 @@ ${url}`)
     if (ok) close()
   }, [close, onNotice, recitation])
 
+  /** An ayah card's picture, fetched when it is shared or saved. */
+  const cardPicture = useCallback(async (): Promise<Blob | null> => {
+    if (!recitation.imageUrl) return null
+    try {
+      const res = await fetch(recitation.imageUrl)
+      return res.ok ? await res.blob() : null
+    } catch {
+      return null
+    }
+  }, [recitation.imageUrl])
+
+  const shareCard = useCallback(async () => {
+    tapFeedback()
+    const blob = await cardPicture()
+    if (!blob) {
+      onNotice?.(tr('Could not load the picture.'))
+      return
+    }
+    try {
+      const result = await shareVerseBlob(blob, { verseKey: recitation.verseKey ?? '', surahName: recitation.title })
+      if (result === 'shared') close()
+      else onNotice?.(tr('Saved to your downloads.'))
+    } catch {
+      onNotice?.(tr('Could not share the card.'))
+    }
+  }, [cardPicture, close, onNotice, recitation.title, recitation.verseKey])
+
+  const saveCard = useCallback(async () => {
+    tapFeedback()
+    const blob = await cardPicture()
+    if (!blob) {
+      onNotice?.(tr('Could not load the picture.'))
+      return
+    }
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${recitation.title.replace(/[^\p{L}\p{N}\s-]/gu, '').trim() || 'ayah'}.jpg`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    successFeedback()
+    onNotice?.(tr('Saved to your downloads.'))
+    close()
+  }, [cardPicture, close, onNotice, recitation.title])
+
   if (!open || typeof document === 'undefined') return null
+
+  const isAyahCard = recitation.kind === 'ayah'
 
   // Rendered on the page itself: a card that animates in has its own layer,
   // and a sheet left inside it would sit under the cards that follow.
@@ -216,7 +268,9 @@ ${url}`)
                 ? stage.media.kind === 'video'
                   ? t('Your video is ready')
                   : t('Your audio is ready')
-                : t('Share recitation')}
+                : isAyahCard
+                  ? t('Share ayah card')
+                  : t('Share recitation')}
             </h2>
             <p className="mt-0.5 truncate text-[0.82rem] text-[var(--home-muted)]">
               {recitation.title} · {recitation.userName}
@@ -232,7 +286,15 @@ ${url}`)
           </button>
         </div>
 
-        {stage.name === 'choose' && videoView ? (
+        {stage.name === 'choose' && isAyahCard ? (
+          <div className="mt-5 flex items-start justify-center gap-7 pb-2">
+            {canNativeShare ? <ShareIconAction icon={Share2} label={t('Share picture')} onClick={() => void shareCard()} /> : null}
+            <ShareIconAction icon={Download} label={t('Save picture')} onClick={() => void saveCard()} />
+            <ShareIconAction icon={Link2} label={t('Copy link')} onClick={() => void handleCopy()} />
+          </div>
+        ) : null}
+
+        {stage.name === 'choose' && videoView && !isAyahCard ? (
           <div className="mt-5 flex items-start justify-center gap-7 pb-2">
             <ShareIconAction
               icon={Download}
@@ -247,7 +309,7 @@ ${url}`)
           </div>
         ) : null}
 
-        {stage.name === 'choose' && !videoView ? (
+        {stage.name === 'choose' && !videoView && !isAyahCard ? (
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
             <ShareOption
               icon={Film}

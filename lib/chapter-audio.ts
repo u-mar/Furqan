@@ -40,8 +40,8 @@ export function getChapterAudio(reciterId: string, chapter: number): Promise<Cha
       .then(async (res): Promise<ChapterAudio | null> => {
         if (!res.ok) return null
         const data = (await res.json()) as { url?: string; ayat?: TimedAyah[] }
-        // Quran.com sends the recording's address with its timings; for MP3Quran it is the reciter's own file.
-        const url = timing.source === 'mp3quran' ? surahAudioUrl(reciter, chapter) : data.url
+        // Quran.com sends the recording's address with its timings; for the others it is the reciter's own file.
+        const url = timing.source === 'quran.com' ? data.url : surahAudioUrl(reciter, chapter)
         if (!url || !data.ayat?.length) return null
         return { url, ayat: data.ayat, byKey: new Map(data.ayat.map((a) => [a.key, a])) }
       })

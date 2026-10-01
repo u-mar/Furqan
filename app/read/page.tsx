@@ -175,6 +175,7 @@ function ReadPageContent() {
   }
   const [ayahMenu, setAyahMenu] = useState<{ verseKey: string; arabic: string } | null>(null)
   const [navSelectedVerseKey, setNavSelectedVerseKey] = useState<string | null>(null)
+  const openAyahMenuRef = useRef<(verseKey: string, options?: { scrollTo?: boolean }) => void>(() => {})
   const [ayahMenuBookmarked, setAyahMenuBookmarked] = useState(false)
   const [showAyahTranslation, setShowAyahTranslation] = useState(false)
   const [somaliNotice, setSomaliNotice] = useState<string | null>(null)
@@ -478,7 +479,8 @@ function ReadPageContent() {
       const verse = await getVerseByKey(verseKey)
       const page = await getVisualPageForVerse(verseKey, verse.page_number || 1)
       await loadPage(page)
-      setNavSelectedVerseKey(verseKey)
+      // Selected like a tapped ayah: highlighted, with its menu, so Play plays this one.
+      openAyahMenuRef.current(verseKey, { scrollTo: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : tr('Could not open that ayah')
       setLoadError(message)
@@ -767,10 +769,11 @@ function ReadPageContent() {
   }, [playbackActive, highlightedVerseKey, showTranslation])
 
   const openAyahMenu = useCallback(
-    (verseKey: string) => {
+    (verseKey: string, options?: { scrollTo?: boolean }) => {
       pauseAllRef.current()
       const select = (verse: Verse) => {
-        setNavSelectedVerseKey(null)
+        // Arriving from Contents, Bookmarks or search: keep the scroll target so translation mode lands on it.
+        setNavSelectedVerseKey(options?.scrollTo ? verseKey : null)
         setUiVisible(true)
         setAyahMenu({
           verseKey,
@@ -790,6 +793,8 @@ function ReadPageContent() {
     },
     [pageVerses]
   )
+
+  openAyahMenuRef.current = openAyahMenu
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
@@ -909,7 +914,8 @@ function ReadPageContent() {
   const handleGoToPageFromDrawer = useCallback(
     (page: number, verseKey?: string) => {
       void navigatePage(page)
-      setNavSelectedVerseKey(verseKey ?? null)
+      if (verseKey) openAyahMenuRef.current(verseKey, { scrollTo: true })
+      else setNavSelectedVerseKey(null)
     },
     [navigatePage]
   )
@@ -1088,7 +1094,7 @@ function ReadPageContent() {
         className={cn(
           'relative min-h-0 flex-1',
           showTranslation
-            ? 'overflow-y-auto overscroll-contain px-4 pb-36'
+            ? 'overflow-y-auto overscroll-contain px-4 pb-36 pt-6'
             : cn(
                 'mushaf-read-scroll-lock overflow-hidden overscroll-none pb-4',
                 mushafWidth === 'full' ? 'mushaf-width-full px-0' : 'mushaf-width-spaced px-1 sm:px-2'
@@ -1384,6 +1390,7 @@ function ReadPageContent() {
         translation={shareTarget ? translationByKey[shareTarget.verseKey]?.translation ?? null : null}
         translationLoading={ayahTranslationLoading}
         translationLanguage={translationLanguage}
+        translationEdition={translationEditionId}
         onClose={() => setShareTarget(null)}
       />
 

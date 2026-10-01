@@ -7,21 +7,20 @@ export const metadata: Metadata = {
 }
 
 const SECTIONS = [
-  { id: 'without-account', label: 'Using the app without an account' },
-  { id: 'account', label: 'If you create an account' },
-  { id: 'qari', label: 'Recitations you publish in Qari' },
-  { id: 'halaqas', label: 'Halaqas' },
-  { id: 'profile-picture', label: 'Your profile picture' },
-  { id: 'favourites-reports', label: 'Favourites and reports' },
-  { id: 'feedback', label: 'Feedback' },
-  { id: 'usage', label: 'Usage information' },
-  { id: 'third-parties', label: 'Services the app connects to' },
-  { id: 'security', label: 'Security' },
-  { id: 'retention', label: 'How long we keep things' },
-  { id: 'rights', label: 'Your rights, and deleting your account' },
-  { id: 'children', label: 'Children' },
-  { id: 'changes', label: 'Changes to this policy' },
-  { id: 'contact', label: 'Contact' },
+  { id: 'about', label: '1. About this policy' },
+  { id: 'on-device', label: '2. Information kept on your device' },
+  { id: 'collect', label: '3. Information we collect' },
+  { id: 'permissions', label: '4. Device permissions' },
+  { id: 'use', label: '5. How we use information' },
+  { id: 'sharing', label: '6. Who can see what you publish' },
+  { id: 'providers', label: '7. Services we rely on' },
+  { id: 'transfers', label: '8. Where information is processed' },
+  { id: 'retention', label: '9. How long we keep information' },
+  { id: 'security', label: '10. Security' },
+  { id: 'rights', label: '11. Your rights and choices' },
+  { id: 'children', label: '12. Children' },
+  { id: 'changes', label: '13. Changes to this policy' },
+  { id: 'contact', label: '14. Contact us' },
 ]
 
 /**
@@ -39,181 +38,283 @@ export default function PrivacyPage() {
       crossLink={{ href: '/terms', label: 'Terms of Service' }}
       summary={
         <ul>
-          <li>You can use almost all of {APP_NAME} without ever creating an account.</li>
-          <li>We don&rsquo;t sell your information, and there is no advertising or tracking network.</li>
-          <li>Your reading progress, bookmarks and settings normally stay on your device — not on our servers.</li>
-          <li>You can delete your account and everything in it, permanently, any time.</li>
+          <li>Almost all of {APP_NAME} works without an account, and without telling us who you are.</li>
+          <li>Your reading progress, bookmarks, settings and location stay on your device.</li>
+          <li>We do not sell personal information, show advertising, or use tracking networks.</li>
+          <li>What you publish in Qari is visible to others unless you make it private.</li>
+          <li>You can delete your account, and everything it published, at any time from Settings.</li>
         </ul>
       }
     >
+      <h2 id="about">1. About this policy</h2>
       <p>
-        {APP_NAME}{' '}
-        is built to help you read, listen to and share the Quran. This page explains exactly what
-        is stored, where, and how to remove it — section by section, matching what the app
-        actually does rather than a generic template.
+        This Privacy Policy explains how {APP_NAME} (&ldquo;{APP_NAME}&rdquo;, &ldquo;we&rdquo;,
+        &ldquo;us&rdquo;) handles information when you use the {APP_NAME} app and website (together,
+        the &ldquo;Service&rdquo;) to read, listen to, memorise and share the Quran, take part in a
+        halaqa, or publish in Qari. It describes what we collect, why, who it is shared with, how long
+        it is kept, and the choices you have. It should be read together with our{' '}
+        <a href="/terms">Terms of Service</a>.
       </p>
 
-      <h2 id="without-account">Using the app without an account</h2>
+      <h2 id="on-device">2. Information kept on your device</h2>
       <p>
-        Your bookmarks, reading position and settings are stored <strong>only on your device</strong>.
-        They are never sent to us, and they are removed if you clear the app&rsquo;s data or
-        uninstall it.
+        Much of what makes the Service yours never leaves your device. The following is stored only in
+        your browser or app storage, is not sent to us, and is removed if you clear the app&rsquo;s data
+        or uninstall it:
       </p>
-
-      <h2 id="account">If you create an account</h2>
-      <p>We store:</p>
       <ul>
+        <li>Your settings, bookmarks, reading position and khatmah progress</li>
+        <li>Surahs, recitations and translations you download for offline use</li>
+        <li>The location you choose for prayer times, and the times calculated from it</li>
+        <li>A Qari recording you have made but not yet posted (a draft)</li>
+        <li>The voice-search model, once downloaded (see section 4)</li>
+      </ul>
+
+      <h2 id="collect">3. Information we collect</h2>
+      <p>We collect only what is needed for the features you choose to use.</p>
+
+      <h3>3.1 Your account</h3>
+      <p>
+        An account is optional. If you create one, we store your <strong>username</strong> (your public
+        profile address), your <strong>display name</strong>, and your <strong>PIN in protected form
+        only</strong> &mdash; salted and hashed so that it cannot be read back, even by us. We also record
+        failed sign-in attempts so that an account can be locked temporarily against guessing. We do
+        not ask for an email address or phone number.
+      </p>
+
+      <h3>3.2 What you publish in Qari</h3>
+      <p>If you post a <strong>recitation</strong>, we store:</p>
+      <ul>
+        <li>The audio recording, with its length and size</li>
+        <li>The title, note and hashtags you add</li>
+        <li>The room sound and background you choose, and the sheikh you imitate, if any</li>
+        <li>The outline of the recording used to draw its waveform</li>
+        <li>The ayat you marked while reading from the Mushaf, if you marked any, and when</li>
+      </ul>
+      <p>
+        If you post an <strong>ayah card</strong> from the Read screen, we store the picture of the card,
+        the ayah it shows, and any note you add.
+      </p>
+      <p>
+        For every post we also store whether it is public or private, when it was posted, and how many
+        times it has been played and liked.
+      </p>
+
+      <h3>3.3 Your activity in Qari</h3>
+      <ul>
+        <li>The posts you like, so they appear in your Favourites</li>
+        <li>The people you follow, and who follows you</li>
+        <li>Notifications about your posts and followers (for example, a new like or follower)</li>
         <li>
-          <strong>Your username and name.</strong> Your username is your public profile address and
-          is shown alongside anything you publish.
-        </li>
-        <li>
-          <strong>Your PIN, in protected form only.</strong> It is salted and hashed, so it cannot be
-          read back — not even by us. Repeated wrong attempts temporarily lock the account to
-          protect it.
+          Reports you make about a post: who made the report, which post it concerns, and the reason
+          given, so that it can be reviewed
         </li>
       </ul>
 
-      <h2 id="qari">Recitations you publish in Qari</h2>
-      <p>If you record and publish a recitation, we store:</p>
-      <ul>
-        <li>The audio recording, and its length and size</li>
-        <li>The title, note and hashtags you add, and the sound setting you choose</li>
-        <li>Whether you made it public or private</li>
-        <li>How many times it has been played and favourited</li>
-      </ul>
+      <h3>3.4 Your profile picture</h3>
       <p>
-        <strong>Public</strong> recitations can be heard, favourited and shared by anyone using the
-        app, and anyone you share one with can pass it on. <strong>Private</strong> recitations are
-        visible only to you. Your own plays are not counted.
-      </p>
-      <p>
-        Recording uses your microphone, and only while you are recording. Nothing is uploaded until
-        you choose to publish. See our{' '}
-        <a href="/terms#qari-content">Terms of Service</a> for what publishing a recitation means for
-        the rights to it.
+        If you add a profile picture, it is resized on your device and then stored so that others can
+        see it on your profile and your posts.
       </p>
 
-      <h2 id="halaqas">Halaqas</h2>
+      <h3>3.5 Halaqas</h3>
       <p>If you start or join a halaqa, we store:</p>
       <ul>
+        <li>The name you enter, which everyone in that halaqa can see</li>
         <li>
-          <strong>The name you enter,</strong> which everyone in that halaqa can see.
+          The days you read &mdash; marked when you confirm you read, or when you read in the app while
+          in a halaqa. Members see which days you read, never how much or what.
         </li>
-        <li>
-          <strong>The days you read.</strong> A day is marked when you tap &ldquo;Yes, I read&rdquo;,
-          or when you read in the app while you are in a halaqa. The halaqa sees which days you
-          read &mdash; never how much, or what.
-        </li>
-        <li>
-          <strong>The juz you take</strong> in a shared khatmah, and when you finish it.
-        </li>
-        <li>The halaqa&rsquo;s name, how long it runs, and its invite link.</li>
+        <li>The juz you take in a shared khatmah, and when you finish it</li>
+        <li>The halaqa&rsquo;s name, its schedule and its invite link</li>
       </ul>
       <p>
-        No account is needed. Your phone keeps a random key that identifies you in your halaqas, and
-        we store only a protected (hashed) copy of it. If you clear the app&rsquo;s data, the key is
-        gone and you will need to join again.
-      </p>
-      <p>
-        Anyone with a halaqa&rsquo;s invite link can see its name, how many people are in it and how
-        many have read today, and can join it. The person who made the halaqa can make a new link at
-        any time, remove people, or delete the halaqa for everyone.
-      </p>
-      <p>
-        Leaving a halaqa removes you from it and gives back any juz you have not finished. Once you
-        are not in any halaqa, the days you read are deleted.
+        A halaqa needs no account. Your device keeps a random key that identifies you in your halaqas,
+        and we store only a protected (hashed) copy of it.
       </p>
 
-      <h2 id="profile-picture">Your profile picture</h2>
+      <h3>3.6 Notifications</h3>
       <p>
-        If you add one, it is resized on your device and then stored so that others can see it on
-        your profile and recitations.
+        If you allow notifications, your browser gives us a delivery address for your device and the
+        keys that encrypt what is sent to it, together with a description of the browser. We use these
+        only to send the notifications you turned on, and delete them when they stop working or you
+        turn notifications off.
       </p>
 
-      <h2 id="favourites-reports">Favourites and reports</h2>
+      <h3>3.7 Feedback</h3>
       <p>
-        We record which recitations you favourite, so they appear in your Favourites. If you report
-        a recitation, we store the report — who made it, which recitation it is about, and why — so
-        it can be reviewed and acted on.
+        If you send us feedback, we store your message, your name or username, and any contact details
+        you choose to include, so that we can read and respond to it.
       </p>
 
-      <h2 id="feedback">Feedback</h2>
+      <h3>3.8 Usage information</h3>
       <p>
-        If you send feedback, we store your message, and any contact details you choose to include,
-        so we can read and reply to it.
+        To keep the Service working and understand which parts are used, we record which screens are
+        opened and how often, the last screen visited, and when the app was last used or last used
+        offline. This is linked to your account if you have one, or otherwise to a random identifier.
+        It is not used for advertising and is not shared with anyone.
       </p>
 
-      <h2 id="usage">Usage information</h2>
+      <h2 id="permissions">4. Device permissions</h2>
+      <ul>
+        <li>
+          <strong>Microphone.</strong> Used only while you are recording in Qari or using voice search.
+          Recordings are uploaded only when you choose to post them. Voice search runs entirely on your
+          device: the model is downloaded once, and what you say is never sent to us or anyone else.
+        </li>
+        <li>
+          <strong>Location.</strong> Used only to calculate prayer times and the qibla direction, on your
+          device. Your location is not sent to us. You can enter a city instead.
+        </li>
+        <li>
+          <strong>Notifications.</strong> Used only for the notifications you turn on, such as the adhan,
+          halaqa reminders, and activity on your Qari posts.
+        </li>
+      </ul>
+      <p>You can withdraw any of these permissions at any time in your device or browser settings.</p>
+
+      <h2 id="use">5. How we use information</h2>
+      <p>We use the information described above to:</p>
+      <ul>
+        <li>Provide the features you use, such as your account, Qari, halaqas and notifications</li>
+        <li>Show your posts to others in line with the visibility you choose</li>
+        <li>Keep the Service secure, prevent abuse, and review reports</li>
+        <li>Respond to feedback and requests</li>
+        <li>Understand, maintain and improve the Service</li>
+      </ul>
       <p>
-        To understand how the app is used and keep it working, we record which parts of the app are
-        visited, how often, and when the app was last opened. This is linked to your account if you
-        have one, or to a random identifier if you don&rsquo;t. It is not used for advertising and is
-        not shared.
+        We do not sell or rent personal information, we do not use it for advertising, and we do not
+        build profiles of you for any purpose beyond running the Service.
       </p>
 
-      <h2 id="third-parties">Services the app connects to</h2>
+      <h2 id="sharing">6. Who can see what you publish</h2>
       <p>
-        To show Quran text, translations, fonts and recitations, the app fetches them from public
-        Quran services, including api.quran.com, api.alquran.cloud, everyayah.com and mp3quran.net.
-        Like any website, those services receive your device&rsquo;s IP address when the app requests
-        something from them. Your account, recitations and halaqas are stored with our database
-        provider, MongoDB Atlas.
+        <strong>Public</strong> posts, your username, display name and profile picture can be seen by
+        anyone using the Service, and public posts can be liked, shared and saved by others &mdash; including
+        as audio, video or picture files that can then be passed on outside the Service. A
+        recitation that imitates a sheikh also appears on that sheikh&rsquo;s page.{' '}
+        <strong>Private</strong> posts are visible only to you. Your followers and the people you follow
+        are visible on profiles.
       </p>
-      <p>We do not sell your information, and we do not use advertising or tracking networks.</p>
-
-      <h2 id="security">Security</h2>
       <p>
-        Your PIN is never stored in a form that can be read back, connections to the app are
-        encrypted, and a halaqa&rsquo;s join key is stored only as a protected hash — the same
-        treatment as a PIN. No method of storing or transmitting information is completely secure,
-        so while we work to protect what you share with us, we cannot guarantee it will never be
-        compromised.
+        Anyone with a halaqa&rsquo;s invite link can see its name, how many people are in it and how many
+        have read today, and can join it. The person who started a halaqa can renew its link, remove
+        members, or delete it for everyone.
       </p>
 
-      <h2 id="retention">How long we keep things</h2>
+      <h2 id="providers">7. Services we rely on</h2>
       <p>
-        We keep account, recitation and halaqa information for as long as the account, recitation or
-        halaqa exists. Deleting a recitation, leaving a halaqa, or deleting your account (see below)
-        removes the corresponding information — usually immediately, and always within a short time
-        for anything that lingers in backups.
-      </p>
-
-      <h2 id="rights">Your rights, and deleting your account</h2>
-      <p>
-        You can ask us at any time what we hold about you, ask us to correct anything that is wrong,
-        or ask us to delete it — using the contact details below, or directly in the app:
+        We use a small number of service providers to run the Service. Like any website, each of them
+        receives your device&rsquo;s IP address and basic request information when the app contacts it.
       </p>
       <ul>
         <li>
-          <strong>Delete your account yourself</strong> in Settings → Delete account. This
-          permanently removes your account, every recitation you published along with its audio,
-          your profile picture, your favourites, and reports you made or that were made about your
-          recitations. It cannot be undone.
+          <strong>MongoDB Atlas</strong> &mdash; hosts our database and the files you post (recordings,
+          ayah cards and profile pictures).
         </li>
         <li>
-          <strong>Leave a halaqa</strong> from within it, which removes your reading days from that
-          halaqa once you are no longer in any halaqa.
+          <strong>Quran content providers</strong> &mdash; Quran.com and the Quran Foundation, AlQuran
+          Cloud, EveryAyah, MP3Quran, QuranicAudio and Tarteel provide Quran text, fonts, translations,
+          recitations and recitation timings.
+        </li>
+        <li>
+          <strong>Cloudinary</strong> &mdash; serves the moving backgrounds used in Qari and in shared
+          videos.
+        </li>
+        <li>
+          <strong>Cloudflare</strong> &mdash; serves the voice-search model when it is first downloaded.
+        </li>
+        <li>
+          <strong>Hugging Face</strong> &mdash; when you share part of an ayah, the ayah&rsquo;s reference, its
+          Arabic words and its published translation may be sent to an AI model hosted through Hugging
+          Face to find the matching part of the translation. Nothing about you is included.
+        </li>
+        <li>
+          <strong>Push services</strong> run by your browser&rsquo;s maker (for example Google, Apple or
+          Mozilla) &mdash; deliver the notifications you turn on.
         </li>
       </ul>
-
-      <h2 id="children">Children</h2>
       <p>
-        {APP_NAME}{' '}
-        can be used by people of any age to read and listen to the Quran. Publishing recitations
-        makes them visible to others, so younger users should do so with a parent or guardian.
+        We may also disclose information where required by law, or where necessary to protect the
+        rights, safety or property of our users, the public or the Service.
       </p>
 
-      <h2 id="changes">Changes to this policy</h2>
+      <h2 id="transfers">8. Where information is processed</h2>
       <p>
-        If this policy changes in a meaningful way — for example, if the app starts collecting
-        something new — we will update this page and change the date at the top. Continuing to use{' '}
-        {APP_NAME} after a change means you accept the updated policy.
+        Our service providers may store or process information in countries other than your own. Where
+        they do, we rely on providers that apply recognised safeguards to protect it.
       </p>
 
-      <h2 id="contact">Contact</h2>
+      <h2 id="retention">9. How long we keep information</h2>
+      <ul>
+        <li>Account information, for as long as the account exists</li>
+        <li>A post, its likes and its reports, until the post or the account is deleted</li>
+        <li>
+          Halaqa information, while the halaqa exists; your reading days are deleted once you are no
+          longer in any halaqa
+        </li>
+        <li>Notification delivery details, until they stop working or notifications are turned off</li>
+        <li>Feedback, for as long as needed to deal with it</li>
+      </ul>
       <p>
-        Questions about your data, or a request to see, correct or delete it, can be sent to{' '}
+        Deleted information is removed from our live systems straight away, and from backups within a
+        short period after that.
+      </p>
+
+      <h2 id="security">10. Security</h2>
+      <p>
+        Connections to the Service are encrypted. PINs and halaqa keys are stored only as salted hashes,
+        and repeated failed sign-ins lock an account temporarily. No method of transmission or storage
+        is completely secure, so while we work to protect your information, we cannot guarantee its
+        absolute security.
+      </p>
+
+      <h2 id="rights">11. Your rights and choices</h2>
+      <p>
+        Depending on where you live, you may have the right to access the personal information we hold
+        about you, to correct it, to have it deleted, to object to or restrict how it is used, and to
+        receive a copy of it. To exercise any of these rights, contact us at the address below. You can
+        also act directly in the app:
+      </p>
+      <ul>
+        <li>
+          <strong>Delete your account</strong> in Settings &rarr; Delete account. This permanently removes
+          your account, every post you published with its audio or picture, your profile picture, your
+          likes, follows and notifications, and reports you made or that concern your posts. It cannot
+          be undone.
+        </li>
+        <li>
+          <strong>Delete or hide a post</strong> from its menu, by deleting it or making it private.
+        </li>
+        <li>
+          <strong>Leave a halaqa</strong> from within it.
+        </li>
+        <li>
+          <strong>Turn off notifications</strong> in the app or in your device settings.
+        </li>
+      </ul>
+      <p>You also have the right to complain to the data-protection authority where you live.</p>
+
+      <h2 id="children">12. Children</h2>
+      <p>
+        {APP_NAME} can be used by people of any age to read and listen to the Quran without an account.
+        Creating an account and publishing in Qari makes a username and what is published visible to
+        others, so children should do so only with the knowledge and permission of a parent or guardian.
+        If you believe a child has given us personal information without that permission, please
+        contact us and we will remove it.
+      </p>
+
+      <h2 id="changes">13. Changes to this policy</h2>
+      <p>
+        We will update this policy if the Service changes how it handles information &mdash; for example,
+        if it begins to collect something new &mdash; and change the date at the top of this page. Where
+        a change is significant, we will also make it known in the app. Continuing to use the Service
+        after a change takes effect means you accept the updated policy.
+      </p>
+
+      <h2 id="contact">14. Contact us</h2>
+      <p>
+        For questions about this policy, or to make a request about your information, contact us at{' '}
         <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
       </p>
     </LegalPage>

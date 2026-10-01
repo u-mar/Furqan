@@ -1,6 +1,7 @@
 /**
  * An ayah as the Qari screens draw it: the mushaf's own QCF glyphs (or plain
- * Uthmani text when a page has none), plus its English translation.
+ * Uthmani text when a page has none), plus its translation in the viewer's
+ * own language — the translation they read the Quran with, whoever recited.
  *
  * Shared by the swipe view and the share video, so both read the same script
  * and neither fetches the same verse or page of translations twice.
@@ -11,6 +12,7 @@ import { loadPageFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import { pageHasQcfData, versePageNumber } from '@/lib/qcf-page'
 import { getVerseArabicText } from '@/lib/quran-display'
 import { getVerseByKey } from '@/lib/quran'
+import { isRtlTranslationEdition, isTranslationEditionId, languageForEdition } from '@/lib/translations'
 import type { Verse } from '@/types'
 
 /** The ayah's own QCF glyphs, one array entry per word (so they wrap and
@@ -26,16 +28,29 @@ export function verseQcfWords(verse: Verse, pageNumber: number): string[] {
   return items.map((w) => w.code_v2!.trim())
 }
 
-const pageTranslations = new Map<number, Promise<Map<string, string>>>()
+/** When there is no reading translation to go by. */
+const FALLBACK_EDITION = 'en.sahih'
 
-/** A page's translations, fetched once and reused for every ayah on it. */
-export function fetchPageTranslations(page: number): Promise<Map<string, string>> {
-  let pending = pageTranslations.get(page)
+/**
+ * The translation a viewer sees under the ayat: the one they read the Quran
+ * with (Settings and the Read screen), so each person gets their own language.
+ */
+export function viewerTranslation(readingEdition: string | null | undefined): string {
+  return isTranslationEditionId(readingEdition) ? readingEdition : FALLBACK_EDITION
+}
+
+const pageTranslations = new Map<string, Promise<Map<string, string>>>()
+
+/** A page's translations in one edition, fetched once and reused for every ayah on it. */
+export function fetchPageTranslations(page: number, edition: string = FALLBACK_EDITION): Promise<Map<string, string>> {
+  const cacheKey = `${edition}:${page}`
+  let pending = pageTranslations.get(cacheKey)
   if (!pending) {
     pending = (async () => {
       const map = new Map<string, string>()
       try {
-        const res = await fetch(`/api/ayah?type=translations&page=${page}&lang=en&edition=en.sahih`)
+        const lang = languageForEdition(edition)
+        const res = await fetch(`/api/ayah?type=translations&page=${page}&lang=${lang}&edition=${encodeURIComponent(edition)}`)
         const data: unknown = await res.json()
         if (Array.isArray(data)) {
           for (const row of data as { verse_key?: string; translation?: string }[]) {
@@ -44,11 +59,11 @@ export function fetchPageTranslations(page: number): Promise<Map<string, string>
         }
       } catch {
         // No translation for this page — the ayah just shows on its own.
-        pageTranslations.delete(page)
+        pageTranslations.delete(cacheKey)
       }
       return map
     })()
-    pageTranslations.set(page, pending)
+    pageTranslations.set(cacheKey, pending)
   }
   return pending
 }
@@ -63,21 +78,30 @@ export interface AyahView {
   qcf: boolean
   /** null when none could be found. */
   translation: string | null
+  /** The translation's language reads right to left (Urdu, Persian…). */
+  translationRtl: boolean
+  /** Its language code, for the `lang` attribute. */
+  translationLang: string
 }
 
 const loaded = new Map<string, AyahView>()
 const loading = new Map<string, Promise<AyahView | null>>()
 
+function viewKey(verseKey: string, edition: string): string {
+  return `${edition}|${verseKey}`
+}
+
 /** The ayah if it has already been loaded, so a screen can draw it without waiting. */
-export function peekAyah(verseKey: string): AyahView | null {
-  return loaded.get(verseKey) ?? null
+export function peekAyah(verseKey: string, edition: string = FALLBACK_EDITION): AyahView | null {
+  return loaded.get(viewKey(verseKey, edition)) ?? null
 }
 
 /** Loads an ayah, its page font and its translation. Null if the verse cannot be found. */
-export function loadAyah(verseKey: string): Promise<AyahView | null> {
-  const known = loaded.get(verseKey)
+export function loadAyah(verseKey: string, edition: string = FALLBACK_EDITION): Promise<AyahView | null> {
+  const key = viewKey(verseKey, edition)
+  const known = loaded.get(key)
   if (known) return Promise.resolve(known)
-  let pending = loading.get(verseKey)
+  let pending = loading.get(key)
   if (!pending) {
     pending = (async () => {
       try {
@@ -86,24 +110,27 @@ export function loadAyah(verseKey: string): Promise<AyahView | null> {
         const qcfWords = pageHasQcfData([verse]) ? verseQcfWords(verse, page) : []
         const [fontLoaded, translations] = await Promise.all([
           qcfWords.length > 0 ? loadPageFont(page, qcfWords.join('').slice(0, 12)) : Promise.resolve(false),
-          fetchPageTranslations(page),
+          fetchPageTranslations(page, edition),
         ])
+        const lang = languageForEdition(edition)
         const view: AyahView = {
           verseKey,
           words: fontLoaded ? qcfWords : getVerseArabicText(verse, { omitEndMark: true }).split(/\s+/),
           fontFamily: fontLoaded ? `"${qcfPageFontFamily(page)}"` : 'var(--font-amiri), Amiri, serif',
           qcf: fontLoaded,
           translation: translations.get(verseKey)?.replace(/\s+/g, ' ').trim() || null,
+          translationRtl: isRtlTranslationEdition(edition),
+          translationLang: lang,
         }
-        loaded.set(verseKey, view)
+        loaded.set(key, view)
         return view
       } catch {
         return null
       } finally {
-        loading.delete(verseKey)
+        loading.delete(key)
       }
     })()
-    loading.set(verseKey, pending)
+    loading.set(key, pending)
   }
   return pending
 }
