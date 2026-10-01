@@ -231,6 +231,8 @@ function QariHomeContent() {
   const openFromFeed = useCallback((recitation: Recitation) => openSwipe(items, recitation.id), [items, openSwipe])
 
   const swipeItems = overlay ? overlay.items : items
+  // The list is for listening: ayah cards are pictures, so they are only in the swipe view.
+  const listItems = useMemo(() => items.filter((r) => r.kind !== 'ayah'), [items])
 
   const switchBtn = overlay ? null : (
     <button
@@ -531,7 +533,7 @@ function QariHomeContent() {
                   body={t('Check your connection and try again.')}
                   action={{ label: t('Try again'), onClick: () => void loadFeed(), Icon: RotateCw }}
                 />
-              ) : items.length === 0 ? (
+              ) : listItems.length === 0 && !hasMore ? (
                 sort === 'following' ? (
                   <EmptyState
                     Icon={UsersRound}
@@ -550,11 +552,11 @@ function QariHomeContent() {
               ) : (
                 <>
                   <RecitationCards>
-                    {items.map((recitation, i) => (
+                    {listItems.map((recitation, i) => (
                       <RecitationCard
                         key={recitation.id}
                         recitation={recitation}
-                        queue={items}
+                        queue={listItems}
                         index={i}
                         viewerId={viewerId}
                         viewerUsername={viewer?.username ?? null}
@@ -615,7 +617,8 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
     let cancelled = false
     setResults(null)
     fetchFeed({ query, viewerId, take: 40 })
-      .then((page) => !cancelled && setResults(page.items))
+      // Results are a list to listen to, so ayah cards (pictures) are left out.
+      .then((page) => !cancelled && setResults(page.items.filter((r) => r.kind !== 'ayah')))
       .catch(() => !cancelled && setResults([]))
     return () => {
       cancelled = true

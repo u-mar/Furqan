@@ -113,6 +113,8 @@ export default function ShareVerseSheet({
   const [notice, setNotice] = useState<string | null>(null)
   const [postOpen, setPostOpen] = useState(false)
   const [postCaption, setPostCaption] = useState('')
+  /** The picture Qari gets: the same card, drawn the shape of a phone screen. */
+  const [postImage, setPostImage] = useState<{ blob: Blob; url: string } | null>(null)
   const previewUrlRef = useRef<string | null>(null)
   const blobRef = useRef<Blob | null>(null)
 
@@ -309,9 +311,41 @@ export default function ShareVerseSheet({
     setPostOpen(true)
   }, [])
 
+  /* While posting is open, the card is drawn again as a full phone screen for Qari. */
+  useEffect(() => {
+    if (!postOpen || !target || selection.words.length === 0) return
+    let cancelled = false
+    let made: string | null = null
+    void renderVerseImage({
+      words: selection.words,
+      page: target.page,
+      isQcf: useQcf,
+      translation: cardTranslation,
+      surahName: target.surahName,
+      verseKey: target.verseKey,
+      partial: selection.partial,
+      backgroundId,
+      fontScale,
+      format: 'story',
+    })
+      .then((blob) => {
+        if (cancelled) return
+        made = URL.createObjectURL(blob)
+        setPostImage({ blob, url: made })
+      })
+      .catch(() => {
+        if (!cancelled) setNotice(tr('Could not build the card.'))
+      })
+    return () => {
+      cancelled = true
+      if (made) URL.revokeObjectURL(made)
+      setPostImage(null)
+    }
+  }, [postOpen, target, selection, useQcf, cardTranslation, backgroundId, fontScale])
+
   /** Hands the card to Qari's uploads and returns to reading; the profile shows it going up. */
   const handlePost = useCallback(() => {
-    const blob = blobRef.current
+    const blob = postImage?.blob
     const user = getSignedInUser()
     if (!blob || !target || !user) return
     postAyahCard({
@@ -329,7 +363,7 @@ export default function ShareVerseSheet({
     setPostOpen(false)
     setPostCaption('')
     onClose()
-  }, [onClose, postCaption, target])
+  }, [onClose, postCaption, postImage, target])
 
   if (!open || !mounted || !target) return null
 
@@ -624,13 +658,17 @@ export default function ShareVerseSheet({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex gap-3.5">
-              {previewUrl ? (
-                <img src={previewUrl} alt="" className="aspect-[4/5] w-[4.5rem] shrink-0 rounded-xl object-cover" />
-              ) : null}
+              <span className="relative flex aspect-[9/16] w-[4.25rem] shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--mushaf-popup-badge-bg)]">
+                {postImage ? (
+                  <img src={postImage.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-[var(--mushaf-popup-meta)]" />
+                )}
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold">{t('Post to Qari')}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-[var(--mushaf-popup-meta)]">
-                  {t('It appears in the Qari feed and on your profile.')}
+                  {t('It fills the screen in the Qari swipe view, and shows on your profile.')}
                 </p>
               </div>
             </div>
@@ -656,7 +694,8 @@ export default function ShareVerseSheet({
               <button
                 type="button"
                 onClick={handlePost}
-                className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-[var(--mushaf-read-accent)] text-sm font-semibold text-white"
+                disabled={!postImage}
+                className="flex h-12 flex-[1.4] items-center justify-center gap-2 rounded-full bg-[var(--mushaf-read-accent)] text-sm font-semibold text-white disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
                 {t('Post')}

@@ -398,6 +398,7 @@ export const QARI: Dict = {
   'Your recitation is posted.': { so: 'Akhriskaaga waa la dhigay.', ar: 'تم نشر تلاوتك.' },
   // Ayah cards in Qari
   'Ayah card': { so: 'Kaarka aayadda', ar: 'بطاقة آية' },
+  'Ayah cards': { so: 'Kaararka aayadaha', ar: 'بطاقات الآيات' },
   'Ayah card for {verseKey}': { so: 'Kaarka aayadda {verseKey}', ar: 'بطاقة الآية {verseKey}' },
   'Could not load the picture.': { so: 'Sawirka lama soo dejin karin.', ar: 'تعذّر تحميل الصورة.' },
   'Posted to Qari.': { so: 'Waxaa lagu dhigay Qaari.', ar: 'نُشرت في القرّاء.' },

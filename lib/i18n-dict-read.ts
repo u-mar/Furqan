@@ -203,7 +203,7 @@ export const READ: Dict = {
   'Create a free account to post to Qari.': { so: 'Samee akoon bilaash ah si aad wax ugu dhigto Qaari.', ar: 'أنشئ حسابًا مجانيًا للنشر في القرّاء.' },
   'Finding what these words mean in this ayah…': { so: 'Waxaa la raadinayaa waxa ereyadani ka dhigan yihiin aayaddan…', ar: 'جارٍ إيجاد معنى هذه الكلمات في هذه الآية…' },
   'From the full translation of the ayah': { so: 'Laga soo qaaday turjumaadda aayadda oo dhan', ar: 'من الترجمة الكاملة للآية' },
-  'It appears in the Qari feed and on your profile.': { so: 'Waxay ka muuqataa qaybta Qaari iyo boggaaga.', ar: 'تظهر في قسم القرّاء وفي ملفك.' },
+  'It fills the screen in the Qari swipe view, and shows on your profile.': { so: 'Waxay buuxisaa shaashadda muuqaalka Qaari, waxayna ka muuqataa boggaaga.', ar: 'تملأ الشاشة في عرض التمرير في القرّاء، وتظهر في ملفك.' },
   'No translation for part of this ayah': { so: 'Turjumaad uma jirto qayb ka mid ah aayaddan', ar: 'لا توجد ترجمة لجزء من هذه الآية' },
   'Now tap the last word': { so: 'Hadda taabo ereyga ugu dambeeya', ar: 'الآن اضغط على الكلمة الأخيرة' },
   'Post to Qari': { so: 'Ku dhig Qaari', ar: 'انشر في القرّاء' },

@@ -185,12 +185,44 @@ function Backdrop({ recitation, active, playing }: { recitation: Recitation; act
   )
 }
 
-/** Behind an ayah card: the card itself, blurred and dimmed, so the picture sits in its own light. */
-function CardBackdrop({ src }: { src: string }) {
+/**
+ * An ayah card filling the screen, the way a recitation's video does. Cards
+ * are posted the shape of a phone screen; one that is not (made before they
+ * were) sits framed over a blur of itself instead of being cut to fit.
+ */
+function AyahCardMedia({ src, alt }: { src: string; alt: string }) {
+  const [framed, setFramed] = useState(false)
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
-      <img src={src} alt="" decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-80 blur-2xl" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/75" />
+    <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]">
+      {framed ? (
+        <>
+          <img src={src} alt="" aria-hidden decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-80 blur-2xl" />
+          <div
+            className="absolute inset-x-0 flex items-center justify-center px-5"
+            style={{ top: 'calc(4.75rem + env(safe-area-inset-top))', bottom: '17.75rem' }}
+          >
+            <img
+              src={src}
+              alt={alt}
+              decoding="async"
+              draggable={false}
+              className="max-h-full max-w-full rounded-[18px] object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)]"
+            />
+          </div>
+        </>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          decoding="async"
+          draggable={false}
+          onLoad={(e) => setFramed(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight > 0.62)}
+          className="qari-ayah-in absolute inset-0 h-full w-full object-cover"
+        />
+      )}
+      {/* Enough shade for the top bar and the details to read over the picture. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
     </div>
   )
 }
@@ -405,29 +437,13 @@ const Slide = memo(function Slide({
     >
       {near ? (
         isAyahCard && recitation.imageUrl ? (
-          <CardBackdrop src={recitation.imageUrl} />
+          <AyahCardMedia src={recitation.imageUrl} alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })} />
         ) : (
           <Backdrop recitation={recitation} active={active} playing={active && playing} />
         )
       ) : null}
 
-      {isAyahCard ? (
-        // The card itself, as large as the space above the details and the column of actions allows.
-        <div
-          className="absolute inset-x-0 flex items-center justify-center px-5"
-          style={{ top: 'calc(4.75rem + env(safe-area-inset-top))', bottom: '17.75rem' }}
-        >
-          {near && recitation.imageUrl ? (
-            <img
-              src={recitation.imageUrl}
-              alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })}
-              decoding="async"
-              draggable={false}
-              className="qari-ayah-in max-h-full max-w-full rounded-[18px] object-contain shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)]"
-            />
-          ) : null}
-        </div>
-      ) : (
+      {isAyahCard ? null : (
         // The ayah, between the top bar and the controls.
         <div
           className="absolute inset-x-0 flex items-center justify-center px-6"

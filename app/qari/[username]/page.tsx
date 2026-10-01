@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Heart, Mic, Pause, Play } from 'lucide-react'
+import { ChevronLeft, Heart, Mic, Pause, Play } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
+import SwipeFeed from '@/components/qari/SwipeFeed'
 import UploadCard from '@/components/qari/UploadCard'
 import {
   QariScreen,
@@ -171,7 +172,11 @@ export default function QariProfilePage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
   }, [recitations])
 
-  const list = tab === 'recitations' ? recitations : favourites
+  // Recitations are listed to listen to; ayah cards (pictures) sit in a row above, opening full screen.
+  const shown = tab === 'recitations' ? recitations : favourites
+  const list = useMemo(() => shown?.filter((r) => r.kind !== 'ayah') ?? null, [shown])
+  const ayahCards = useMemo(() => shown?.filter((r) => r.kind === 'ayah') ?? [], [shown])
+  const [cardsOpen, setCardsOpen] = useState<{ items: Recitation[]; startId: string } | null>(null)
   const listIds = useMemo(() => new Set((list ?? []).map((r) => r.id)), [list])
   const playingHere = Boolean(player.current && listIds.has(player.current.id))
   const playingNow = playingHere && (player.status === 'playing' || player.status === 'loading')
@@ -207,6 +212,47 @@ export default function QariProfilePage() {
         { id: 'favourites' as const, label: t('Favourites') },
       ]
     : null
+
+  if (cardsOpen) {
+    return (
+      <QariScreen bare recordFab={false}>
+        <SwipeFeed
+          items={cardsOpen.items}
+          hasMore={false}
+          loadingMore={false}
+          onLoadMore={() => {}}
+          startId={cardsOpen.startId}
+          autoplay={false}
+          viewerId={viewerId}
+          viewerUsername={viewer?.username ?? null}
+          onRemoved={(id) => {
+            removeRecitation(id)
+            setCardsOpen((prev) => {
+              const items = prev?.items.filter((r) => r.id !== id) ?? []
+              return prev && items.length ? { ...prev, items } : null
+            })
+          }}
+          onUpdated={updateRecitation}
+          onNotice={qariNotice}
+        />
+        <div className="qari-swipe pointer-events-none fixed inset-x-0 top-0 z-40 bg-gradient-to-b from-black/55 to-transparent pb-8 [&_button]:pointer-events-auto">
+          <div className="mx-auto max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setCardsOpen(null)
+              }}
+              className="home-round ed-focus"
+              aria-label={t('Back')}
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+            </button>
+          </div>
+        </div>
+      </QariScreen>
+    )
+  }
 
   return (
     <QariScreen>
@@ -287,7 +333,9 @@ export default function QariProfilePage() {
             >
               {label}
               {id === 'recitations' && recitations ? (
-                <span className="ml-1.5 text-[12.5px] font-medium text-[var(--home-muted)]">{recitations.length}</span>
+                <span className="ml-1.5 text-[12.5px] font-medium text-[var(--home-muted)]">
+                  {recitations.filter((r) => r.kind !== 'ayah').length}
+                </span>
               ) : null}
               <span
                 className={cn(
@@ -323,6 +371,9 @@ export default function QariProfilePage() {
             ))}
           </div>
         ) : null}
+        {ayahCards.length > 0 ? (
+          <AyahCardRow cards={ayahCards} onOpen={(startId) => setCardsOpen({ items: ayahCards, startId })} />
+        ) : null}
         {list === null ? (
           <RecitationSkeletons count={3} />
         ) : failed && tab === 'recitations' ? (
@@ -333,7 +384,7 @@ export default function QariProfilePage() {
             action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
         ) : list.length === 0 ? (
-          tab === 'recitations' && myUploads.length > 0 ? null : tab === 'favourites' ? (
+          (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 ? null : tab === 'favourites' ? (
             <EmptyState
               Icon={Heart}
               title={t('Nothing saved yet')}
@@ -382,5 +433,38 @@ export default function QariProfilePage() {
         />
       ) : null}
     </QariScreen>
+  )
+}
+
+/** A profile's ayah cards: a row of the pictures, each opening them all full screen at that one. */
+function AyahCardRow({ cards, onOpen }: { cards: Recitation[]; onOpen: (id: string) => void }) {
+  const t = useT()
+  return (
+    <section className="mb-4">
+      <p className="mb-2 text-[13px] font-medium text-[var(--home-muted)]">
+        {t('Ayah cards')} <span className="tabular-nums">{cards.length}</span>
+      </p>
+      <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {cards.map((card) => (
+          <button
+            key={card.id}
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              onOpen(card.id)
+            }}
+            aria-label={card.title}
+            className="qari-press ed-focus relative aspect-[9/16] w-[6.25rem] shrink-0 overflow-hidden rounded-xl bg-[var(--home-track)] shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)]"
+          >
+            {card.imageUrl ? (
+              <img src={card.imageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-5 text-left text-[10.5px] font-semibold leading-tight text-white">
+              <span className="line-clamp-2">{card.title}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   )
 }

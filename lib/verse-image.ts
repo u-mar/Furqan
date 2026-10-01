@@ -9,8 +9,14 @@
  * The Arabic is drawn with the mushaf's own QCF glyph font — the same script
  * the reader uses — falling back to Amiri only when the page font can't load.
  *
- * 1080x1350 (4:5) — the aspect that survives WhatsApp status, Instagram
- * feed/story crops and Twitter previews without cutting the text.
+ * Two shapes:
+ *   card   1080x1350 (4:5) — the aspect that survives WhatsApp status,
+ *          Instagram feed/story crops and Twitter previews without cutting
+ *          the text. What Share and Save make.
+ *   story  1080x1920 (9:16) — a phone screen, for posting to Qari, where the
+ *          picture fills the whole screen. The ayah keeps clear of the sides
+ *          (the screen crops a little of them) and of the lower part, where
+ *          the name, note and buttons sit over it.
  */
 
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
@@ -18,8 +24,13 @@ import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 import { tr } from '@/lib/i18n-core'
 import { SHARE_BACKGROUNDS, type ShareBackground } from '@/lib/share-backgrounds'
 
-const W = 1080
-const H = 1350
+export type VerseImageFormat = 'card' | 'story'
+
+/** Size and where the ayah may go, per shape. */
+const LAYOUT: Record<VerseImageFormat, { W: number; H: number; top: number; bottom: number; arabicWidth: number; translationWidth: number }> = {
+  card: { W: 1080, H: 1350, top: 240, bottom: 1150, arabicWidth: 870, translationWidth: 780 },
+  story: { W: 1080, H: 1920, top: 330, bottom: 1180, arabicWidth: 780, translationWidth: 720 },
+}
 
 export type VerseImageBackground = ShareBackground
 
@@ -50,6 +61,8 @@ export interface VerseImageInput {
   backgroundId?: string
   /** Multiplier on the Arabic type size, from the user's text-size control. */
   fontScale?: number
+  /** 'card' (4:5, the default) to share, 'story' (9:16) to post to Qari. */
+  format?: VerseImageFormat
 }
 
 const INK = '#ffffff'
@@ -135,7 +148,7 @@ function fitBlock(
 }
 
 /** Cover-fit the photo, then lay scrims over it so the type always reads. */
-function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): void {
+function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number): void {
   const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight)
   const dw = img.naturalWidth * scale
   const dh = img.naturalHeight * scale
@@ -164,6 +177,7 @@ function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement): 
 
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const { words, page, isQcf, translation } = input
+  const { W, H, top, bottom, arabicWidth, translationWidth } = LAYOUT[input.format ?? 'card']
   const fontScale = Math.min(
     MAX_VERSE_FONT_SCALE,
     Math.max(MIN_VERSE_FONT_SCALE, input.fontScale ?? DEFAULT_VERSE_FONT_SCALE)
@@ -201,7 +215,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error(tr('Canvas is not available on this device'))
 
-  paintBackground(ctx, bgImage)
+  paintBackground(ctx, bgImage, W, H)
 
   const withShadow = (draw: () => void) => {
     ctx.save()
@@ -213,13 +227,13 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   }
 
   /* ---- Measure both blocks, then centre the pair in the open space ---- */
-  const contentTop = 240
-  const contentBottom = H - 200
+  const contentTop = top
+  const contentBottom = bottom
   const available = contentBottom - contentTop
 
   const arabicBlock = fitBlock(ctx, arabicWords, {
     fontStack: arabicFont,
-    maxWidth: W - 210,
+    maxWidth: arabicWidth,
     maxHeight: available * (translation ? 0.6 : 0.92),
     startSize: Math.round(78 * fontScale),
     minSize: Math.round(34 * fontScale),
@@ -231,7 +245,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
     ? fitBlock(ctx, trimmedTranslation.split(/\s+/), {
         fontStack: fonts.serif,
         weight: '500',
-        maxWidth: W - 300,
+        maxWidth: translationWidth,
         maxHeight: available * 0.36,
         startSize: 38,
         minSize: 22,
