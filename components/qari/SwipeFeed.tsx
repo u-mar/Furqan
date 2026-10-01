@@ -23,6 +23,7 @@ import {
   type VerseTimelineEntry,
 } from '@/lib/qari'
 import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
+import { ayahParts, loadPartTranslation, partFor, wordAt } from '@/lib/qari-ayah-parts'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   pausePlayback,
@@ -44,12 +45,12 @@ const HINT_KEY = 'muyassar_qari_swipe_hint'
 /** Swipe views mounted right now — one replacing another must not drop the dark bar between them. */
 let swipeViewsOpen = 0
 
-/** The ayah being recited: the last one marked at or before `position`, or the first before that. */
-function currentEntry(timeline: VerseTimelineEntry[], position: number): VerseTimelineEntry | undefined {
-  let found: VerseTimelineEntry | undefined = timeline[0]
-  for (const entry of timeline) {
-    if (entry.atSeconds > position) break
-    found = entry
+/** The ayah being recited: the last one marked at or before `position`, or the first before that. -1 with none. */
+function currentEntryIndex(timeline: VerseTimelineEntry[], position: number): number {
+  let found = timeline.length ? 0 : -1
+  for (let i = 0; i < timeline.length; i++) {
+    if (timeline[i].atSeconds > position) break
+    found = i
   }
   return found
 }
@@ -85,7 +86,9 @@ function AyahStage({
     () => [...(recitation.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds),
     [recitation.verseTimeline]
   )
-  const key = currentEntry(timeline, position)?.verseKey
+  const entryIndex = currentEntryIndex(timeline, position)
+  const entry = entryIndex >= 0 ? timeline[entryIndex] : undefined
+  const key = entry?.verseKey
   // In the viewer's own language: the translation they read the Quran with.
   const edition = viewerTranslation(useAppSettings().translationEditionId)
   const [ayah, setAyah] = useState<AyahView | null>(() => (key ? peekAyah(key, edition) : null))
@@ -115,6 +118,36 @@ function AyahStage({
     if (near) timeline.forEach((entry) => void loadAyah(entry.verseKey, edition))
   }, [edition, near, timeline])
 
+  // A long ayah shows a screenful at a time: the part holding the word being recited.
+  const parts = useMemo(() => ayahParts(ayah?.words.length ?? 0), [ayah])
+  const lastPartRef = useRef(0)
+  let partIndex = lastPartRef.current
+  if (ayah && entry && ayah.verseKey === key) {
+    const endsAt = timeline[entryIndex + 1]?.atSeconds ?? recitation.durationSec
+    partIndex = partFor(parts, wordAt(entry, endsAt, position, ayah.words.length))
+  }
+  partIndex = Math.min(partIndex, parts.length - 1)
+  lastPartRef.current = partIndex
+  const part = parts[partIndex]
+  const split = parts.length > 1
+
+  // Each part with the translation of just its words; all of the ayah's parts are asked for at once.
+  const [partTexts, setPartTexts] = useState<Record<string, string | null>>({})
+  useEffect(() => {
+    if (!ayah || parts.length < 2) return
+    let cancelled = false
+    parts.forEach((p, k) => {
+      void loadPartTranslation(ayah.verseKey, edition, p).then((text) => {
+        if (!cancelled) setPartTexts((prev) => ({ ...prev, [`${edition}|${ayah.verseKey}|${k}`]: text }))
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [ayah, edition, parts])
+  const translation = ayah ? (split ? partTexts[`${edition}|${ayah.verseKey}|${partIndex}`] ?? null : ayah.translation) : null
+  const shownWords = ayah ? ayah.words.slice(part.start, part.end + 1) : []
+
   return (
     <div
       className={cn(
@@ -123,7 +156,7 @@ function AyahStage({
       )}
     >
       {ayah ? (
-        <div key={ayah.verseKey} className="qari-ayah-in flex flex-col items-center">
+        <div key={`${ayah.verseKey}-${partIndex}`} className="qari-ayah-in flex flex-col items-center">
           <p
             dir="rtl"
             lang="ar"
@@ -131,17 +164,17 @@ function AyahStage({
             // The mushaf font has no bold face; forcing one would distort the letters.
             style={{
               fontFamily: ayah.fontFamily,
-              fontSize: ayahFontSize(ayah.words.length),
+              fontSize: ayahFontSize(shownWords.length),
               lineHeight: 1.95,
               fontWeight: 400,
               textShadow: TEXT_SHADOW,
             }}
           >
-            {ayah.words.map((word, i) => (
+            {shownWords.map((word, i) => (
               <span key={i}>{word}</span>
             ))}
           </p>
-          {ayah.translation ? (
+          {translation ? (
             <p
               dir={ayah.translationRtl ? 'rtl' : 'ltr'}
               lang={ayah.translationLang}
@@ -149,11 +182,20 @@ function AyahStage({
               // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
               style={{ textShadow: TEXT_SHADOW, ...(ayah.translationRtl ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontSize: 17 } : {}) }}
             >
-              {ayah.translation}
+              {split && part.start > 0 ? '… ' : ''}
+              {translation}
+              {split && partIndex < parts.length - 1 ? ' …' : ''}
             </p>
           ) : null}
-          <p className="mt-3 text-[11px] tabular-nums tracking-wider text-[var(--qari-gold-hi)]" style={{ textShadow: TEXT_SHADOW }}>
+          <p className="mt-3 flex items-center gap-2 text-[11px] tabular-nums tracking-wider text-[var(--qari-gold-hi)]" style={{ textShadow: TEXT_SHADOW }}>
             {ayah.verseKey}
+            {split ? (
+              <span className="flex gap-1" aria-hidden>
+                {parts.map((_, k) => (
+                  <span key={k} className={cn('h-1 w-1 rounded-full bg-current', k === partIndex ? 'opacity-100' : 'opacity-35')} />
+                ))}
+              </span>
+            ) : null}
           </p>
         </div>
       ) : timeline.length === 0 ? (

@@ -145,6 +145,11 @@ function findAnchor(heard: string[], from: number, index: QuranWordIndex): Ancho
 export interface AyahMark {
   verseKey: string
   atSeconds: number
+  /**
+   * When each word of the ayah starts, in seconds, one per word in order.
+   * Words the model missed are placed between the ones it heard.
+   */
+  words?: number[]
 }
 
 export interface WordMark {
@@ -452,6 +457,42 @@ export function markAyat(heardWords: HeardWord[], index: QuranWordIndex, normali
   // The basmalah is the first ayah of Al-Fatiha: when what follows it is the second, it was recited.
   const basmalahFirst = preface.basmalahAt >= 0 && kept.length > 0 && kept[0].verseKey === '1:2'
 
+  /** When each word of a group's ayah starts: heard words where heard, the rest spread between them. */
+  const wordTimes = (group: Group, startsAt: number): number[] | undefined => {
+    const total = index.wordCount.get(group.verseKey) ?? 0
+    if (!total) return undefined
+    const known = new Map<number, number>()
+    let n = 0
+    for (let i = group.first; n < group.count && i < assigned.length; i++) {
+      if (assigned[i] < 0 || index.verse[assigned[i]] !== group.verseKey) continue
+      n += 1
+      const position = index.position[assigned[i]]
+      if (!known.has(position)) known.set(position, heardWords[i].start)
+    }
+    const points = [...known.entries()].sort((a, b) => a[0] - b[0])
+    if (!points.length) return undefined
+    const [firstPos, firstAt] = points[0]
+    const [lastPos, lastAt] = points[points.length - 1]
+    const perWord = lastPos > firstPos ? Math.max(0.25, (lastAt - firstAt) / (lastPos - firstPos)) : 0.5
+    const times: number[] = []
+    let p = 0
+    for (let position = 1; position <= total; position++) {
+      while (p + 1 < points.length && points[p + 1][0] <= position) p++
+      let at: number
+      if (position <= firstPos) at = position === firstPos ? firstAt : startsAt
+      else if (position >= lastPos) at = lastAt + (position - lastPos) * perWord
+      else {
+        const [aPos, aAt] = points[p]
+        const [bPos, bAt] = points[p + 1]
+        at = aAt + ((position - aPos) / (bPos - aPos)) * (bAt - aAt)
+      }
+      // Never earlier than the word before it, nor than the ayah itself.
+      at = Math.max(at, startsAt, times[times.length - 1] ?? 0)
+      times.push(Math.round(at * 10) / 10)
+    }
+    return times
+  }
+
   const timeline: AyahMark[] = []
   if (basmalahFirst) {
     timeline.push({ verseKey: '1:1', atSeconds: Math.round(Math.max(0, heardWords[preface.basmalahAt].start - LEAD_SECONDS) * 10) / 10 })
@@ -459,7 +500,9 @@ export function markAyat(heardWords: HeardWord[], index: QuranWordIndex, normali
   for (const group of kept) {
     const at = Math.max(0, heardWords[group.first].start - LEAD_SECONDS)
     const previous = timeline[timeline.length - 1]
-    timeline.push({ verseKey: group.verseKey, atSeconds: Math.round(Math.max(at, previous ? previous.atSeconds + 0.1 : 0) * 10) / 10 })
+    const atSeconds = Math.round(Math.max(at, previous ? previous.atSeconds + 0.1 : 0) * 10) / 10
+    const words = wordTimes(group, atSeconds)
+    timeline.push({ verseKey: group.verseKey, atSeconds, ...(words ? { words } : {}) })
   }
 
   const keptWords = new Set<number>()

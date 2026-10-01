@@ -27,7 +27,7 @@ export function toClientRecitation(r: RecitationRecord, liked: boolean) {
     isPrivate: r.isPrivate === true,
     imitating: r.imitating ?? null,
     peaks: r.peaks ?? [],
-    verseTimeline: Array.isArray(r.verseTimeline) ? (r.verseTimeline as { verseKey: string; atSeconds: number }[]) : [],
+    verseTimeline: Array.isArray(r.verseTimeline) ? (r.verseTimeline as { verseKey: string; atSeconds: number; words?: number[] }[]) : [],
     background: r.background ?? null,
     caption: r.caption,
     durationSec: r.durationSec,

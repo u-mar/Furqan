@@ -7,6 +7,8 @@ import { tr } from '@/lib/i18n-core'
 export interface VerseTimelineEntry {
   verseKey: string
   atSeconds: number
+  /** When each of its words starts, in order, if the ayat were marked by listening. */
+  words?: number[]
 }
 
 export interface Recitation {
