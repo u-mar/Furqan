@@ -679,21 +679,21 @@ function RecordFlow() {
                   </button>
                 </div>
               ) : null}
-              {verseTimeline.length === 0 && marking.modelReady ? (
+              {verseTimeline.length === 0 ? (
                 <>
                   <RowDivider />
                   <button
                     type="button"
                     className="set-row"
                     style={{ paddingBlock: 10 }}
-                    disabled={marking.status === 'running'}
+                    disabled={marking.status === 'running' || marking.status === 'downloading'}
                     onClick={() => {
                       tapFeedback()
-                      void marking.start(state.blob as Blob)
+                      void (marking.modelReady ? marking.start(state.blob as Blob) : marking.downloadAndStart(state.blob as Blob))
                     }}
                   >
                     <span className="set-row__icon">
-                      {marking.status === 'running' ? (
+                      {marking.status === 'running' || marking.status === 'downloading' ? (
                         <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={1.9} />
                       ) : (
                         <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
@@ -702,13 +702,17 @@ function RecordFlow() {
                     <span className="min-w-0 flex-1 text-left">
                       <span className="block text-[15px] font-medium">{t('Mark ayat automatically')}</span>
                       <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">
-                        {marking.status === 'running'
-                          ? t('Listening… {percent}%', { percent: Math.round(marking.progress * 100) })
-                          : marking.status === 'none'
-                            ? t('No ayat were recognised')
-                            : marking.status === 'failed'
-                              ? marking.error
-                              : t('So each ayah shows as you recite it')}
+                        {marking.status === 'downloading'
+                          ? t('Downloading the recitation model… {percent}%', { percent: Math.round(marking.progress * 100) })
+                          : marking.status === 'running'
+                            ? t('Listening… {percent}%', { percent: Math.round(marking.progress * 100) })
+                            : marking.status === 'none'
+                              ? t('No ayat were recognised')
+                              : marking.status === 'failed'
+                                ? marking.error
+                                : marking.modelReady
+                                  ? t('So each ayah shows as you recite it')
+                                  : t('Tap to download the recitation model once (about 460 MB, use Wi-Fi)')}
                       </span>
                     </span>
                   </button>
@@ -792,14 +796,16 @@ function RecordFlow() {
           <div className="mt-3 flex justify-center" aria-live="polite">
             <button
               type="button"
-              disabled={marking.status === 'running' || marking.status === 'done'}
+              disabled={marking.status === 'running' || marking.status === 'downloading' || marking.status === 'done'}
               onClick={() => void marking.start(state.blob as Blob)}
               className="qari-glass flex h-8 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold"
             >
-              {marking.status === 'running' ? (
+              {marking.status === 'running' || marking.status === 'downloading' ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} />
-                  {t('Marking ayat… {percent}%', { percent: Math.round(marking.progress * 100) })}
+                  {marking.status === 'downloading'
+                    ? t('Downloading the recitation model… {percent}%', { percent: Math.round(marking.progress * 100) })
+                    : t('Marking ayat… {percent}%', { percent: Math.round(marking.progress * 100) })}
                 </>
               ) : marking.status === 'done' ? (
                 <>

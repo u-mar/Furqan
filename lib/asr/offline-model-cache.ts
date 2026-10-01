@@ -5,9 +5,8 @@
  * used, which the app deletes — and read back only when a recording is
  * analysed.
  *
- * It comes from one of two places: a download from MODEL_URL (a file served by
- * the app, or a bucket of yours — NEXT_PUBLIC_QARI_ASR_MODEL_URL), or a file
- * chosen on the phone, which needs no hosting at all.
+ * It comes from one of two places: a download from QARI_ASR_MODEL_URL (the R2
+ * bucket), or a file chosen on the phone, which needs no hosting at all.
  *
  * Use an int8 or fp32 export: the in-browser runtime has no fp16 kernels.
  * (services/nadir-asr/quantize.py makes the int8 one, about 110 MB.)
@@ -19,7 +18,13 @@ export const QARI_ASR_CACHE = 'muyassar-qari-asr-v1'
 const MODEL_KEY = '/models/asr/qari-offline.onnx'
 const FLAG_KEY = 'muyassar_qari_asr_model'
 
-export const QARI_ASR_MODEL_URL = process.env.NEXT_PUBLIC_QARI_ASR_MODEL_URL || '/models/asr/qari-offline.onnx'
+/**
+ * Where the model is downloaded from: the R2 bucket it is stored in. Set
+ * NEXT_PUBLIC_QARI_ASR_MODEL_URL to point somewhere else (a custom domain on
+ * the bucket, or a file served by the app itself).
+ */
+export const QARI_ASR_MODEL_URL =
+  process.env.NEXT_PUBLIC_QARI_ASR_MODEL_URL || 'https://pub-0d4d974a9cad4a92b81667e5b4f5523f.r2.dev/model.onnx'
 
 export interface ModelProgress {
   percent: number

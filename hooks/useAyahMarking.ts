@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isQariAsrModelReady, onQariAsrModelChange } from '@/lib/asr/offline-model-cache'
+import { downloadQariAsrModel, isQariAsrModelReady, onQariAsrModelChange } from '@/lib/asr/offline-model-cache'
 import { markRecitationAyat } from '@/lib/qari-ayah-marks'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 
-export type MarkingStatus = 'idle' | 'running' | 'done' | 'none' | 'failed'
+export type MarkingStatus = 'idle' | 'downloading' | 'running' | 'done' | 'none' | 'failed'
 
 /**
  * Marks the ayat in a recording on the phone (see lib/qari-ayah-marks.ts),
@@ -77,5 +77,36 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
     [cancel]
   )
 
-  return { modelReady, status, progress, count, error, start, cancel, reset }
+  /**
+   * Saves the model (a one-time download, about 460 MB), then marks `blob`'s ayat.
+   * Progress is the download's, then the listening's.
+   */
+  const downloadAndStart = useCallback(
+    async (blob: Blob) => {
+      cancel()
+      const job = { cancelled: false }
+      jobRef.current = job
+      setStatus('downloading')
+      setProgress(0)
+      setError(null)
+      try {
+        await downloadQariAsrModel((p) => {
+          if (!job.cancelled) setProgress(p.percent / 100)
+        })
+      } catch (err) {
+        if (job.cancelled) return
+        setStatus('failed')
+        setError(err instanceof Error && err.message ? err.message : tr('Download failed'))
+        return
+      } finally {
+        if (jobRef.current === job) jobRef.current = null
+      }
+      if (job.cancelled) return
+      setModelReady(true)
+      await start(blob)
+    },
+    [cancel, start]
+  )
+
+  return { modelReady, status, progress, count, error, start, downloadAndStart, cancel, reset }
 }

@@ -446,4 +446,6 @@ export const QARI: Dict = {
   'The recitation model is not downloaded.': { so: 'Qaabka akhriska lama soo dejin.', ar: 'نموذج التلاوة غير منزَّل.' },
   'This model is fp16, which phones cannot run. Use the fp32 or int8 model.': { so: 'Qaabkan waa fp16, taleefannadu ma shaqayn karaan. Isticmaal qaabka fp32 ama int8.', ar: 'هذا النموذج بصيغة fp16 ولا تستطيع الهواتف تشغيله. استخدم نموذج fp32 أو int8.' },
   '{count} ayat marked': { so: '{count} aayaad ayaa la calaamadeeyay', ar: 'تم تعليم {count} آيات' },
+  'Downloading the recitation model… {percent}%': { so: 'Waa la soo dejinayaa qaabka akhriska… {percent}%', ar: 'جارٍ تنزيل نموذج التلاوة… {percent}%' },
+  'Tap to download the recitation model once (about 460 MB, use Wi-Fi)': { so: 'Taabo si aad hal mar u soo dejiso qaabka akhriska (ilaa 460 MB, isticmaal Wi-Fi)', ar: 'اضغط لتنزيل نموذج التلاوة مرة واحدة (نحو 460 ميغابايت، استخدم الواي فاي)' },
 }
