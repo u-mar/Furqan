@@ -27,8 +27,15 @@ export interface Recognition {
   text: string
   words: RecognizedWord[]
   durationSec: number
-  /** 0–1: how sure the model was, on average. */
+  /**
+   * 0–1: how sure the model was about the words it heard, and 0 when it heard
+   * none. (Counting silence would make a model that hears nothing look
+   * certain, which is exactly what happens with the wrong audio settings.)
+   */
   confidence: number
+  /** Output steps that carried a word piece, and their combined confidence: what `confidence` is made of. */
+  heardSteps?: number
+  heardConfidence?: number
 }
 
 type Ort = typeof import('onnxruntime-web/wasm')
@@ -105,7 +112,8 @@ export async function recognize(
   const pieces = splitRecording(samples)
   const words: RecognizedWord[] = []
   const texts: string[] = []
-  const confidences: number[] = []
+  let heardSteps = 0
+  let heardConfidence = 0
 
   for (let p = 0; p < pieces.length; p++) {
     if (options.signal?.cancelled) throw new Error('cancelled')
@@ -114,7 +122,8 @@ export async function recognize(
     const offset = piece.start / ASR_SAMPLE_RATE
     for (const w of part.words) words.push({ word: w.word, start: round(w.start + offset), end: round(w.end + offset) })
     if (part.text) texts.push(part.text)
-    confidences.push(part.confidence)
+    heardSteps += part.heardSteps ?? 0
+    heardConfidence += part.heardConfidence ?? 0
     options.onProgress?.((p + 1) / pieces.length)
     await yieldToScreen()
   }
@@ -123,7 +132,7 @@ export async function recognize(
     text: texts.join(' '),
     words,
     durationSec: round(samples.length / ASR_SAMPLE_RATE),
-    confidence: confidences.length ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0,
+    confidence: heardSteps ? heardConfidence / heardSteps : 0,
   }
 }
 
@@ -137,7 +146,7 @@ async function recognizePiece(
   settings: FeatureSettings
 ): Promise<Recognition> {
   const { data, frames } = offlineLogMel(samples, settings)
-  if (frames < 8) return { text: '', words: [], durationSec: 0, confidence: 0 }
+  if (frames < 8) return { text: '', words: [], durationSec: 0, confidence: 0, heardSteps: 0, heardConfidence: 0 }
 
   const feeds: Record<string, InstanceType<Ort['Tensor']>> = {
     audio_signal: new ort.Tensor('float32', data, [1, 80, frames]),
@@ -163,7 +172,8 @@ async function recognizePiece(
 
   const tokens: { id: number; first: number; last: number }[] = []
   let previous = -1
-  let confidenceSum = 0
+  let heardSteps = 0
+  let heardConfidence = 0
   for (let t = 0; t < steps; t++) {
     let best = 0
     let bestValue = -Infinity
@@ -177,7 +187,10 @@ async function recognizePiece(
     // The probability of the winner, whether the model gave log-probabilities or raw scores.
     let norm = 0
     for (let v = 0; v < vocabSize; v++) norm += Math.exp(at(t, v) - bestValue)
-    confidenceSum += 1 / norm
+    if (best !== blank) {
+      heardSteps += 1
+      heardConfidence += 1 / norm
+    }
 
     if (best !== blank) {
       if (best !== previous) tokens.push({ id: best, first: t, last: t })
@@ -206,7 +219,9 @@ async function recognizePiece(
     text: tokenizer.decode(tokens.map((t) => t.id)).trim(),
     words,
     durationSec: samples.length / ASR_SAMPLE_RATE,
-    confidence: steps ? confidenceSum / steps : 0,
+    confidence: heardSteps ? heardConfidence / heardSteps : 0,
+    heardSteps,
+    heardConfidence,
   }
 }
 

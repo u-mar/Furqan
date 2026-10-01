@@ -1,7 +1,7 @@
 'use client'
 
 import { decodeRecording, recognize, type Recognition } from '@/lib/asr/offline-recognizer'
-import { loadFeatureSettings } from '@/lib/asr/offline-features'
+import { DEFAULT_FEATURE_SETTINGS, loadFeatureSettings, saveFeatureSettings } from '@/lib/asr/offline-features'
 import { buildQuranWordIndex, markAyat, type AyahMarking, type QuranWordIndex } from '@/lib/asr/quran-match'
 import { loadQuranData } from '@/lib/quran'
 import { normalizeArabic } from '@/lib/search-ayahs'
@@ -50,11 +50,17 @@ export async function markRecitationAyat(blob: Blob, options: MarkingOptions = {
   const [samples, index] = await Promise.all([decodeRecording(blob), quranIndex()])
   onProgress?.(0.08)
 
-  const recognition = await recognize(samples, {
-    settings: loadFeatureSettings(),
+  const saved = loadFeatureSettings()
+  let recognition = await recognize(samples, {
+    settings: saved,
     signal,
     onProgress: (fraction) => onProgress?.(0.08 + fraction * 0.9),
   })
+  // A model that heard nothing was fed the wrong way: go back to the settings it is known to work with.
+  if (recognition.words.length === 0 && JSON.stringify(saved) !== JSON.stringify(DEFAULT_FEATURE_SETTINGS)) {
+    recognition = await recognize(samples, { settings: DEFAULT_FEATURE_SETTINGS, signal })
+    if (recognition.words.length > 0) saveFeatureSettings(DEFAULT_FEATURE_SETTINGS)
+  }
   if (signal?.cancelled) throw new Error('cancelled')
 
   const marking = markAyat(recognition.words, index, normalizeArabic)

@@ -102,6 +102,7 @@ export default function AsrTestPage() {
         setAttempts([...results])
         break
       }
+      // Most sure first; one that heard nothing is last, however "sure" it is of the silence.
       setAttempts([...results].sort((a, b) => (b.recognition?.confidence ?? 0) - (a.recognition?.confidence ?? 0)))
     }
     setRunning(null)
@@ -128,7 +129,7 @@ export default function AsrTestPage() {
     }
   }
 
-  const best = attempts.find((a) => a.recognition)
+  const best = attempts.find((a) => a.recognition?.words.length)
 
   return (
     <main className="qari-theme min-h-[100dvh] px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] text-[var(--app-text)]">
@@ -196,23 +197,24 @@ export default function AsrTestPage() {
               Most sure first. The one that reads correctly is the one to keep; it is almost always the one with the highest confidence.
             </p>
             {attempts.map((a, i) => (
-              <div key={label(a.settings)} className={cn('home-card rounded-2xl p-3.5', i === 0 && a.recognition && 'ring-2 ring-[var(--home-sage)]')}>
+              <div key={label(a.settings)} className={cn('home-card rounded-2xl p-3.5', i === 0 && a.recognition?.words.length && 'ring-2 ring-[var(--home-sage)]')}>
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[13px] font-semibold">{label(a.settings)}</p>
                   {a.recognition ? (
                     <p className="text-xs tabular-nums text-[var(--home-muted)]">
-                      {Math.round(a.recognition.confidence * 100)}% sure · {a.seconds.toFixed(1)}s
+                      {a.recognition.words.length ? `${Math.round(a.recognition.confidence * 100)}% sure · ` : ''}
+                      {a.seconds.toFixed(1)}s
                     </p>
                   ) : null}
                 </div>
                 {a.recognition ? (
                   <p className="amiri mt-2 text-[1.125rem] leading-loose" dir="rtl">
-                    {a.recognition.text || '…'}
+                    {a.recognition.text || <span className="text-sm text-[var(--home-muted)]">Heard nothing</span>}
                   </p>
                 ) : (
                   <p className="mt-2 text-sm text-red-600 dark:text-red-400">{a.error}</p>
                 )}
-                {a.recognition ? (
+                {a.recognition?.words.length ? (
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <button
                       type="button"

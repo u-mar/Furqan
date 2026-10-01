@@ -23,7 +23,11 @@ export interface FeatureSettings {
   normalize: 'per_feature' | 'none'
 }
 
-/** NeMo's own defaults, which is what an offline NeMo model is trained with. */
+/**
+ * NeMo's own defaults, which is what an offline NeMo model is trained with.
+ * Checked against the real model: with these it transcribes Quran recitations
+ * word for word, and without per-feature normalisation it hears nothing.
+ */
 export const DEFAULT_FEATURE_SETTINGS: FeatureSettings = {
   window: 'symmetric',
   pad: 'constant',
@@ -41,7 +45,8 @@ const windows: Record<FeatureSettings['window'], Float64Array> = {
   symmetric: Float64Array.from({ length: WIN_LENGTH }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (WIN_LENGTH - 1))),
 }
 
-const SETTINGS_KEY = 'muyassar_qari_asr_features'
+// v2: the first calibration page ranked a model that heard nothing as the most certain, so settings saved from it are not trusted.
+const SETTINGS_KEY = 'muyassar_qari_asr_features_v2'
 
 /** The settings the calibration page found best, or NeMo's defaults. */
 export function loadFeatureSettings(): FeatureSettings {

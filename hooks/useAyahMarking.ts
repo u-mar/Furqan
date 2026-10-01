@@ -5,6 +5,7 @@ import { downloadQariAsrModel, isQariAsrModelReady, onQariAsrModelChange } from 
 import { markRecitationAyat } from '@/lib/qari-ayah-marks'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
+import { toast } from '@/lib/toast'
 
 export type MarkingStatus = 'idle' | 'downloading' | 'running' | 'done' | 'none' | 'failed'
 
@@ -68,8 +69,11 @@ export function useAyahMarking(onMarked: (timeline: VerseTimelineEntry[]) => voi
         onMarkedRef.current(result.timeline)
       } catch (err) {
         if (job.cancelled) return
+        const message = err instanceof Error && err.message ? err.message : tr('Could not mark the ayat.')
         setStatus('failed')
-        setError(err instanceof Error && err.message ? err.message : tr('Could not mark the ayat.'))
+        setError(message)
+        // Said out loud: a marking that quietly does nothing looks like it never ran.
+        toast(message, 'error')
       } finally {
         if (jobRef.current === job) jobRef.current = null
       }
