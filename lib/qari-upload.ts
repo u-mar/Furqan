@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react'
 import { rememberRecitationBackground } from '@/lib/qari-backgrounds'
 import { clearDraft } from '@/lib/qari-drafts'
-import { isQariAsrModelReady } from '@/lib/asr/offline-model-cache'
+import { downloadQariAsrModel, isQariAsrModelReady } from '@/lib/asr/offline-model-cache'
 import { startMarking } from '@/lib/qari-ayah-marks'
 import {
   primeRecitationAudio,
@@ -23,8 +23,8 @@ import { toast } from '@/lib/toast'
  * moves on, like TikTok: the upload carries on here, outside any one screen,
  * and the profile shows how far along it is.
  *
+ *   downloading→ the recitation model is being saved on the phone (once, the first time)
  *   marking    → the recording is being listened to for its ayat, on the phone
- *                (only when that has not finished by the time it is posted)
  *   uploading  → going up (progress 0–1)
  *   processing → all of it has arrived and the server is saving it. When the
  *                ayah-marking model is added, it runs in this stage too.
@@ -32,7 +32,7 @@ import { toast } from '@/lib/toast'
  *   failed     → kept, with the reason, until it is tried again or dropped
  */
 
-export type UploadStage = 'marking' | 'uploading' | 'processing' | 'done' | 'failed'
+export type UploadStage = 'downloading' | 'marking' | 'uploading' | 'processing' | 'done' | 'failed'
 
 export interface QariUpload {
   /** A local id — the server's is only known once it is done. */
@@ -49,8 +49,8 @@ export interface QariUpload {
 }
 
 interface Job {
-  /** Anything to finish before sending, reporting 0–1 as it goes. */
-  prepare?: (onProgress: (fraction: number) => void) => Promise<void>
+  /** Anything to finish before sending, saying which stage it is in and how far along (0–1). */
+  prepare?: (report: (stage: 'downloading' | 'marking', fraction: number) => void) => Promise<void>
   send: (onProgress: (fraction: number) => void) => Promise<string>
   /** How it appears on the profile once it has its id. */
   posted: (id: string) => Recitation
@@ -77,7 +77,7 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
-const sending = () => uploads.some((u) => u.stage === 'marking' || u.stage === 'uploading' || u.stage === 'processing')
+const sending = () => uploads.some((u) => u.stage === 'downloading' || u.stage === 'marking' || u.stage === 'uploading' || u.stage === 'processing')
 
 /** Leaving the app while something is still going up would lose it, so the browser asks first. */
 function guardUnload(event: BeforeUnloadEvent) {
@@ -89,13 +89,13 @@ function guardUnload(event: BeforeUnloadEvent) {
 async function run(key: string) {
   const job = jobs.get(key)
   if (!job) return
-  patch(key, { stage: job.prepare ? 'marking' : 'uploading', progress: 0, error: null })
+  patch(key, { stage: job.prepare ? (isQariAsrModelReady() ? 'marking' : 'downloading') : 'uploading', progress: 0, error: null })
   window.addEventListener('beforeunload', guardUnload)
 
   let shownAt = 0
   try {
     if (job.prepare) {
-      await job.prepare((fraction) => patch(key, { progress: fraction }))
+      await job.prepare((stage, fraction) => patch(key, { stage, progress: fraction }))
       patch(key, { stage: 'uploading', progress: 0 })
     }
     const id = await job.send((fraction) => {
@@ -127,9 +127,9 @@ function start(upload: Omit<QariUpload, 'key' | 'stage' | 'progress' | 'error' |
 
 /** Starts posting a recitation and returns at once; follow it with useUploads. */
 export function postRecitation(input: PublishInput, options: { markFrom?: Blob } = {}): string {
-  // Ayat found by listening to the recording, when it is posted before the screen finished doing that.
+  // The ayat in the recording, found by listening to it as it is published.
   let verseTimeline = input.verseTimeline
-  const waitForMarking = options.markFrom && input.verseTimeline.length === 0 && isQariAsrModelReady() ? options.markFrom : null
+  const listenTo = options.markFrom ?? null
   return start(
     {
       title: input.title,
@@ -138,17 +138,22 @@ export function postRecitation(input: PublishInput, options: { markFrom?: Blob }
       userUsername: input.userUsername,
     },
     {
-      prepare: waitForMarking
-        ? async (onProgress) => {
+      prepare: listenTo
+        ? async (report) => {
+            // The model is saved on the phone the first time; if that cannot be done, saying why beats posting without ayat.
+            if (!isQariAsrModelReady()) {
+              await downloadQariAsrModel((p) => report('downloading', p.percent / 100))
+            }
+            report('marking', 0)
+            const marking = startMarking(listenTo)
+            const listener = (fraction: number) => report('marking', fraction)
+            marking.listeners.add(listener)
             try {
-              const marking = startMarking(waitForMarking)
-              marking.listeners.add(onProgress)
-              onProgress(marking.progress)
               const result = await marking.promise
-              marking.listeners.delete(onProgress)
+              // Nothing recognisable (not a recitation, or too faint): it is still posted, just without ayat.
               if (result) verseTimeline = result.timeline
-            } catch {
-              // Not hearing the ayat must never stop a recitation being posted.
+            } finally {
+              marking.listeners.delete(listener)
             }
           }
         : undefined,

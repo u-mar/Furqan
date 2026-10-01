@@ -19,7 +19,7 @@ const RING_C = 2 * Math.PI * RING_R
 export default function UploadCard({ upload }: { upload: QariUpload }) {
   const t = useT()
   const percent = Math.round(upload.progress * 100)
-  const sending = upload.stage === 'marking' || upload.stage === 'uploading' || upload.stage === 'processing'
+  const sending = upload.stage === 'downloading' || upload.stage === 'marking' || upload.stage === 'uploading' || upload.stage === 'processing'
 
   return (
     <div className="qari-card qari-enter flex items-center gap-3 px-3 py-3" role="status" aria-live="polite">
@@ -31,7 +31,7 @@ export default function UploadCard({ upload }: { upload: QariUpload }) {
         )}
         <span className={cn('absolute inset-0 transition-colors', upload.stage === 'done' ? 'bg-black/25' : 'bg-black/50')} />
         <span className="absolute inset-0 flex items-center justify-center text-white">
-          {upload.stage === 'uploading' || upload.stage === 'marking' ? (
+          {upload.stage === 'uploading' || upload.stage === 'marking' || upload.stage === 'downloading' ? (
             <span className="relative flex h-9 w-9 items-center justify-center">
               <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
                 <circle cx="18" cy="18" r={RING_R} fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="2.5" />
@@ -70,7 +70,9 @@ export default function UploadCard({ upload }: { upload: QariUpload }) {
             upload.stage === 'failed' ? 'line-clamp-2 text-rose-600 dark:text-rose-300' : 'truncate text-[var(--home-muted)]'
           )}
         >
-          {upload.stage === 'marking'
+          {upload.stage === 'downloading'
+            ? t('Getting the recitation model… {percent}%', { percent })
+            : upload.stage === 'marking'
             ? t('Marking ayat… {percent}%', { percent })
             : upload.stage === 'uploading'
             ? t('Posting… {percent}%', { percent })

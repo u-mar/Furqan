@@ -15,7 +15,6 @@ import {
   Globe,
   Hash,
   ImageIcon,
-  Loader2,
   LayoutGrid,
   Lock,
   MicVocal,
@@ -44,7 +43,7 @@ import {
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
 import { errorFeedback, strongFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
-import { formatDuration, tidyHashtags, type VerseTimelineEntry } from '@/lib/qari'
+import { formatDuration, tidyHashtags } from '@/lib/qari'
 import {
   FEATURED_RECITATION_BACKGROUND_IDS,
   VIDEO_BACKGROUNDS,
@@ -53,7 +52,6 @@ import {
   lastRecitationBackground,
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
-import { useAyahMarking } from '@/hooks/useAyahMarking'
 import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
 import { postRecitation } from '@/lib/qari-upload'
 import { measurePeaks } from '@/lib/qari-waveform'
@@ -148,10 +146,7 @@ function RecordFlow() {
   // never unmounts RecordFlow, just layers a full-screen view over it.
   const [mushafOpen, setMushafOpen] = useState(false)
   // Ayat marked "now reciting" while the Mushaf overlay is open.
-  const [verseTimeline, setVerseTimeline] = useState<VerseTimelineEntry[]>([])
   // Ayat found by listening to the take on the phone, when the recitation model is saved.
-  const marking = useAyahMarking(setVerseTimeline)
-  const autoMarkRef = useRef(false)
 
   const sheikh = findSheikh(sheikhId)
   const space = findSpace(spaceId)
@@ -199,7 +194,6 @@ function RecordFlow() {
       clearCountdown()
       strongFeedback()
       setLevels([])
-      setVerseTimeline([])
       setStep('recording')
       const prepared = preparedRef.current
       preparedRef.current = null
@@ -228,16 +222,6 @@ function RecordFlow() {
     return () => window.clearInterval(id)
   }, [state.recording])
 
-  // Read from a ref rather than closed over directly, so marking a verse
-  // (fired from deep inside the Mushaf overlay) always timestamps against
-  // the true current elapsed time instead of whatever it was when the
-  // callback identity was last created.
-  const elapsedRef = useRef(0)
-  elapsedRef.current = state.elapsed
-  const handleMarkVerse = useCallback((verseKey: string) => {
-    setVerseTimeline((prev) => [...prev, { verseKey, atSeconds: elapsedRef.current }])
-  }, [])
-
   // A failure to start drops back to the start, saying why.
   useEffect(() => {
     if (state.error && step === 'recording') {
@@ -254,8 +238,6 @@ function RecordFlow() {
     if (!state.blob || step !== 'recording') return
     strongFeedback()
     freshTakeRef.current = true
-    autoMarkRef.current = true
-    marking.reset()
     setStep('edit')
     setPeaks([])
     measurePeaks(state.blob)
@@ -265,14 +247,7 @@ function RecordFlow() {
     if (state.quality === 'noisy') qariNotice(tr('The room was a little noisy. A quieter room sounds better.'))
     else if (state.quality === 'quiet') qariNotice(tr('The recording is quiet. Hold the phone closer next time.'))
     else if (state.quality === 'clipped') qariNotice(tr('The recording was too loud in places. Hold the phone further away next time.'))
-  }, [state.blob, state.quality, step, marking.reset])
-
-  // A new take gets its ayat marked on its own, unless some were marked by hand from the Mushaf.
-  useEffect(() => {
-    if (!autoMarkRef.current || !state.blob || step !== 'edit' || !marking.modelReady) return
-    autoMarkRef.current = false
-    if (verseTimeline.length === 0) void marking.start(state.blob)
-  }, [marking.modelReady, marking.start, state.blob, step, verseTimeline.length])
+  }, [state.blob, state.quality, step])
 
   /* ---------------------------------------------------------- draft */
 
@@ -290,7 +265,7 @@ function RecordFlow() {
     imitating: imitate ? sheikhId : null,
     space: spaceId,
     peaks,
-    verseTimeline,
+    verseTimeline: [],
     background: backgroundId,
   }
 
@@ -307,7 +282,7 @@ function RecordFlow() {
   useEffect(() => {
     if (!editing || !state.blob) return
     saveDraftMeta(draftFieldsRef.current)
-  }, [editing, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, verseTimeline, backgroundId])
+  }, [editing, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, backgroundId])
 
   const resumeDraft = useCallback(async () => {
     tapFeedback()
@@ -324,7 +299,6 @@ function RecordFlow() {
     if (draft.imitating) setSheikhId(draft.imitating)
     if (draft.background) setBackgroundId(findVideoBackground(draft.background).id)
     setPeaks(draft.peaks)
-    setVerseTimeline(draft.verseTimeline ?? [])
     setTitle(draft.title)
     setHashtags(draft.hashtags)
     setCaption(draft.caption)
@@ -418,14 +392,12 @@ function RecordFlow() {
   /** Clears what was typed for a take, so the next one starts empty. */
   const forgetTake = useCallback(() => {
     stopPreview()
-    marking.reset()
     recorder.reset()
     setPeaks([])
-    setVerseTimeline([])
     setTitle('')
     setHashtags('')
     setCaption('')
-  }, [marking.reset, recorder, stopPreview])
+  }, [recorder, stopPreview])
 
   /** Back to the camera. The take stays as the draft, one tap away. */
   const backToCamera = useCallback(() => {
@@ -496,7 +468,7 @@ function RecordFlow() {
       caption: caption.trim(),
       imitating: imitate ? sheikhId : '',
       peaks,
-      verseTimeline,
+      verseTimeline: [],
       background: backgroundId,
       userId: viewer.id,
       userName: viewer.name,
@@ -505,7 +477,7 @@ function RecordFlow() {
     successFeedback()
     // To the profile, where it shows uploading at the top.
     router.replace(`/qari/${encodeURIComponent(viewer.username)}`)
-  }, [backgroundId, caption, hashtags, imitate, isPrivate, peaks, router, sheikhId, spaceId, state, stopPreview, title, verseTimeline, viewer])
+  }, [backgroundId, caption, hashtags, imitate, isPrivate, peaks, router, sheikhId, spaceId, state, stopPreview, title, viewer])
 
   const saveToDrafts = useCallback(() => {
     tapFeedback()
@@ -679,60 +651,6 @@ function RecordFlow() {
                   </button>
                 </div>
               ) : null}
-              {verseTimeline.length === 0 ? (
-                <>
-                  <RowDivider />
-                  <button
-                    type="button"
-                    className="set-row"
-                    style={{ paddingBlock: 10 }}
-                    disabled={marking.status === 'running' || marking.status === 'downloading'}
-                    onClick={() => {
-                      tapFeedback()
-                      void (marking.modelReady ? marking.start(state.blob as Blob) : marking.downloadAndStart(state.blob as Blob))
-                    }}
-                  >
-                    <span className="set-row__icon">
-                      {marking.status === 'running' || marking.status === 'downloading' ? (
-                        <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={1.9} />
-                      ) : (
-                        <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block text-[15px] font-medium">{t('Mark ayat automatically')}</span>
-                      <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">
-                        {marking.status === 'downloading'
-                          ? t('Downloading the recitation model… {percent}%', { percent: Math.round(marking.progress * 100) })
-                          : marking.status === 'running'
-                            ? t('Listening… {percent}%', { percent: Math.round(marking.progress * 100) })
-                            : marking.status === 'none'
-                              ? t('No ayat were recognised')
-                              : marking.status === 'failed'
-                                ? marking.error
-                                : marking.modelReady
-                                  ? t('So each ayah shows as you recite it')
-                                  : t('Tap to download the recitation model once (about 460 MB, use Wi-Fi)')}
-                      </span>
-                    </span>
-                  </button>
-                </>
-              ) : null}
-              {verseTimeline.length > 0 ? (
-                <>
-                  <RowDivider />
-                  <div className="set-row" style={{ paddingBlock: 10 }}>
-                    <span className="set-row__icon">
-                      <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium">{t('Ayat marked')}</span>
-                      <span className="mt-px block truncate text-[12.5px] text-[var(--home-muted)]">{t('Shown as you recite them')}</span>
-                    </span>
-                    <span className="set-row__value">{new Set(verseTimeline.map((e) => e.verseKey)).size}</span>
-                  </div>
-                </>
-              ) : null}
               <RowDivider />
               <PostRow
                 Icon={isPrivate ? Lock : Globe}
@@ -791,36 +709,6 @@ function RecordFlow() {
           <span className="qari-cam-text text-[15px] font-semibold">{t('Preview')}</span>
           <span className="w-[2.625rem]" aria-hidden />
         </div>
-
-        {marking.status !== 'idle' ? (
-          <div className="mt-3 flex justify-center" aria-live="polite">
-            <button
-              type="button"
-              disabled={marking.status === 'running' || marking.status === 'downloading' || marking.status === 'done'}
-              onClick={() => void marking.start(state.blob as Blob)}
-              className="qari-glass flex h-8 items-center gap-2 rounded-full px-3.5 text-[12.5px] font-semibold"
-            >
-              {marking.status === 'running' || marking.status === 'downloading' ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.2} />
-                  {marking.status === 'downloading'
-                    ? t('Downloading the recitation model… {percent}%', { percent: Math.round(marking.progress * 100) })
-                    : t('Marking ayat… {percent}%', { percent: Math.round(marking.progress * 100) })}
-                </>
-              ) : marking.status === 'done' ? (
-                <>
-                  <BookOpen className="h-3.5 w-3.5" strokeWidth={2.2} />
-                  {t('{count} ayat marked', { count: marking.count })}
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-3.5 w-3.5" strokeWidth={2.2} />
-                  {marking.status === 'none' ? t('No ayat recognised · try again') : t('Could not mark ayat · try again')}
-                </>
-              )}
-            </button>
-          </div>
-        ) : null}
 
         <div className="relative flex min-h-0 flex-1">
           {/* Tap anywhere on the picture to listen. */}
@@ -1159,7 +1047,6 @@ function RecordFlow() {
         elapsedLabel={clock(elapsed)}
         onBegin={() => void begin()}
         onStop={() => recorder.stop()}
-        onMarkVerse={handleMarkVerse}
       />
     </Studio>
   )
