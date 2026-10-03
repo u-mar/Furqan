@@ -199,7 +199,10 @@ export default function GallerySwipeView({
       <div
         ref={trackRef}
         className="relative h-full w-full"
-        style={{ willChange: 'transform' }}
+        // The page never scrolls, so every touch is ours: left to the browser, the
+        // up-and-down part of a sideways swipe nudged the whole page (the bounce on
+        // iPhone, the address bar sliding away on Android).
+        style={{ willChange: 'transform', touchAction: 'none' }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={finishGesture}

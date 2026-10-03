@@ -14,18 +14,14 @@
 
 import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
-import { loadPageFont, qcfPageFontFamily } from '@/lib/mushaf-fonts'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
-import { fetchPageTranslations, verseQcfWords, viewerTranslation } from '@/lib/qari-ayah'
+import { loadAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
+import { ayahParts, loadPartTranslation } from '@/lib/qari-ayah-parts'
 import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
-import { pageHasQcfData, versePageNumber } from '@/lib/qcf-page'
-import { getVerseArabicText } from '@/lib/quran-display'
-import { getVerseByKey } from '@/lib/quran'
 import { isRtlTranslationEdition } from '@/lib/translations'
 import { findVideoBackground } from '@/lib/qari-backgrounds'
-import type { Verse } from '@/types'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -118,10 +114,16 @@ export async function makeRecitationAudio(
 /* ------------------------------------------------------------------ video */
 
 /**
- * The look: a plain black or a chosen photo behind, the reciter's picture
- * small in the middle (optional), a waveform that follows the voice's own
- * frequencies, and the app's mark with the reciter's name under it in the
- * corner. Nothing else.
+ * The look is the swipe view's, so a shared video looks like the recitation
+ * does in the app: the recitation's background (drifting slowly, or its clip
+ * playing), the same shade over it, the ayah being recited in the mushaf's
+ * script with its translation and number, a long ayah a screenful at a time,
+ * and the reciter's name and title at the bottom, with the app's mark.
+ *
+ * Made quickly: everything that does not change from frame to frame (the
+ * shade, each part of each ayah, the name) is drawn once and stamped onto
+ * each frame, and a moving background is decoded straight through rather
+ * than seeked to frame by frame.
  */
 
 export {
@@ -135,7 +137,7 @@ export {
 export interface VideoOptions {
   /** One of VIDEO_BACKGROUNDS' ids. */
   backgroundId: string
-  /** Off skips the reciter's picture (and its ring) entirely. */
+  /** Off leaves the reciter's picture out. */
   includeAvatar: boolean
 }
 
@@ -169,57 +171,43 @@ export function saveVideoOptions(options: VideoOptions): void {
   }
 }
 
-// Low, centred, and clear of the badge at the very bottom — the ayah and its
-// translation take the whole middle of the frame now that there's no
-// waveform to share it with.
-const AVATAR_Y = 1050
-const AVATAR_SIZE = 148
+/** The swipe view is laid out for a 375-point-wide phone; the video is that, scaled up. */
+const S = W / 375
 
-const CAPTION_TOP = 380
-const CAPTION_BOTTOM = 900
-const CAPTION_SIDE_MARGIN = 70
+const IVORY = '#f3ead6'
+const GOLD = '#d9b86a'
 
-interface FittedBlock {
-  lines: string[]
-  fontSize: number
-  lineHeight: number
-  height: number
-}
+/** Where the ayah sits: centred a little above the middle, as in the swipe view, clear of the name below. */
+const CAPTION_CENTER_Y = Math.round(H * 0.44)
+const CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
+const CAPTION_WIDTH = W - Math.round(28 * S) * 2
 
-interface CaptionBlock {
-  /** The recording's own clock — shown from here until the next one starts. */
+const AVATAR_SIZE = Math.round(44 * S)
+const FOOTER_LEFT = Math.round(16 * S)
+const FOOTER_BOTTOM = H - Math.round(40 * S)
+
+/** One screenful: an ayah (or part of a long one) with its translation and number, drawn once. */
+interface Caption {
+  /** Shown from here until the next one starts. */
   atSeconds: number
-  arabic: FittedBlock
-  /** The page's own QCF glyph font — the same script the mushaf itself uses.
-   *  Falls back to Amiri when the ayah has no QCF data or its font won't load. */
-  arabicFont: string
-  /** '' for QCF (a PUA-glyph font with no real bold face — forcing one would
-   *  synthesize-bold the letterforms out of shape), '700' for the Amiri fallback. */
-  arabicWeight: string
-  /** null when no translation could be found for this ayah. */
-  translation: FittedBlock | null
-  /** Both blocks' combined height, for centring the pair as one group. */
-  groupHeight: number
+  image: HTMLCanvasElement
 }
 
 interface Scene {
-  /** null when the plain black background — or a moving one — was chosen. */
-  background: HTMLImageElement | null
-  /** Set instead of `background` for a moving clip; looped to the recitation's length. */
-  backgroundVideo: HTMLVideoElement | null
-  /** `backgroundVideo`'s own length, for looping it under a longer recitation. 0 when there is none. */
-  backgroundVideoDuration: number
-  /** null when the reciter's picture was left out. */
+  /** A still background, drawn larger than the frame so it can drift. null for plain black or a clip. */
+  still: HTMLCanvasElement | null
+  /** The moving background's frames, one per video frame, already the frame's size. */
+  clip: AsyncGenerator<CanvasImageSource | null> | null
+  /** The shade over the background, and the soft black when there is none. */
+  shade: HTMLCanvasElement
+  captions: Caption[]
+  /** Shown when no ayat were marked: the title, as the swipe view does. */
+  titleCard: HTMLCanvasElement | null
+  footer: HTMLCanvasElement
+  /** The app's mark and name, top left. */
+  brand: HTMLCanvasElement
   avatar: HTMLCanvasElement | null
-  badge: HTMLCanvasElement
-  /** The ayah text (and its translation), one block per verse marked while
-   *  recording — empty when the reciter never opened the Mushaf overlay (or
-   *  never tapped an ayah). */
-  captions: CaptionBlock[]
-  translationFont: string
-  /** The translation reads right to left (Urdu, Persian…). */
-  translationRtl: boolean
-  /** Overall loudness per frame, 0–1 — still used for the avatar's breathing ring. */
+  /** Overall loudness per frame, 0–1, for the ring around the picture. */
   level: Float32Array
   frames: number
   seconds: number
@@ -233,47 +221,11 @@ function cssFont(varName: string, fallback: string): string {
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => resolve(null)
     img.src = src
   })
-}
-
-/**
- * Loaded muted and never played — frames are pulled out one at a time by
- * seeking (see `seekVideoTo`), since the export runs frame-by-frame rather
- * than in real time. `crossOrigin` is required for a cross-origin video to
- * stay drawable on canvas; Cloudinary sends the CORS header this needs.
- */
-function loadVideo(src: string): Promise<HTMLVideoElement | null> {
-  return new Promise((resolve) => {
-    const el = document.createElement('video')
-    el.crossOrigin = 'anonymous'
-    el.muted = true
-    el.playsInline = true
-    el.preload = 'auto'
-    el.onloadedmetadata = () => resolve(el)
-    el.onerror = () => resolve(null)
-    el.src = src
-  })
-}
-
-/** Resolves once the frame at `time` has actually decoded and is drawable. */
-function seekVideoTo(video: HTMLVideoElement, time: number): Promise<void> {
-  return new Promise((resolve) => {
-    const onSeeked = () => {
-      video.removeEventListener('seeked', onSeeked)
-      resolve()
-    }
-    video.addEventListener('seeked', onSeeked)
-    video.currentTime = time
-  })
-}
-
-function mediaSize(el: HTMLImageElement | HTMLVideoElement): { w: number; h: number } {
-  return el instanceof HTMLVideoElement
-    ? { w: el.videoWidth, h: el.videoHeight }
-    : { w: el.naturalWidth, h: el.naturalHeight }
 }
 
 function makeCanvas(width = W, height = H): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -300,48 +252,391 @@ function wrapLines(ctx: CanvasRenderingContext2D, words: string[], maxWidth: num
   return lines
 }
 
-/** Shrinks the type until the wrapped block fits the space it's given — the
- *  same approach the verse-image share cards use, done once per marked ayah
- *  (and its translation) rather than on every frame. */
+interface FittedBlock {
+  lines: string[]
+  font: string
+  lineHeight: number
+  height: number
+}
+
+/** Wraps `words` at `size`, shrinking until the block is no taller than `maxHeight`. */
 function fitBlock(
   ctx: CanvasRenderingContext2D,
   words: string[],
-  opts: { fontStack: string; weight?: string; maxWidth: number; maxHeight: number; startSize: number; minSize: number; lineHeightRatio: number }
+  opts: { family: string; weight?: string; maxWidth: number; maxHeight: number; size: number; minSize: number; lineHeightRatio: number }
 ): FittedBlock {
-  const { fontStack, weight = '', maxWidth, maxHeight, startSize, minSize, lineHeightRatio } = opts
-  let fontSize = startSize
-  let lines: string[] = []
-  let lineHeight = fontSize * lineHeightRatio
-  while (fontSize >= minSize) {
-    ctx.font = `${weight} ${fontSize}px ${fontStack}`.trim()
-    lines = wrapLines(ctx, words, maxWidth)
-    lineHeight = fontSize * lineHeightRatio
-    if (lines.length * lineHeight <= maxHeight) break
-    fontSize -= 2
+  let size = opts.size
+  for (;;) {
+    const font = `${opts.weight ?? ''} ${size}px ${opts.family}`.trim()
+    ctx.font = font
+    const lines = wrapLines(ctx, words, opts.maxWidth)
+    const lineHeight = size * opts.lineHeightRatio
+    if (lines.length * lineHeight <= opts.maxHeight || size <= opts.minSize) {
+      return { lines, font, lineHeight, height: lines.length * lineHeight }
+    }
+    size = Math.max(opts.minSize, size - 2)
   }
-  return { lines, fontSize, lineHeight, height: lines.length * lineHeight }
 }
 
-function drawBrandMark(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, serif: string) {
+/** The same steps as the swipe view: bigger type for fewer words. */
+function ayahFontSize(words: number): number {
+  if (words <= 6) return 40
+  if (words <= 12) return 34
+  if (words <= 22) return 28
+  if (words <= 40) return 23
+  return 19
+}
+
+function withShadow(ctx: CanvasRenderingContext2D) {
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
+  ctx.shadowBlur = 16 * S
+  ctx.shadowOffsetY = 2 * S
+}
+
+/** An ayah, or part of one, as the swipe view draws it, on a canvas of its own. */
+function drawCaption(opts: {
+  words: string[]
+  arabicFont: string
+  arabicWeight: string
+  translation: string | null
+  translationFont: string
+  translationRtl: boolean
+  label: string
+  parts: number
+  part: number
+}): HTMLCanvasElement {
+  const [, measure] = makeCanvas(10, 10)
+  const arabic = fitBlock(measure, opts.words, {
+    family: opts.arabicFont,
+    weight: opts.arabicWeight,
+    maxWidth: CAPTION_WIDTH,
+    maxHeight: CAPTION_MAX_HEIGHT * 0.66,
+    size: Math.round(ayahFontSize(opts.words.length) * S),
+    minSize: Math.round(17 * S),
+    lineHeightRatio: 1.95,
+  })
+  const translation = opts.translation
+    ? fitBlock(measure, opts.translation.split(/\s+/), {
+        family: opts.translationFont,
+        maxWidth: Math.min(CAPTION_WIDTH, Math.round(300 * S)),
+        maxHeight: CAPTION_MAX_HEIGHT * 0.3,
+        size: Math.round((opts.translationRtl ? 17 : 15) * S),
+        minSize: Math.round(11 * S),
+        lineHeightRatio: 1.6,
+      })
+    : null
+  const gap = Math.round(12 * S)
+  const labelHeight = Math.round(16 * S)
+  const pad = Math.round(24 * S)
+  const height = pad + arabic.height + (translation ? gap + translation.height : 0) + gap + labelHeight + pad
+
+  const [canvas, ctx] = makeCanvas(W, Math.ceil(height))
+  ctx.textAlign = 'center'
+  withShadow(ctx)
+  let y = pad
+
+  ctx.direction = 'rtl'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = IVORY
+  ctx.font = arabic.font
+  for (const line of arabic.lines) {
+    ctx.fillText(line, W / 2, y + arabic.lineHeight / 2)
+    y += arabic.lineHeight
+  }
+
+  if (translation) {
+    y += gap
+    ctx.direction = opts.translationRtl ? 'rtl' : 'ltr'
+    ctx.fillStyle = 'rgba(243, 234, 214, 0.88)'
+    ctx.font = translation.font
+    for (const line of translation.lines) {
+      ctx.fillText(line, W / 2, y + translation.lineHeight / 2)
+      y += translation.lineHeight
+    }
+  }
+
+  // The ayah's number in gold, with a dot for each part of a long one.
+  y += gap
+  ctx.direction = 'ltr'
+  ctx.fillStyle = GOLD
+  ctx.font = `500 ${Math.round(11 * S)}px ${cssFont('--font-sans', 'system-ui, sans-serif')}`
+  ctx.letterSpacing = `${Math.round(0.6 * S)}px`
+  const dot = Math.round(4 * S)
+  const dotsWidth = opts.parts > 1 ? opts.parts * dot + (opts.parts - 1) * dot + Math.round(8 * S) : 0
+  const labelWidth = ctx.measureText(opts.label).width
+  const left = W / 2 - (labelWidth + dotsWidth) / 2
+  ctx.textAlign = 'left'
+  ctx.fillText(opts.label, left, y + labelHeight / 2)
+  ctx.shadowColor = 'transparent'
+  for (let k = 0; k < opts.parts && opts.parts > 1; k++) {
+    ctx.globalAlpha = k === opts.part ? 1 : 0.35
+    ctx.beginPath()
+    ctx.arc(left + labelWidth + Math.round(8 * S) + k * dot * 2 + dot / 2, y + labelHeight / 2, dot / 2, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  return canvas
+}
+
+/** Every screenful of the recitation, in order: each ayah whole, or a long one in parts. */
+async function prepareCaptions(r: Recitation, translationFont: string, translationRtl: boolean): Promise<Caption[]> {
+  const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
+  if (!timeline.length) return []
+  // In the language of whoever is sharing it: the translation they read the Quran with.
+  const edition = viewerTranslation(getAppSettings().translationEditionId)
+  const views = new Map<string, AyahView | null>()
+  await Promise.all([...new Set(timeline.map((e) => e.verseKey))].map(async (key) => views.set(key, await loadAyah(key, edition))))
+
+  const captions = await Promise.all(
+    timeline.map(async (entry, i): Promise<Caption[]> => {
+      const view = views.get(entry.verseKey)
+      if (!view) return []
+      const parts = ayahParts(view.words.length)
+      const endsAt = timeline[i + 1]?.atSeconds ?? r.durationSec
+      const texts =
+        parts.length > 1 ? await Promise.all(parts.map((part) => loadPartTranslation(view.verseKey, edition, part))) : [view.translation]
+      return parts.map((part, k) => ({
+        // A part starts with its first word: when it was heard, or its share of the ayah's time.
+        atSeconds:
+          k === 0
+            ? entry.atSeconds
+            : (entry.words?.[part.start] ?? entry.atSeconds + (part.start / view.words.length) * (endsAt - entry.atSeconds)),
+        image: drawCaption({
+          words: view.words.slice(part.start, part.end + 1),
+          arabicFont: view.fontFamily,
+          // The mushaf's glyph font has no bold face; Amiri, its stand-in, reads better bold.
+          arabicWeight: view.qcf ? '' : '700',
+          translation: texts[k] ?? null,
+          translationFont,
+          translationRtl,
+          label: view.verseKey,
+          parts: parts.length,
+          part: k,
+        }),
+      }))
+    })
+  )
+  return captions.flat().sort((a, b) => a.atSeconds - b.atSeconds)
+}
+
+/** The title, with the swipe view's ornament above it, for a recitation without marked ayat. */
+function drawTitleCard(title: string, serif: string): HTMLCanvasElement {
+  const [, measure] = makeCanvas(10, 10)
+  const block = fitBlock(measure, title.split(/\s+/), {
+    family: serif,
+    weight: '500',
+    maxWidth: CAPTION_WIDTH,
+    maxHeight: 4 * 30 * S * 1.2,
+    size: Math.round(30 * S),
+    minSize: Math.round(20 * S),
+    lineHeightRatio: 1.2,
+  })
+  const lines = block.lines.slice(0, 4)
+  const icon = Math.round(56 * S)
+  const gap = Math.round(16 * S)
+  const [canvas, ctx] = makeCanvas(W, Math.ceil(icon + gap + lines.length * block.lineHeight + 40))
+
+  // The square, the diamond and the circle, in gold.
+  const cx = W / 2
+  const cy = icon / 2
+  const unit = icon / 64
+  ctx.strokeStyle = GOLD
+  ctx.globalAlpha = 0.8
+  ctx.lineWidth = 1.2 * unit * 1.6
+  ctx.strokeRect(cx - 14 * unit, cy - 14 * unit, 28 * unit, 28 * unit)
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - 24 * unit)
+  ctx.lineTo(cx + 24 * unit, cy)
+  ctx.lineTo(cx, cy + 24 * unit)
+  ctx.lineTo(cx - 24 * unit, cy)
+  ctx.closePath()
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(cx, cy, 5 * unit, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.globalAlpha = 1
+
+  withShadow(ctx)
+  ctx.fillStyle = IVORY
+  ctx.font = block.font
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  let y = icon + gap
+  for (const line of lines) {
+    ctx.fillText(line, W / 2, y + block.lineHeight / 2)
+    y += block.lineHeight
+  }
+  return canvas
+}
+
+/** The swipe view's shade: darker at the top and bottom so the text there reads, and the soft black when there is no picture. */
+function drawShade(hasPicture: boolean): HTMLCanvasElement {
+  const [canvas, ctx] = makeCanvas()
+  if (!hasPicture) {
+    const glow = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, H * 0.75)
+    glow.addColorStop(0, '#232323')
+    glow.addColorStop(1, '#060606')
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, W, H)
+  }
+  const shade = ctx.createLinearGradient(0, 0, 0, H)
+  shade.addColorStop(0, 'rgba(0, 0, 0, 0.6)')
+  shade.addColorStop(0.5, 'rgba(0, 0, 0, 0.3)')
+  shade.addColorStop(1, 'rgba(0, 0, 0, 0.75)')
+  ctx.fillStyle = shade
+  ctx.fillRect(0, 0, W, H)
+  // The faint mist that drifts over the swipe view, held still.
+  for (const [x, y, rx, a] of [
+    [0.3, 0.4, 0.4, 0.11],
+    [0.72, 0.62, 0.35, 0.08],
+  ] as const) {
+    const mist = ctx.createRadialGradient(W * x, H * y, 0, W * x, H * y, W * rx * 1.6)
+    mist.addColorStop(0, `rgba(243, 234, 214, ${a})`)
+    mist.addColorStop(1, 'rgba(243, 234, 214, 0)')
+    ctx.fillStyle = mist
+    ctx.fillRect(0, 0, W, H)
+  }
+  return canvas
+}
+
+/** @username and the title, bottom left, as on the swipe view; room is left for the picture when it is shown. */
+function drawFooter(r: Recitation, serif: string, sans: string, withAvatar: boolean): HTMLCanvasElement {
+  const height = Math.round(64 * S)
+  const [canvas, ctx] = makeCanvas(W, height)
+  const x = FOOTER_LEFT + (withAvatar ? AVATAR_SIZE + Math.round(12 * S) : 0)
+  const maxWidth = W - x - FOOTER_LEFT
+  const fit = (text: string) => {
+    let shown = text
+    while (shown.length > 1 && ctx.measureText(shown).width > maxWidth) shown = shown.slice(0, -1)
+    return shown === text ? text : `${shown.trimEnd()}…`
+  }
+  withShadow(ctx)
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `600 ${Math.round(17 * S)}px ${sans}`
+  ctx.fillText(fit(`@${r.userUsername}`), x, height * 0.3)
+  ctx.font = `500 ${Math.round(16 * S)}px ${serif}`
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'
+  ctx.fillText(fit(r.title), x, height * 0.72)
+  return canvas
+}
+
+/** The app's mark and name, top left, where the swipe view has its tabs. */
+function drawBrand(serif: string): HTMLCanvasElement {
+  const mark = Math.round(26 * S)
+  const [canvas, ctx] = makeCanvas(Math.round(220 * S), mark + 8)
   ctx.save()
   ctx.beginPath()
-  ctx.roundRect(x, y, size, size, size * 0.24)
+  ctx.roundRect(2, 2, mark, mark, mark * 0.24)
   ctx.fillStyle = '#000000'
   ctx.fill()
   ctx.lineWidth = 2
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
   ctx.stroke()
   ctx.fillStyle = '#f5ecd8'
-  ctx.font = `700 ${Math.round(size * 0.62)}px ${serif}`
+  ctx.font = `700 ${Math.round(mark * 0.62)}px ${serif}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(APP_ICON_LETTER, x + size / 2, y + size / 2 + size * 0.04)
+  ctx.fillText(APP_ICON_LETTER, 2 + mark / 2, 2 + mark / 2 + mark * 0.04)
   ctx.restore()
+  withShadow(ctx)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.font = `700 ${Math.round(15 * S)}px ${serif}`
+  ctx.textBaseline = 'middle'
+  ctx.fillText(`${APP_NAME} App`, mark + Math.round(10 * S), 2 + mark / 2)
+  return canvas
+}
+
+function drawAvatar(r: Recitation, picture: HTMLImageElement | null, serif: string): HTMLCanvasElement {
+  const size = AVATAR_SIZE
+  const [canvas, ctx] = makeCanvas(size, size)
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  ctx.closePath()
+  ctx.clip()
+  if (picture) {
+    const scale = Math.max(size / picture.naturalWidth, size / picture.naturalHeight)
+    const dw = picture.naturalWidth * scale
+    const dh = picture.naturalHeight * scale
+    ctx.drawImage(picture, (size - dw) / 2, (size - dh) / 2, dw, dh)
+  } else {
+    const fill = ctx.createLinearGradient(0, 0, size, size)
+    fill.addColorStop(0, '#4a86ad')
+    fill.addColorStop(1, '#16324f')
+    ctx.fillStyle = fill
+    ctx.fillRect(0, 0, size, size)
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `600 ${Math.round(size * 0.45)}px ${serif}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), size / 2, size / 2 + 2)
+  }
+  ctx.lineWidth = 4
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2)
+  ctx.stroke()
+  return canvas
+}
+
+/** A still background drawn once, a little larger than the frame, so drifting over it never shows an edge. */
+const DRIFT_SCALE = 1.2
+
+function drawStill(picture: HTMLImageElement): HTMLCanvasElement {
+  const width = Math.round(W * DRIFT_SCALE)
+  const height = Math.round(H * DRIFT_SCALE)
+  const [canvas, ctx] = makeCanvas(width, height)
+  const scale = Math.max(width / picture.naturalWidth, height / picture.naturalHeight)
+  const dw = picture.naturalWidth * scale
+  const dh = picture.naturalHeight * scale
+  ctx.drawImage(picture, (width - dw) / 2, (height - dh) / 2, dw, dh)
+  return canvas
+}
+
+type Mediabunny = typeof import('mediabunny')
+
+/** A copy of a Cloudinary clip already the video's shape and size, so far less has to be decoded. */
+function clipAtVideoSize(url: string): string {
+  return url.includes('/video/upload/') ? url.replace('/video/upload/', `/video/upload/w_${W},h_${H},c_fill,q_auto/`) : url
+}
+
+/**
+ * The moving background's frames for a video `frames` long, in order and the
+ * frame's size, looped under a recitation longer than the clip. Decoded
+ * straight through, which is many times faster than seeking to each frame.
+ */
+async function openClip(mb: Mediabunny, url: string, frames: number): Promise<AsyncGenerator<CanvasImageSource | null> | null> {
+  for (const src of [clipAtVideoSize(url), url]) {
+    try {
+      const input = new mb.Input({ source: new mb.UrlSource(src), formats: mb.ALL_FORMATS })
+      const track = await input.getPrimaryVideoTrack()
+      if (!track || !(await track.canDecode())) continue
+      const duration = await track.computeDuration()
+      if (!(duration > 0.5)) continue
+      const sink = new mb.CanvasSink(track, { width: W, height: H, fit: 'cover', poolSize: 3 })
+      return (async function* () {
+        let i = 0
+        while (i < frames) {
+          const loopStart = Math.floor(i / FPS / duration) * duration
+          const times: number[] = []
+          while (i < frames && i / FPS < loopStart + duration) {
+            times.push(Math.min(i / FPS - loopStart, duration - 1 / FPS))
+            i += 1
+          }
+          for await (const wrapped of sink.canvasesAtTimestamps(times)) yield wrapped?.canvas ?? null
+        }
+      })()
+    } catch {
+      // Try the full-size clip, then no clip at all.
+    }
+  }
+  return null
 }
 
 /**
  * Listen to the whole recitation once, frame by frame, for how loud it is —
- * used only for the avatar's breathing ring now that the waveform is gone.
+ * for the ring that breathes around the reciter's picture.
  */
 function analyse(buffer: AudioBuffer): { level: Float32Array; frames: number } {
   const data = buffer.getChannelData(0)
@@ -374,266 +669,106 @@ function analyse(buffer: AudioBuffer): { level: Float32Array; frames: number } {
   return { level, frames }
 }
 
-async function prepareScene(r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
+async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
-  const arabicFont = cssFont('--font-amiri', "'Amiri', serif")
+  const amiri = cssFont('--font-amiri', "'Amiri', serif")
   const background = findVideoBackground(options.backgroundId)
-  // In the language of whoever is sharing it: the translation they read the Quran with.
   const edition = viewerTranslation(getAppSettings().translationEditionId)
   const translationRtl = isRtlTranslationEdition(edition)
   // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
-  const translationFont = translationRtl ? arabicFont : serif
+  const translationFont = translationRtl ? amiri : serif
+  const { level, frames } = analyse(buffer)
 
-  const [picture, backgroundImage, backgroundVideo] = await Promise.all([
-    options.includeAvatar
-      ? loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`)
-      : null,
-    // A moving background's `url` is only its Cloudinary-derived poster frame,
-    // used by the picker's thumbnail — the actual export always pulls frames
-    // from `videoUrl` instead, so it's skipped here.
+  const [picture, still, clip, captions] = await Promise.all([
+    options.includeAvatar ? loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`) : null,
     !background.videoUrl && background.url ? loadImage(background.url) : null,
-    background.videoUrl ? loadVideo(background.videoUrl) : null,
+    background.videoUrl ? openClip(mb, background.videoUrl, frames) : null,
+    prepareCaptions(r, translationFont, translationRtl),
     document.fonts
       ? Promise.all([
           document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
-          document.fonts.load(`600 30px ${sans}`, r.userName),
-          document.fonts.load(`700 30px ${arabicFont}`, 'ا'),
+          document.fonts.load(`500 30px ${serif}`, r.title),
+          document.fonts.load(`600 30px ${sans}`, r.userUsername),
+          document.fonts.load(`700 30px ${amiri}`, 'ا'),
         ]).catch(() => null)
       : null,
   ])
 
-  // The ayat marked while reading from the Mushaf — one verse (and one
-  // translation) lookup per unique verse, then wrapped/sized once each
-  // rather than on every frame.
-  const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
-  let captions: CaptionBlock[] = []
-  if (timeline.length) {
-    const uniqueKeys = [...new Set(timeline.map((entry) => entry.verseKey))]
-    const verses = new Map<string, Verse>()
-    await Promise.all(
-      uniqueKeys.map(async (verseKey) => {
-        try {
-          verses.set(verseKey, await getVerseByKey(verseKey))
-        } catch {
-          // An ayah that fails to resolve just has no caption of its own —
-          // the previous one keeps showing instead of breaking the export.
-        }
-      })
-    )
+  // A clip that cannot be read stands still on its poster frame instead.
+  const fallback = background.videoUrl && !clip && background.url ? await loadImage(background.url) : null
+  const picturePresent = Boolean(still || clip || fallback)
 
-    // One translation fetch per page these ayat actually fall on, not one per ayah.
-    const pagesNeeded = new Set([...verses.values()].map((v) => versePageNumber(v)))
-    const translationsByPage = new Map<number, Map<string, string>>()
-    await Promise.all(
-      [...pagesNeeded].map(async (page) => translationsByPage.set(page, await fetchPageTranslations(page, edition)))
-    )
-
-    const [, measureCtx] = makeCanvas(10, 10)
-    const arabicMaxHeight = (CAPTION_BOTTOM - CAPTION_TOP) * 0.62
-    const translationMaxHeight = (CAPTION_BOTTOM - CAPTION_TOP) * 0.3
-
-    captions = (
-      await Promise.all(
-        timeline.map(async (entry): Promise<CaptionBlock | null> => {
-          const verse = verses.get(entry.verseKey)
-          if (!verse) return null
-          const page = versePageNumber(verse)
-
-          // The mushaf's own script when this ayah has QCF data for its page
-          // and the page's glyph font actually loads; plain Uthmani otherwise.
-          const qcfWords = pageHasQcfData([verse]) ? verseQcfWords(verse, page) : []
-          const fontFamily = qcfPageFontFamily(page)
-          const fontLoaded = qcfWords.length > 0 && (await loadPageFont(page, qcfWords.join('').slice(0, 12)))
-          const words = fontLoaded ? qcfWords : getVerseArabicText(verse, { omitEndMark: true }).split(/\s+/)
-          const font = fontLoaded ? `"${fontFamily}"` : arabicFont
-
-          const arabic = fitBlock(measureCtx, words, {
-            fontStack: font,
-            // QCF is a PUA-glyph font shaped for the printed Madani mushaf,
-            // never designed with a bold face — forcing weight 700 makes the
-            // browser synthesize bold by thickening strokes, which distorts
-            // the letterforms into something that no longer reads as the
-            // real mushaf script. The mushaf reader itself never bolds it
-            // either. Amiri (the fallback when a page has no QCF data) does
-            // have a real bold face, so it still gets one.
-            weight: fontLoaded ? '' : '700',
-            maxWidth: W - CAPTION_SIDE_MARGIN * 2,
-            maxHeight: arabicMaxHeight,
-            startSize: 64,
-            minSize: 30,
-            lineHeightRatio: 1.7,
-          })
-
-          const translationText = translationsByPage.get(page)?.get(entry.verseKey)?.replace(/\s+/g, ' ').trim()
-          const translation = translationText
-            ? fitBlock(measureCtx, translationText.split(/\s+/), {
-                fontStack: translationFont,
-                weight: '500',
-                maxWidth: W - CAPTION_SIDE_MARGIN * 2 - 40,
-                maxHeight: translationMaxHeight,
-                startSize: 30,
-                minSize: 18,
-                lineHeightRatio: 1.5,
-              })
-            : null
-
-          return {
-            atSeconds: entry.atSeconds,
-            arabic,
-            arabicFont: font,
-            arabicWeight: fontLoaded ? '' : '700',
-            translation,
-            groupHeight: arabic.height + (translation ? 56 + translation.height : 0),
-          }
-        })
-      )
-    ).filter((c): c is CaptionBlock => c !== null)
-  }
-
-  /* The picture, small and round; the initial on deep blue when there is none */
-  let avatar: HTMLCanvasElement | null = null
-  if (options.includeAvatar) {
-    const [avatarCanvas, actx] = makeCanvas(AVATAR_SIZE, AVATAR_SIZE)
-    actx.beginPath()
-    actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
-    actx.closePath()
-    actx.clip()
-    if (picture) {
-      const scale = Math.max(AVATAR_SIZE / picture.naturalWidth, AVATAR_SIZE / picture.naturalHeight)
-      const dw = picture.naturalWidth * scale
-      const dh = picture.naturalHeight * scale
-      actx.drawImage(picture, (AVATAR_SIZE - dw) / 2, (AVATAR_SIZE - dh) / 2, dw, dh)
-    } else {
-      const fill = actx.createLinearGradient(0, 0, AVATAR_SIZE, AVATAR_SIZE)
-      fill.addColorStop(0, '#4a86ad')
-      fill.addColorStop(1, '#16324f')
-      actx.fillStyle = fill
-      actx.fillRect(0, 0, AVATAR_SIZE, AVATAR_SIZE)
-      actx.fillStyle = '#ffffff'
-      actx.font = `600 64px ${serif}`
-      actx.textAlign = 'center'
-      actx.textBaseline = 'middle'
-      actx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 4)
-    }
-    // A thin white edge keeps the picture crisp against the background.
-    actx.lineWidth = 6
-    actx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
-    actx.beginPath()
-    actx.arc(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2)
-    actx.stroke()
-    avatar = avatarCanvas
-  }
-
-  /* The app's mark and name, with the reciter's name under it, for the bottom-left corner */
-  const badgeWidth = 520
-  const mark = 40
-  const textX = mark + 14
-  const [badge, bctx] = makeCanvas(badgeWidth, 74)
-  drawBrandMark(bctx, 2, 2, mark, serif)
-  bctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-  bctx.font = `700 18px ${serif}`
-  bctx.textAlign = 'left'
-  bctx.textBaseline = 'top'
-  bctx.fillText(`${APP_NAME} App`, textX, 2)
-  bctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
-  bctx.font = `500 15px ${sans}`
-  const fullName = r.userName || r.userUsername
-  let name = fullName
-  while (name.length > 1 && bctx.measureText(name).width > badgeWidth - textX - 4) name = name.slice(0, -1)
-  if (name !== fullName) name = `${name.trimEnd()}…`
-  bctx.fillText(name, textX, 26)
-
-  const { level, frames } = analyse(buffer)
   return {
-    background: backgroundImage,
-    backgroundVideo,
-    backgroundVideoDuration: backgroundVideo?.duration || 0,
-    avatar,
-    badge,
+    still: still ? drawStill(still) : fallback ? drawStill(fallback) : null,
+    clip,
+    shade: drawShade(picturePresent),
     captions,
-    translationFont,
-    translationRtl,
+    titleCard: captions.length ? null : drawTitleCard(r.title, serif),
+    footer: drawFooter(r, serif, sans, options.includeAvatar),
+    brand: drawBrand(serif),
+    avatar: options.includeAvatar ? drawAvatar(r, picture, serif) : null,
     level,
     frames,
     seconds: buffer.duration,
   }
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number) {
-  ctx.fillStyle = '#000000'
+function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipFrame: CanvasImageSource | null) {
+  ctx.fillStyle = '#070707'
   ctx.fillRect(0, 0, W, H)
 
-  const backgroundMedia = scene.backgroundVideo || scene.background
-  if (backgroundMedia) {
-    const { w, h } = mediaSize(backgroundMedia)
-    const scale = Math.max(W / w, H / h)
-    const dw = w * scale
-    const dh = h * scale
-    ctx.drawImage(backgroundMedia, (W - dw) / 2, (H - dh) / 2, dw, dh)
-    // A dark wash so the ayah, picture and name stay legible on any photo or clip.
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
-    ctx.fillRect(0, 0, W, H)
+  if (clipFrame) {
+    ctx.drawImage(clipFrame, 0, 0, W, H)
+  } else if (scene.still) {
+    // The swipe view's slow drift: in a little and across, and back, every 26 seconds.
+    const phase = (1 - Math.cos((t / 26) * Math.PI)) / 2
+    const zoom = 1.08 + 0.12 * phase
+    const dw = W * zoom
+    const dh = H * zoom
+    const x = (W - dw) / 2 + (-0.015 + 0.03 * phase) * W
+    const y = (H - dh) / 2 + (-0.01 + 0.02 * phase) * H
+    ctx.drawImage(scene.still, x, y, dw, dh)
   }
+  ctx.drawImage(scene.shade, 0, 0)
 
-  const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
-  const level = scene.level[f] ?? 0
+  ctx.drawImage(scene.brand, FOOTER_LEFT, Math.round(22 * S))
 
-  // The ayah being recited, if the reciter marked any — the last one whose
-  // timestamp has passed, so it holds until the next mark takes over. Drawn
-  // as one centred group with its translation underneath.
-  let caption: CaptionBlock | null = null
+  // The ayah (or part) being recited: the last one whose time has come, held until the next.
+  let caption: Caption | null = null
   for (const c of scene.captions) {
     if (c.atSeconds > t) break
     caption = c
   }
-  if (caption) {
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)'
-    ctx.shadowBlur = 18
-
-    let y = (CAPTION_TOP + CAPTION_BOTTOM - caption.groupHeight) / 2
-
-    ctx.direction = 'rtl'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `${caption.arabicWeight} ${caption.arabic.fontSize}px ${caption.arabicFont}`.trim()
-    y += caption.arabic.lineHeight * 0.78
-    for (const line of caption.arabic.lines) {
-      ctx.fillText(line, W / 2, y)
-      y += caption.arabic.lineHeight
-    }
-
-    if (caption.translation) {
-      y += 56 - caption.arabic.lineHeight * 0.78 + caption.translation.lineHeight * 0.78
-      ctx.direction = scene.translationRtl ? 'rtl' : 'ltr'
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.font = `500 ${caption.translation.fontSize}px ${scene.translationFont}`
-      for (const line of caption.translation.lines) {
-        ctx.fillText(line, W / 2, y)
-        y += caption.translation.lineHeight
-      }
-    }
-    ctx.restore()
+  if (!caption && scene.captions.length) caption = scene.captions[0]
+  const block = caption?.image ?? scene.titleCard
+  if (block) {
+    // Each new screenful fades in, as in the swipe view.
+    const since = caption ? t - caption.atSeconds : t
+    ctx.globalAlpha = Math.max(0, Math.min(1, since / 0.35))
+    ctx.drawImage(block, 0, Math.round(CAPTION_CENTER_Y - block.height / 2))
+    ctx.globalAlpha = 1
   }
 
+  const footerTop = FOOTER_BOTTOM - scene.footer.height
+  ctx.drawImage(scene.footer, 0, footerTop)
   if (scene.avatar) {
-    // A soft ring breathing out from the picture with the voice.
+    const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
+    const level = scene.level[f] ?? 0
     const r = AVATAR_SIZE / 2
+    const cx = FOOTER_LEFT + r
+    const cy = footerTop + scene.footer.height / 2
+    // A soft ring breathing out from the picture with the voice.
     ctx.save()
     ctx.strokeStyle = '#ffffff'
     ctx.globalAlpha = 0.12 + level * 0.3
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.arc(W / 2, AVATAR_Y, r + 12 + level * 16, 0, Math.PI * 2)
+    ctx.arc(cx, cy, r + 6 + level * 9, 0, Math.PI * 2)
     ctx.stroke()
     ctx.restore()
-
-    ctx.drawImage(scene.avatar, W / 2 - r, AVATAR_Y - r)
+    ctx.drawImage(scene.avatar, cx - r, cy - r)
   }
-
-  ctx.drawImage(scene.badge, 40, H - 100)
 
   // In from black, and out again over the last moments of the tail.
   const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)
@@ -649,24 +784,23 @@ export async function makeRecitationVideo(
   signal?: AbortSignal,
   options: VideoOptions = DEFAULT_VIDEO_OPTIONS
 ): Promise<ShareMedia> {
-  onProgress(0.03)
-  const buffer = await renderRecitationAudio(r, signal)
-  onProgress(0.1)
-
+  onProgress(0.02)
   const mb = await import('mediabunny')
-  if (!(await mb.canEncodeVideo('avc', { width: W, height: H }))) {
-    throw new Error(tr('This browser cannot make videos yet. Update it, or share the audio instead.'))
-  }
+  const [buffer, canVideo, canAac] = await Promise.all([
+    renderRecitationAudio(r, signal),
+    mb.canEncodeVideo('avc', { width: W, height: H }),
+    mb.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: SAMPLE_RATE }),
+  ])
+  if (!canVideo) throw new Error(tr('This browser cannot make videos yet. Update it, or share the audio instead.'))
   // AAC is what every app expects inside an MP4. Where the browser has no AAC
   // encoder, MP3 inside the MP4 plays just as widely.
-  let audioCodec: 'aac' | 'mp3' = 'aac'
-  if (!(await mb.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: SAMPLE_RATE }))) {
-    await ensureMp3Encoder()
-    audioCodec = 'mp3'
-  }
+  const audioCodec: 'aac' | 'mp3' = canAac ? 'aac' : 'mp3'
+  if (!canAac) await ensureMp3Encoder()
+  onProgress(0.08)
   throwIfCancelled(signal)
 
-  const scene = await prepareScene(r, buffer, options)
+  const scene = await prepareScene(mb, r, buffer, options)
+  onProgress(0.12)
   throwIfCancelled(signal)
 
   const [canvas, ctx] = makeCanvas()
@@ -683,18 +817,18 @@ export async function makeRecitationVideo(
   const totalFrames = scene.frames
   const audioChunk = buffer.sampleRate
   let audioCursor = 0
+  let clipFrame: CanvasImageSource | null = null
 
   try {
     for (let i = 0; i < totalFrames; i += 1) {
       throwIfCancelled(signal)
       const t = i / FPS
-      // The export runs frame-by-frame, not in real time, so the clip is
-      // advanced by seeking rather than played — looped under a recitation
-      // longer than the clip itself.
-      if (scene.backgroundVideo && scene.backgroundVideoDuration > 0) {
-        await seekVideoTo(scene.backgroundVideo, t % scene.backgroundVideoDuration)
+      if (scene.clip) {
+        const next = await scene.clip.next()
+        // A frame that did not decode keeps the one before it.
+        if (!next.done && next.value) clipFrame = next.value
       }
-      drawFrame(ctx, scene, t)
+      drawFrame(ctx, scene, t, clipFrame)
       await video.add(t, 1 / FPS)
 
       // Audio is fed alongside the frames so the file interleaves as it is written.
@@ -703,7 +837,7 @@ export async function makeRecitationVideo(
         await audio.add(sliceBuffer(buffer, audioCursor, end))
         audioCursor = end
       }
-      if (i % 6 === 0) onProgress(0.1 + 0.88 * (i / totalFrames))
+      if (i % 6 === 0) onProgress(0.12 + 0.86 * (i / totalFrames))
     }
     while (audioCursor < buffer.length) {
       const end = Math.min(buffer.length, audioCursor + audioChunk)
@@ -714,6 +848,8 @@ export async function makeRecitationVideo(
   } catch (err) {
     if (output.state !== 'finalized') await output.cancel().catch(() => {})
     throw err
+  } finally {
+    void scene.clip?.return(undefined)
   }
 
   const data = output.target.buffer
