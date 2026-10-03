@@ -278,14 +278,9 @@ function fitBlock(
   }
 }
 
-/** The same steps as the swipe view: bigger type for fewer words. */
-function ayahFontSize(words: number): number {
-  if (words <= 6) return 40
-  if (words <= 12) return 34
-  if (words <= 22) return 28
-  if (words <= 40) return 23
-  return 19
-}
+/** The phrase's type, as in the swipe view: as large as this, and only as small as that before it takes two lines. */
+const LINE_MAX = Math.round(32 * S)
+const LINE_MIN = Math.round(21 * S)
 
 function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
@@ -293,7 +288,7 @@ function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowOffsetY = 2 * S
 }
 
-/** An ayah, or part of one, as the swipe view draws it, on a canvas of its own. */
+/** A phrase of an ayah as the swipe view draws it, one line with its translation under it, on a canvas of its own. */
 function drawCaption(opts: {
   words: string[]
   arabicFont: string
@@ -301,34 +296,37 @@ function drawCaption(opts: {
   translation: string | null
   translationFont: string
   translationRtl: boolean
-  label: string
-  parts: number
-  part: number
 }): HTMLCanvasElement {
   const [, measure] = makeCanvas(10, 10)
+  // On one line, as large as fits; a phrase too long even at the smallest size takes two.
+  let size = LINE_MAX
+  const text = opts.words.join(' ')
+  for (; size > LINE_MIN; size -= 2) {
+    measure.font = `${opts.arabicWeight} ${size}px ${opts.arabicFont}`.trim()
+    if (measure.measureText(text).width <= CAPTION_WIDTH) break
+  }
   const arabic = fitBlock(measure, opts.words, {
     family: opts.arabicFont,
     weight: opts.arabicWeight,
     maxWidth: CAPTION_WIDTH,
-    maxHeight: CAPTION_MAX_HEIGHT * 0.66,
-    size: Math.round(ayahFontSize(opts.words.length) * S),
-    minSize: Math.round(17 * S),
-    lineHeightRatio: 1.95,
+    maxHeight: CAPTION_MAX_HEIGHT * 0.5,
+    size,
+    minSize: LINE_MIN,
+    lineHeightRatio: 1.9,
   })
   const translation = opts.translation
     ? fitBlock(measure, opts.translation.split(/\s+/), {
         family: opts.translationFont,
         maxWidth: Math.min(CAPTION_WIDTH, Math.round(300 * S)),
         maxHeight: CAPTION_MAX_HEIGHT * 0.3,
-        size: Math.round((opts.translationRtl ? 17 : 15) * S),
+        size: Math.round((opts.translationRtl ? 17 : 14.5) * S),
         minSize: Math.round(11 * S),
         lineHeightRatio: 1.6,
       })
     : null
-  const gap = Math.round(12 * S)
-  const labelHeight = Math.round(16 * S)
+  const gap = Math.round(8 * S)
   const pad = Math.round(24 * S)
-  const height = pad + arabic.height + (translation ? gap + translation.height : 0) + gap + labelHeight + pad
+  const height = pad + arabic.height + (translation ? gap + translation.height : 0) + pad
 
   const [canvas, ctx] = makeCanvas(W, Math.ceil(height))
   ctx.textAlign = 'center'
@@ -354,31 +352,10 @@ function drawCaption(opts: {
       y += translation.lineHeight
     }
   }
-
-  // The ayah's number in gold, with a dot for each part of a long one.
-  y += gap
-  ctx.direction = 'ltr'
-  ctx.fillStyle = GOLD
-  ctx.font = `500 ${Math.round(11 * S)}px ${cssFont('--font-sans', 'system-ui, sans-serif')}`
-  ctx.letterSpacing = `${Math.round(0.6 * S)}px`
-  const dot = Math.round(4 * S)
-  const dotsWidth = opts.parts > 1 ? opts.parts * dot + (opts.parts - 1) * dot + Math.round(8 * S) : 0
-  const labelWidth = ctx.measureText(opts.label).width
-  const left = W / 2 - (labelWidth + dotsWidth) / 2
-  ctx.textAlign = 'left'
-  ctx.fillText(opts.label, left, y + labelHeight / 2)
-  ctx.shadowColor = 'transparent'
-  for (let k = 0; k < opts.parts && opts.parts > 1; k++) {
-    ctx.globalAlpha = k === opts.part ? 1 : 0.35
-    ctx.beginPath()
-    ctx.arc(left + labelWidth + Math.round(8 * S) + k * dot * 2 + dot / 2, y + labelHeight / 2, dot / 2, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.globalAlpha = 1
   return canvas
 }
 
-/** Every screenful of the recitation, in order: each ayah whole, or a long one in parts. */
+/** Every phrase of the recitation, in order: each ayah cut where the mushaf pauses. */
 async function prepareCaptions(r: Recitation, translationFont: string, translationRtl: boolean): Promise<Caption[]> {
   const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
   if (!timeline.length) return []
@@ -391,7 +368,7 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
     timeline.map(async (entry, i): Promise<Caption[]> => {
       const view = views.get(entry.verseKey)
       if (!view) return []
-      const parts = ayahParts(view.words.length)
+      const parts = ayahParts(view.pauseAfter)
       const endsAt = timeline[i + 1]?.atSeconds ?? r.durationSec
       const texts =
         parts.length > 1 ? await Promise.all(parts.map((part) => loadPartTranslation(view.verseKey, edition, part))) : [view.translation]
@@ -402,16 +379,14 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
             ? entry.atSeconds
             : (entry.words?.[part.start] ?? entry.atSeconds + (part.start / view.words.length) * (endsAt - entry.atSeconds)),
         image: drawCaption({
-          words: view.words.slice(part.start, part.end + 1),
+          // The last phrase ends with the ayah's ornament and its number.
+          words: [...view.words.slice(part.start, part.end + 1), ...(k === parts.length - 1 && view.endMark ? [view.endMark] : [])],
           arabicFont: view.fontFamily,
           // The mushaf's glyph font has no bold face; Amiri, its stand-in, reads better bold.
           arabicWeight: view.qcf ? '' : '700',
           translation: texts[k] ?? null,
           translationFont,
           translationRtl,
-          label: view.verseKey,
-          parts: parts.length,
-          part: k,
         }),
       }))
     })

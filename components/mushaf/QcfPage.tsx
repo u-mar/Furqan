@@ -11,6 +11,7 @@ import {
   type QcfPageSegment,
 } from '@/lib/qcf-page'
 import { getQcfLineRevealState } from '@/lib/qcf-reveal'
+import { alignQcfBaselines } from '@/lib/qcf-baseline'
 import type { Verse } from '@/types'
 import { useT } from '@/lib/i18n'
 
@@ -78,6 +79,13 @@ function useFitQcfPageLines(
         const size = `${basePx * Math.min(widestRatio * 0.995, 1.08)}px`
         for (const inner of inners) inner.style.fontSize = size
       }
+
+      // Each page font puts its letters at its own height; even them out (see lib/qcf-baseline.ts).
+      alignQcfBaselines(
+        grid,
+        inners.filter((inner) => !inner.closest('.mushaf-qcf-line--basmalah')),
+        fontFamily
+      )
     }
 
     fit()

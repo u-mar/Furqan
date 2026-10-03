@@ -56,14 +56,16 @@ export interface ContinuousScrollViewProps {
  * every time the window shifted. The spacers keep it representing progress
  * through the whole book.
  *
- * Pages load in (and get pruned out) asynchronously, and some of that always
- * lands *above* whatever's on screen — the browser has no idea that's what
- * happened, so it leaves `scrollTop` at the same pixel offset, which now
- * points at different content than a moment ago. This is the standard
- * "scroll anchoring" problem virtualized lists have; the layout effect below
- * measures the total height above the page currently showing (spacer +
- * mounted pages before it) and nudges `scrollTop` by however much that
- * changed since its last measurement, so nothing visibly moves.
+ * Pages load in (and get pruned out) asynchronously, spacers are resized as
+ * the average page height is learnt, and a page grows when its glyph font
+ * arrives — much of that always lands *above* whatever's on screen, and the
+ * browser leaves `scrollTop` at the same pixel offset, which then points at
+ * different content (after a long jump, at nothing but spacer: an empty
+ * screen). This is the standard "scroll anchoring" problem virtualized lists
+ * have. The page being read is the anchor: where it sits in the scrolling
+ * content is measured from the DOM itself, and whenever the content above it
+ * changes size (watched by a ResizeObserver, so font loads count too),
+ * `scrollTop` moves by exactly as much, so nothing visibly moves.
  */
 export default function ContinuousScrollView({
   currentPage,
@@ -83,10 +85,11 @@ export default function ContinuousScrollView({
   const pageEls = useRef<Map<number, HTMLDivElement>>(new Map())
   const heightCache = useRef<Map<number, number>>(new Map())
   const avgHeight = useRef(DEFAULT_PAGE_HEIGHT)
-  // Height above `lastReported`'s page as of the last measurement; null means
-  // "just changed anchor or just landed a jump — record a fresh baseline
-  // instead of diffing against a number that described a different anchor."
-  const aboveAnchorHeight = useRef<number | null>(null)
+  // Where the page being read (`lastReported`) began in the scrolling content
+  // when last measured. null means "just changed anchor or just landed a jump
+  // — take a fresh measurement instead of comparing with another page's."
+  const anchor = useRef<{ page: number; top: number } | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const lastReported = useRef(currentPage)
   // `containerRef.current.scrollTop` at the moment `lastReported` was last
   // confirmed correct — the fling safety-net below estimates a page as an
@@ -100,6 +103,28 @@ export default function ContinuousScrollView({
   const followingUntil = useRef(0)
   const scaleRef = useRef(1)
   const scaleSaveRef = useRef<number | null>(null)
+
+  /** The top of a mounted page in content coordinates: unaffected by scrolling, moved only by what is above it. */
+  const contentTop = useCallback((page: number): number | null => {
+    const root = containerRef.current
+    const el = pageEls.current.get(page)
+    if (!root || !el) return null
+    return el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
+  }, [])
+
+  /** Keeps the page being read still on screen through any change in height above it. */
+  const holdAnchor = useCallback(() => {
+    const root = containerRef.current
+    if (!root || pendingJump.current !== null) return
+    const page = lastReported.current
+    const top = contentTop(page)
+    if (top === null) return
+    if (anchor.current && anchor.current.page === page) {
+      const delta = top - anchor.current.top
+      if (Math.abs(delta) > 0.5) root.scrollTop += delta
+    }
+    anchor.current = { page, top }
+  }, [contentTop])
 
   const ensureLoaded = useCallback(
     (center: number) => {
@@ -164,19 +189,20 @@ export default function ContinuousScrollView({
     root.scrollTop += el.getBoundingClientRect().top - root.getBoundingClientRect().top
     lastReported.current = target
     pendingJump.current = null
-    aboveAnchorHeight.current = null
+    const top = contentTop(target)
+    anchor.current = top === null ? null : { page: target, top }
     anchorScrollTop.current = containerRef.current?.scrollTop ?? 0
   })
 
-  // Scroll-anchor compensation — see the component doc comment. Skipped
-  // while a jump is pending: the target's own scrollIntoView (above)
-  // supersedes it, and the "anchor" is still the old page until that lands.
+  // Scroll-anchor compensation — see the component doc comment. It does nothing
+  // while a jump is pending: the jump itself places the page, and the
+  // "anchor" is still the old page until that lands.
   useLayoutEffect(() => {
     for (const [page, el] of pageEls.current) heightCache.current.set(page, el.offsetHeight)
     // A page still showing its loading skeleton (sized to stay under this
     // floor) or the font-check step in between reports a real but short height —
     // averaging those in collapses the estimate toward zero, which then
-    // corrupts the spacer sizing and the fling safety-net's page guess.
+    // throws off the spacer sizing and the fling safety-net's page guess.
     // A real rendered mushaf page is always well above this floor.
     const measured = [...heightCache.current.values()].filter((h) => h > 400)
     if (measured.length) {
@@ -186,24 +212,21 @@ export default function ContinuousScrollView({
       // estimate far enough to throw off the fling safety-net's page guess.
       avgHeight.current = Math.min(2400, Math.max(700, avg))
     }
+    holdAnchor()
+    // Every render, not only when pages arrive: a render for any other reason
+    // still resizes the spacers to the latest average.
+  })
 
-    if (pendingJump.current !== null) return
-
-    const anchor = lastReported.current
-    const orderedPages = [...dataRef.current.keys()].sort((a, b) => a - b)
-    const topSpacerCount = Math.max(0, (orderedPages[0] ?? anchor) - 1)
-    let aboveAnchor = topSpacerCount * avgHeight.current
-    for (const page of orderedPages) {
-      if (page >= anchor) break
-      aboveAnchor += heightCache.current.get(page) ?? avgHeight.current
-    }
-
-    if (aboveAnchorHeight.current !== null && containerRef.current) {
-      const delta = aboveAnchor - aboveAnchorHeight.current
-      if (Math.abs(delta) > 0.5) containerRef.current.scrollTop += delta
-    }
-    aboveAnchorHeight.current = aboveAnchor
-  }, [version])
+  // Heights also change between renders — a page's glyph font arriving, the
+  // spacers taking the new average — and each must be undone the same way.
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => holdAnchor())
+    observer.observe(content)
+    for (const el of pageEls.current.values()) observer.observe(el)
+    return () => observer.disconnect()
+  }, [holdAnchor, version])
 
   useEffect(() => {
     const root = containerRef.current
@@ -224,11 +247,9 @@ export default function ContinuousScrollView({
         if (best && performance.now() < followingUntil.current) return
         if (best && best.page !== lastReported.current && pendingJump.current === null) {
           lastReported.current = best.page
-          // The anchor itself just changed, so "height above it" means
-          // something different than it did a moment ago — record a fresh
-          // baseline next layout pass instead of diffing against the old
-          // anchor's number.
-          aboveAnchorHeight.current = null
+          // The anchor itself just changed: measure the new one afresh.
+          const top = contentTop(best.page)
+          anchor.current = top === null ? null : { page: best.page, top }
           anchorScrollTop.current = root.scrollTop
           onPageChange(best.page)
           // A fast fling on a phone can cross a dozen+ pages in one motion,
@@ -251,7 +272,7 @@ export default function ContinuousScrollView({
       observer.disconnect()
       if (loadDebounceRef.current !== null) window.clearTimeout(loadDebounceRef.current)
     }
-  }, [ensureLoaded, onPageChange, version])
+  }, [contentTop, ensureLoaded, onPageChange, version])
 
   // Safety net for a fast fling that jumps clean over the whole loaded
   // window in one motion, landing on a bare spacer with no observed element
@@ -266,6 +287,12 @@ export default function ContinuousScrollView({
       if (debounce !== null) window.clearTimeout(debounce)
       debounce = window.setTimeout(() => {
         debounce = null
+        // Only for a screen showing no page at all; while one is in view, the observer has it.
+        const view = root.getBoundingClientRect()
+        for (const el of pageEls.current.values()) {
+          const box = el.getBoundingClientRect()
+          if (box.bottom > view.top && box.top < view.bottom) return
+        }
         // Relative to the last confirmed-correct (page, scrollTop) pair, not
         // absolute position from zero — immune to a transient blip in the
         // spacer math anywhere else in the document.
@@ -321,8 +348,9 @@ export default function ContinuousScrollView({
         const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
         root.scrollTop = top + fraction * el.offsetHeight
       }
-      // Every page changed height: measure again, and forget the old "height above" baseline.
-      aboveAnchorHeight.current = null
+      // Every page changed height and the screen is already set right: take that as the anchor.
+      const anchorTop = contentTop(lastReported.current)
+      anchor.current = anchorTop === null ? null : { page: lastReported.current, top: anchorTop }
       if (scaleSaveRef.current !== null) window.clearTimeout(scaleSaveRef.current)
       scaleSaveRef.current = window.setTimeout(() => {
         scaleSaveRef.current = null
@@ -374,7 +402,8 @@ export default function ContinuousScrollView({
   const bottomSpacerHeight = Math.max(0, totalPages - lastLoaded) * avgHeight.current
 
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain [touch-action:pan-y]">
+    <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain [overflow-anchor:none] [touch-action:pan-y]">
+      <div ref={contentRef}>
       {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} aria-hidden />}
       {orderedPages.map((page) => (
         <div
@@ -392,6 +421,7 @@ export default function ContinuousScrollView({
         </div>
       ))}
       {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} aria-hidden />}
+      </div>
     </div>
   )
 }

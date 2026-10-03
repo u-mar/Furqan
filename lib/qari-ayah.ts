@@ -19,14 +19,40 @@ import type { Verse } from '@/types'
  *  space like real words), in reading order, with the ayah-end ornament left
  *  out. Empty when the verse has no QCF data for this page. */
 export function verseQcfWords(verse: Verse, pageNumber: number): string[] {
+  return qcfWordItems(verse, pageNumber).map((w) => w.code_v2!.trim())
+}
+
+function qcfWordItems(verse: Verse, pageNumber: number) {
   const items = (verse.words || [])
     .filter(
       (w) => w.char_type_name !== 'end' && wordOnVisualPage(w, pageNumber, verse) && Boolean(w.code_v2?.trim())
     )
     .map((w) => ({ ...w, verseKey: verse.verse_key }))
   items.sort(compareMushafWords)
-  return items.map((w) => w.code_v2!.trim())
+  return items
 }
+
+/** The mushaf's pause marks (waqf signs: ۖ ۗ ۚ ۛ and the rest), where a reciter may stop. */
+const PAUSE_MARK = /[ۖ-ۜ]/
+const ONLY_MARKS = /^[ۖ-۝٠-٩]+$/
+
+/** The ayah's words in plain Uthmani text, with a pause mark that stands apart joined to the word before it. */
+function uthmaniWords(text: string): { words: string[]; pauseAfter: boolean[] } {
+  const words: string[] = []
+  const pauseAfter: boolean[] = []
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    if (ONLY_MARKS.test(token) && words.length) {
+      words[words.length - 1] += ` ${token}`
+      if (PAUSE_MARK.test(token)) pauseAfter[pauseAfter.length - 1] = true
+      continue
+    }
+    words.push(token)
+    pauseAfter.push(PAUSE_MARK.test(token))
+  }
+  return { words, pauseAfter }
+}
+
+const arabicDigits = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)])
 
 /** When there is no reading translation to go by. */
 const FALLBACK_EDITION = 'en.sahih'
@@ -72,6 +98,10 @@ export interface AyahView {
   verseKey: string
   /** One entry per word, in reading order. */
   words: string[]
+  /** For each word, whether the mushaf marks a pause after it. */
+  pauseAfter: boolean[]
+  /** The ayah-end ornament with its number, in the same font as `words`. */
+  endMark: string | null
   /** A CSS font-family value that draws `words`. */
   fontFamily: string
   /** True for the mushaf glyph font, which must never be drawn bold. */
@@ -107,7 +137,8 @@ export function loadAyah(verseKey: string, edition: string = FALLBACK_EDITION): 
       try {
         const verse = await getVerseByKey(verseKey)
         const page = versePageNumber(verse)
-        const qcfWords = pageHasQcfData([verse]) ? verseQcfWords(verse, page) : []
+        const qcfItems = pageHasQcfData([verse]) ? qcfWordItems(verse, page) : []
+        const qcfWords = qcfItems.map((w) => w.code_v2!.trim())
         const [fontLoaded, translations] = await Promise.all([
           qcfWords.length > 0 ? loadPageFont(page, qcfWords.join('').slice(0, 12)) : Promise.resolve(false),
           fetchPageTranslations(page, edition),
@@ -115,7 +146,16 @@ export function loadAyah(verseKey: string, edition: string = FALLBACK_EDITION): 
         const lang = languageForEdition(edition)
         const view: AyahView = {
           verseKey,
-          words: fontLoaded ? qcfWords : getVerseArabicText(verse, { omitEndMark: true }).split(/\s+/),
+          ...(fontLoaded
+            ? {
+                words: qcfWords,
+                pauseAfter: qcfItems.map((w) => PAUSE_MARK.test(w.text_uthmani || '')),
+                endMark: verse.words?.find((w) => w.char_type_name === 'end')?.code_v2?.trim() || null,
+              }
+            : {
+                ...uthmaniWords(getVerseArabicText(verse, { omitEndMark: true })),
+                endMark: `﴿${arabicDigits(Number(verseKey.split(':')[1]))}﴾`,
+              }),
           fontFamily: fontLoaded ? `"${qcfPageFontFamily(page)}"` : 'var(--font-amiri), Amiri, serif',
           qcf: fontLoaded,
           translation: translations.get(verseKey)?.replace(/\s+/g, ' ').trim() || null,

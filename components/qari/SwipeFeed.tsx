@@ -55,16 +55,46 @@ function currentEntryIndex(timeline: VerseTimelineEntry[], position: number): nu
   return found
 }
 
-/** Bigger type for short ayat, smaller for long ones. */
-function ayahFontSize(words: number): number {
-  if (words <= 6) return 40
-  if (words <= 12) return 34
-  if (words <= 22) return 28
-  if (words <= 40) return 23
-  return 19
-}
-
 const TEXT_SHADOW = '0 2px 16px rgba(0, 0, 0, 0.65)'
+
+/** The phrase's type: as large as this, and only as small as that before it may take two lines. */
+const LINE_MAX_PX = 32
+const LINE_MIN_PX = 21
+
+/**
+ * A phrase of the ayah on one line, centred: set as large as fits the width,
+ * so a short phrase is big and a longer one a little smaller.
+ */
+function AyahLine({ words, fontFamily }: { words: string[]; fontFamily: string }) {
+  const ref = useRef<HTMLParagraphElement | null>(null)
+  const [fit, setFit] = useState({ size: LINE_MAX_PX, wrap: false })
+  const text = words.join(' ')
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Measured on one line, shrinking until it fits; one too long even at the smallest size wraps.
+    el.style.whiteSpace = 'nowrap'
+    let next = LINE_MAX_PX
+    el.style.fontSize = `${next}px`
+    while (next > LINE_MIN_PX && el.scrollWidth > el.clientWidth + 1) {
+      next -= 1
+      el.style.fontSize = `${next}px`
+    }
+    setFit({ size: next, wrap: el.scrollWidth > el.clientWidth + 1 })
+  }, [text, fontFamily])
+  return (
+    <p
+      ref={ref}
+      dir="rtl"
+      lang="ar"
+      className="w-full text-center text-[var(--home-heading)]"
+      // The mushaf font has no bold face; forcing one would distort the letters.
+      style={{ fontFamily, fontSize: fit.size, whiteSpace: fit.wrap ? 'normal' : 'nowrap', lineHeight: 1.9, fontWeight: 400, textShadow: TEXT_SHADOW, wordSpacing: '0.12em' }}
+    >
+      {text}
+    </p>
+  )
+}
 
 /**
  * The middle of a slide: the ayah being recited in the mushaf's script with its
@@ -118,8 +148,8 @@ function AyahStage({
     if (near) timeline.forEach((entry) => void loadAyah(entry.verseKey, edition))
   }, [edition, near, timeline])
 
-  // A long ayah shows a screenful at a time: the part holding the word being recited.
-  const parts = useMemo(() => ayahParts(ayah?.words.length ?? 0), [ayah])
+  // A phrase at a time, cut where the mushaf pauses: the one holding the word being recited.
+  const parts = useMemo(() => ayahParts(ayah?.pauseAfter ?? []), [ayah])
   const lastPartRef = useRef(0)
   let partIndex = lastPartRef.current
   if (ayah && entry && ayah.verseKey === key) {
@@ -146,7 +176,10 @@ function AyahStage({
     }
   }, [ayah, edition, parts])
   const translation = ayah ? (split ? partTexts[`${edition}|${ayah.verseKey}|${partIndex}`] ?? null : ayah.translation) : null
-  const shownWords = ayah ? ayah.words.slice(part.start, part.end + 1) : []
+  // The last phrase ends with the ayah's ornament and its number.
+  const shownWords = ayah
+    ? [...ayah.words.slice(part.start, part.end + 1), ...(partIndex === parts.length - 1 && ayah.endMark ? [ayah.endMark] : [])]
+    : []
 
   return (
     <div
@@ -156,29 +189,13 @@ function AyahStage({
       )}
     >
       {ayah ? (
-        <div key={`${ayah.verseKey}-${partIndex}`} className="qari-ayah-in flex flex-col items-center">
-          <p
-            dir="rtl"
-            lang="ar"
-            className="flex flex-wrap justify-center gap-x-[0.32em] text-[var(--home-heading)]"
-            // The mushaf font has no bold face; forcing one would distort the letters.
-            style={{
-              fontFamily: ayah.fontFamily,
-              fontSize: ayahFontSize(shownWords.length),
-              lineHeight: 1.95,
-              fontWeight: 400,
-              textShadow: TEXT_SHADOW,
-            }}
-          >
-            {shownWords.map((word, i) => (
-              <span key={i}>{word}</span>
-            ))}
-          </p>
+        <div key={`${ayah.verseKey}-${partIndex}`} className="qari-phrase-in flex w-full flex-col items-center px-1">
+          <AyahLine words={shownWords} fontFamily={ayah.fontFamily} />
           {translation ? (
             <p
               dir={ayah.translationRtl ? 'rtl' : 'ltr'}
               lang={ayah.translationLang}
-              className="home-serif mt-3 max-w-[34ch] text-[15px] leading-relaxed text-[color-mix(in_srgb,var(--home-heading)_88%,transparent)]"
+              className="home-serif mt-2 max-w-[34ch] text-[14.5px] leading-relaxed text-[color-mix(in_srgb,var(--home-heading)_88%,transparent)]"
               // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
               style={{ textShadow: TEXT_SHADOW, ...(ayah.translationRtl ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontSize: 17 } : {}) }}
             >
@@ -187,16 +204,6 @@ function AyahStage({
               {split && partIndex < parts.length - 1 ? ' …' : ''}
             </p>
           ) : null}
-          <p className="mt-3 flex items-center gap-2 text-[11px] tabular-nums tracking-wider text-[var(--qari-gold-hi)]" style={{ textShadow: TEXT_SHADOW }}>
-            {ayah.verseKey}
-            {split ? (
-              <span className="flex gap-1" aria-hidden>
-                {parts.map((_, k) => (
-                  <span key={k} className={cn('h-1 w-1 rounded-full bg-current', k === partIndex ? 'opacity-100' : 'opacity-35')} />
-                ))}
-              </span>
-            ) : null}
-          </p>
         </div>
       ) : timeline.length === 0 ? (
         <div className="qari-ayah-in flex flex-col items-center px-2">

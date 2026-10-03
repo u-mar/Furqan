@@ -1,9 +1,10 @@
 /**
- * Long ayat in the swipe view, a screenful at a time. An ayah too long to
- * show whole at a readable size is cut into parts of a few lines each, and
- * the part on screen is the one holding the word being recited: when the
- * reciter starts the first word of the next part, it takes over, with the
- * translation of just those words.
+ * Ayat in the swipe view and the shared video, a phrase at a time, on one
+ * line: each ayah is cut where the mushaf marks a pause (the waqf signs), and
+ * a stretch longer than a few words is cut again into even pieces. The phrase
+ * on screen is the one holding the word being recited: when the reciter
+ * starts the first word of the next one, it takes over, with the translation
+ * of just those words.
  *
  * When each word starts comes from the marking (lib/asr/quran-match.ts).
  * Recitations marked before that was kept are paced evenly through the time
@@ -12,10 +13,8 @@
 
 import type { VerseTimelineEntry } from '@/lib/qari'
 
-/** Up to this many words show whole; longer ayat are cut into parts. */
-const WHOLE_UP_TO = 16
-/** Words in one part, at most. */
-const PART_WORDS = 12
+/** Words on the line at most, so a phrase reads at a glance. */
+const PHRASE_WORDS = 5
 
 export interface AyahPart {
   /** First and last word, counted from 0. */
@@ -23,15 +22,21 @@ export interface AyahPart {
   end: number
 }
 
-/** The parts an ayah of `words` words is shown in, as even as they can be. */
-export function ayahParts(words: number): AyahPart[] {
-  if (words <= WHOLE_UP_TO) return [{ start: 0, end: Math.max(0, words - 1) }]
-  const count = Math.ceil(words / PART_WORDS)
+/** The phrases an ayah is shown in, from where it pauses (`pauseAfter`, one entry per word). */
+export function ayahParts(pauseAfter: boolean[]): AyahPart[] {
+  const words = pauseAfter.length
+  if (words === 0) return [{ start: 0, end: 0 }]
   const parts: AyahPart[] = []
-  for (let k = 0; k < count; k++) {
-    const start = Math.round((k * words) / count)
-    const end = Math.round(((k + 1) * words) / count) - 1
-    parts.push({ start, end })
+  let from = 0
+  for (let i = 0; i < words; i++) {
+    if (!pauseAfter[i] && i < words - 1) continue
+    // Between two pauses: as it is, or in even pieces when it is long.
+    const length = i - from + 1
+    const pieces = Math.ceil(length / PHRASE_WORDS)
+    for (let k = 0; k < pieces; k++) {
+      parts.push({ start: from + Math.round((k * length) / pieces), end: from + Math.round(((k + 1) * length) / pieces) - 1 })
+    }
+    from = i + 1
   }
   return parts
 }

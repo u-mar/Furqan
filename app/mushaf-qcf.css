@@ -89,6 +89,15 @@
   padding-inline: clamp(6px, 1.5vw, 12px);
 }
 
+/* Each page's QCF font has its own vertical metrics, which put its letters a
+   little higher or lower than the next page's; the page sets how far to move
+   them so every page's text sits at the same height (see lib/qcf-baseline.ts).
+   The basmalah has a font of its own and is left where it is. */
+.mushaf-qcf-line:not(.mushaf-qcf-line--basmalah) .mushaf-qcf-line__scale .mushaf-qcf-line__glyphs {
+  position: relative;
+  top: var(--qcf-baseline-shift, 0);
+}
+
 .mushaf-qcf-line__glyphs {
   display: inline-block;
   white-space: nowrap;
