@@ -1,6 +1,9 @@
 /**
- * Decode-only SentencePiece for Muno459/fastconformer-quran-streaming's BPE
- * vocab. We only ever need id -> text (never encoding), and decode turns out
+ * SentencePiece for Muno459/fastconformer-quran-streaming's BPE vocab.
+ * Decoding (id -> text) is what listening needs; encoding a known word
+ * (text -> ids, for lining the ayah's text up with the recording) is done by
+ * longest match against the vocabulary, which spells every word the vocabulary
+ * can spell, if not always with the model's own choice of pieces. Decode turns out
  * to be "concatenate pieces, turn ▁ into a space" plus two small fix-ups —
  * so this ships the pre-extracted vocab as plain JSON instead of a WASM
  * SentencePiece runtime.
@@ -35,11 +38,40 @@ export interface QuranTokenizer {
   decode(ids: number[]): string
   /** True when this piece starts a new word (it carries the ▁ marker). */
   startsWord(id: number): boolean
+  /** The ids spelling `word` as a whole word (longest pieces first), or null if a letter has no piece. */
+  encodeWord(word: string): number[] | null
 }
 
 export async function loadQuranTokenizer(): Promise<QuranTokenizer> {
   const pieces = await loadVocab()
+  const ids = new Map<string, number>()
+  let longest = 1
+  pieces.forEach((piece, id) => {
+    if (id === 0 || ids.has(piece)) return
+    ids.set(piece, id)
+    longest = Math.max(longest, piece.length)
+  })
   return {
+    encodeWord(word: string): number[] | null {
+      const text = WORD_BOUNDARY + word
+      const out: number[] = []
+      let at = 0
+      while (at < text.length) {
+        let found = -1
+        let size = Math.min(longest, text.length - at)
+        for (; size > 0; size--) {
+          const id = ids.get(text.slice(at, at + size))
+          if (id !== undefined) {
+            found = id
+            break
+          }
+        }
+        if (found < 0) return null
+        out.push(found)
+        at += size
+      }
+      return out
+    },
     startsWord(id: number): boolean {
       return (pieces[id] ?? '').startsWith(WORD_BOUNDARY)
     },

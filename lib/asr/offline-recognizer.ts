@@ -12,6 +12,7 @@ import { loadQuranTokenizer, type QuranTokenizer } from './tokenizer'
 import { DEFAULT_FEATURE_SETTINGS, FRAME_SECONDS, offlineLogMel, type FeatureSettings } from './offline-features'
 import { getQariAsrModelBytes } from './offline-model-cache'
 import { tr } from '@/lib/i18n-core'
+import type { EmissionPiece, Emissions } from './ctc-align'
 
 export const ASR_SAMPLE_RATE = 16_000
 const MAX_CHUNK_SEC = 40
@@ -36,6 +37,12 @@ export interface Recognition {
   /** Output steps that carried a word piece, and their combined confidence: what `confidence` is made of. */
   heardSteps?: number
   heardConfidence?: number
+  /**
+   * The model's score for every vocabulary entry at every step, kept when asked
+   * for (`keepEmissions`), so the ayah's known text can be lined up with the
+   * recording afterwards (lib/asr/ctc-align.ts). About 4 MB a minute.
+   */
+  emissions?: Emissions
 }
 
 type Ort = typeof import('onnxruntime-web/wasm')
@@ -101,7 +108,12 @@ const yieldToScreen = () => new Promise<void>((resolve) => setTimeout(resolve, 0
 
 export async function recognize(
   samples: Float32Array,
-  options: { settings?: FeatureSettings; onProgress?: (fraction: number) => void; signal?: { cancelled: boolean } } = {}
+  options: {
+    settings?: FeatureSettings
+    onProgress?: (fraction: number) => void
+    signal?: { cancelled: boolean }
+    keepEmissions?: boolean
+  } = {}
 ): Promise<Recognition> {
   const settings = options.settings ?? DEFAULT_FEATURE_SETTINGS
   const [{ ort, session, float16 }, tokenizer] = await Promise.all([loadOfflineSession(), loadQuranTokenizer()])
@@ -114,12 +126,14 @@ export async function recognize(
   const texts: string[] = []
   let heardSteps = 0
   let heardConfidence = 0
+  const emissions: Emissions = []
 
   for (let p = 0; p < pieces.length; p++) {
     if (options.signal?.cancelled) throw new Error('cancelled')
     const piece = pieces[p]
-    const part = await recognizePiece(ort, session, tokenizer, piece.samples, settings)
+    const part = await recognizePiece(ort, session, tokenizer, piece.samples, settings, Boolean(options.keepEmissions))
     const offset = piece.start / ASR_SAMPLE_RATE
+    for (const e of part.emissions ?? []) emissions.push({ ...e, start: e.start + offset })
     for (const w of part.words) words.push({ word: w.word, start: round(w.start + offset), end: round(w.end + offset) })
     if (part.text) texts.push(part.text)
     heardSteps += part.heardSteps ?? 0
@@ -133,6 +147,7 @@ export async function recognize(
     words,
     durationSec: round(samples.length / ASR_SAMPLE_RATE),
     confidence: heardSteps ? heardConfidence / heardSteps : 0,
+    ...(options.keepEmissions ? { emissions } : {}),
   }
 }
 
@@ -143,7 +158,8 @@ async function recognizePiece(
   session: Session,
   tokenizer: QuranTokenizer,
   samples: Float32Array,
-  settings: FeatureSettings
+  settings: FeatureSettings,
+  keepEmissions: boolean
 ): Promise<Recognition> {
   const { data, frames } = offlineLogMel(samples, settings)
   if (frames < 8) return { text: '', words: [], durationSec: 0, confidence: 0, heardSteps: 0, heardConfidence: 0 }
@@ -170,6 +186,9 @@ async function recognizePiece(
   // Each output step stands for this much audio (the encoder shortens time ~8x).
   const stepSeconds = (frames / steps) * FRAME_SECONDS
 
+  // Normalised log-probabilities, row by row, whichever way round the model gave them.
+  const logprobs = keepEmissions ? new Float32Array(steps * vocabSize) : null
+
   const tokens: { id: number; first: number; last: number }[] = []
   let previous = -1
   let heardSteps = 0
@@ -187,6 +206,10 @@ async function recognizePiece(
     // The probability of the winner, whether the model gave log-probabilities or raw scores.
     let norm = 0
     for (let v = 0; v < vocabSize; v++) norm += Math.exp(at(t, v) - bestValue)
+    if (logprobs) {
+      const logTotal = bestValue + Math.log(norm)
+      for (let v = 0; v < vocabSize; v++) logprobs[t * vocabSize + v] = at(t, v) - logTotal
+    }
     if (best !== blank) {
       heardSteps += 1
       heardConfidence += 1 / norm
@@ -222,6 +245,7 @@ async function recognizePiece(
     confidence: heardSteps ? heardConfidence / heardSteps : 0,
     heardSteps,
     heardConfidence,
+    ...(logprobs ? { emissions: [{ start: 0, stepSeconds, steps, vocab: vocabSize, logprobs } satisfies EmissionPiece] } : {}),
   }
 }
 

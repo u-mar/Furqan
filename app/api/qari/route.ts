@@ -60,7 +60,7 @@ const VERSE_KEY_RE = /^\d{1,3}:\d{1,3}$/
 const MAX_AYAH_WORDS = 200
 
 function parseVerseTimeline(raw: string, maxSeconds: number): { verseKey: string; atSeconds: number; words?: number[] }[] {
-  const clamp = (n: number) => Math.round(Math.max(0, Math.min(maxSeconds, n)) * 10) / 10
+  const clamp = (n: number) => Math.round(Math.max(0, Math.min(maxSeconds, n)) * 100) / 100
   try {
     const value: unknown = JSON.parse(raw || '[]')
     if (!Array.isArray(value)) return []

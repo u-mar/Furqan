@@ -5,6 +5,9 @@ import { DEFAULT_FEATURE_SETTINGS, loadFeatureSettings, saveFeatureSettings } fr
 import { buildQuranWordIndex, markAyat, type AyahMarking, type QuranWordIndex } from '@/lib/asr/quran-match'
 import { loadQuranData } from '@/lib/quran'
 import { normalizeArabic } from '@/lib/search-ayahs'
+import { spellForModel } from '@/lib/asr/ctc-align'
+import { alignRecitation } from '@/lib/asr/align-recitation'
+import { CTC_BLANK_ID, loadQuranTokenizer } from '@/lib/asr/tokenizer'
 import type { VerseTimelineEntry } from '@/lib/qari'
 
 /**
@@ -54,19 +57,54 @@ export async function markRecitationAyat(blob: Blob, options: MarkingOptions = {
   let recognition = await recognize(samples, {
     settings: saved,
     signal,
+    keepEmissions: true,
     onProgress: (fraction) => onProgress?.(0.08 + fraction * 0.9),
   })
   // A model that heard nothing was fed the wrong way: go back to the settings it is known to work with.
   if (recognition.words.length === 0 && JSON.stringify(saved) !== JSON.stringify(DEFAULT_FEATURE_SETTINGS)) {
-    recognition = await recognize(samples, { settings: DEFAULT_FEATURE_SETTINGS, signal })
+    recognition = await recognize(samples, { settings: DEFAULT_FEATURE_SETTINGS, signal, keepEmissions: true })
     if (recognition.words.length > 0) saveFeatureSettings(DEFAULT_FEATURE_SETTINGS)
   }
   if (signal?.cancelled) throw new Error('cancelled')
 
   const marking = markAyat(recognition.words, index, normalizeArabic)
-  onProgress?.(1)
   if (marking.timeline.length === 0 || marking.coverage < MIN_COVERAGE) return null
-  return { timeline: marking.timeline, marking, recognition }
+  const timeline = await alignTimeline(marking.timeline, recognition)
+  // The scores take about 4 MB a minute; nothing needs them once the words are placed.
+  delete recognition.emissions
+  onProgress?.(1)
+  return { timeline, marking, recognition }
+}
+
+/**
+ * Exactly when each word of each marked ayah is said, and the ayat listening
+ * missed: the ayat's own text is lined up with the recording
+ * (lib/asr/align-recitation.ts), which gives every word a time, the ones the
+ * model did not catch by ear included.
+ */
+async function alignTimeline(timeline: VerseTimelineEntry[], recognition: Recognition): Promise<VerseTimelineEntry[]> {
+  const emissions = recognition.emissions
+  if (!emissions?.length) return timeline
+  const [data, tokenizer] = await Promise.all([loadQuranData(), loadQuranTokenizer()])
+  const verses = new Map(data.verses.map((v) => [v.verse_key, v]))
+  const order = [...verses.keys()].sort((a, b) => {
+    const [ca, va] = a.split(':').map(Number)
+    const [cb, vb] = b.split(':').map(Number)
+    return ca - cb || va - vb
+  })
+  const spelt = new Map<string, number[][] | null>()
+  const words = (verseKey: string): number[][] | null => {
+    if (spelt.has(verseKey)) return spelt.get(verseKey) ?? null
+    const verse = verses.get(verseKey)
+    const texts = verse?.words?.length
+      ? verse.words.filter((w) => w.char_type_name === 'word').map((w) => w.text_uthmani)
+      : (verse?.text_uthmani ?? '').split(/\s+/).filter(Boolean)
+    const ids = texts.map((t) => spellForModel(t, tokenizer))
+    const result = ids.length && ids.every((w) => w && w.length) ? (ids as number[][]) : null
+    spelt.set(verseKey, result)
+    return result
+  }
+  return alignRecitation(timeline, emissions, recognition.durationSec, { order, words }, CTC_BLANK_ID)
 }
 
 /**

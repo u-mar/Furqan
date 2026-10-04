@@ -18,6 +18,7 @@ import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 import { loadAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
 import { ayahParts, loadPartTranslation } from '@/lib/qari-ayah-parts'
+import { getQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 import { isRtlTranslationEdition } from '@/lib/translations'
@@ -177,8 +178,8 @@ const S = W / 375
 const IVORY = '#f3ead6'
 const GOLD = '#d9b86a'
 
-/** Where the ayah sits: centred a little above the middle, as in the swipe view, clear of the name below. */
-const CAPTION_CENTER_Y = Math.round(H * 0.44)
+/** Where the ayah sits: in the middle of the frame, as in the swipe view. */
+const CAPTION_CENTER_Y = Math.round(H * 0.5)
 const CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
 const CAPTION_WIDTH = W - Math.round(28 * S) * 2
 
@@ -186,12 +187,31 @@ const AVATAR_SIZE = Math.round(44 * S)
 const FOOTER_LEFT = Math.round(16 * S)
 const FOOTER_BOTTOM = H - Math.round(40 * S)
 
-/** One screenful: an ayah (or part of a long one) with its translation and number, drawn once. */
+/** A phrase drawn twice, every word lit and every word faint, and where each word is. */
+interface CaptionArt {
+  /** Every word lit, with the translation. */
+  lit: HTMLCanvasElement
+  /** Every word faint, without the translation. */
+  unsaid: HTMLCanvasElement
+  /** Each word's share of the canvas (the ornament included), to reveal the lit one word by word. */
+  wordBoxes: { x0: number; x1: number; y0: number; y1: number }[]
+  /** Where the translation is, always shown lit. */
+  translationBox: { y0: number; y1: number } | null
+}
+
+/** One screenful: a phrase of an ayah with its translation. */
 interface Caption {
   /** Shown from here until the next one starts. */
   atSeconds: number
-  image: HTMLCanvasElement
+  /** When each of its words starts (the ornament with the last), or null when not known: all lit. */
+  wordStarts: number[] | null
+  /** Drawn only when it comes on screen, and let go once it has passed, so a long recitation never holds them all. */
+  draw: () => CaptionArt
+  art?: CaptionArt
 }
+
+/** How faint a word is before the reciter reaches it, as in the swipe view. */
+const UNSAID_ALPHA = 0.38
 
 interface Scene {
   /** A still background, drawn larger than the frame so it can drift. null for plain black or a clip. */
@@ -279,8 +299,8 @@ function fitBlock(
 }
 
 /** The phrase's type, as in the swipe view: as large as this, and only as small as that before it takes two lines. */
-const LINE_MAX = Math.round(32 * S)
-const LINE_MIN = Math.round(21 * S)
+const LINE_MAX = Math.round(27 * S)
+const LINE_MIN = Math.round(18 * S)
 
 function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
@@ -288,7 +308,26 @@ function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowOffsetY = 2 * S
 }
 
-/** A phrase of an ayah as the swipe view draws it, one line with its translation under it, on a canvas of its own. */
+/** Words laid out in lines no wider than `maxWidth`, as indices, with each line's width. */
+function layoutWords(ctx: CanvasRenderingContext2D, words: string[], maxWidth: number) {
+  const space = ctx.measureText(' ').width
+  const widths = words.map((w) => ctx.measureText(w).width)
+  const lines: { words: number[]; width: number }[] = []
+  for (let i = 0; i < words.length; i++) {
+    const line = lines[lines.length - 1]
+    if (line && line.width + space + widths[i] <= maxWidth) {
+      line.words.push(i)
+      line.width += space + widths[i]
+    } else lines.push({ words: [i], width: widths[i] })
+  }
+  return { lines, widths, space }
+}
+
+/**
+ * A phrase of an ayah as the swipe view draws it — one line (two if it must),
+ * the translation under it — twice: every word lit, and every word faint. The
+ * frame shows the faint one with the lit one revealed up to the word being said.
+ */
 function drawCaption(opts: {
   words: string[]
   arabicFont: string
@@ -296,69 +335,97 @@ function drawCaption(opts: {
   translation: string | null
   translationFont: string
   translationRtl: boolean
-}): HTMLCanvasElement {
+  /** The ayah and its translation, or either alone, as chosen on the swipe view. */
+  mode: QariTextMode
+}): CaptionArt {
+  const showAyah = opts.mode !== 'translation'
+  const translationText = opts.mode === 'ayah' ? null : opts.translation
+  // On its own the translation is the text to read, so it is set larger.
+  const translationSize = opts.mode === 'translation' ? (opts.translationRtl ? 22 : 21) : opts.translationRtl ? 17 : 16
   const [, measure] = makeCanvas(10, 10)
-  // On one line, as large as fits; a phrase too long even at the smallest size takes two.
+  // On one line, as large as fits; a phrase too long even at the smallest size takes more.
   let size = LINE_MAX
-  const text = opts.words.join(' ')
   for (; size > LINE_MIN; size -= 2) {
     measure.font = `${opts.arabicWeight} ${size}px ${opts.arabicFont}`.trim()
-    if (measure.measureText(text).width <= CAPTION_WIDTH) break
+    if (measure.measureText(opts.words.join(' ')).width <= CAPTION_WIDTH) break
   }
-  const arabic = fitBlock(measure, opts.words, {
-    family: opts.arabicFont,
-    weight: opts.arabicWeight,
-    maxWidth: CAPTION_WIDTH,
-    maxHeight: CAPTION_MAX_HEIGHT * 0.5,
-    size,
-    minSize: LINE_MIN,
-    lineHeightRatio: 1.9,
-  })
-  const translation = opts.translation
-    ? fitBlock(measure, opts.translation.split(/\s+/), {
+  const arabicFont = `${opts.arabicWeight} ${size}px ${opts.arabicFont}`.trim()
+  measure.font = arabicFont
+  const layout = layoutWords(measure, showAyah ? opts.words : [], CAPTION_WIDTH)
+  const lineHeight = size * 1.9
+  const arabicHeight = layout.lines.length * lineHeight
+
+  const translation = translationText
+    ? fitBlock(measure, translationText.split(/\s+/), {
         family: opts.translationFont,
         maxWidth: Math.min(CAPTION_WIDTH, Math.round(300 * S)),
-        maxHeight: CAPTION_MAX_HEIGHT * 0.3,
-        size: Math.round((opts.translationRtl ? 17 : 14.5) * S),
+        maxHeight: CAPTION_MAX_HEIGHT * (showAyah ? 0.3 : 0.6),
+        size: Math.round(translationSize * S),
         minSize: Math.round(11 * S),
         lineHeightRatio: 1.6,
       })
     : null
-  const gap = Math.round(8 * S)
+  const gap = showAyah ? Math.round(8 * S) : 0
   const pad = Math.round(24 * S)
-  const height = pad + arabic.height + (translation ? gap + translation.height : 0) + pad
+  const height = Math.ceil(pad + arabicHeight + (translation ? gap + translation.height : 0) + pad)
 
-  const [canvas, ctx] = makeCanvas(W, Math.ceil(height))
-  ctx.textAlign = 'center'
-  withShadow(ctx)
-  let y = pad
+  const [lit, litCtx] = makeCanvas(W, height)
+  const [unsaid, unsaidCtx] = makeCanvas(W, height)
+  const wordBoxes: CaptionArt['wordBoxes'] = new Array(opts.words.length)
 
-  ctx.direction = 'rtl'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = IVORY
-  ctx.font = arabic.font
-  for (const line of arabic.lines) {
-    ctx.fillText(line, W / 2, y + arabic.lineHeight / 2)
-    y += arabic.lineHeight
+  for (const ctx of [litCtx, unsaidCtx]) {
+    withShadow(ctx)
+    ctx.direction = 'rtl'
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.font = arabicFont
+    ctx.fillStyle = IVORY
+    ctx.globalAlpha = ctx === unsaidCtx ? UNSAID_ALPHA : 1
   }
+  // Right to left, word by word; each word's box reaches halfway to its neighbours
+  // (and to the edge for the first and last) so revealing it never clips a stroke.
+  layout.lines.forEach((line, row) => {
+    const y0 = pad + row * lineHeight
+    let right = W / 2 + line.width / 2
+    line.words.forEach((index, k) => {
+      const width = layout.widths[index]
+      for (const ctx of [litCtx, unsaidCtx]) ctx.fillText(opts.words[index], right, y0 + lineHeight / 2)
+      wordBoxes[index] = {
+        x0: k === line.words.length - 1 ? 0 : right - width - layout.space / 2,
+        x1: k === 0 ? W : right + layout.space / 2,
+        y0,
+        y1: y0 + lineHeight,
+      }
+      right -= width + layout.space
+    })
+  })
 
+  let translationBox: CaptionArt['translationBox'] = null
   if (translation) {
-    y += gap
-    ctx.direction = opts.translationRtl ? 'rtl' : 'ltr'
-    ctx.fillStyle = 'rgba(243, 234, 214, 0.88)'
-    ctx.font = translation.font
+    let y = pad + arabicHeight + gap
+    translationBox = { y0: y - gap / 2, y1: height }
+    litCtx.globalAlpha = 1
+    // A softer glow than the ayah's, so the translation's strokes stay thin.
+    litCtx.shadowBlur = 8 * S
+    litCtx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+    litCtx.shadowOffsetY = S
+    litCtx.direction = opts.translationRtl ? 'rtl' : 'ltr'
+    litCtx.textAlign = 'center'
+    litCtx.fillStyle = showAyah ? 'rgba(243, 234, 214, 0.88)' : IVORY
+    litCtx.font = translation.font
     for (const line of translation.lines) {
-      ctx.fillText(line, W / 2, y + translation.lineHeight / 2)
+      litCtx.fillText(line, W / 2, y + translation.lineHeight / 2)
       y += translation.lineHeight
     }
   }
-  return canvas
+  return { lit, unsaid, wordBoxes, translationBox }
 }
 
 /** Every phrase of the recitation, in order: each ayah cut where the mushaf pauses. */
 async function prepareCaptions(r: Recitation, translationFont: string, translationRtl: boolean): Promise<Caption[]> {
   const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
   if (!timeline.length) return []
+  const mode = getQariTextMode()
   // In the language of whoever is sharing it: the translation they read the Quran with.
   const edition = viewerTranslation(getAppSettings().translationEditionId)
   const views = new Map<string, AyahView | null>()
@@ -372,23 +439,33 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
       const endsAt = timeline[i + 1]?.atSeconds ?? r.durationSec
       const texts =
         parts.length > 1 ? await Promise.all(parts.map((part) => loadPartTranslation(view.verseKey, edition, part))) : [view.translation]
-      return parts.map((part, k) => ({
-        // A part starts with its first word: when it was heard, or its share of the ayah's time.
-        atSeconds:
-          k === 0
-            ? entry.atSeconds
-            : (entry.words?.[part.start] ?? entry.atSeconds + (part.start / view.words.length) * (endsAt - entry.atSeconds)),
-        image: drawCaption({
-          // The last phrase ends with the ayah's ornament and its number.
-          words: [...view.words.slice(part.start, part.end + 1), ...(k === parts.length - 1 && view.endMark ? [view.endMark] : [])],
-          arabicFont: view.fontFamily,
-          // The mushaf's glyph font has no bold face; Amiri, its stand-in, reads better bold.
-          arabicWeight: view.qcf ? '' : '700',
-          translation: texts[k] ?? null,
-          translationFont,
-          translationRtl,
-        }),
-      }))
+      return parts.map((part, k): Caption => {
+        const last = k === parts.length - 1
+        // The last phrase ends with the ayah's ornament and its number.
+        const words = [...view.words.slice(part.start, part.end + 1), ...(last && view.endMark ? [view.endMark] : [])]
+        const starts = entry.words?.length === view.words.length ? entry.words.slice(part.start, part.end + 1) : null
+        return {
+          // A part starts with its first word: when it was heard, or its share of the ayah's time.
+          atSeconds:
+            k === 0
+              ? entry.atSeconds
+              : (entry.words?.[part.start] ?? entry.atSeconds + (part.start / view.words.length) * (endsAt - entry.atSeconds)),
+          // The ornament lights with the ayah's last word. Without the ayah there are no words to light.
+          wordStarts:
+            starts && mode !== 'translation' ? [...starts, ...(words.length > starts.length ? [starts[starts.length - 1]] : [])] : null,
+          draw: () =>
+            drawCaption({
+              words,
+              arabicFont: view.fontFamily,
+              // The mushaf's glyph font has no bold face; Amiri, its stand-in, reads better bold.
+              arabicWeight: view.qcf ? '' : '700',
+              translation: texts[k] ?? null,
+              translationFont,
+              translationRtl,
+              mode,
+            }),
+        }
+      })
     })
   )
   return captions.flat().sort((a, b) => a.atSeconds - b.atSeconds)
@@ -651,8 +728,8 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
   const background = findVideoBackground(options.backgroundId)
   const edition = viewerTranslation(getAppSettings().translationEditionId)
   const translationRtl = isRtlTranslationEdition(edition)
-  // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
-  const translationFont = translationRtl ? amiri : serif
+  // In Amiri, like the ayah: a light, classical face that also has every Arabic-script letter.
+  const translationFont = amiri
   const { level, frames } = analyse(buffer)
 
   const [picture, still, clip, captions] = await Promise.all([
@@ -666,6 +743,7 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
           document.fonts.load(`500 30px ${serif}`, r.title),
           document.fonts.load(`600 30px ${sans}`, r.userUsername),
           document.fonts.load(`700 30px ${amiri}`, 'ا'),
+          document.fonts.load(`400 30px ${amiri}`, 'Aa ا'),
         ]).catch(() => null)
       : null,
   ])
@@ -716,12 +794,35 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipF
     caption = c
   }
   if (!caption && scene.captions.length) caption = scene.captions[0]
-  const block = caption?.image ?? scene.titleCard
-  if (block) {
-    // Each new screenful fades in, as in the swipe view.
-    const since = caption ? t - caption.atSeconds : t
-    ctx.globalAlpha = Math.max(0, Math.min(1, since / 0.35))
-    ctx.drawImage(block, 0, Math.round(CAPTION_CENTER_Y - block.height / 2))
+  if (caption) {
+    // Drawn as it comes on; the ones already past are let go.
+    caption.art ??= caption.draw()
+    for (const c of scene.captions) if (c.art && c.atSeconds < caption.atSeconds) c.art = undefined
+    const art = caption.art
+    const top = Math.round(CAPTION_CENTER_Y - art.lit.height / 2)
+    // Each new phrase fades in, as in the swipe view.
+    ctx.globalAlpha = Math.max(0, Math.min(1, (t - caption.atSeconds) / 0.35))
+    if (caption.wordStarts) {
+      // The words not yet said faint, the rest (and the translation) lit.
+      const said = caption.wordStarts.filter((start) => start <= t).length
+      ctx.drawImage(art.unsaid, 0, top)
+      ctx.save()
+      ctx.beginPath()
+      for (let i = 0; i < said && i < art.wordBoxes.length; i++) {
+        const box = art.wordBoxes[i]
+        ctx.rect(box.x0, top + box.y0, box.x1 - box.x0, box.y1 - box.y0)
+      }
+      if (art.translationBox) ctx.rect(0, top + art.translationBox.y0, W, art.translationBox.y1 - art.translationBox.y0)
+      ctx.clip()
+      ctx.drawImage(art.lit, 0, top)
+      ctx.restore()
+    } else {
+      ctx.drawImage(art.lit, 0, top)
+    }
+    ctx.globalAlpha = 1
+  } else if (scene.titleCard) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, t / 0.35))
+    ctx.drawImage(scene.titleCard, 0, Math.round(CAPTION_CENTER_Y - scene.titleCard.height / 2))
     ctx.globalAlpha = 1
   }
 

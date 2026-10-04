@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronUp, FastForward, Headphones, Loader2, Lock, Play, Plus, Share2 } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -24,6 +24,7 @@ import {
 } from '@/lib/qari'
 import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
 import { ayahParts, loadPartTranslation, partFor, wordAt } from '@/lib/qari-ayah-parts'
+import { cycleQariTextMode, useQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import {
   pausePlayback,
@@ -56,16 +57,22 @@ function currentEntryIndex(timeline: VerseTimelineEntry[], position: number): nu
 }
 
 const TEXT_SHADOW = '0 2px 16px rgba(0, 0, 0, 0.65)'
+const TRANSLATION_SHADOW = '0 1px 8px rgba(0, 0, 0, 0.55)'
 
 /** The phrase's type: as large as this, and only as small as that before it may take two lines. */
-const LINE_MAX_PX = 32
-const LINE_MIN_PX = 21
+const LINE_MAX_PX = 27
+const LINE_MIN_PX = 18
+
+/** How faint a word is before the reciter reaches it. */
+const UNSAID_OPACITY = 0.38
 
 /**
  * A phrase of the ayah on one line, centred: set as large as fits the width,
- * so a short phrase is big and a longer one a little smaller.
+ * so a short phrase is big and a longer one a little smaller. With `lit`, the
+ * words not yet reached are faint and each lights up as it is said; without
+ * it (no word times for this recitation) they are all lit.
  */
-function AyahLine({ words, fontFamily }: { words: string[]; fontFamily: string }) {
+function AyahLine({ words, fontFamily, lit }: { words: string[]; fontFamily: string; lit: number | null }) {
   const ref = useRef<HTMLParagraphElement | null>(null)
   const [fit, setFit] = useState({ size: LINE_MAX_PX, wrap: false })
   const text = words.join(' ')
@@ -91,7 +98,14 @@ function AyahLine({ words, fontFamily }: { words: string[]; fontFamily: string }
       // The mushaf font has no bold face; forcing one would distort the letters.
       style={{ fontFamily, fontSize: fit.size, whiteSpace: fit.wrap ? 'normal' : 'nowrap', lineHeight: 1.9, fontWeight: 400, textShadow: TEXT_SHADOW, wordSpacing: '0.12em' }}
     >
-      {text}
+      {words.map((word, i) => (
+        <Fragment key={i}>
+          {i > 0 ? ' ' : null}
+          <span className="transition-opacity duration-200 ease-out" style={{ opacity: lit === null || i < lit ? 1 : UNSAID_OPACITY }}>
+            {word}
+          </span>
+        </Fragment>
+      ))}
     </p>
   )
 }
@@ -121,6 +135,8 @@ function AyahStage({
   const key = entry?.verseKey
   // In the viewer's own language: the translation they read the Quran with.
   const edition = viewerTranslation(useAppSettings().translationEditionId)
+  // The ayah and its translation, or either alone (the button on the right).
+  const mode = useQariTextMode()
   const [ayah, setAyah] = useState<AyahView | null>(() => (key ? peekAyah(key, edition) : null))
 
   // The previous ayah stays up until the next one is ready, so the screen never blanks between them.
@@ -152,9 +168,13 @@ function AyahStage({
   const parts = useMemo(() => ayahParts(ayah?.pauseAfter ?? []), [ayah])
   const lastPartRef = useRef(0)
   let partIndex = lastPartRef.current
+  // The word being said, when this recitation knows when each word starts.
+  let saying: number | null = null
   if (ayah && entry && ayah.verseKey === key) {
     const endsAt = timeline[entryIndex + 1]?.atSeconds ?? recitation.durationSec
-    partIndex = partFor(parts, wordAt(entry, endsAt, position, ayah.words.length))
+    const word = wordAt(entry, endsAt, position, ayah.words.length)
+    partIndex = partFor(parts, word)
+    if (entry.words?.length) saying = position >= entry.words[0] ? word : -1
   }
   partIndex = Math.min(partIndex, parts.length - 1)
   lastPartRef.current = partIndex
@@ -180,6 +200,11 @@ function AyahStage({
   const shownWords = ayah
     ? [...ayah.words.slice(part.start, part.end + 1), ...(partIndex === parts.length - 1 && ayah.endMark ? [ayah.endMark] : [])]
     : []
+  // Words of this phrase already reached; the ornament lights with the ayah's last word.
+  const lit =
+    saying === null
+      ? null
+      : Math.max(0, Math.min(shownWords.length, saying - part.start + 1 + (ayah && saying >= ayah.words.length - 1 ? 1 : 0)))
 
   return (
     <div
@@ -190,14 +215,26 @@ function AyahStage({
     >
       {ayah ? (
         <div key={`${ayah.verseKey}-${partIndex}`} className="qari-phrase-in flex w-full flex-col items-center px-1">
-          <AyahLine words={shownWords} fontFamily={ayah.fontFamily} />
-          {translation ? (
+          {mode !== 'translation' ? <AyahLine words={shownWords} fontFamily={ayah.fontFamily} lit={lit} /> : null}
+          {translation && mode !== 'ayah' ? (
             <p
               dir={ayah.translationRtl ? 'rtl' : 'ltr'}
               lang={ayah.translationLang}
-              className="home-serif mt-2 max-w-[34ch] text-[14.5px] leading-relaxed text-[color-mix(in_srgb,var(--home-heading)_88%,transparent)]"
-              // Fraunces has no Arabic-script letters, so Urdu, Persian and the like are set in Amiri.
-              style={{ textShadow: TEXT_SHADOW, ...(ayah.translationRtl ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontSize: 17 } : {}) }}
+              className={cn(
+                'max-w-[34ch] leading-relaxed',
+                // On its own it is the text to read, so it is larger and fully bright.
+                mode === 'translation'
+                  ? 'text-[21px] text-[var(--home-heading)]'
+                  : 'mt-2 text-[16px] text-[color-mix(in_srgb,var(--home-heading)_86%,transparent)]'
+              )}
+              // In Amiri, like the ayah: a light, classical face, never bold, with a softer
+              // glow than the ayah's so the strokes stay thin.
+              style={{
+                fontFamily: 'var(--font-amiri), Amiri, serif',
+                fontWeight: 400,
+                textShadow: TRANSLATION_SHADOW,
+                ...(ayah.translationRtl ? { fontSize: mode === 'translation' ? 22 : 17 } : {}),
+              }}
             >
               {split && part.start > 0 ? '… ' : ''}
               {translation}
@@ -353,6 +390,46 @@ function ProgressLine({
   )
 }
 
+const TEXT_MODE_NOTICE: Record<QariTextMode, string> = {
+  both: 'Ayah and translation',
+  ayah: 'Ayah only',
+  translation: 'Translation only',
+}
+
+/**
+ * One button for what shows over the recitation: the ayah and its
+ * translation, the ayah alone, or the translation alone, in turn. The mark on
+ * it shows the choice: ع for the ayah, A for the translation, both for both.
+ */
+function TextModeButton({ onNotice }: { onNotice: (message: string) => void }) {
+  const t = useT()
+  const mode = useQariTextMode()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        tapFeedback()
+        onNotice(tr(TEXT_MODE_NOTICE[cycleQariTextMode()]))
+      }}
+      aria-label={t('Show: {mode}', { mode: t(TEXT_MODE_NOTICE[mode]) })}
+      className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full text-white"
+    >
+      <span
+        aria-hidden
+        className="flex h-[30px] min-w-[30px] items-center justify-center gap-[3px] rounded-[9px] border-[1.8px] border-current px-[5px] leading-none"
+      >
+        {mode !== 'translation' ? (
+          <span className="text-[17px]" style={{ fontFamily: 'var(--font-amiri), Amiri, serif', transform: 'translateY(-1px)' }}>
+            ع
+          </span>
+        ) : null}
+        {mode === 'both' ? <span className="h-3.5 w-px bg-current opacity-60" /> : null}
+        {mode !== 'ayah' ? <span className="home-serif text-[14px] font-semibold">A</span> : null}
+      </span>
+    </button>
+  )
+}
+
 const Slide = memo(function Slide({
   recitation,
   active,
@@ -497,10 +574,11 @@ const Slide = memo(function Slide({
       ) : null}
 
       {isAyahCard ? null : (
-        // The ayah, between the top bar and the controls.
+        // The ayah, in the middle of the screen: as far from the top as from the
+        // bottom, and far enough from both to stay clear of the bar and the name.
         <div
           className="absolute inset-x-0 flex items-center justify-center px-6"
-          style={{ top: 'calc(5.5rem + env(safe-area-inset-top))', bottom: '15.5rem' }}
+          style={{ top: 'calc(10rem + env(safe-area-inset-top))', bottom: 'calc(10rem + env(safe-area-inset-top))' }}
         >
           {near ? <AyahStage recitation={recitation} position={position} near={near} paused={active && !playing} /> : null}
           {active && !playing ? (
@@ -597,6 +675,7 @@ const Slide = memo(function Slide({
             <div className="[&>button]:h-auto [&>button]:flex-col [&>button]:gap-0.5 [&>button]:py-1 [&>button>svg]:h-8 [&>button>svg]:w-8 [&>button]:text-[12px] [&>button]:font-medium">
               <LikeButton recitation={recitation} viewerId={viewerId} onNotice={onNotice} />
             </div>
+            {hasTimeline && !isAyahCard ? <TextModeButton onNotice={onNotice} /> : null}
             <button
               type="button"
               onClick={() => {
@@ -908,7 +987,7 @@ export default function SwipeFeed({
       {!hintSeen && clampedActive === 0 && items.length > 1 ? (
         <div
           className="pointer-events-none fixed inset-x-0 z-30 flex flex-col items-center text-[11px] text-[var(--home-muted)]"
-          style={{ bottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 16rem)` }}
+          style={{ bottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 8.5rem)` }}
           aria-hidden
         >
           <ChevronUp className="qari-hint h-5 w-5" strokeWidth={2} />
