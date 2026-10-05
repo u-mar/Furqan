@@ -37,6 +37,12 @@ const MIN_SCORE = -2.5
 const MIN_FOUND_SCORE = -1.2
 /** At most this many missed ayat are looked for in one gap. */
 const MAX_MISSING = 6
+/**
+ * No two words of one ayah are this far apart: even a long stretched vowel and
+ * a breath come well under it. A placement that needs more has borrowed a word
+ * from somewhere else (الرحمن الرحيم from the basmalah, for 1:3) and is not believed.
+ */
+const MAX_WORD_GAP = 6
 
 const round = (n: number) => Math.round(n * 100) / 100
 const surahOf = (key: string) => key.split(':')[0]
@@ -57,12 +63,14 @@ function alignRun(
   if (!aligned) return null
   const entries: TimelineEntry[] = []
   let at = 0
-  keys.forEach((verseKey, k) => {
+  for (let k = 0; k < keys.length; k++) {
     const count = (perAyah[k] as number[][]).length
-    const words = aligned.starts.slice(at, at + count).map((t) => round(Math.max(0, t - WORD_LEAD)))
+    const starts = aligned.starts.slice(at, at + count)
     at += count
-    entries.push({ verseKey, atSeconds: words[0], words })
-  })
+    for (let w = 1; w < starts.length; w++) if (starts[w] - starts[w - 1] > MAX_WORD_GAP) return null
+    const words = starts.map((t) => round(Math.max(0, t - WORD_LEAD)))
+    entries.push({ verseKey: keys[k], atSeconds: words[0], words })
+  }
   return { entries, score: aligned.score }
 }
 

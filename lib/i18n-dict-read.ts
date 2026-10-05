@@ -97,7 +97,6 @@ export const READ: Dict = {
     ar: 'بيانات خط المصحف مفقودة لهذه الصفحة. اتصل بالإنترنت أو نزّل حزمة القرآن من الإعدادات.',
   },
   'Loading mushaf font': { so: 'Far-ka Mushafka waa la soo raadinayaa', ar: 'جارٍ تحميل خط المصحف' },
-  'Tajweed colors': { so: 'Midabada tajwiidka', ar: 'ألوان التجويد' },
   Previous: { so: 'Hore', ar: 'السابق' },
   Next: { so: 'Xiga', ar: 'التالي' },
   Meaning: { so: 'Macnaha', ar: 'المعنى' },

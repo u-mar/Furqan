@@ -160,7 +160,6 @@ function ReadPageContent() {
     verseWallpapersEnabled,
     readingMode,
     theme,
-    tajweed,
   } = useAppSettings()
 
   const cycleTheme = () => {
@@ -889,11 +888,10 @@ function ReadPageContent() {
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
           suppressHighlightScroll
-          tajweed={tajweed}
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode, tajweed]
+    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)

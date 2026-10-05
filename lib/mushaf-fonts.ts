@@ -6,8 +6,6 @@ import {
 import {
   qcfCdnFontUrl,
   qcfPageFontFamily,
-  qcfTajweedFontFamily,
-  qcfTajweedFontUrl,
   SURAH_TITLE_FONT_FAMILY,
   SURAH_TITLE_FONT_URL,
 } from '@/lib/qcf-font-cdn'
@@ -17,7 +15,6 @@ export {
   qcfLegacyLocalFontUrl,
   qcfLocalFontUrl,
   qcfPageFontFamily,
-  qcfTajweedFontFamily,
   SURAH_TITLE_FONT_FAMILY,
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
@@ -260,59 +257,6 @@ export async function loadPageFont(
   })()
 
   loadingPages.set(page, task)
-  return task
-}
-
-const tajweedLoaded = new Set<number>()
-const tajweedLoading = new Map<number, Promise<boolean>>()
-
-/**
- * `@font-palette-values` has to name every family it applies to, so one rule per
- * theme lists all tajweed pages loaded so far. Palette 0 is the light tajweed
- * palette and 1 the dark one. Entry 0 is the plain ink, retinted to the
- * reader's own warm ink; entry 14 only ever draws stray box outlines around
- * small marks, so it's made transparent.
- */
-function syncTajweedPalettes(): void {
-  if (typeof document === 'undefined' || tajweedLoaded.size === 0) return
-  const families = [...tajweedLoaded].map((page) => qcfTajweedFontFamily(page)).join(', ')
-  let style = document.getElementById('nadir-tajweed-palettes')
-  if (!style) {
-    style = document.createElement('style')
-    style.id = 'nadir-tajweed-palettes'
-    document.head.appendChild(style)
-  }
-  style.textContent =
-    `@font-palette-values --nadir-tajweed-light{font-family:${families};base-palette:0;override-colors:0 #1d1914,14 transparent;}` +
-    `@font-palette-values --nadir-tajweed-dark{font-family:${families};base-palette:1;override-colors:0 #ebe4d6,14 transparent;}`
-}
-
-export function isTajweedFontLoaded(page: number): boolean {
-  return tajweedLoaded.has(page)
-}
-
-/** Online only — callers fall back to the plain page font when this resolves false. */
-export function loadTajweedPageFont(page: number): Promise<boolean> {
-  if (page < 1 || page > 604 || typeof document === 'undefined') return Promise.resolve(false)
-  if (tajweedLoaded.has(page)) return Promise.resolve(true)
-  const pending = tajweedLoading.get(page)
-  if (pending) return pending
-
-  const task = (async () => {
-    try {
-      const buffer = await fetchFontBuffer(qcfTajweedFontUrl(page))
-      const face = new FontFace(qcfTajweedFontFamily(page), buffer, { display: 'block' })
-      document.fonts.add(await face.load())
-      tajweedLoaded.add(page)
-      syncTajweedPalettes()
-      return true
-    } catch {
-      return false
-    } finally {
-      tajweedLoading.delete(page)
-    }
-  })()
-  tajweedLoading.set(page, task)
   return task
 }
 

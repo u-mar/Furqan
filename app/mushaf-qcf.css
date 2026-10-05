@@ -165,21 +165,6 @@
   line-height: 1.9;
 }
 
-/* Tajweed pages use the colour font's own palettes (registered per loaded page
-   in lib/mushaf-fonts) — light and dark each have one. */
-.mushaf-tajweed {
-  font-palette: --nadir-tajweed-light;
-}
-
-html.dark .mushaf-tajweed {
-  font-palette: --nadir-tajweed-dark;
-}
-
-/* The tajweed glyphs carry less built-in trailing space than the plain set. */
-.mushaf-tajweed .mushaf-qcf-flow__text {
-  word-spacing: -0.02em;
-}
-
 .mushaf-qcf-line--empty {
   visibility: hidden;
   pointer-events: none;

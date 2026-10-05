@@ -15,6 +15,7 @@ import {
   type Recitation,
 } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
+import { holdReload } from '@/lib/reload-guard'
 import { toast } from '@/lib/toast'
 
 /**
@@ -25,11 +26,14 @@ import { toast } from '@/lib/toast'
  *
  *   downloading→ the recitation model is being saved on the phone (once, the first time)
  *   marking    → the recording is being listened to for its ayat, on the phone
- *   uploading  → going up (progress 0–1)
- *   processing → all of it has arrived and the server is saving it. When the
- *                ayah-marking model is added, it runs in this stage too.
+ *   uploading  → going up, with its ayat (progress 0–1)
+ *   processing → all of it has arrived and the server is saving it
  *   done       → posted; `recitation` is how it now appears on the profile
  *   failed     → kept, with the reason, until it is tried again or dropped
+ *
+ * A recitation is listened to first and posted once that is done, so it goes
+ * up with its ayat. The listening can take a while on a phone, so the page is
+ * kept from reloading (and leaving it warns) from the moment Post is tapped.
  */
 
 export type UploadStage = 'downloading' | 'marking' | 'uploading' | 'processing' | 'done' | 'failed'
@@ -77,7 +81,9 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
-const sending = () => uploads.some((u) => u.stage === 'downloading' || u.stage === 'marking' || u.stage === 'uploading' || u.stage === 'processing')
+// Everything before it is posted: leaving now would lose it.
+const sending = () =>
+  uploads.some((u) => u.stage === 'downloading' || u.stage === 'marking' || u.stage === 'uploading' || u.stage === 'processing')
 
 /** Leaving the app while something is still going up would lose it, so the browser asks first. */
 function guardUnload(event: BeforeUnloadEvent) {
@@ -91,6 +97,8 @@ async function run(key: string) {
   if (!job) return
   patch(key, { stage: job.prepare ? (isQariAsrModelReady() ? 'marking' : 'downloading') : 'uploading', progress: 0, error: null })
   window.addEventListener('beforeunload', guardUnload)
+  // An app update must not reload the page from under it before it is posted.
+  const releaseReload = holdReload()
 
   let shownAt = 0
   try {
@@ -112,6 +120,7 @@ async function run(key: string) {
     patch(key, { stage: 'failed', error: err instanceof Error ? err.message : tr('Could not publish.') })
     toast(tr('Your post did not go up. Open your profile to try again.'), 'error')
   } finally {
+    releaseReload()
     if (!sending()) window.removeEventListener('beforeunload', guardUnload)
   }
 }
@@ -127,7 +136,7 @@ function start(upload: Omit<QariUpload, 'key' | 'stage' | 'progress' | 'error' |
 
 /** Starts posting a recitation and returns at once; follow it with useUploads. */
 export function postRecitation(input: PublishInput, options: { markFrom?: Blob } = {}): string {
-  // The ayat in the recording, found by listening to it as it is published.
+  // The ayat in the recording, found by listening to it before it is posted.
   let verseTimeline = input.verseTimeline
   const listenTo = options.markFrom ?? null
   return start(
@@ -138,9 +147,11 @@ export function postRecitation(input: PublishInput, options: { markFrom?: Blob }
       userUsername: input.userUsername,
     },
     {
+      // First: listen to it for its ayat. If the model cannot run, it is not posted:
+      // the card says why, and it can be tried again (the recording stays in drafts).
       prepare: listenTo
         ? async (report) => {
-            // The model is saved on the phone the first time; if that cannot be done, saying why beats posting without ayat.
+            // The model is saved on the phone the first time.
             if (!isQariAsrModelReady()) {
               await downloadQariAsrModel((p) => report('downloading', p.percent / 100))
             }
@@ -150,7 +161,7 @@ export function postRecitation(input: PublishInput, options: { markFrom?: Blob }
             marking.listeners.add(listener)
             try {
               const result = await marking.promise
-              // Nothing recognisable (not a recitation, or too faint): it is still posted, just without ayat.
+              // Nothing recognisable (not a recitation, or too faint): posted without ayat, showing its title.
               if (result) verseTimeline = result.timeline
             } finally {
               marking.listeners.delete(listener)

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useLongPress } from '@/hooks/useLongPress'
-import { useQcfFont, useTajweedFont } from '@/hooks/useQcfFont'
+import { useQcfFont } from '@/hooks/useQcfFont'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import MushafPageView from '@/components/mushaf/MushafPageView'
 import {
@@ -57,8 +57,6 @@ interface QuranPageViewProps {
   ayahSelectMode?: boolean
   /** Skip scroll-into-view when ayah highlight changes (e.g. during audio playback). */
   suppressHighlightScroll?: boolean
-  /** Colour-coded tajweed rendering (falls back to the plain page font offline). */
-  tajweed?: boolean
 }
 
 interface PageWord {
@@ -291,7 +289,6 @@ export default function QuranPageView({
   onAyahSelect,
   ayahSelectMode = false,
   suppressHighlightScroll = false,
-  tajweed = false,
 }: QuranPageViewProps) {
   const t = useT()
   const startIndex = verses.findIndex((verse) => verse.verse_key === startVerseKey)
@@ -386,10 +383,6 @@ export default function QuranPageView({
     pageNumber,
     useQcfRead && hasQcfData && pageNumber > 0,
     qcfSample
-  )
-  const tajweedReady = useTajweedFont(
-    pageNumber,
-    tajweed && useQcfRead && !hifdhRevealMode && hasQcfData && pageNumber > 0
   )
 
   const preferUnicodeFallback =
@@ -510,7 +503,6 @@ export default function QuranPageView({
             immersive={readMode}
             scrollable={scrollable}
             fontReady={qcfFont.ready}
-            tajweed={tajweedReady}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
             onAyahLongPress={ayahLongPress}

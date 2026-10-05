@@ -47,6 +47,9 @@ interface ShareVerseSheetProps {
   onClose: () => void
 }
 
+
+/** Posting an ayah card to Qari is set aside for now: the button is hidden, the rest kept. */
+const AYAH_CARD_POSTING = false
 /** How a part's translation was found — said under the switch, so nobody mistakes a word list for the meaning. */
 type PartSource = 'ai' | 'matched' | 'words'
 
@@ -627,16 +630,18 @@ export default function ShareVerseSheet({
           >
             <Download className="h-[18px] w-[18px]" />
           </button>
-          <button
-            type="button"
-            onClick={openPost}
-            disabled={!ready}
-            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition-transform active:scale-[0.98] disabled:opacity-50"
-            style={{ borderColor: 'var(--mushaf-read-popup-border)' }}
-          >
-            <Send className="h-4 w-4" />
-            {t('Post to Qari')}
-          </button>
+          {AYAH_CARD_POSTING ? (
+            <button
+              type="button"
+              onClick={openPost}
+              disabled={!ready}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition-transform active:scale-[0.98] disabled:opacity-50"
+              style={{ borderColor: 'var(--mushaf-read-popup-border)' }}
+            >
+              <Send className="h-4 w-4" />
+              {t('Post to Qari')}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => void handleShare()}

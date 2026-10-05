@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Mic, Search, Square, X } from 'lucide-react'
 import QuranPageView from '@/components/QuranPageView'
+import GallerySwipeView from '@/components/read/GallerySwipeView'
+import { useAppSettings } from '@/hooks/useAppSettings'
 import SurahSearchModal from '@/components/read/SurahSearchModal'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
@@ -52,6 +54,14 @@ export default function MushafReadAlong({
   const [chapterNamesById, setChapterNamesById] = useState<Record<number, string>>({})
   const [searchOpen, setSearchOpen] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
+  // The pages either side, loaded ahead so a swipe shows them straight away.
+  const [neighbours, setNeighbours] = useState<{ page: number; prev: Verse[] | null; next: Verse[] | null }>({
+    page: 0,
+    prev: null,
+    next: null,
+  })
+  // Swiped the way the Read screen is: sideways like a book, or up and down.
+  const vertical = useAppSettings().readingMode === 'vertical'
 
   useEffect(() => {
     if (!open) return
@@ -86,9 +96,45 @@ export default function MushafReadAlong({
     }
   }, [open, page, retryKey, t])
 
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const load = (p: number) => (p >= 1 && p <= TOTAL_MUSHAF_PAGES ? getMushafPage(p).catch(() => null) : Promise.resolve(null))
+    void Promise.all([load(page - 1), load(page + 1)]).then(([prev, next]) => {
+      if (!cancelled) setNeighbours({ page, prev, next })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, page])
+
   if (!open) return null
 
-  const keys = new Set((verses ?? []).map((v) => v.verse_key))
+  /** To the page before or after, showing it at once when it was loaded ahead. */
+  const turn = (step: 1 | -1) => {
+    const target = page + step
+    if (target < 1 || target > TOTAL_MUSHAF_PAGES) return
+    const ready = neighbours.page === page ? (step === 1 ? neighbours.next : neighbours.prev) : null
+    if (ready) setVerses(ready)
+    setPage(target)
+  }
+
+  const renderPage = (pageVerses: Verse[], pageNumber: number) => {
+    const pageKeys = new Set(pageVerses.map((v) => v.verse_key))
+    return (
+      <QuranPageView
+        verses={pageVerses}
+        chapterNamesById={chapterNamesById}
+        startVerseKey={pageVerses[0]?.verse_key || ''}
+        revealableVerseKeys={pageKeys}
+        revealedAyahs={pageKeys}
+        onReveal={() => {}}
+        readOnly
+        readMode
+        pageNumber={pageNumber}
+      />
+    )
+  }
 
   const goToVerse = async (verseKey: string) => {
     const targetPage = await getVisualPageForVerse(verseKey, page)
@@ -131,25 +177,16 @@ export default function MushafReadAlong({
         </button>
       </div>
 
-      {recording ? (
-        <p className="shrink-0 px-4 pb-1.5 text-center text-[11.5px] text-[var(--home-muted)]">
-          {t('Tap the ayah you’re reciting to caption the video there')}
-        </p>
-      ) : null}
-
       <div className="relative min-h-0 flex-1 overflow-hidden px-1">
         {verses ? (
-          <QuranPageView
-            key={page}
-            verses={verses}
-            chapterNamesById={chapterNamesById}
-            startVerseKey={verses[0]?.verse_key || ''}
-            revealableVerseKeys={keys}
-            revealedAyahs={keys}
-            onReveal={() => {}}
-            readOnly
-            readMode
-            pageNumber={page}
+          <GallerySwipeView
+            vertical={vertical}
+            pageKey={page}
+            current={renderPage(verses, page)}
+            prev={neighbours.page === page && neighbours.prev ? renderPage(neighbours.prev, page - 1) : null}
+            next={neighbours.page === page && neighbours.next ? renderPage(neighbours.next, page + 1) : null}
+            onCommitNext={() => turn(1)}
+            onCommitPrev={() => turn(-1)}
           />
         ) : loadError ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
@@ -178,7 +215,7 @@ export default function MushafReadAlong({
             type="button"
             onClick={() => {
               tapFeedback()
-              setPage((p) => Math.max(1, p - 1))
+              turn(-1)
             }}
             disabled={page <= 1}
             aria-label={t('Previous page')}
@@ -215,7 +252,7 @@ export default function MushafReadAlong({
             type="button"
             onClick={() => {
               tapFeedback()
-              setPage((p) => Math.min(TOTAL_MUSHAF_PAGES, p + 1))
+              turn(1)
             }}
             disabled={page >= TOTAL_MUSHAF_PAGES}
             aria-label={t('Next page')}

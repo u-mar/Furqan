@@ -49,8 +49,6 @@ export interface AppSettings {
   translationEditionId: string
   /** Ayah wallpapers — when off, the Share action is hidden in the reader. */
   verseWallpapersEnabled: boolean
-  /** Colour-coded tajweed on the mushaf page in Read. */
-  tajweed: boolean
   /** Language of the app's menus and buttons. */
   language: 'en' | 'so' | 'ar'
 }
@@ -78,7 +76,6 @@ const defaults: AppSettings = {
   translationLanguage: DEFAULT_TRANSLATION_LANGUAGE,
   translationEditionId: DEFAULT_TRANSLATION_EDITION[DEFAULT_TRANSLATION_LANGUAGE],
   verseWallpapersEnabled: false,
-  tajweed: false,
   language: 'en',
 }
 
@@ -107,7 +104,6 @@ function parseSettings(
         : 'horizontal',
     // Off until someone turns it on.
     verseWallpapersEnabled: parsed.verseWallpapersEnabled === true,
-    tajweed: parsed.tajweed === true,
     language: parsed.language === 'so' || parsed.language === 'ar' ? parsed.language : 'en',
     ...parseTranslationChoice(parsed.translationLanguage, parsed.translationEditionId),
   }

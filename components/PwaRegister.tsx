@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { canReload } from '@/lib/reload-guard'
 
 const APP_BUILD_VERSION = '2026-05-28-qcf-hotfix-1'
 
@@ -27,7 +28,12 @@ export default function PwaRegister() {
     const reloadOnce = () => {
       if (reloaded) return
       reloaded = true
-      window.location.reload()
+      // Not while a post is going up: the reload would lose it. It happens as soon as that is done.
+      const reloadWhenFree = () => {
+        if (canReload()) window.location.reload()
+        else window.setTimeout(reloadWhenFree, 1000)
+      }
+      reloadWhenFree()
     }
 
     const hardRefreshPwaCaches = async () => {

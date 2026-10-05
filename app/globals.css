@@ -323,19 +323,20 @@ html.dark .ayah-sheet-arabic {
   -webkit-text-fill-color: transparent;
 }
 
-/* Immersive read screen — warm Madinah-paper cream (day) / soft warm night.
-   Palette tuned to feel like the Ayah app's mushaf reading surface. */
+/* Immersive read screen — a clean near-white page with black script (day) /
+   soft warm night. Flat in both: no paper texture, no shading at the edges. */
 .mushaf-reader-immersive {
-  /* Warm Madinah ivory — cream enough to read as paper, never yellow. */
-  --mushaf-read-bg: #fbf7ee;
-  --mushaf-read-text: #1d1914;
-  --mushaf-read-meta: #857a66;
-  --mushaf-read-badge-bg: rgba(29, 25, 20, 0.07);
-  --mushaf-read-badge-text: #5f574a;
-  --mushaf-read-card-bg: #fffdf8;
-  --mushaf-read-card-border: rgba(29, 25, 20, 0.11);
-  --mushaf-read-chrome-bg: rgba(251, 247, 238, 0.94);
-  --mushaf-read-chrome-border: rgba(28, 26, 23, 0.09);
+  /* Near-white and black, for the crispest script: the small vowel marks and
+     dots stay sharp even outdoors and on duller screens. */
+  --mushaf-read-bg: #f9f8f7;
+  --mushaf-read-text: #000000;
+  --mushaf-read-meta: #77736c;
+  --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
+  --mushaf-read-badge-text: #4f4c47;
+  --mushaf-read-card-bg: #ffffff;
+  --mushaf-read-card-border: rgba(0, 0, 0, 0.1);
+  --mushaf-read-chrome-bg: rgba(249, 248, 247, 0.94);
+  --mushaf-read-chrome-border: rgba(0, 0, 0, 0.08);
   --mushaf-read-accent: #0d6b63;
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.13);
@@ -347,19 +348,8 @@ html.dark .ayah-sheet-arabic {
   --mushaf-read-popup-border: rgba(255, 255, 255, 0.13);
   --mushaf-popup-badge-bg: rgba(255, 255, 255, 0.11);
   --mushaf-popup-meta: rgba(223, 238, 233, 0.7);
-  --mushaf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  /* Same texture at a fraction of the strength — "overlay" (needed at night, since
-     "multiply" would only ever darken and do nothing on a dark page) reads the
-     alpha much more harshly than "multiply" does, so the day-mode grain is too
-     loud once it gets there. */
-  --mushaf-grain-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E");
-  /* Paper is colour + fine grain, shared by the reader and each swipeable page
-     sheet. The warm edge-darkening is a single overlay across the whole reader
-     (::after below) so it never seams where a sheet meets the running head. */
-  --mushaf-paper-image: var(--mushaf-grain);
-  --mushaf-paper-blend: multiply;
-  --mushaf-vignette: radial-gradient(125% 100% at 50% 45%, transparent 64%, rgba(128, 98, 48, 0.09) 100%);
-  --mushaf-turn-shadow: rgba(92, 70, 32, 0.16);
+  /* The page is a plain colour, shared by the reader and each swipeable page sheet. */
+  --mushaf-turn-shadow: rgba(0, 0, 0, 0.12);
   /* The mushaf page is a fixed layout — allow panning but never pinch-zoom,
      so the page stays exactly as typeset (like the Ayah app). */
   touch-action: pan-x pan-y;
@@ -369,19 +359,6 @@ html.dark .ayah-sheet-arabic {
 .mushaf-reader-immersive,
 .mushaf-sheet {
   background-color: var(--mushaf-read-bg);
-  background-image: var(--mushaf-paper-image);
-  background-size: 200px 200px;
-  background-repeat: repeat;
-  background-blend-mode: var(--mushaf-paper-blend);
-}
-
-.mushaf-reader-immersive::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: var(--mushaf-vignette);
 }
 
 /**
@@ -434,9 +411,6 @@ html.dark.black .mushaf-reader-immersive {
   --mushaf-ornament: rgba(255, 255, 255, 0.3);
   --mushaf-ornament-soft: rgba(255, 255, 255, 0.16);
   --mushaf-ornament-fill: rgba(255, 255, 255, 0.05);
-  /* Keep the page perfectly flat — no grain or bloom on true black. */
-  --mushaf-paper-image: none;
-  --mushaf-vignette: none;
   --mushaf-turn-shadow: rgba(255, 255, 255, 0.06);
 }
 
@@ -470,11 +444,6 @@ html.dark .mushaf-reader-immersive {
   --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
   --mushaf-popup-badge-bg: var(--mushaf-read-badge-bg);
   --mushaf-popup-meta: var(--mushaf-read-meta);
-  /* A whisper of grain and edges that fall softly into shadow — like reading
-     a page by lamplight. */
-  --mushaf-paper-image: var(--mushaf-grain-dark);
-  --mushaf-paper-blend: soft-light;
-  --mushaf-vignette: radial-gradient(125% 100% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.26) 100%);
   --mushaf-turn-shadow: rgba(0, 0, 0, 0.45);
 }
 
@@ -4059,6 +4028,7 @@ html.splash-seen .app-splash {
 
 .app-splash__ayah {
   overflow: visible;
+  color: #ffffff;
   animation: app-splash-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 

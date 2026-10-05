@@ -64,8 +64,10 @@ export interface ContinuousScrollViewProps {
  * screen). This is the standard "scroll anchoring" problem virtualized lists
  * have. The page being read is the anchor: where it sits in the scrolling
  * content is measured from the DOM itself, and whenever the content above it
- * changes size (watched by a ResizeObserver, so font loads count too),
- * `scrollTop` moves by exactly as much, so nothing visibly moves.
+ * changes size (watched by a ResizeObserver, so font loads and pinch-zoom count
+ * too), `scrollTop` moves by exactly as much, so nothing visibly moves.
+ * Page heights are kept as they would be unzoomed and the spacers sized from
+ * them times the zoom in CSS, so a pinch resizes spacers and pages together.
  */
 export default function ContinuousScrollView({
   currentPage,
@@ -83,12 +85,18 @@ export default function ContinuousScrollView({
   const [version, setVersion] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const pageEls = useRef<Map<number, HTMLDivElement>>(new Map())
+  // Page heights as they would be unzoomed (measured height ÷ zoom), so a pinch
+  // never makes them stale: the spacers are sized from them times the zoom in
+  // CSS, and so grow and shrink in the very same frame as the pages do.
   const heightCache = useRef<Map<number, number>>(new Map())
   const avgHeight = useRef(DEFAULT_PAGE_HEIGHT)
   // Where the page being read (`lastReported`) began in the scrolling content
   // when last measured. null means "just changed anchor or just landed a jump
   // — take a fresh measurement instead of comparing with another page's."
   const anchor = useRef<{ page: number; top: number } | null>(null)
+  // The scroll position as last seen (after the reader scrolled, or after this
+  // view set it), for telling when the browser has pulled it back on its own.
+  const lastScrollTop = useRef(0)
   const contentRef = useRef<HTMLDivElement>(null)
   const lastReported = useRef(currentPage)
   // `containerRef.current.scrollTop` at the moment `lastReported` was last
@@ -112,7 +120,25 @@ export default function ContinuousScrollView({
     return el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
   }, [])
 
-  /** Keeps the page being read still on screen through any change in height above it. */
+  /** Takes `page`, where it is now, as the place to keep. */
+  const markAnchor = useCallback(
+    (page: number) => {
+      const top = contentTop(page)
+      anchor.current = top === null ? null : { page, top }
+      if (containerRef.current) lastScrollTop.current = containerRef.current.scrollTop
+    },
+    [contentTop]
+  )
+
+  /**
+   * Keeps the page being read still on screen through any change in height
+   * above it: whatever it moved by in the content, the scroll moves by too.
+   *
+   * When the list gets shorter all at once (spacers re-sized after a pinch),
+   * the browser may first pull the scroll back to the new end on its own. That
+   * is undone here by starting from where the scroll was, not where the browser
+   * left it — otherwise the page would land that much below the screen.
+   */
   const holdAnchor = useCallback(() => {
     const root = containerRef.current
     if (!root || pendingJump.current !== null) return
@@ -121,10 +147,16 @@ export default function ContinuousScrollView({
     if (top === null) return
     if (anchor.current && anchor.current.page === page) {
       const delta = top - anchor.current.top
-      if (Math.abs(delta) > 0.5) root.scrollTop += delta
+      const end = root.scrollHeight - root.clientHeight
+      const pulledBack = root.scrollTop >= end - 1 && lastScrollTop.current > root.scrollTop + 1
+      const from = pulledBack ? lastScrollTop.current : root.scrollTop
+      if (Math.abs(delta) > 0.5 || pulledBack) {
+        root.scrollTop = from + delta
+        anchorScrollTop.current += root.scrollTop - from
+      }
     }
-    anchor.current = { page, top }
-  }, [contentTop])
+    markAnchor(page)
+  }, [contentTop, markAnchor])
 
   const ensureLoaded = useCallback(
     (center: number) => {
@@ -189,8 +221,7 @@ export default function ContinuousScrollView({
     root.scrollTop += el.getBoundingClientRect().top - root.getBoundingClientRect().top
     lastReported.current = target
     pendingJump.current = null
-    const top = contentTop(target)
-    anchor.current = top === null ? null : { page: target, top }
+    markAnchor(target)
     anchorScrollTop.current = containerRef.current?.scrollTop ?? 0
   })
 
@@ -198,7 +229,7 @@ export default function ContinuousScrollView({
   // while a jump is pending: the jump itself places the page, and the
   // "anchor" is still the old page until that lands.
   useLayoutEffect(() => {
-    for (const [page, el] of pageEls.current) heightCache.current.set(page, el.offsetHeight)
+    for (const [page, el] of pageEls.current) heightCache.current.set(page, el.offsetHeight / scaleRef.current)
     // A page still showing its loading skeleton (sized to stay under this
     // floor) or the font-check step in between reports a real but short height —
     // averaging those in collapses the estimate toward zero, which then
@@ -248,8 +279,7 @@ export default function ContinuousScrollView({
         if (best && best.page !== lastReported.current && pendingJump.current === null) {
           lastReported.current = best.page
           // The anchor itself just changed: measure the new one afresh.
-          const top = contentTop(best.page)
-          anchor.current = top === null ? null : { page: best.page, top }
+          markAnchor(best.page)
           anchorScrollTop.current = root.scrollTop
           onPageChange(best.page)
           // A fast fling on a phone can cross a dozen+ pages in one motion,
@@ -272,7 +302,19 @@ export default function ContinuousScrollView({
       observer.disconnect()
       if (loadDebounceRef.current !== null) window.clearTimeout(loadDebounceRef.current)
     }
-  }, [contentTop, ensureLoaded, onPageChange, version])
+  }, [ensureLoaded, markAnchor, onPageChange, version])
+
+  // Where the reader has scrolled to, so a pull-back by the browser can be told apart.
+  useEffect(() => {
+    const root = containerRef.current
+    if (!root) return
+    const onScroll = () => {
+      // Only a scroll short of the end: a pull-back always lands exactly on it.
+      if (root.scrollTop < root.scrollHeight - root.clientHeight - 1) lastScrollTop.current = root.scrollTop
+    }
+    root.addEventListener('scroll', onScroll, { passive: true })
+    return () => root.removeEventListener('scroll', onScroll)
+  }, [])
 
   // Safety net for a fast fling that jumps clean over the whole loaded
   // window in one motion, landing on a bare spacer with no observed element
@@ -296,7 +338,7 @@ export default function ContinuousScrollView({
         // Relative to the last confirmed-correct (page, scrollTop) pair, not
         // absolute position from zero — immune to a transient blip in the
         // spacer math anywhere else in the document.
-        const pagesMoved = Math.round((root.scrollTop - anchorScrollTop.current) / avgHeight.current)
+        const pagesMoved = Math.round((root.scrollTop - anchorScrollTop.current) / (avgHeight.current * scaleRef.current))
         const approx = Math.min(totalPages, Math.max(1, lastReported.current + pagesMoved))
         if (!dataRef.current.has(approx) && !loadingRef.current.has(approx)) {
           ensureLoaded(approx)
@@ -348,9 +390,10 @@ export default function ContinuousScrollView({
         const top = el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
         root.scrollTop = top + fraction * el.offsetHeight
       }
-      // Every page changed height and the screen is already set right: take that as the anchor.
-      const anchorTop = contentTop(lastReported.current)
-      anchor.current = anchorTop === null ? null : { page: lastReported.current, top: anchorTop }
+      // Every page changed height and the screen is already set right: take that as the anchor,
+      // for keeping the page still and for the fling safety-net's page guess alike.
+      anchorScrollTop.current = root.scrollTop
+      markAnchor(lastReported.current)
       if (scaleSaveRef.current !== null) window.clearTimeout(scaleSaveRef.current)
       scaleSaveRef.current = window.setTimeout(() => {
         scaleSaveRef.current = null
@@ -400,11 +443,13 @@ export default function ContinuousScrollView({
   const lastLoaded = orderedPages[orderedPages.length - 1] ?? currentPage
   const topSpacerHeight = Math.max(0, firstLoaded - 1) * avgHeight.current
   const bottomSpacerHeight = Math.max(0, totalPages - lastLoaded) * avgHeight.current
+  // Unzoomed estimates times the zoom, worked out by the browser: a pinch resizes them with the pages.
+  const zoomed = (px: number) => `calc(${Math.round(px)}px * var(--mushaf-flow-scale, 1))`
 
   return (
     <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain [overflow-anchor:none] [touch-action:pan-y]">
       <div ref={contentRef}>
-      {topSpacerHeight > 0 && <div style={{ height: topSpacerHeight }} aria-hidden />}
+      {topSpacerHeight > 0 && <div style={{ height: zoomed(topSpacerHeight) }} aria-hidden />}
       {orderedPages.map((page) => (
         <div
           key={page}
@@ -420,7 +465,7 @@ export default function ContinuousScrollView({
           </div>
         </div>
       ))}
-      {bottomSpacerHeight > 0 && <div style={{ height: bottomSpacerHeight }} aria-hidden />}
+      {bottomSpacerHeight > 0 && <div style={{ height: zoomed(bottomSpacerHeight) }} aria-hidden />}
       </div>
     </div>
   )

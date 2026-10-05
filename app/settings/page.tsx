@@ -17,7 +17,6 @@ import {
   Lock,
   LogOut,
   MessageSquare,
-  Palette,
   Trash,
   UserRound,
   UserX,
@@ -147,7 +146,6 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
-  const [tajweed, setTajweed] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
   // Which translators are saved for offline reading, by edition id.
   const [translationCached, setTranslationCached] = useState<Record<string, boolean>>({})
@@ -181,7 +179,6 @@ export default function SettingsPage() {
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
     setVerseWallpapers(s.verseWallpapersEnabled)
-    setTajweed(s.tajweed)
     setReadingMode(s.readingMode)
     refreshProfile()
     window.addEventListener('auth-user-changed', refreshProfile)
@@ -235,10 +232,6 @@ export default function SettingsPage() {
     setAppSettings({ verseWallpapersEnabled: next })
   }
 
-  function saveTajweed(next: boolean) {
-    setTajweed(next)
-    setAppSettings({ tajweed: next })
-  }
 
   function saveTranslationLanguage(next: TranslationLanguageId) {
     const nextEdition = DEFAULT_TRANSLATION_EDITION[next]
@@ -397,12 +390,6 @@ export default function SettingsPage() {
             </span>
             <RowChevron />
           </button>
-          <Divider />
-          <label className="set-row cursor-pointer">
-            <RowIcon icon={Palette} />
-            <span className="set-row__label">{t('Tajweed colors')}</span>
-            <Switch checked={tajweed} onChange={saveTajweed} label={t('Tajweed colors')} />
-          </label>
           <Divider />
           <label className="set-row cursor-pointer">
             <RowIcon icon={ImageIcon} />

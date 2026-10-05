@@ -58,7 +58,7 @@ export default function SplashScreen() {
       }}
     >
       <div className="flex w-full flex-1 items-center justify-center">
-        <svg viewBox={SPLASH_AYAH_VIEWBOX} className="app-splash__ayah w-[min(88vw,380px)]" role="presentation">
+        <svg viewBox={SPLASH_AYAH_VIEWBOX} className="app-splash__ayah w-[min(76vw,330px)]" role="presentation">
           <path d={SPLASH_AYAH_PATH} fill="currentColor" />
         </svg>
       </div>

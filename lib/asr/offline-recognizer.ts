@@ -15,8 +15,8 @@ import { tr } from '@/lib/i18n-core'
 import type { EmissionPiece, Emissions } from './ctc-align'
 
 export const ASR_SAMPLE_RATE = 16_000
-const MAX_CHUNK_SEC = 40
-const MIN_CHUNK_SEC = 25
+const MAX_CHUNK_SEC = 20
+const MIN_CHUNK_SEC = 12
 
 export interface RecognizedWord {
   word: string

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import QcfPage from '@/components/mushaf/QcfPage'
-import { qcfPageFontFamily, qcfTajweedFontFamily } from '@/lib/qcf-font-cdn'
+import { qcfPageFontFamily } from '@/lib/qcf-font-cdn'
 import { loadSurahNameFont } from '@/lib/mushaf-fonts'
 import type { Verse } from '@/types'
 
@@ -27,8 +27,6 @@ export interface MushafPageViewProps {
     onReveal: (verseKey: string) => void
   }
   className?: string
-  /** Render with the page's tajweed (colour) font — it must already be loaded. */
-  tajweed?: boolean
 }
 
 export default function MushafPageView({
@@ -45,9 +43,8 @@ export default function MushafPageView({
   suppressHighlightScroll = false,
   hifdhReveal,
   className,
-  tajweed = false,
 }: MushafPageViewProps) {
-  const qcfFamily = tajweed ? qcfTajweedFontFamily(pageNumber) : qcfPageFontFamily(pageNumber)
+  const qcfFamily = qcfPageFontFamily(pageNumber)
   const rootRef = useRef<HTMLDivElement>(null)
   const mushafFontStyle = {
     fontFamily: qcfFamily,
@@ -69,7 +66,7 @@ export default function MushafPageView({
   return (
     <div
       ref={rootRef}
-      className={cn('mushaf-root mushaf-engine-root h-full w-full', tajweed && 'mushaf-tajweed', className)}
+      className={cn('mushaf-root mushaf-engine-root h-full w-full', className)}
       style={mushafFontStyle}
       data-qcf-font={qcfFamily}
     >

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { parseVerseTimeline } from '@/lib/qari-verse-timeline'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
 import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
@@ -51,43 +52,6 @@ function parsePeaks(raw: string): number[] {
   }
 }
 
-const MAX_VERSE_TIMELINE = 1000
-const VERSE_KEY_RE = /^\d{1,3}:\d{1,3}$/
-
-/** Ayah markings sent from the phone while reading from the Mushaf — dropped
- *  silently if malformed, since this only ever enriches the share video. */
-/** The longest ayah (2:282) has 128 words. */
-const MAX_AYAH_WORDS = 200
-
-function parseVerseTimeline(raw: string, maxSeconds: number): { verseKey: string; atSeconds: number; words?: number[] }[] {
-  const clamp = (n: number) => Math.round(Math.max(0, Math.min(maxSeconds, n)) * 100) / 100
-  try {
-    const value: unknown = JSON.parse(raw || '[]')
-    if (!Array.isArray(value)) return []
-    return value
-      .slice(0, MAX_VERSE_TIMELINE)
-      .filter(
-        (entry): entry is { verseKey: string; atSeconds: number } =>
-          Boolean(entry) &&
-          typeof entry === 'object' &&
-          typeof (entry as { verseKey?: unknown }).verseKey === 'string' &&
-          VERSE_KEY_RE.test((entry as { verseKey: string }).verseKey) &&
-          Number.isFinite((entry as { atSeconds?: unknown }).atSeconds)
-      )
-      .map((entry) => {
-        const words = (entry as { words?: unknown }).words
-        const keep =
-          Array.isArray(words) && words.length > 0 && words.length <= MAX_AYAH_WORDS && words.every((w) => Number.isFinite(w))
-        return {
-          verseKey: entry.verseKey,
-          atSeconds: Math.max(0, Math.min(maxSeconds, entry.atSeconds)),
-          ...(keep ? { words: (words as number[]).map(clamp) } : {}),
-        }
-      })
-  } catch {
-    return []
-  }
-}
 
 /**
  * GET /api/qari?sort=recent|top&user=username&likedBy=userId&imitating=sheikhId
