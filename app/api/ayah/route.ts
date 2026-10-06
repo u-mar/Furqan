@@ -124,36 +124,50 @@ interface TranslationItem {
   translation: string
 }
 
-async function fetchTranslationsFromAlQuranCloud(
-  page: number,
-  editionId: string
-): Promise<TranslationItem[]> {
+/** One of AlQuran Cloud's pages in an edition: verse key → translation. Kept a month, like Quran.com's. */
+async function alQuranCloudPage(page: number, editionId: string): Promise<Map<string, string>> {
   const response = await fetch(`https://api.alquran.cloud/v1/page/${page}/${editionId}`, {
+    next: { revalidate: 60 * 60 * 24 * 30 },
     signal: AbortSignal.timeout(API_TIMEOUT_MS),
   })
   if (!response.ok) throw new Error('AlQuran Cloud translation failed')
-
   const payload = (await response.json()) as {
-    data?: {
-      ayahs?: Array<{
-        text: string
-        numberInSurah: number
-        surah: { number: number }
-      }>
+    data?: { ayahs?: Array<{ text: string; numberInSurah: number; surah: { number: number } }> }
+  }
+  return new Map((payload.data?.ayahs || []).map((a) => [`${a.surah.number}:${a.numberInSurah}`, a.text]))
+}
+
+/**
+ * The translations of the ayat on one of this app's mushaf pages. AlQuran
+ * Cloud splits its pages a little differently (56 ayat sit on a neighbouring
+ * page there, e.g. 5:77 or 55:17), so an ayah not on its page of the same
+ * number is looked for on the pages either side. Asking by page alone left
+ * those ayat without a translation.
+ */
+async function fetchTranslationsFromAlQuranCloud(page: number, editionId: string): Promise<TranslationItem[]> {
+  const verses = await getVersesByPageServer(page)
+  const found = new Map<string, string>()
+  const take = (rows: Map<string, string>) => {
+    for (const v of verses) {
+      const text = rows.get(v.verse_key)
+      if (text && !found.has(v.verse_key)) found.set(v.verse_key, text)
     }
   }
-
-  const offline = await getVersesByPageServer(page)
-  const arabicByKey = Object.fromEntries(offline.map((v) => [v.verse_key, v.text_uthmani]))
-
-  return (payload.data?.ayahs || []).map((a) => {
-    const verse_key = `${a.surah.number}:${a.numberInSurah}`
-    return {
-      verse_key,
-      text_uthmani: arabicByKey[verse_key] || '',
-      translation: a.text,
+  take(await alQuranCloudPage(page, editionId))
+  for (const neighbour of [page - 1, page + 1]) {
+    if (found.size >= verses.length) break
+    if (neighbour < 1 || neighbour > 604) continue
+    try {
+      take(await alQuranCloudPage(neighbour, editionId))
+    } catch {
+      // What was found on the page itself is still worth returning.
     }
-  })
+  }
+  return verses.map((v) => ({
+    verse_key: v.verse_key,
+    text_uthmani: v.text_uthmani,
+    translation: found.get(v.verse_key) ?? '',
+  }))
 }
 
 /** Quran.com marks footnotes and emphasis with HTML; the app shows plain text. */

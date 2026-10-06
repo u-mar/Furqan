@@ -310,9 +310,21 @@ export function useQariRecorder(maxSeconds = 600) {
     }
   }, [maxSeconds, teardown, activeMs])
 
+  /**
+   * One tap stops it, at once. The recorder takes a moment to hand back the
+   * finished audio, and until now the screen kept showing the recording (the
+   * clock still running, the button still there) for all of it, so it looked
+   * as if the tap had not worked. The clock and meter stop now and the screen
+   * moves straight on to polishing; the audio follows when it is ready.
+   */
   const stop = useCallback(() => {
     const recorder = recorderRef.current
-    if (recorder && recorder.state !== 'inactive') recorder.stop()
+    if (!recorder || recorder.state === 'inactive') return
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    analyserRef.current = null
+    setState((s) => (s.recording ? { ...idle, polishing: true, elapsed: s.elapsed } : s))
+    recorder.stop()
   }, [])
 
   const pause = useCallback(() => {

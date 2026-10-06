@@ -1024,7 +1024,7 @@ function ReadPageContent() {
 
   if (loadError && pageVerses.length === 0) {
     return (
-      <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-[var(--app-bg)] px-6 text-center">
+      <main className="mushaf-reader-immersive flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-sm text-red-400">{loadError}</p>
         <p className="text-xs text-stone-500">
           {t('Check your Wi‑Fi connection. The first load can take up to a minute.')}</p>
@@ -1400,7 +1400,7 @@ export default function ReadPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-[100dvh] items-center justify-center bg-[var(--app-bg)]">
+        <main className="mushaf-reader-immersive flex min-h-[100dvh] items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-700 border-t-teal-500" />
         </main>
       }

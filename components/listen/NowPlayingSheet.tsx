@@ -197,18 +197,66 @@ export default function NowPlayingSheet({
   )
 }
 
+/** While the slider is dragged, the audio follows it this often (a stream must not be asked to jump on every pixel). */
+const LIVE_SEEK_MS = 150
+/** Still this long after the last move, the slider goes back to showing the audio, even if no release was reported. */
+const SETTLE_MS = 800
+
 function SeekBar() {
   const t = useT()
   const { position, duration } = useListenProgress()
   const [scrub, setScrub] = useState<number | null>(null)
   const value = Math.min(scrub ?? position, duration || 0)
   const played = duration ? (value / duration) * 100 : 0
+  const lastSeekAt = useRef(0)
+  const pendingSeek = useRef<number | null>(null)
+  const settleTimer = useRef<number | null>(null)
 
+  // Moving the slider moves the recitation there, as the finger goes: a few times
+  // a second while it moves, and once more at the very place it stops.
+  const follow = (seconds: number) => {
+    setScrub(seconds)
+    if (pendingSeek.current !== null) window.clearTimeout(pendingSeek.current)
+    const wait = LIVE_SEEK_MS - (performance.now() - lastSeekAt.current)
+    const go = () => {
+      pendingSeek.current = null
+      lastSeekAt.current = performance.now()
+      seekTo(seconds)
+    }
+    if (wait <= 0) go()
+    else pendingSeek.current = window.setTimeout(go, wait)
+    // Some phones never report the finger lifting off a slider: once it has been
+    // still a moment, the place it was left is taken as final.
+    if (settleTimer.current !== null) window.clearTimeout(settleTimer.current)
+    settleTimer.current = window.setTimeout(() => {
+      settleTimer.current = null
+      if (pendingSeek.current !== null) {
+        window.clearTimeout(pendingSeek.current)
+        pendingSeek.current = null
+        seekTo(seconds)
+      }
+      setScrub(null)
+    }, SETTLE_MS)
+  }
+
+  // Let go, however the phone reports it (a lift, a cancel, a touch ending, a key, leaving the slider).
   const commit = () => {
     if (scrub === null) return
+    if (pendingSeek.current !== null) window.clearTimeout(pendingSeek.current)
+    if (settleTimer.current !== null) window.clearTimeout(settleTimer.current)
+    pendingSeek.current = null
+    settleTimer.current = null
     seekTo(scrub)
     setScrub(null)
   }
+
+  useEffect(
+    () => () => {
+      if (pendingSeek.current !== null) window.clearTimeout(pendingSeek.current)
+      if (settleTimer.current !== null) window.clearTimeout(settleTimer.current)
+    },
+    []
+  )
 
   return (
     <div className="mt-5 px-1">
@@ -219,8 +267,11 @@ function SeekBar() {
         step={1}
         value={value}
         disabled={!duration}
-        onChange={(e) => setScrub(Number(e.target.value))}
+        onChange={(e) => follow(Number(e.target.value))}
         onPointerUp={commit}
+        onPointerCancel={commit}
+        onTouchEnd={commit}
+        onMouseUp={commit}
         onKeyUp={commit}
         onBlur={commit}
         aria-label={t('Position in the surah')}

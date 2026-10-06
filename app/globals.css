@@ -326,10 +326,12 @@ html.dark .ayah-sheet-arabic {
 /* Immersive read screen — a clean near-white page with black script (day) /
    soft warm night. Flat in both: no paper texture, no shading at the edges. */
 .mushaf-reader-immersive {
-  /* Near-white and black, for the crispest script: the small vowel marks and
-     dots stay sharp even outdoors and on duller screens. */
+  /* Near-white and near-black, for a crisp script: the small vowel marks and
+     dots stay sharp even outdoors and on duller screens. Not pure black: the
+     mushaf's strokes are bolder than most Quran fonts, and in pure black a full
+     page reads heavy. */
   --mushaf-read-bg: #f9f8f7;
-  --mushaf-read-text: #000000;
+  --mushaf-read-text: #262626;
   --mushaf-read-meta: #77736c;
   --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
   --mushaf-read-badge-text: #4f4c47;
