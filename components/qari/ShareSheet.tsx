@@ -25,7 +25,6 @@ import {
   type ShareMedia,
   type VideoOptions,
 } from '@/lib/qari-share-media'
-import Switch from '@/components/qari/Switch'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
@@ -544,15 +543,6 @@ function CustomizeVideo({
         onSelect={(id) => onChange({ ...options, backgroundId: id })}
         onClose={() => setGalleryOpen(false)}
       />
-
-      <div className="set-row mt-4 rounded-2xl border border-[var(--home-rule)]" style={{ paddingBlock: '0.5rem' }}>
-        <span className="set-row__label">{t('Include profile picture')}</span>
-        <Switch
-          checked={options.includeAvatar}
-          onChange={(checked) => onChange({ ...options, includeAvatar: checked })}
-          label={t('Include profile picture')}
-        />
-      </div>
 
       <div className="mt-4 flex gap-2">
         <button

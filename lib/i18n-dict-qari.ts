@@ -265,7 +265,6 @@ export const QARI: Dict = {
   'Keep the app open. Longer recitations take a little longer.': { so: 'App-ka furan ku hay. Tilaawooyinka dhaadheer waxay qaataan wax yar oo dheeraad ah.', ar: 'أبقِ التطبيق مفتوحًا. التلاوات الأطول تستغرق وقتًا أطول قليلًا.' },
   'Saved. Upload it to TikTok from your gallery.': { so: 'Waa la keydiyay. Ka soo geli TikTok bandhigga sawirradaada.', ar: 'تم الحفظ. ارفعها إلى تيك توك من معرض الصور.' },
   Background: { so: 'Gadaal', ar: 'الخلفية' },
-  'Include profile picture': { so: 'Ku dar sawirka bogga', ar: 'تضمين صورة الملف الشخصي' },
   'Make video': { so: 'Samee muuqaal', ar: 'إنشاء فيديو' },
   'Save to phone': { so: 'Ku keydi telefoonka', ar: 'حفظ في الهاتف' },
   'Pick TikTok in the share list, or save it and upload it from your gallery.': { so: 'Ka dooro TikTok liiska wadaagga, ama keydi oo ka soo geli bandhigga sawirradaada.', ar: 'اختر تيك توك من قائمة المشاركة، أو احفظها وارفعها من المعرض.' },

@@ -62,6 +62,12 @@ async function keepSavedQuran(): Promise<void> {
   }
 }
 
+/** Only asks the phone to keep what is already saved; downloads nothing. */
+export function keepOfflineQuran(): void {
+  if (typeof window === 'undefined') return
+  if (isOfflineReady() || getAppSettings().offlineDownloaded) void keepSavedQuran()
+}
+
 /** The reader's chosen translation, unless it is already on the phone. */
 function translationToSave(): string | null {
   const editionId = getAppSettings().translationEditionId

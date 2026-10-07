@@ -8,6 +8,7 @@ import {
   getServerOfflineSave,
   hideOfflineSave,
   isStandaloneDisplayMode,
+  keepOfflineQuran,
   subscribeOfflineSave,
 } from '@/lib/offline-bootstrap'
 import { isOfflineReady } from '@/lib/local-quran-store'
@@ -15,6 +16,13 @@ import { getAppSettings } from '@/lib/app-settings'
 import { forgetAsrModel } from '@/lib/asr/model-cache'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
+
+/**
+ * Off for now: the app no longer downloads the whole mushaf (or shows its
+ * progress card) when it opens. A copy already on the phone is still kept.
+ * Set back to true to turn the first-launch download on again.
+ */
+const SAVE_QURAN_ON_OPEN = false
 
 /**
  * Puts the whole Quran on the phone without anyone asking: the text (about
@@ -30,6 +38,10 @@ export default function OfflineBootstrap() {
   }, [])
 
   useEffect(() => {
+    if (!SAVE_QURAN_ON_OPEN) {
+      keepOfflineQuran()
+      return
+    }
     const saved = isOfflineReady() || getAppSettings().offlineDownloaded
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean; type?: string } }).connection
     const metered = Boolean(connection?.saveData) || connection?.type === 'cellular'

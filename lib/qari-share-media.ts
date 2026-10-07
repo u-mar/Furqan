@@ -138,13 +138,10 @@ export {
 export interface VideoOptions {
   /** One of VIDEO_BACKGROUNDS' ids. */
   backgroundId: string
-  /** Off leaves the reciter's picture out. */
-  includeAvatar: boolean
 }
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   backgroundId: 'black',
-  includeAvatar: true,
 }
 
 const VIDEO_OPTIONS_KEY = 'muyassar_qari_video_options'
@@ -157,7 +154,6 @@ export function loadVideoOptions(): VideoOptions {
     const saved = JSON.parse(raw) as Partial<VideoOptions>
     return {
       backgroundId: findVideoBackground(String(saved.backgroundId)).id,
-      includeAvatar: saved.includeAvatar !== false,
     }
   } catch {
     return DEFAULT_VIDEO_OPTIONS
@@ -183,9 +179,9 @@ const CAPTION_CENTER_Y = Math.round(H * 0.5)
 const CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
 const CAPTION_WIDTH = W - Math.round(28 * S) * 2
 
-const AVATAR_SIZE = Math.round(44 * S)
 const FOOTER_LEFT = Math.round(16 * S)
-const FOOTER_BOTTOM = H - Math.round(40 * S)
+const FOOTER_HEIGHT = Math.round(38 * S)
+const FOOTER_BOTTOM = H - Math.round(28 * S)
 
 /** A phrase drawn twice, every word lit and every word faint, and where each word is. */
 interface CaptionArt {
@@ -223,12 +219,8 @@ interface Scene {
   captions: Caption[]
   /** Shown when no ayat were marked: the title, as the swipe view does. */
   titleCard: HTMLCanvasElement | null
+  /** The app's mark and name with the reciter's @username under it, bottom left. */
   footer: HTMLCanvasElement
-  /** The app's mark and name, top left. */
-  brand: HTMLCanvasElement
-  avatar: HTMLCanvasElement | null
-  /** Overall loudness per frame, 0–1, for the ring around the picture. */
-  level: Float32Array
   frames: number
   seconds: number
 }
@@ -552,84 +544,48 @@ function drawShade(hasPicture: boolean): HTMLCanvasElement {
   return canvas
 }
 
-/** @username and the title, bottom left, as on the swipe view; room is left for the picture when it is shown. */
-function drawFooter(r: Recitation, serif: string, sans: string, withAvatar: boolean): HTMLCanvasElement {
-  const height = Math.round(64 * S)
+/**
+ * Bottom left, small and out of the way of the ayah: the app's mark and name,
+ * and the reciter's @username under it.
+ */
+function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasElement {
+  const height = FOOTER_HEIGHT
   const [canvas, ctx] = makeCanvas(W, height)
-  const x = FOOTER_LEFT + (withAvatar ? AVATAR_SIZE + Math.round(12 * S) : 0)
+  const x = FOOTER_LEFT
   const maxWidth = W - x - FOOTER_LEFT
   const fit = (text: string) => {
     let shown = text
     while (shown.length > 1 && ctx.measureText(shown).width > maxWidth) shown = shown.slice(0, -1)
     return shown === text ? text : `${shown.trimEnd()}…`
   }
-  withShadow(ctx)
-  ctx.textBaseline = 'middle'
-  ctx.textAlign = 'left'
-  ctx.fillStyle = '#ffffff'
-  ctx.font = `600 ${Math.round(17 * S)}px ${sans}`
-  ctx.fillText(fit(`@${r.userUsername}`), x, height * 0.3)
-  ctx.font = `500 ${Math.round(16 * S)}px ${serif}`
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'
-  ctx.fillText(fit(r.title), x, height * 0.72)
-  return canvas
-}
 
-/** The app's mark and name, top left, where the swipe view has its tabs. */
-function drawBrand(serif: string): HTMLCanvasElement {
-  const mark = Math.round(26 * S)
-  const [canvas, ctx] = makeCanvas(Math.round(220 * S), mark + 8)
+  // The mark: the app icon's letter on its black tile.
+  const mark = Math.round(16 * S)
+  const brandY = Math.round(height * 0.3)
   ctx.save()
   ctx.beginPath()
-  ctx.roundRect(2, 2, mark, mark, mark * 0.24)
+  ctx.roundRect(x, brandY - mark / 2, mark, mark, mark * 0.24)
   ctx.fillStyle = '#000000'
   ctx.fill()
-  ctx.lineWidth = 2
+  ctx.lineWidth = Math.max(1, Math.round(S * 0.6))
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
   ctx.stroke()
   ctx.fillStyle = '#f5ecd8'
   ctx.font = `700 ${Math.round(mark * 0.62)}px ${serif}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(APP_ICON_LETTER, 2 + mark / 2, 2 + mark / 2 + mark * 0.04)
+  ctx.fillText(APP_ICON_LETTER, x + mark / 2, brandY + mark * 0.04)
   ctx.restore()
-  withShadow(ctx)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-  ctx.font = `700 ${Math.round(15 * S)}px ${serif}`
-  ctx.textBaseline = 'middle'
-  ctx.fillText(`${APP_NAME} App`, mark + Math.round(10 * S), 2 + mark / 2)
-  return canvas
-}
 
-function drawAvatar(r: Recitation, picture: HTMLImageElement | null, serif: string): HTMLCanvasElement {
-  const size = AVATAR_SIZE
-  const [canvas, ctx] = makeCanvas(size, size)
-  ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
-  ctx.closePath()
-  ctx.clip()
-  if (picture) {
-    const scale = Math.max(size / picture.naturalWidth, size / picture.naturalHeight)
-    const dw = picture.naturalWidth * scale
-    const dh = picture.naturalHeight * scale
-    ctx.drawImage(picture, (size - dw) / 2, (size - dh) / 2, dw, dh)
-  } else {
-    const fill = ctx.createLinearGradient(0, 0, size, size)
-    fill.addColorStop(0, '#4a86ad')
-    fill.addColorStop(1, '#16324f')
-    ctx.fillStyle = fill
-    ctx.fillRect(0, 0, size, size)
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `600 ${Math.round(size * 0.45)}px ${serif}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText((r.userName || r.userUsername || '?').trim().charAt(0).toUpperCase(), size / 2, size / 2 + 2)
-  }
-  ctx.lineWidth = 4
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
-  ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2)
-  ctx.stroke()
+  withShadow(ctx)
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.font = `700 ${Math.round(12 * S)}px ${serif}`
+  ctx.fillText(`${APP_NAME} App`, x + mark + Math.round(6 * S), brandY)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+  ctx.font = `500 ${Math.round(11 * S)}px ${sans}`
+  ctx.fillText(fit(`@${r.userUsername}`), x, Math.round(height * 0.76))
   return canvas
 }
 
@@ -687,41 +643,6 @@ async function openClip(mb: Mediabunny, url: string, frames: number): Promise<As
   return null
 }
 
-/**
- * Listen to the whole recitation once, frame by frame, for how loud it is —
- * for the ring that breathes around the reciter's picture.
- */
-function analyse(buffer: AudioBuffer): { level: Float32Array; frames: number } {
-  const data = buffer.getChannelData(0)
-  const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
-  const windowSamples = Math.round(buffer.sampleRate / FPS)
-
-  const loud = new Float32Array(frames)
-  for (let f = 0; f < frames; f += 1) {
-    const start = Math.floor((f / FPS) * buffer.sampleRate) - windowSamples / 2
-    let energy = 0
-    for (let i = 0; i < windowSamples; i += 1) {
-      const index = start + i
-      const sample = index >= 0 && index < data.length ? data[index] : 0
-      energy += sample * sample
-    }
-    loud[f] = Math.sqrt(energy / windowSamples)
-  }
-
-  const sortedLoud = Float32Array.from(loud).sort()
-  const loudCeiling = sortedLoud[Math.floor(sortedLoud.length * 0.97)] || 1e-6
-
-  const level = new Float32Array(frames)
-  let heldLevel = 0
-  for (let f = 0; f < frames; f += 1) {
-    const targetLevel = Math.min(1, Math.pow(loud[f] / loudCeiling, 0.7))
-    heldLevel += (targetLevel - heldLevel) * (targetLevel > heldLevel ? 0.5 : 0.16)
-    level[f] = heldLevel
-  }
-
-  return { level, frames }
-}
-
 async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
@@ -731,10 +652,9 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
   const translationRtl = isRtlTranslationEdition(edition)
   // In Amiri, like the ayah: a light, classical face that also has every Arabic-script letter.
   const translationFont = amiri
-  const { level, frames } = analyse(buffer)
+  const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
 
-  const [picture, still, clip, captions] = await Promise.all([
-    options.includeAvatar ? loadImage(`/api/qari/avatar/${encodeURIComponent(r.userUsername.toLowerCase())}`) : null,
+  const [still, clip, captions] = await Promise.all([
     !background.videoUrl && background.url ? loadImage(background.url) : null,
     background.videoUrl ? openClip(mb, background.videoUrl, frames) : null,
     prepareCaptions(r, translationFont, translationRtl),
@@ -759,10 +679,7 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
     shade: drawShade(picturePresent),
     captions,
     titleCard: captions.length ? null : drawTitleCard(r.title, serif),
-    footer: drawFooter(r, serif, sans, options.includeAvatar),
-    brand: drawBrand(serif),
-    avatar: options.includeAvatar ? drawAvatar(r, picture, serif) : null,
-    level,
+    footer: drawFooter(r, serif, sans),
     frames,
     seconds: buffer.duration,
   }
@@ -785,8 +702,6 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipF
     ctx.drawImage(scene.still, x, y, dw, dh)
   }
   ctx.drawImage(scene.shade, 0, 0)
-
-  ctx.drawImage(scene.brand, FOOTER_LEFT, Math.round(22 * S))
 
   // The ayah (or part) being recited: the last one whose time has come, held until the next.
   let caption: Caption | null = null
@@ -827,25 +742,7 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipF
     ctx.globalAlpha = 1
   }
 
-  const footerTop = FOOTER_BOTTOM - scene.footer.height
-  ctx.drawImage(scene.footer, 0, footerTop)
-  if (scene.avatar) {
-    const f = Math.max(0, Math.min(scene.frames - 1, Math.floor(t * FPS)))
-    const level = scene.level[f] ?? 0
-    const r = AVATAR_SIZE / 2
-    const cx = FOOTER_LEFT + r
-    const cy = footerTop + scene.footer.height / 2
-    // A soft ring breathing out from the picture with the voice.
-    ctx.save()
-    ctx.strokeStyle = '#ffffff'
-    ctx.globalAlpha = 0.12 + level * 0.3
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(cx, cy, r + 6 + level * 9, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.restore()
-    ctx.drawImage(scene.avatar, cx - r, cy - r)
-  }
+  ctx.drawImage(scene.footer, 0, FOOTER_BOTTOM - scene.footer.height)
 
   // In from black, and out again over the last moments of the tail.
   const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)
