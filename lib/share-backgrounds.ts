@@ -18,14 +18,23 @@ export interface ShareBackground {
   accent: string
 }
 
-export type ShareBackgroundGroup = 'Sacred' | 'Light and sky' | 'Nature' | 'Flowers and wildlife' | 'Quiet everyday'
+export type ShareBackgroundGroup =
+  | 'Makkah & Madinah'
+  | 'Cinematic'
+  | 'Soft aesthetic'
+  | 'Sacred'
+  | 'Light and sky'
+  | 'Nature'
+  | 'Flowers and wildlife'
+  | 'Quiet everyday'
 
-/** The order the gallery lists them in. */
+/** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
+  'Makkah & Madinah',
+  'Cinematic',
+  'Soft aesthetic',
   'Sacred',
   'Light and sky',
-  'Nature',
-  'Flowers and wildlife',
   'Quiet everyday',
 ]
 
@@ -34,29 +43,90 @@ function bg(id: string, label: string, group: ShareBackgroundGroup, accent: stri
 }
 
 export const SHARE_BACKGROUNDS: ShareBackground[] = [
+  // Makkah & Madinah
+  bg('haram-arch-sunset', 'Haram at sunset', 'Makkah & Madinah', '#ffd39a'),
+  bg('kaaba-door', 'Kaaba door', 'Makkah & Madinah', '#f3d489'),
+  bg('kaaba-night', 'Kaaba at night', 'Makkah & Madinah', '#f3d489'),
+  bg('haram-night', 'The Haram at night', 'Makkah & Madinah', '#f0d9a6'),
+  bg('kaaba-day', 'Kaaba by day', 'Makkah & Madinah', '#e8d3a8'),
+  bg('kaaba-clock-tower', 'Kaaba & tower', 'Makkah & Madinah', '#e8d3a8'),
+  bg('makkah-clock-tower', 'Makkah clock tower', 'Makkah & Madinah', '#a9e0c4'),
+  bg('green-dome', 'Green Dome', 'Makkah & Madinah', '#b6e2c6'),
+  bg('green-dome-sky', 'Green Dome & sky', 'Makkah & Madinah', '#b6e2c6'),
+  bg('nabawi-dusk', 'Minaret at dusk', 'Makkah & Madinah', '#ffcf94'),
+  bg('madinah-night', 'Madinah at night', 'Makkah & Madinah', '#ffd39a'),
+  bg('nabawi-umbrella-minaret', 'Umbrella frame', 'Makkah & Madinah', '#b4d4e8'),
+  bg('nabawi-minarets', 'Nabawi minarets', 'Makkah & Madinah', '#b4d4e8'),
+  bg('nabawi-umbrellas', 'Nabawi umbrellas', 'Makkah & Madinah', '#f0d9a6'),
+
+  // Cinematic
+  bg('golden-dunes', 'Golden dunes', 'Cinematic', '#ffc98a'),
+  bg('crescent-dusk', 'Crescent moon', 'Cinematic', '#ffcf94'),
+  bg('storm-at-sea', 'Storm at sea', 'Cinematic', '#bcd2f5'),
+  bg('misty-valley', 'Misty valley', 'Cinematic', '#c8e4b8'),
+  bg('wild-sea', 'Wild sea', 'Cinematic', '#a9d8e6'),
+  bg('lone-tree-fog', 'Lone tree', 'Cinematic', '#e2dccb'),
+  bg('alpenglow', 'Mountain glow', 'Cinematic', '#f6c6c0'),
+  bg('storm-clouds', 'Storm clouds', 'Cinematic', '#d4dbe3'),
+  bg('still-dusk', 'Still dusk', 'Cinematic', '#f2c3b4'),
+  bg('red-clouds', 'Red clouds', 'Cinematic', '#ffc7bd'),
+  bg('peaks-above-clouds', 'Above the peaks', 'Cinematic', '#d6dde8'),
+  bg('windswept-tree', 'Windswept tree', 'Cinematic', '#d8e0d2'),
+  bg('deep-water', 'Deep water', 'Cinematic', '#a9cfe6'),
+  bg('dark-shore', 'Dark shore', 'Cinematic', '#dcdcdc'),
+
+  // Soft aesthetic
+  bg('golden-shadows', 'Golden shadows', 'Soft aesthetic', '#ffcf94'),
+  bg('window-glow', 'Window glow', 'Soft aesthetic', '#ffc9a3'),
+  bg('sunlit-arch', 'Sunlit arch', 'Soft aesthetic', '#ffd39a'),
+  bg('palm-shadow', 'Palm shadow', 'Soft aesthetic', '#e2dccb'),
+  bg('pampas', 'Pampas', 'Soft aesthetic', '#e9cfae'),
+  bg('light-on-wall', 'Light on a wall', 'Soft aesthetic', '#ecd9a6'),
+  bg('golden-water', 'Golden water', 'Soft aesthetic', '#ffcf94'),
+  bg('dried-fern', 'Dried fern', 'Soft aesthetic', '#e9cfae'),
+  bg('palm-fan', 'Palm fan', 'Soft aesthetic', '#ecd9a6'),
+  bg('window-shadow', 'Window shadow', 'Soft aesthetic', '#ecd9a6'),
+  bg('dappled-light', 'Dappled light', 'Soft aesthetic', '#ecd9a6'),
+  bg('dried-petals', 'Dried petals', 'Soft aesthetic', '#e2cdb2'),
+
   // Sacred
-  bg('mosque-arches', 'Mosque arches', 'Sacred', '#e8d3a8'),
-  bg('mosque-columns', 'Mosque columns', 'Sacred', '#f0d9a6'),
-  bg('kiswah-gold', 'Gold calligraphy', 'Sacred', '#f3d489'),
-  bg('islamic-pattern', 'Pattern', 'Sacred', '#ffd9a3'),
   bg('quran-flowers', 'Quran & flowers', 'Sacred', '#f6c9cd'),
   bg('quran-ornate', 'Mushaf', 'Sacred', '#eccf9c'),
   bg('tasbih', 'Tasbih', 'Sacred', '#a8e0d2'),
   bg('sujood', 'In prayer', 'Sacred', '#a9dcc4'),
 
   // Light and sky
-  bg('sunrise', 'Sunrise', 'Light and sky', '#ffd8a0'),
   bg('above-clouds', 'Above the clouds', 'Light and sky', '#ffc9a8'),
+  bg('lake-sunset', 'Lake sunset', 'Light and sky', '#ffd39a'),
+  bg('candle', 'Candle', 'Light and sky', '#ffcf94'),
+  bg('lantern', 'Lantern', 'Light and sky', '#ffd39a'),
+
+  // Quiet everyday
+  bg('white-rose', 'White rose', 'Quiet everyday', '#f3d9a0'),
+  bg('rain-window', 'Rain (warm)', 'Quiet everyday', '#e8d5a4'),
+  bg('rain-cool', 'Rain (cool)', 'Quiet everyday', '#aed8de'),
+  bg('teacup', 'Quiet morning', 'Quiet everyday', '#e9cfae'),
+  bg('elderly-hands', 'Elder hands', 'Quiet everyday', '#e2cdb2'),
+  bg('small-hand', 'Small hand', 'Quiet everyday', '#dcdcdc'),
+  bg('hospital', 'Hospital', 'Quiet everyday', '#a9dde0'),
+  bg('hospital-drip', 'Hospital room', 'Quiet everyday', '#a9d4f0'),
+]
+
+/**
+ * Taken out of the pickers, but still drawn for the recitations already posted on
+ * them — so those keep the picture they were shared with. Their files stay in public/.
+ */
+export const RETIRED_SHARE_BACKGROUNDS: ShareBackground[] = [
+  bg('mosque-arches', 'Mosque arches', 'Sacred', '#e8d3a8'),
+  bg('mosque-columns', 'Mosque columns', 'Sacred', '#f0d9a6'),
+  bg('kiswah-gold', 'Gold calligraphy', 'Sacred', '#f3d489'),
+  bg('islamic-pattern', 'Pattern', 'Sacred', '#ffd9a3'),
+  bg('sunrise', 'Sunrise', 'Light and sky', '#ffd8a0'),
   bg('palm-sunset', 'Palm sunset', 'Light and sky', '#ffc9a3'),
   bg('night-sky', 'Night sky', 'Light and sky', '#d4c2f0'),
   bg('milky-way', 'Milky way', 'Light and sky', '#bcd2f5'),
-  bg('candle', 'Candle', 'Light and sky', '#ffcf94'),
-  bg('lantern', 'Lantern', 'Light and sky', '#ffd39a'),
   bg('bokeh-lights', 'City lights', 'Light and sky', '#ffc9b0'),
   bg('silhouette', 'Dusk', 'Light and sky', '#e6c6ea'),
-
-  // Nature
-  bg('lake-sunset', 'Lake sunset', 'Nature', '#ffd39a'),
   bg('still-water', 'Still water', 'Nature', '#a9d8e6'),
   bg('blue-hills', 'Blue hills', 'Nature', '#b4d4e8'),
   bg('peaks', 'Peaks', 'Nature', '#f2c3b4'),
@@ -67,33 +137,21 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   bg('old-tree', 'Old tree', 'Nature', '#dbe6b4'),
   bg('sunlight', 'Sunlight', 'Nature', '#e4dfa6'),
   bg('meadow', 'Meadow', 'Nature', '#ffe0a0'),
-
-  // Flowers and wildlife
   bg('fox', 'Fox', 'Flowers and wildlife', '#f2c48a'),
   bg('butterfly', 'Butterfly', 'Flowers and wildlife', '#f5e27a'),
-  bg('white-rose', 'White rose', 'Flowers and wildlife', '#f3d9a0'),
   bg('daisies', 'Daisies', 'Flowers and wildlife', '#f1e8a0'),
   bg('poppies', 'Poppies', 'Flowers and wildlife', '#ffc7bd'),
   bg('soft-bloom', 'Soft bloom', 'Flowers and wildlife', '#f8cddc'),
-
-  // Quiet everyday
-  bg('rain-window', 'Rain (warm)', 'Quiet everyday', '#e8d5a4'),
-  bg('rain-cool', 'Rain (cool)', 'Quiet everyday', '#aed8de'),
   bg('misty-road', 'Open road', 'Quiet everyday', '#ecd9a6'),
-  bg('teacup', 'Quiet morning', 'Quiet everyday', '#e9cfae'),
-  bg('elderly-hands', 'Elder hands', 'Quiet everyday', '#e2cdb2'),
-  bg('small-hand', 'Small hand', 'Quiet everyday', '#dcdcdc'),
-  bg('hospital', 'Hospital', 'Quiet everyday', '#a9dde0'),
-  bg('hospital-drip', 'Hospital room', 'Quiet everyday', '#a9d4f0'),
 ]
 
 /** The few shown in the picker's strip before "More". */
 export const FEATURED_SHARE_BACKGROUND_IDS = [
-  'mosque-arches',
-  'kiswah-gold',
-  'sunrise',
-  'night-sky',
-  'lake-sunset',
-  'fox',
-  'white-rose',
+  'haram-arch-sunset',
+  'kaaba-door',
+  'green-dome',
+  'golden-dunes',
+  'crescent-dusk',
+  'golden-shadows',
+  'sunlit-arch',
 ]

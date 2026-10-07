@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { BOTTOM_NAV_HEIGHT_REM, showBottomNavFor } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
+import { notePath } from '@/lib/nav-trail'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -19,10 +20,13 @@ export default function BottomNav() {
   const pathname = usePathname()
   const [lastPage, setLastPage] = useState(1)
 
+  // Looked up again on every screen change: the bar outlives Read, and Read
+  // must open where it was last left, not where it was when the app opened.
   useEffect(() => {
+    notePath(pathname)
     const page = Math.min(604, Math.max(1, Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1))
     setLastPage(page)
-  }, [])
+  }, [pathname])
 
   if (!showBottomNavFor(pathname)) return null
 

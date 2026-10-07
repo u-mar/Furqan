@@ -46,6 +46,7 @@ import { usePageTranslations } from '@/hooks/usePageTranslations'
 import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useHalaqaReadingTick } from '@/hooks/useHalaqaReadingTick'
+import { useBackGoesHome } from '@/hooks/useBackGoesHome'
 import { applyThemeToDocument, getAppSettings, READING_MODES, setAppSettings, THEME_MODES } from '@/lib/app-settings'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
@@ -97,6 +98,7 @@ function ReadPageContent() {
   const t = useT()
   const searchParams = useSearchParams()
   const initialPage = Number(searchParams.get('page') || '0')
+  useBackGoesHome()
 
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [pageVerses, setPageVerses] = useState<Verse[]>([])
@@ -203,6 +205,13 @@ function ReadPageContent() {
     localStorage.setItem(LAST_READ_PAGE_KEY, String(page))
     if (verses[0]?.verse_key) {
       localStorage.setItem(LAST_READ_POSITION_KEY, JSON.stringify({ page, verseKey: verses[0].verse_key }))
+    }
+    // The address follows the page too, so a reload, or the phone reopening the app, comes back here.
+    // The router's own state is carried over unchanged: this is not a navigation.
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('page') !== String(page)) {
+      url.searchParams.set('page', String(page))
+      window.history.replaceState(window.history.state, '', url)
     }
     prefetchMushafPages(page, 3)
   }, [])
@@ -362,6 +371,7 @@ function ReadPageContent() {
   const {
     state: somaliVoiceState,
     playVerse: playSomaliVoice,
+    prepare: prepareSomaliVoice,
     pause: pauseSomaliVoice,
     resume: resumeSomaliVoice,
     stop: stopSomaliVoice,
@@ -532,8 +542,10 @@ function ReadPageContent() {
       setBothActive(true)
       setBothVerseKey(verseKey)
       playVerse(verseKey, { continueOnPage: false })
+      // Its Somali loads while the Arabic plays, so it follows with no wait.
+      void prepareSomaliVoice(verseKey)
     },
-    [playVerse]
+    [playVerse, prepareSomaliVoice]
   )
 
   const stopAllAudio = () => {

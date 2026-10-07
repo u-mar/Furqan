@@ -459,7 +459,8 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
               arabicFont: view.fontFamily,
               // The mushaf's glyph font has no bold face; Amiri, its stand-in, reads better bold.
               arabicWeight: view.qcf ? '' : '700',
-              translation: texts[k] ?? null,
+              // A phrase with no translation of its own shows its ayah's whole one.
+              translation: texts[k] ?? view.translation,
               translationFont,
               translationRtl,
               mode,

@@ -195,7 +195,10 @@ function AyahStage({
       cancelled = true
     }
   }, [ayah, edition, parts])
-  const translation = ayah ? (split ? partTexts[`${edition}|${ayah.verseKey}|${partIndex}`] ?? null : ayah.translation) : null
+  // A phrase's own translation; when none could be worked out for it (Somali has no
+  // word-by-word meanings to cut it by), its ayah's whole translation instead.
+  const partText = ayah && split ? partTexts[`${edition}|${ayah.verseKey}|${partIndex}`] : undefined
+  const translation = ayah ? (split ? (partText === undefined ? null : partText ?? ayah.translation) : ayah.translation) : null
   // The last phrase ends with the ayah's ornament and its number.
   const shownWords = ayah
     ? [...ayah.words.slice(part.start, part.end + 1), ...(partIndex === parts.length - 1 && ayah.endMark ? [ayah.endMark] : [])]
@@ -236,9 +239,7 @@ function AyahStage({
                 ...(ayah.translationRtl ? { fontSize: mode === 'translation' ? 22 : 17 } : {}),
               }}
             >
-              {split && part.start > 0 ? '… ' : ''}
               {translation}
-              {split && partIndex < parts.length - 1 ? ' …' : ''}
             </p>
           ) : null}
         </div>

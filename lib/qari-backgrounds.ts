@@ -6,7 +6,7 @@
  * Plain data, so the server can check a posted id against it too.
  */
 
-import { SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS } from '@/lib/share-backgrounds'
+import { RETIRED_SHARE_BACKGROUNDS, SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS, type ShareBackground } from '@/lib/share-backgrounds'
 
 export interface VideoBackground {
   id: string
@@ -22,21 +22,27 @@ export interface VideoBackground {
   videoUrl?: string | null
 }
 
-/** What the picker strip shows before "More": black, one moving clip, and the four landscapes made for videos. */
+/** What the picker strip shows before "More": black, a few moving clips, and the best of the photos. */
 export const FEATURED_VIDEO_BACKGROUND_IDS = [
   'black',
-  'motion-sunset-on-the-beach',
-  'desert-dunes',
-  'canyon-pinnacles',
-  'mountain',
-  'valley',
+  'motion-lone-tree-sunset',
+  'photo-haram-arch-sunset',
+  'motion-winding-river',
+  'photo-golden-dunes',
+  'photo-green-dome',
+  'motion-pink-sea',
+  'photo-crescent-dusk',
 ]
 
 export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Motion', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
 
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
 
-/** Looping clips — Coverr footage, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle). */
+/**
+ * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
+ * The first six are Coverr footage; the rest are Pexels clips cut into short portrait loops (720×1280, silent,
+ * the end faded into the start).
+ */
 const MOTION_BACKGROUNDS: VideoBackground[] = (
   [
     ['sunset-in-auckland-new-zealand', 'Auckland sunset'],
@@ -45,6 +51,21 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
     ['sunset-on-the-beach', 'Beach sunset'],
     ['purple-flowers-at-sunset', 'Purple flowers'],
     ['sun-setting-in-auckland-new-zealand', 'Auckland sun'],
+    ['lone-tree-sunset', 'Lone tree'],
+    ['pink-sea', 'Pink sea'],
+    ['calm-lake-dusk', 'Calm lake'],
+    ['winding-river', 'Winding river'],
+    ['lakeside-tree', 'Lakeside tree'],
+    ['wild-tulips', 'Wild tulips'],
+    ['white-blossoms', 'White blossoms'],
+    ['pink-roses', 'Pink roses'],
+    ['misty-autumn-road', 'Misty road'],
+    ['windy-hills', 'Windy hills'],
+    ['wind-turbine-dusk', 'Wind turbine'],
+    ['forest-cabin', 'Forest cabin'],
+    ['green-meadow', 'Green meadow'],
+    ['lake-castle', 'Lake castle'],
+    ['town-at-sunset', 'Town at sunset'],
   ] as const
 ).map(([id, label]) => ({
   id: `motion-${id}`,
@@ -70,31 +91,45 @@ export const VIDEO_BACKGROUNDS: VideoBackground[] = [
     return { id, label, url, thumb: url, group: 'Landscapes' }
   }),
   // Everything the verse cards use, too.
-  ...SHARE_BACKGROUNDS.map((b) => ({ id: `photo-${b.id}`, label: b.label, url: b.src, thumb: b.thumb, group: b.group })),
+  ...SHARE_BACKGROUNDS.map(photoBackground),
 ]
 
-export function findVideoBackground(id: string): VideoBackground {
-  return VIDEO_BACKGROUNDS.find((b) => b.id === id) ?? VIDEO_BACKGROUNDS[0]
+function photoBackground(b: ShareBackground): VideoBackground {
+  return { id: `photo-${b.id}`, label: b.label, url: b.src, thumb: b.thumb, group: b.group }
 }
 
-/** True for an id from the list above — what the server accepts for a recitation. */
-export function isVideoBackgroundId(id: unknown): id is string {
+/** Photos no longer offered, still drawn for the recitations already posted on them. */
+const RETIRED_VIDEO_BACKGROUNDS: VideoBackground[] = RETIRED_SHARE_BACKGROUNDS.map(photoBackground)
+
+export function findVideoBackground(id: string): VideoBackground {
+  return (
+    VIDEO_BACKGROUNDS.find((b) => b.id === id) ?? RETIRED_VIDEO_BACKGROUNDS.find((b) => b.id === id) ?? VIDEO_BACKGROUNDS[0]
+  )
+}
+
+/** True for one the pickers offer. */
+function isListedBackgroundId(id: unknown): id is string {
   return typeof id === 'string' && VIDEO_BACKGROUNDS.some((b) => b.id === id)
+}
+
+/** True for an id from the lists above — what the server accepts for a recitation, retired photos included. */
+export function isVideoBackgroundId(id: unknown): id is string {
+  return isListedBackgroundId(id) || (typeof id === 'string' && RETIRED_VIDEO_BACKGROUNDS.some((b) => b.id === id))
 }
 
 /** The strip under the preview when posting: a quick handful across every kind, before "More". */
 export const FEATURED_RECITATION_BACKGROUND_IDS = [
+  'photo-haram-arch-sunset',
+  'motion-lone-tree-sunset',
+  'photo-golden-dunes',
+  'photo-green-dome',
+  'motion-winding-river',
+  'photo-crescent-dusk',
+  'photo-kaaba-door',
+  'motion-pink-sea',
+  'photo-golden-shadows',
+  'photo-storm-at-sea',
   'mountain',
-  'desert-dunes',
-  'motion-sunset-on-the-beach',
-  'photo-night-sky',
-  'valley',
-  'photo-mosque-arches',
-  'motion-river-surrounded-by-mountains',
-  'canyon-pinnacles',
-  'photo-lake-sunset',
-  'photo-milky-way',
-  'photo-still-water',
   'black',
 ]
 
@@ -119,7 +154,8 @@ const LAST_BACKGROUND_KEY = 'muyassar_qari_last_background'
 export function lastRecitationBackground(): string {
   try {
     const saved = localStorage.getItem(LAST_BACKGROUND_KEY)
-    if (saved && isVideoBackgroundId(saved)) return saved
+    // A photo since taken out of the pickers is not offered again.
+    if (saved && isListedBackgroundId(saved)) return saved
   } catch {
     /* ignore */
   }

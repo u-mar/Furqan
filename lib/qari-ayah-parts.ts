@@ -90,7 +90,8 @@ export function loadPartTranslation(verseKey: string, edition: string, part: Aya
         const res = await fetch(`/api/ayah?${params.toString()}`)
         if (!res.ok) throw new Error('part translation failed')
         const data = (await res.json()) as { text?: string | null }
-        return data.text?.trim() || null
+        // Without the "…" a meaning split across the translation is joined by: a phrase reads as plain words.
+        return data.text?.replace(/\s*(?:…|\.{2,})\s*/g, ' ').trim() || null
       } catch {
         // Tried again the next time it is needed.
         partTranslations.delete(key)

@@ -463,9 +463,13 @@ export function usePageRecitation({
       if (verseKey) onSingleVerseEndRef.current?.(verseKey)
     }
 
-    /** Follows the voice frame by frame: which ayah it is in, and when the page or a single ayah is done. */
-    const tick = () => {
-      tickRef.current = requestAnimationFrame(tick)
+    /**
+     * Follows the voice: which ayah it is in, and when the page or a single ayah is done.
+     * Frame by frame while the app is on screen; with the phone on another app no frames
+     * are drawn, so the audio's own time updates (a few a second) keep it going — without
+     * them the recitation ran on past the ayah and the Somali after it never came.
+     */
+    const follow = () => {
       const chapter = timedRef.current
       if (!chapter || abortingRef.current || audio.paused || pageEndFiredRef.current) return
       const session = playbackSessionRef.current
@@ -478,8 +482,9 @@ export function usePageRecitation({
       if (!current) return
 
       if (playModeRef.current === 'single') {
-        // One ayah only: stop exactly where it ends.
-        if (now >= current.to - 20) {
+        // One ayah only: stop exactly where it ends. Off screen the check comes only every
+        // quarter second or so, so it stops a touch early rather than run into the next ayah.
+        if (now >= current.to - (document.hidden ? 200 : 20)) {
           audio.pause()
           finishSingle()
         }
@@ -507,6 +512,10 @@ export function usePageRecitation({
           finishPlayback()
         }
       }
+    }
+    const tick = () => {
+      tickRef.current = requestAnimationFrame(tick)
+      follow()
     }
     const startTick = () => {
       if (tickRef.current === null) tickRef.current = requestAnimationFrame(tick)
@@ -546,7 +555,11 @@ export function usePageRecitation({
     }
 
     const onTimeUpdate = () => {
-      if (abortingRef.current || playModeRef.current !== 'page' || timedRef.current) return
+      if (timedRef.current) {
+        follow()
+        return
+      }
+      if (abortingRef.current || playModeRef.current !== 'page') return
       const session = playbackSessionRef.current
       if (session !== sessionRef.current) return
       const duration = audio.duration

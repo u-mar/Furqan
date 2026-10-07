@@ -157,7 +157,35 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
     lines.push(buildLineModel(lineNumber, segments, decoration))
   }
 
+  // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by design and sit in the middle.
+  if (pageNumber > 2) markNextSurahOpening(lines, pageWords)
+
   return { pageNumber, lines }
+}
+
+/**
+ * When a surah ends a line or two short of the page's foot, the printed mushaf
+ * puts the next surah's title there (and its basmalah, if both fit) while its
+ * first ayah starts overleaf, as on pages 76, 207 and 584. The words of this
+ * page alone leave those lines empty, which made the page look raised.
+ */
+function markNextSurahOpening(
+  lines: MushafLineModel[],
+  pageWords: Array<VerseWord & { verseKey: string }>
+): void {
+  const lastWord = pageWords[pageWords.length - 1]
+  if (!lastWord) return
+  const chapter = Number(lastWord.verseKey.split(':')[0]) + 1
+  if (!(chapter <= 114)) return
+
+  let first = lines.length
+  while (first > 0 && lines[first - 1].kind === 'empty') first -= 1
+  if (first === lines.length || first === 0 || lines[first - 1].kind !== 'content') return
+
+  lines[first] = { ...lines[first], kind: 'surah-header', chapterNumber: chapter }
+  if (first + 1 < lines.length && surahHasOpeningBasmalah(chapter)) {
+    lines[first + 1] = { ...lines[first + 1], kind: 'basmalah', chapterNumber: chapter }
+  }
 }
 
 export function surahHeaderToken(chapterNumber: number): string {

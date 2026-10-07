@@ -207,6 +207,10 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
           audio.load()
           await waitForAudioCanPlay(audio, LOAD_TIMEOUT_MS)
           if (session !== sessionRef.current) return false
+        } else if (audio.readyState < HTMLMediaElement.HAVE_METADATA) {
+          // Got ready by `prepare` and still arriving: a seek is only reliable once its length is known.
+          await waitForAudioCanPlay(audio, LOAD_TIMEOUT_MS)
+          if (session !== sessionRef.current) return false
         }
 
         await startPlayback()
@@ -219,6 +223,32 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     },
     [fail]
   )
+
+  /**
+   * Gets an ayah's Somali ready while the Arabic of it plays — its file loading and
+   * already at its start — so it begins the moment the Arabic ends, with no wait.
+   * Left alone while Somali is playing or paused.
+   */
+  const prepare = useCallback(async (verseKey: string) => {
+    if (segmentRef.current) return
+    const segment = await getSomaliVoiceSegment(verseKey)
+    const audio = audioRef.current
+    if (!segment || !audio || segmentRef.current) return
+    if (loadedFileRef.current !== segment.file || !audio.src) {
+      loadedFileRef.current = segment.file
+      audio.preload = 'auto'
+      audio.src = segment.audioUrl
+      audio.load()
+    }
+    const at = segment.wholeFile ? 0 : Math.max(0, segment.start)
+    const seek = () => {
+      if (!segmentRef.current && loadedFileRef.current === segment.file && Math.abs(audio.currentTime - at) > 0.25) {
+        audio.currentTime = at
+      }
+    }
+    if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) seek()
+    else audio.addEventListener('loadedmetadata', seek, { once: true })
+  }, [])
 
   useEffect(() => {
     const audio = new Audio()
@@ -257,6 +287,7 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
   return {
     state,
     playVerse,
+    prepare,
     pause,
     resume,
     stop,

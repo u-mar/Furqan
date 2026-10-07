@@ -247,8 +247,9 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
         weight: '500',
         maxWidth: translationWidth,
         maxHeight: available * 0.36,
-        startSize: 38,
-        minSize: 22,
+        // The size control is for the whole card, not only the Arabic.
+        startSize: Math.round(38 * fontScale),
+        minSize: Math.max(16, Math.round(22 * fontScale)),
         lineHeightRatio: 1.55,
       })
     : null
