@@ -86,6 +86,8 @@ function fontStacks() {
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    // Some backgrounds come from Cloudinary; without this the card's canvas could not be saved.
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error(tr('Could not load the background image')))
     img.src = src

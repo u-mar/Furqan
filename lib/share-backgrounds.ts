@@ -1,9 +1,10 @@
 /**
  * The pictures a verse card or a recitation video can sit on.
  *
- * They ship with the app in /public/share-bg (Unsplash licence, 1080x1350),
- * each with a small copy in /public/share-bg/thumb for the pickers. Adding one
- * is: drop the two files in, add a line below.
+ * Most ship with the app in /public/share-bg (Unsplash licence, 1080x1350),
+ * each with a small copy in /public/share-bg/thumb for the pickers: drop the two
+ * files in and add a `bg` line below. The rest live on Cloudinary under
+ * nadir/share-bg/: upload one there and add a `cloudBg` line.
  */
 
 export interface ShareBackground {
@@ -20,6 +21,7 @@ export interface ShareBackground {
 
 export type ShareBackgroundGroup =
   | 'Makkah & Madinah'
+  | 'Mosques'
   | 'Cinematic'
   | 'Soft aesthetic'
   | 'Sacred'
@@ -31,6 +33,7 @@ export type ShareBackgroundGroup =
 /** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
   'Makkah & Madinah',
+  'Mosques',
   'Cinematic',
   'Soft aesthetic',
   'Sacred',
@@ -40,6 +43,23 @@ export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
 
 function bg(id: string, label: string, group: ShareBackgroundGroup, accent: string): ShareBackground {
   return { id, label, src: `/share-bg/${id}.jpg`, thumb: `/share-bg/thumb/${id}.jpg`, group, accent }
+}
+
+const CLOUD_IMAGES = 'https://res.cloudinary.com/r2ule9za/image/upload'
+
+/**
+ * A picture kept on Cloudinary (nadir/share-bg/<id>) rather than in the app: it is
+ * cut to the card's 4:5 there, around what matters in it, and only fetched when chosen.
+ */
+function cloudBg(id: string, label: string, group: ShareBackgroundGroup, accent: string): ShareBackground {
+  return {
+    id,
+    label,
+    src: `${CLOUD_IMAGES}/c_fill,w_1080,h_1350,g_auto,q_auto,f_jpg/nadir/share-bg/${id}`,
+    thumb: `${CLOUD_IMAGES}/c_fill,w_240,h_300,g_auto,q_auto,f_jpg/nadir/share-bg/${id}`,
+    group,
+    accent,
+  }
 }
 
 export const SHARE_BACKGROUNDS: ShareBackground[] = [
@@ -59,8 +79,28 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   bg('nabawi-minarets', 'Nabawi minarets', 'Makkah & Madinah', '#b4d4e8'),
   bg('nabawi-umbrellas', 'Nabawi umbrellas', 'Makkah & Madinah', '#f0d9a6'),
 
+  // Mosques (on Cloudinary)
+  cloudBg('mihrab-calligraphy', 'Mihrab', 'Mosques', '#f3d489'),
+  cloudBg('blue-night', 'Blue night', 'Mosques', '#b4d4e8'),
+  cloudBg('golden-minbar', 'Golden minbar', 'Mosques', '#f3d489'),
+  cloudBg('lamp-lit-hall', 'Lamp-lit hall', 'Mosques', '#f0d9a6'),
+  cloudBg('ibn-tulun', 'Ibn Tulun courtyard', 'Mosques', '#ffd39a'),
+  cloudBg('raised-hands', 'Raised hands', 'Mosques', '#dcdcdc'),
+  cloudBg('chandelier-hall', 'Chandelier hall', 'Mosques', '#a9d8e6'),
+  cloudBg('blue-tile-wall', 'Blue tiles', 'Mosques', '#b4d4e8'),
+  cloudBg('green-carpet', 'Green carpet', 'Mosques', '#b6e2c6'),
+  cloudBg('sunlit-prayer-hall', 'Sunlit prayer hall', 'Mosques', '#ffcf94'),
+  cloudBg('framed-mosque', 'Framed mosque', 'Mosques', '#ffc9a3'),
+  cloudBg('striped-arches', 'Striped arches', 'Mosques', '#ffc9a3'),
+  cloudBg('golden-hour-mosque', 'Golden hour mosque', 'Mosques', '#ffd39a'),
+  cloudBg('blue-mosque', 'Blue Mosque', 'Mosques', '#b4d4e8'),
+  cloudBg('twin-minarets', 'Twin minarets', 'Mosques', '#bcd2f5'),
+  cloudBg('tall-minaret', 'Tall minaret', 'Mosques', '#e9cfae'),
+  cloudBg('old-courtyard', 'Old courtyard', 'Mosques', '#ecd9a6'),
+
   // Cinematic
   bg('golden-dunes', 'Golden dunes', 'Cinematic', '#ffc98a'),
+  cloudBg('autumn-mist', 'Autumn mist', 'Cinematic', '#e9cfae'),
   bg('crescent-dusk', 'Crescent moon', 'Cinematic', '#ffcf94'),
   bg('storm-at-sea', 'Storm at sea', 'Cinematic', '#bcd2f5'),
   bg('misty-valley', 'Misty valley', 'Cinematic', '#c8e4b8'),
@@ -103,6 +143,8 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
 
   // Quiet everyday
   bg('white-rose', 'White rose', 'Quiet everyday', '#f3d9a0'),
+  cloudBg('old-alley', 'Old alley', 'Quiet everyday', '#ffd39a'),
+  cloudBg('city-corner', 'City corner', 'Quiet everyday', '#dcdcdc'),
   bg('rain-window', 'Rain (warm)', 'Quiet everyday', '#e8d5a4'),
   bg('rain-cool', 'Rain (cool)', 'Quiet everyday', '#aed8de'),
   bg('teacup', 'Quiet morning', 'Quiet everyday', '#e9cfae'),

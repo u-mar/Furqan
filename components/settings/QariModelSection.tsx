@@ -1,15 +1,13 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, ChevronRight, Download, FileUp, FlaskConical, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, Download, Trash2 } from 'lucide-react'
 import {
   QARI_ASR_MODEL_URL,
   downloadQariAsrModel,
   isQariAsrModelReady,
   onQariAsrModelChange,
   removeQariAsrModel,
-  saveQariAsrModelFile,
 } from '@/lib/asr/offline-model-cache'
 import { releaseOfflineSession } from '@/lib/asr/offline-recognizer'
 import { cn } from '@/lib/cn'
@@ -17,16 +15,15 @@ import { tr, useT } from '@/lib/i18n'
 
 /**
  * Settings → Qari: the speech model that marks which ayat a recitation holds,
- * on the phone. Saved from a download, or from a file chosen on the phone.
+ * on the phone, saved from a one-time download.
  */
 export default function QariModelSection() {
   const t = useT()
   const [ready, setReady] = useState(false)
-  const [busy, setBusy] = useState<'download' | 'file' | null>(null)
+  const [busy, setBusy] = useState(false)
   const [percent, setPercent] = useState(0)
   const [label, setLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     setReady(isQariAsrModelReady())
@@ -34,7 +31,7 @@ export default function QariModelSection() {
   }, [])
 
   const download = async () => {
-    setBusy('download')
+    setBusy(true)
     setError(null)
     setPercent(0)
     try {
@@ -46,22 +43,7 @@ export default function QariModelSection() {
     } catch (err) {
       setError(`${err instanceof Error ? err.message : tr('Download failed')} (${QARI_ASR_MODEL_URL})`)
     } finally {
-      setBusy(null)
-    }
-  }
-
-  const chooseFile = async (file: File | undefined) => {
-    if (!file) return
-    setBusy('file')
-    setError(null)
-    try {
-      releaseOfflineSession()
-      await saveQariAsrModelFile(file)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : tr('Could not save that file.'))
-    } finally {
-      setBusy(null)
-      if (fileRef.current) fileRef.current.value = ''
+      setBusy(false)
     }
   }
 
@@ -108,27 +90,17 @@ export default function QariModelSection() {
           <div className="flex gap-2 px-3.5 pb-3">
             <button
               type="button"
-              disabled={busy !== null}
+              disabled={busy}
               onClick={() => void download()}
               className="ed-ink ed-focus flex h-10 flex-1 items-center justify-center gap-2 rounded-full text-[13px] font-semibold disabled:opacity-50"
             >
               <Download className="h-4 w-4" strokeWidth={2} />
               {t('Download')}
             </button>
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => fileRef.current?.click()}
-              className="ed-focus flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[13px] font-semibold text-[var(--home-heading)] disabled:opacity-50"
-            >
-              <FileUp className="h-4 w-4" strokeWidth={2} />
-              {t('Choose file')}
-            </button>
-            <input ref={fileRef} type="file" accept=".onnx" className="hidden" onChange={(e) => void chooseFile(e.target.files?.[0])} />
           </div>
         ) : null}
 
-        {busy === 'download' ? (
+        {busy ? (
           <div className="px-3.5 pb-3">
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
               <div className="h-full rounded-full bg-[var(--home-sage)] transition-all duration-300" style={{ width: `${percent}%` }} />
@@ -139,16 +111,6 @@ export default function QariModelSection() {
             </p>
           </div>
         ) : null}
-        {busy === 'file' ? <p className="px-3.5 pb-3 text-center text-xs text-[var(--home-muted)]">{t('Saving…')}</p> : null}
-
-        <div className="set-row__divider" style={{ marginLeft: 14 }} />
-        <Link href="/qari/asr-test" className="set-row">
-          <span className="set-row__icon">
-            <FlaskConical className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="set-row__label">{t('Test recognition')}</span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-        </Link>
       </div>
       <p className="mx-1 mt-2 text-xs leading-relaxed text-[var(--home-muted)]">
         {t('Listens to your recitation on your phone and marks each ayah, so it can be shown as you recite it. Nothing is sent anywhere.')}

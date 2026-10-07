@@ -34,9 +34,14 @@ export const FEATURED_VIDEO_BACKGROUND_IDS = [
   'photo-crescent-dusk',
 ]
 
-export const VIDEO_BACKGROUND_GROUPS = ['Plain', 'Motion', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]
+// "Mosques" holds both moving clips and photos, so it is listed once.
+export const VIDEO_BACKGROUND_GROUPS = [
+  ...new Set(['Plain', 'Motion', 'Mosques', 'Night drives', 'Streets', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]),
+]
 
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
+
+type MotionGroup = 'Motion' | 'Mosques' | 'Night drives' | 'Streets'
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -45,29 +50,81 @@ const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadi
  */
 const MOTION_BACKGROUNDS: VideoBackground[] = (
   [
-    ['sunset-in-auckland-new-zealand', 'Auckland sunset'],
-    ['sunset-on-sayulita-beach-in-mexico', 'Sayulita beach'],
-    ['river-surrounded-by-mountains', 'Mountain river'],
-    ['sunset-on-the-beach', 'Beach sunset'],
-    ['purple-flowers-at-sunset', 'Purple flowers'],
-    ['sun-setting-in-auckland-new-zealand', 'Auckland sun'],
-    ['lone-tree-sunset', 'Lone tree'],
-    ['pink-sea', 'Pink sea'],
-    ['calm-lake-dusk', 'Calm lake'],
-    ['winding-river', 'Winding river'],
-    ['lakeside-tree', 'Lakeside tree'],
-    ['wild-tulips', 'Wild tulips'],
-    ['white-blossoms', 'White blossoms'],
-    ['pink-roses', 'Pink roses'],
-    ['misty-autumn-road', 'Misty road'],
-    ['windy-hills', 'Windy hills'],
-    ['wind-turbine-dusk', 'Wind turbine'],
-    ['forest-cabin', 'Forest cabin'],
-    ['green-meadow', 'Green meadow'],
-    ['lake-castle', 'Lake castle'],
-    ['town-at-sunset', 'Town at sunset'],
-  ] as const
-).map(([id, label]) => ({
+    ['sunset-in-auckland-new-zealand', 'Auckland sunset', 'Motion'],
+    ['sunset-on-sayulita-beach-in-mexico', 'Sayulita beach', 'Motion'],
+    ['river-surrounded-by-mountains', 'Mountain river', 'Motion'],
+    ['sunset-on-the-beach', 'Beach sunset', 'Motion'],
+    ['purple-flowers-at-sunset', 'Purple flowers', 'Motion'],
+    ['sun-setting-in-auckland-new-zealand', 'Auckland sun', 'Motion'],
+    ['lone-tree-sunset', 'Lone tree', 'Motion'],
+    ['pink-sea', 'Pink sea', 'Motion'],
+    ['calm-lake-dusk', 'Calm lake', 'Motion'],
+    ['winding-river', 'Winding river', 'Motion'],
+    ['lakeside-tree', 'Lakeside tree', 'Motion'],
+    ['wild-tulips', 'Wild tulips', 'Motion'],
+    ['white-blossoms', 'White blossoms', 'Motion'],
+    ['pink-roses', 'Pink roses', 'Motion'],
+    ['misty-autumn-road', 'Misty road', 'Motion'],
+    ['windy-hills', 'Windy hills', 'Motion'],
+    ['wind-turbine-dusk', 'Wind turbine', 'Motion'],
+    ['forest-cabin', 'Forest cabin', 'Motion'],
+    ['green-meadow', 'Green meadow', 'Motion'],
+    ['lake-castle', 'Lake castle', 'Motion'],
+    ['town-at-sunset', 'Town at sunset', 'Motion'],
+    ['sea-at-dusk', 'Sea at dusk', 'Motion'],
+    ['wild-daisies', 'Wild daisies', 'Motion'],
+    ['golden-grass', 'Golden grass', 'Motion'],
+    ['island-at-dusk', 'Island at dusk', 'Motion'],
+    ['treetop', 'Treetop', 'Motion'],
+    ['ferry-at-sunset', 'Ferry at sunset', 'Motion'],
+    ['cliff-and-sea', 'Cliff & sea', 'Motion'],
+    ['deep-dive', 'Deep dive', 'Motion'],
+    ['white-horse', 'White horse', 'Motion'],
+
+    ['kaaba-pilgrims', 'Pilgrims at the Kaaba', 'Mosques'],
+    ['toward-the-tower', 'Toward the tower', 'Mosques'],
+    ['under-the-dome', 'Under the dome', 'Mosques'],
+    ['green-corridor', 'Green corridor', 'Mosques'],
+    ['nabawi-plaza', 'Nabawi plaza', 'Mosques'],
+    ['nabawi-evening', 'Nabawi evening', 'Mosques'],
+    ['umbrellas-minaret', 'Umbrellas & minaret', 'Mosques'],
+    ['nabawi-interior', 'Nabawi interior', 'Mosques'],
+    ['mosque-doorway', 'Mosque doorway', 'Mosques'],
+    ['pigeons-arches', 'Pigeons & arches', 'Mosques'],
+    ['prayer-hall', 'Prayer hall', 'Mosques'],
+    ['night-courtyard', 'Night courtyard', 'Mosques'],
+    ['mosque-interior', 'Mosque interior', 'Mosques'],
+    ['red-mihrab', 'Red mihrab', 'Mosques'],
+    ['before-the-mihrab', 'Before the mihrab', 'Mosques'],
+    ['ornate-gate', 'Ornate gate', 'Mosques'],
+    ['open-door', 'Open door', 'Mosques'],
+    ['mosque-window', 'Mosque window', 'Mosques'],
+    ['green-tiles', 'Green tiles', 'Mosques'],
+    ['stained-glass', 'Stained glass', 'Mosques'],
+    ['blue-domes', 'Blue domes', 'Mosques'],
+    ['waterfront-mosque', 'Waterfront mosque', 'Mosques'],
+    ['mosque-pigeons', 'Pigeons at the mosque', 'Mosques'],
+    ['mosque-in-rain', 'Rain at the mosque', 'Mosques'],
+    ['fish-pool', 'Fish pool', 'Mosques'],
+    ['courtyard-arches', 'Courtyard arches', 'Mosques'],
+
+    ['night-drive', 'Night drive', 'Night drives'],
+    ['wet-road', 'Wet road', 'Night drives'],
+    ['palm-road', 'Palm road', 'Night drives'],
+    ['highway-lights', 'Highway lights', 'Night drives'],
+    ['night-city', 'Night city', 'Night drives'],
+    ['night-highway', 'Night highway', 'Night drives'],
+    ['night-road', 'Night road', 'Night drives'],
+    ['quiet-road', 'Quiet road', 'Night drives'],
+    ['dusk-traffic', 'Dusk traffic', 'Night drives'],
+
+    ['rainy-street', 'Rainy street', 'Streets'],
+    ['old-quarter', 'Old quarter', 'Streets'],
+    ['neon-street', 'Neon street', 'Streets'],
+    ['city-street', 'City street', 'Streets'],
+    ['village-street', 'Village street', 'Streets'],
+  ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
+).map(([id, label, group]) => ({
   id: `motion-${id}`,
   label,
   // Cloudinary derives a JPG frame from the video on request — no separate upload needed.
@@ -75,7 +132,7 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
   // A small crop of that frame for the pickers — the full one is 1920px wide.
   thumb: `${MOTION_CLOUD_BASE.replace('/video/upload/', '/video/upload/w_240,h_300,c_fill,q_auto/')}/${id}.jpg`,
   videoUrl: `${MOTION_CLOUD_BASE}/${id}.mp4`,
-  group: 'Motion',
+  group,
 }))
 
 export const VIDEO_BACKGROUNDS: VideoBackground[] = [
