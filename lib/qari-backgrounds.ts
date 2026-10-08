@@ -25,23 +25,33 @@ export interface VideoBackground {
 /** What the picker strip shows before "More": black, a few moving clips, and the best of the photos. */
 export const FEATURED_VIDEO_BACKGROUND_IDS = [
   'black',
-  'motion-lone-tree-sunset',
-  'photo-haram-arch-sunset',
-  'motion-winding-river',
-  'photo-golden-dunes',
-  'photo-green-dome',
-  'motion-pink-sea',
-  'photo-crescent-dusk',
+  'motion-kaaba-door',
+  'motion-neon-rain',
+  'motion-moonlit-minaret',
+  'motion-night-rider',
+  'motion-green-dome',
+  'motion-walk-into-the-fog',
+  'motion-quran-script',
 ]
 
-// "Mosques" holds both moving clips and photos, so it is listed once.
+// Several groups hold both moving clips and photos, so each is listed once.
 export const VIDEO_BACKGROUND_GROUPS = [
-  ...new Set(['Plain', 'Motion', 'Mosques', 'Night drives', 'Streets', 'Landscapes', ...SHARE_BACKGROUND_GROUPS]),
+  ...new Set([
+    'Plain',
+    'Makkah & Madinah',
+    'Mosques',
+    'Quran',
+    'Night drives',
+    'Streets',
+    'Motion',
+    'Landscapes',
+    ...SHARE_BACKGROUND_GROUPS,
+  ]),
 ]
 
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
 
-type MotionGroup = 'Motion' | 'Mosques' | 'Night drives' | 'Streets'
+type MotionGroup = 'Motion' | 'Makkah & Madinah' | 'Mosques' | 'Quran' | 'Night drives' | 'Streets'
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -123,6 +133,58 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
     ['neon-street', 'Neon street', 'Streets'],
     ['city-street', 'City street', 'Streets'],
     ['village-street', 'Village street', 'Streets'],
+
+    // The cinematic collection (Pexels, picked for recitation videos)
+    ['kaaba-tawaf', 'Tawaf', 'Makkah & Madinah'],
+    ['hajj-crowd', 'Hajj crowd', 'Makkah & Madinah'],
+    ['kaaba-arcade', 'Kaaba through the arches', 'Makkah & Madinah'],
+    ['kaaba-door', 'Kaaba door', 'Makkah & Madinah'],
+    ['kaaba-night', 'Kaaba at night', 'Makkah & Madinah'],
+    ['haram-from-above', 'The Haram from above', 'Makkah & Madinah'],
+    ['nabawi-courtyard', 'Nabawi courtyard', 'Makkah & Madinah'],
+    ['nabawi-gathering', 'Evening at Nabawi', 'Makkah & Madinah'],
+    ['green-dome', 'Green Dome', 'Makkah & Madinah'],
+    ['nabawi-gate', 'Nabawi gate', 'Makkah & Madinah'],
+    ['nabawi-canopies', 'Nabawi canopies', 'Makkah & Madinah'],
+    ['moonlit-minaret', 'Moonlit minaret', 'Mosques'],
+    ['mosque-at-night', 'Mosque at night', 'Mosques'],
+    ['lit-mosque-above', 'Lit mosque from above', 'Mosques'],
+    ['selimiye-above', 'Selimiye from above', 'Mosques'],
+    ['selimiye-minaret', 'Selimiye minaret', 'Mosques'],
+    ['calligraphy-ceiling', 'Calligraphy ceiling', 'Mosques'],
+    ['dome-calligraphy', 'Dome calligraphy', 'Mosques'],
+    ['grand-chandelier', 'Grand chandelier', 'Mosques'],
+    ['eyup-sultan', 'Eyüp Sultan', 'Mosques'],
+    ['quran-script', 'Quran script', 'Quran'],
+    ['quran-misbaha', 'Quran & misbaha', 'Quran'],
+    ['reading-by-window', 'Reading by the window', 'Quran'],
+    ['lantern-table', 'Lantern on the table', 'Quran'],
+    ['ramadan-lamps', 'Ramadan lamps', 'Quran'],
+    ['night-rain', 'Night rain', 'Night drives'],
+    ['city-drive', 'City drive', 'Night drives'],
+    ['rainstorm-drive', 'Rainstorm drive', 'Night drives'],
+    ['rain-on-window', 'Rain on the window', 'Night drives'],
+    ['windshield-rain', 'Windshield rain', 'Night drives'],
+    ['city-lights', 'City lights', 'Night drives'],
+    ['night-traffic', 'Night traffic', 'Night drives'],
+    ['traffic-bokeh', 'Traffic bokeh', 'Night drives'],
+    ['the-road-ahead', 'The road ahead', 'Night drives'],
+    ['blue-tunnel', 'Blue tunnel', 'Night drives'],
+    ['lit-bridge', 'Lit bridge', 'Night drives'],
+    ['night-rider', 'Night rider', 'Night drives'],
+    ['metro-arrival', 'Metro arrival', 'Streets'],
+    ['yellow-train', 'Yellow train', 'Streets'],
+    ['night-tram', 'Night tram', 'Streets'],
+    ['neon-rain', 'Neon rain', 'Streets'],
+    ['rainy-night-street', 'Rainy night street', 'Streets'],
+    ['rain-and-lights', 'Rain and lights', 'Streets'],
+    ['walking-at-night', 'Walking at night', 'Streets'],
+    ['red-tram', 'Red tram', 'Streets'],
+    ['historic-alley', 'Historic alley', 'Streets'],
+    ['alley-at-night', 'Alley at night', 'Streets'],
+    ['old-cafe', 'Old café', 'Streets'],
+    ['crowd-shadows', 'Crowd shadows', 'Streets'],
+    ['walk-into-the-fog', 'Walk into the fog', 'Streets'],
   ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
 ).map(([id, label, group]) => ({
   id: `motion-${id}`,
@@ -176,17 +238,17 @@ export function isVideoBackgroundId(id: unknown): id is string {
 
 /** The strip under the preview when posting: a quick handful across every kind, before "More". */
 export const FEATURED_RECITATION_BACKGROUND_IDS = [
+  'motion-kaaba-door',
+  'motion-neon-rain',
+  'motion-moonlit-minaret',
+  'motion-night-rider',
+  'motion-green-dome',
+  'motion-blue-tunnel',
+  'motion-quran-script',
+  'motion-walk-into-the-fog',
+  'motion-night-tram',
+  'motion-calligraphy-ceiling',
   'photo-haram-arch-sunset',
-  'motion-lone-tree-sunset',
-  'photo-golden-dunes',
-  'photo-green-dome',
-  'motion-winding-river',
-  'photo-crescent-dusk',
-  'photo-kaaba-door',
-  'motion-pink-sea',
-  'photo-golden-shadows',
-  'photo-storm-at-sea',
-  'mountain',
   'black',
 ]
 

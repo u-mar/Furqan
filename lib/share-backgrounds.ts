@@ -22,6 +22,8 @@ export interface ShareBackground {
 export type ShareBackgroundGroup =
   | 'Makkah & Madinah'
   | 'Mosques'
+  | 'Night drives'
+  | 'Streets'
   | 'Cinematic'
   | 'Soft aesthetic'
   | 'Sacred'
@@ -34,9 +36,11 @@ export type ShareBackgroundGroup =
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
   'Makkah & Madinah',
   'Mosques',
+  'Sacred',
+  'Night drives',
+  'Streets',
   'Cinematic',
   'Soft aesthetic',
-  'Sacred',
   'Light and sky',
   'Quiet everyday',
 ]
@@ -78,6 +82,58 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   bg('nabawi-umbrella-minaret', 'Umbrella frame', 'Makkah & Madinah', '#b4d4e8'),
   bg('nabawi-minarets', 'Nabawi minarets', 'Makkah & Madinah', '#b4d4e8'),
   bg('nabawi-umbrellas', 'Nabawi umbrellas', 'Makkah & Madinah', '#f0d9a6'),
+
+  // The cinematic collection (Pexels, on Cloudinary)
+  cloudBg('kaaba-corner', 'Kaaba corner', 'Makkah & Madinah', '#f3d489'),
+  cloudBg('kaaba-from-above', 'Kaaba from above', 'Makkah & Madinah', '#f0d9a6'),
+  cloudBg('tower-and-kaaba', 'Tower & Kaaba', 'Makkah & Madinah', '#e8d3a8'),
+  cloudBg('green-dome-night', 'Green Dome at night', 'Makkah & Madinah', '#b6e2c6'),
+  cloudBg('green-dome-blue-sky', 'Green Dome & blue sky', 'Makkah & Madinah', '#b6e2c6'),
+  cloudBg('clock-tower-night', 'Clock tower at night', 'Makkah & Madinah', '#a9e0c4'),
+  cloudBg('haram-crowds', 'Haram crowds', 'Makkah & Madinah', '#f0d9a6'),
+  cloudBg('star-framed-minaret', 'Star-framed minaret', 'Makkah & Madinah', '#b4d4e8'),
+  cloudBg('sujood-calligraphy', 'Sujood', 'Mosques', '#dcdcdc'),
+  cloudBg('prayer-under-lanterns', 'Prayer under lanterns', 'Mosques', '#ffd39a'),
+  cloudBg('prostration', 'Prostration', 'Mosques', '#e9cfae'),
+  cloudBg('under-the-chandelier', 'Under the chandelier', 'Mosques', '#f0d9a6'),
+  cloudBg('blue-minaret', 'Blue minaret', 'Mosques', '#b4d4e8'),
+  cloudBg('mosque-silhouette', 'Mosque silhouette', 'Mosques', '#ffc98a'),
+  cloudBg('courtyard-at-night', 'Courtyard at night', 'Mosques', '#f0d9a6'),
+  cloudBg('quran-verses', 'Quran verses', 'Sacred', '#ffc7bd'),
+  cloudBg('quran-in-light', 'Quran in the light', 'Sacred', '#eccf9c'),
+  cloudBg('tasbih-on-quran', 'Tasbih on the Quran', 'Sacred', '#b4d4e8'),
+  cloudBg('hands-and-tasbih', 'Hands & tasbih', 'Sacred', '#dcdcdc'),
+  cloudBg('ramadan-evening', 'Ramadan evening', 'Sacred', '#ffcf94'),
+  cloudBg('oil-lamp', 'Oil lamp', 'Sacred', '#ffcf94'),
+  cloudBg('rider-at-night', 'Rider at night', 'Night drives', '#dcdcdc'),
+  cloudBg('light-trails', 'Light trails', 'Night drives', '#ffc98a'),
+  cloudBg('winding-road', 'Winding road', 'Night drives', '#ffd39a'),
+  cloudBg('blue-traffic', 'Blue traffic', 'Night drives', '#b4d4e8'),
+  cloudBg('dashboard-glow', 'Dashboard glow', 'Night drives', '#ffcf94'),
+  cloudBg('car-under-lights', 'Car under lights', 'Night drives', '#dcdcdc'),
+  cloudBg('black-car', 'Black car', 'Night drives', '#dcdcdc'),
+  cloudBg('speed-lights', 'Speed lights', 'Night drives', '#ffc98a'),
+  cloudBg('umbrella-in-neon', 'Umbrella in neon', 'Streets', '#ffc7bd'),
+  cloudBg('neon-corner', 'Neon corner', 'Streets', '#ffc7bd'),
+  cloudBg('red-umbrella', 'Red umbrella', 'Streets', '#ffc7bd'),
+  cloudBg('umbrella-silhouettes', 'Umbrella silhouettes', 'Streets', '#ffcf94'),
+  cloudBg('rain-glow', 'Rain glow', 'Streets', '#ffc98a'),
+  cloudBg('wet-avenue', 'Wet avenue', 'Streets', '#b4d4e8'),
+  cloudBg('rainy-boulevard', 'Rainy boulevard', 'Streets', '#b4d4e8'),
+  cloudBg('night-reflections', 'Night reflections', 'Streets', '#b4d4e8'),
+  cloudBg('city-reflection', 'City reflection', 'Streets', '#ffd39a'),
+  cloudBg('street-lamps', 'Street lamps', 'Streets', '#dcdcdc'),
+  cloudBg('crossing-light', 'Crossing light', 'Streets', '#dcdcdc'),
+  cloudBg('light-lines', 'Light lines', 'Streets', '#a9d8e6'),
+  cloudBg('two-trams', 'Two trams', 'Streets', '#b4d4e8'),
+  cloudBg('tram-window', 'Tram window', 'Streets', '#ffd39a'),
+  cloudBg('pink-tram', 'Pink tram', 'Streets', '#f8cddc'),
+  cloudBg('galata-at-night', 'Galata at night', 'Streets', '#ffd39a'),
+  cloudBg('lantern-alley', 'Lantern alley', 'Streets', '#ffd39a'),
+  cloudBg('cobbled-lane', 'Cobbled lane', 'Streets', '#ffd39a'),
+  cloudBg('arched-window', 'Arched window', 'Streets', '#ffcf94'),
+  cloudBg('cafe-window', 'Café window', 'Streets', '#ffcf94'),
+  cloudBg('night-cafe', 'Night café', 'Streets', '#ffcf94'),
 
   // Mosques (on Cloudinary)
   cloudBg('mihrab-calligraphy', 'Mihrab', 'Mosques', '#f3d489'),

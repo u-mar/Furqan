@@ -179,9 +179,12 @@ const CAPTION_CENTER_Y = Math.round(H * 0.5)
 const CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
 const CAPTION_WIDTH = W - Math.round(28 * S) * 2
 
-const FOOTER_LEFT = Math.round(16 * S)
-const FOOTER_HEIGHT = Math.round(38 * S)
-const FOOTER_BOTTOM = H - Math.round(28 * S)
+/** The ayah card is 1080 wide; its brand, scaled by this, reads the same here. */
+const CARD = W / 1080
+const BRAND_MUTED = 'rgba(255, 255, 255, 0.72)'
+const FOOTER_LEFT = Math.round(64 * CARD)
+const FOOTER_HEIGHT = Math.round(110 * CARD)
+const FOOTER_BOTTOM = H - Math.round(48 * CARD)
 
 /** A phrase drawn twice, every word lit and every word faint, and where each word is. */
 interface CaptionArt {
@@ -559,33 +562,37 @@ function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasEleme
     return shown === text ? text : `${shown.trimEnd()}…`
   }
 
-  // The mark: the app icon's letter on its black tile.
-  const mark = Math.round(16 * S)
-  const brandY = Math.round(height * 0.3)
-  ctx.save()
+  // Drawn as the ayah card draws it (lib/verse-image.ts), at this frame's size:
+  // the icon's letter on its black tile, then "Nadir App" in the card's soft white.
+  const mark = Math.round(46 * CARD)
+  const top = Math.round(4 * CARD)
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
+  ctx.shadowBlur = 22 * CARD
+  ctx.shadowOffsetY = 2 * CARD
   ctx.beginPath()
-  ctx.roundRect(x, brandY - mark / 2, mark, mark, mark * 0.24)
+  ctx.roundRect(x, top, mark, mark, mark * 0.24)
   ctx.fillStyle = '#000000'
   ctx.fill()
-  ctx.lineWidth = Math.max(1, Math.round(S * 0.6))
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
+  ctx.lineWidth = 1.5 * CARD
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
   ctx.stroke()
   ctx.fillStyle = '#f5ecd8'
   ctx.font = `700 ${Math.round(mark * 0.62)}px ${serif}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(APP_ICON_LETTER, x + mark / 2, brandY + mark * 0.04)
-  ctx.restore()
+  ctx.fillText(APP_ICON_LETTER, x + mark / 2, top + mark / 2 + mark * 0.04)
 
-  withShadow(ctx)
-  ctx.textBaseline = 'middle'
+  // The name sits on the line the card uses: 8px above the tile's foot, in card pixels.
   ctx.textAlign = 'left'
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-  ctx.font = `700 ${Math.round(12 * S)}px ${serif}`
-  ctx.fillText(`${APP_NAME} App`, x + mark + Math.round(6 * S), brandY)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-  ctx.font = `500 ${Math.round(11 * S)}px ${sans}`
-  ctx.fillText(fit(`@${r.userUsername}`), x, Math.round(height * 0.76))
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = BRAND_MUTED
+  ctx.font = `600 ${Math.round(26 * CARD)}px ${serif}`
+  ctx.fillText(`${APP_NAME} App`, x + mark + Math.round(16 * CARD), top + mark - Math.round(14 * CARD))
+
+  // The reciter under it, in the same soft white.
+  ctx.font = `500 ${Math.round(22 * CARD)}px ${sans}`
+  ctx.textBaseline = 'top'
+  ctx.fillText(fit(`@${r.userUsername}`), x, top + mark + Math.round(14 * CARD))
   return canvas
 }
 
