@@ -34,6 +34,20 @@ export const FEATURED_VIDEO_BACKGROUND_IDS = [
   'motion-quran-script',
 ]
 
+/** The kinds of scenery, each a set of clips alike enough to cut between in one video. */
+export const SCENERY_GROUPS = [
+  'Night sky',
+  'Rain',
+  'Golden hour',
+  'Clouds',
+  'Mountains',
+  'Ocean',
+  'Desert',
+  'Snow',
+  'Forest',
+  'Waterfalls & lakes',
+] as const
+
 // Several groups hold both moving clips and photos, so each is listed once.
 export const VIDEO_BACKGROUND_GROUPS = [
   ...new Set([
@@ -43,6 +57,7 @@ export const VIDEO_BACKGROUND_GROUPS = [
     'Quran',
     'Night drives',
     'Streets',
+    ...SCENERY_GROUPS,
     'Motion',
     'Landscapes',
     ...SHARE_BACKGROUND_GROUPS,
@@ -51,7 +66,9 @@ export const VIDEO_BACKGROUND_GROUPS = [
 
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
 
-type MotionGroup = 'Motion' | 'Makkah & Madinah' | 'Mosques' | 'Quran' | 'Night drives' | 'Streets'
+type SceneryGroup = (typeof SCENERY_GROUPS)[number]
+
+type MotionGroup = 'Motion' | 'Makkah & Madinah' | 'Mosques' | 'Quran' | 'Night drives' | 'Streets' | SceneryGroup
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -185,6 +202,67 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
     ['old-cafe', 'Old café', 'Streets'],
     ['crowd-shadows', 'Crowd shadows', 'Streets'],
     ['walk-into-the-fog', 'Walk into the fog', 'Streets'],
+    // Scenery: Pexels clips, six of each kind.
+    ['scenery-alpenglow-peak', 'Alpenglow peak', 'Mountains'],
+    ['scenery-cloud-valley', 'Cloud valley at dusk', 'Mountains'],
+    ['scenery-sea-of-clouds', 'Sea of clouds', 'Mountains'],
+    ['scenery-blue-ridges', 'Blue ridges', 'Mountains'],
+    ['scenery-dark-mist', 'Dark mist', 'Mountains'],
+    ['scenery-rolling-clouds', 'Rolling clouds', 'Mountains'],
+    ['scenery-storm-tower', 'Storm tower', 'Clouds'],
+    ['scenery-dreamy-blue', 'Dreamy blue', 'Clouds'],
+    ['scenery-hidden-sun', 'Hidden sun', 'Clouds'],
+    ['scenery-wing-view', 'Above the clouds', 'Clouds'],
+    ['scenery-window-seat', 'Window seat', 'Clouds'],
+    ['scenery-golden-horizon', 'Golden horizon', 'Clouds'],
+    ['scenery-sun-on-the-sea', 'Sun on the sea', 'Golden hour'],
+    ['scenery-shore-silhouette', 'Shore silhouette', 'Golden hour'],
+    ['scenery-grass-flare', 'Grass & sun', 'Golden hour'],
+    ['scenery-fire-sky', 'Fire sky', 'Golden hour'],
+    ['scenery-golden-river', 'Golden river', 'Golden hour'],
+    ['scenery-orange-sun', 'Orange sun', 'Golden hour'],
+    ['scenery-turquoise-surf', 'Turquoise surf', 'Ocean'],
+    ['scenery-deep-teal', 'Deep teal', 'Ocean'],
+    ['scenery-black-sand', 'Black sand', 'Ocean'],
+    ['scenery-sea-at-dusk', 'Sea at dusk', 'Ocean'],
+    ['scenery-mono-waves', 'Mono waves', 'Ocean'],
+    ['scenery-violet-sea', 'Violet sea', 'Ocean'],
+    ['scenery-star-vortex', 'Star vortex', 'Night sky'],
+    ['scenery-milky-way-lake', 'Milky Way lake', 'Night sky'],
+    ['scenery-stars-through-trees', 'Stars through trees', 'Night sky'],
+    ['scenery-lighthouse-stars', 'Lighthouse stars', 'Night sky'],
+    ['scenery-moon-and-clouds', 'Moon & clouds', 'Night sky'],
+    ['scenery-milky-way-forest', 'Milky Way forest', 'Night sky'],
+    ['scenery-rainy-sunset', 'Rainy sunset', 'Rain'],
+    ['scenery-raindrops', 'Raindrops', 'Rain'],
+    ['scenery-rainy-highway', 'Rainy highway', 'Rain'],
+    ['scenery-wet-reflections', 'Wet reflections', 'Rain'],
+    ['scenery-night-window', 'Night window', 'Rain'],
+    ['scenery-city-bokeh', 'City bokeh', 'Rain'],
+    ['scenery-camel-shadows', 'Camel shadows', 'Desert'],
+    ['scenery-dune-pattern', 'Dune pattern', 'Desert'],
+    ['scenery-dune-walker', 'Dune walker', 'Desert'],
+    ['scenery-caravan', 'Caravan', 'Desert'],
+    ['scenery-sahara-sunset', 'Sahara sunset', 'Desert'],
+    ['scenery-dune-ridge', 'Dune ridge', 'Desert'],
+    ['scenery-glowing-tree', 'Glowing tree', 'Snow'],
+    ['scenery-lantern-snow', 'Lantern snow', 'Snow'],
+    ['scenery-snowy-street', 'Snowy street', 'Snow'],
+    ['scenery-winter-sunrise', 'Winter sunrise', 'Snow'],
+    ['scenery-winter-stream', 'Winter stream', 'Snow'],
+    ['scenery-frosted-pines', 'Frosted pines', 'Snow'],
+    ['scenery-pink-dawn', 'Pink dawn', 'Forest'],
+    ['scenery-golden-road', 'Golden road', 'Forest'],
+    ['scenery-green-road', 'Green road', 'Forest'],
+    ['scenery-into-the-mist', 'Into the mist', 'Forest'],
+    ['scenery-sun-in-the-pines', 'Sun in the pines', 'Forest'],
+    ['scenery-forest-beams', 'Forest beams', 'Forest'],
+    ['scenery-rainbow-falls', 'Rainbow falls', 'Waterfalls & lakes'],
+    ['scenery-gorge-falls', 'Gorge falls', 'Waterfalls & lakes'],
+    ['scenery-mossy-falls', 'Mossy falls', 'Waterfalls & lakes'],
+    ['scenery-lone-pine', 'Lone pine', 'Waterfalls & lakes'],
+    ['scenery-reed-lake', 'Reed lake', 'Waterfalls & lakes'],
+    ['scenery-still-sunset', 'Still sunset', 'Waterfalls & lakes'],
   ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
 ).map(([id, label, group]) => ({
   id: `motion-${id}`,
@@ -287,4 +365,27 @@ export function rememberRecitationBackground(id: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Kinds whose clips look alike enough to cut between: not the old mixed "Motion" set. */
+const MIXABLE_GROUPS = new Set<string>(['Makkah & Madinah', 'Mosques', 'Quran', 'Night drives', 'Streets', ...SCENERY_GROUPS])
+
+/**
+ * The clips a recitation's background moves through: the one chosen first, then
+ * the others of its kind, so a video cuts between scenes like it instead of one
+ * loop over and over. Just the chosen one for a photo, black, or a clip of no
+ * particular kind.
+ */
+export function backgroundReel(background: VideoBackground): VideoBackground[] {
+  if (!background.videoUrl || !MIXABLE_GROUPS.has(background.group)) return [background]
+  const kin = MOTION_BACKGROUNDS.filter((b) => b.group === background.group && b.id !== background.id)
+  // The rest always in the same order for the same choice, but not the gallery's.
+  let seed = 0
+  for (let i = 0; i < background.id.length; i += 1) seed = (seed * 31 + background.id.charCodeAt(i)) | 0
+  const order = kin
+    .map((b, i) => ({ b, k: Math.abs((seed + i * 2654435761) | 0) % 997 }))
+    .sort((x, y) => x.k - y.k)
+    .map((x) => x.b)
+  // Six scenes at most: enough variety, without fetching a whole gallery for one video.
+  return [background, ...order.slice(0, 5)]
 }

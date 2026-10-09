@@ -11,7 +11,7 @@ Based on what the app stores (`prisma/schema.prisma`) and the Privacy Policy
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (HTTPS only) |
 | Do you provide a way for users to request that their data is deleted? | **Yes**: in Settings → Delete account, and at `/delete-account` |
 
-"Shared" in Play's sense means passed to a third party. Nadir doesn't share
+"Shared" in Play's sense means passed to a third party. Naba doesn't share
 user data. Hosting providers working on our behalf (MongoDB Atlas) count as
 service providers, not sharing. Posts that other users can see are not
 "sharing" either.

@@ -1,8 +1,14 @@
 /** App display name and generated icon styling (PWA / favicon). */
 
-export const APP_NAME = 'Nadir'
+/**
+ * Naba (نبأ), "news": the Quran is "the great news" (an-naba' al-ʿaẓīm, 78:2).
+ * Older internal names (storage keys, the Cloudinary folder, the speech
+ * service) still say "nadir"; they are never shown, and renaming them would
+ * reset people's settings or break saved links.
+ */
+export const APP_NAME = 'Naba'
 
-/** Arabic noon (ن) — the letter for "N", from Nadir. */
+/** Arabic noon (ن) — the letter for "N", from Naba (نبأ). */
 export const APP_ICON_LETTER = 'ن'
 
 export const APP_ICON_THEME_COLOR = '#000000'

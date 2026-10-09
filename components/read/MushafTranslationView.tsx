@@ -324,11 +324,21 @@ export default function MushafTranslationView({
     }
   })
 
+  // Opened while something plays: start at the ayah being recited, not the top of the page.
+  const openedRef = useRef(false)
+
   useLayoutEffect(() => {
+    const opening = !openedRef.current
+    openedRef.current = true
     if (!highlightedVerseKey || !followPlaybackScroll) return
     const container = scrollContainerRef?.current
     const el = ayahRefs.current.get(highlightedVerseKey)
     if (!container || !el) return
+
+    if (opening) {
+      scrollAyahToContainerTop(el, container, 'auto')
+      return
+    }
 
     const verseKeys = verses.map((v) => v.verse_key)
     const currentIndex = verseKeys.indexOf(highlightedVerseKey)

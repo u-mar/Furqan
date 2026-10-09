@@ -30,6 +30,8 @@ function readSavedScale(): number {
 /** Seed estimate for pages not yet measured — close to a typical rendered
  *  page's height, refined from real measurements as they come in. */
 const DEFAULT_PAGE_HEIGHT = 1250
+/** How long after the reader scrolls the view stops following the recited ayah. */
+const READER_SCROLL_PAUSE_MS = 8000
 
 export interface ContinuousScrollViewProps {
   currentPage: number
@@ -109,6 +111,8 @@ export default function ContinuousScrollView({
   const loadDebounceRef = useRef<number | null>(null)
   // Scrolling to follow the voice must not count as the reader moving to another page.
   const followingUntil = useRef(0)
+  // While the reader is looking around, the voice does not pull the view back to its ayah.
+  const readerScrolledAt = useRef(-Infinity)
   const scaleRef = useRef(1)
   const scaleSaveRef = useRef<number | null>(null)
 
@@ -355,9 +359,24 @@ export default function ContinuousScrollView({
   // When the recitation moves on to the next ayah, bring it into view. It is left alone if it
   // is already in the upper part of the screen, so a line-by-line read is not constantly nudged.
   useEffect(() => {
+    const root = containerRef.current
+    if (!root) return
+    const note = () => {
+      readerScrolledAt.current = performance.now()
+    }
+    root.addEventListener('touchmove', note, { passive: true })
+    root.addEventListener('wheel', note, { passive: true })
+    return () => {
+      root.removeEventListener('touchmove', note)
+      root.removeEventListener('wheel', note)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!followVerseKey) return
     const root = containerRef.current
     if (!root) return
+    if (performance.now() - readerScrolledAt.current < READER_SCROLL_PAUSE_MS) return
     const el = root.querySelector<HTMLElement>(`[data-verse-key="${followVerseKey}"]`)
     if (!el) return
     const rootRect = root.getBoundingClientRect()

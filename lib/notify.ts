@@ -10,6 +10,8 @@ export const LIKE_MILESTONES = [5, 10, 25, 50, 100, 250, 500, 1000]
  * up; a local-only one (`local_<username>`) is the username itself.
  */
 export async function actorFor(userId: string): Promise<{ username: string; name: string } | null> {
+  // Someone without an account has no name to show: their like still counts, quietly.
+  if (userId.startsWith('guest_')) return null
   if (userId.startsWith('local_')) {
     const username = userId.slice('local_'.length).toLowerCase()
     return username ? { username, name: username } : null

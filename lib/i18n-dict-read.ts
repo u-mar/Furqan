@@ -164,6 +164,7 @@ export const READ: Dict = {
   'Word-by-word, for the selected words only': { so: 'Erey-erey, ereyada la doortay oo keliya', ar: 'كلمة بكلمة، للكلمات المحددة فقط' },
   'Loading the translation…': { so: 'Tarjumaadda waa la soo raadinayaa…', ar: 'جارٍ تحميل الترجمة…' },
   'Save image': { so: 'Keydi sawirka', ar: 'حفظ الصورة' },
+  'Saved': { so: 'Waa la keydiyay', ar: 'تم الحفظ' },
   'Close search': { so: 'Xidh raadinta', ar: 'إغلاق البحث' },
   'Search surah by name or number…': { so: 'Raadi suurad magac ama lambar…', ar: 'ابحث عن سورة بالاسم أو الرقم…' },
   'Loading surahs…': { so: 'Suuradaha waa la soo raadinayaa…', ar: 'جارٍ تحميل السور…' },

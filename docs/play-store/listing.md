@@ -2,7 +2,7 @@
 
 ## App name (max 30 characters)
 
-Nadir: Quran, Recite & Listen
+Naba: Quran, Recite & Listen
 
 ## Short description (max 80 characters)
 
@@ -10,7 +10,7 @@ Read the Quran, listen to great reciters and share your own recitation.
 
 ## Full description (max 4000 characters)
 
-Nadir is a calm, beautiful home for the Quran: read it, listen to it, recite it and read it together.
+Naba is a calm, beautiful home for the Quran: read it, listen to it, recite it and read it together.
 
 READ
 • The Madani mushaf, page by page, in the same script as the printed copy
@@ -39,7 +39,7 @@ HALAQA
 • Read together with family and friends, and share a khatmah, juz by juz
 
 PRIVATE BY DESIGN
-• Most of Nadir works without an account
+• Most of Naba works without an account
 • Your reading progress, bookmarks and location stay on your phone
 • No ads, no tracking networks, and nothing to buy
 

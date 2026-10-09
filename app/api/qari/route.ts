@@ -7,6 +7,7 @@ import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, MAX_IMAGE_BYTES, putAudio, putImage 
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
+import { isGuestId } from '@/lib/guest-id'
 
 export const runtime = 'nodejs'
 
@@ -55,7 +56,7 @@ function parsePeaks(raw: string): number[] {
 
 /**
  * GET /api/qari?sort=recent|top&user=username&likedBy=userId&imitating=sheikhId
- *   &following=1&viewerId=&q=&skip=&take=
+ *   &following=1&viewerId=&guestId=&q=&skip=&take=
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -153,7 +154,10 @@ export async function GET(request: NextRequest) {
       take,
     })
 
-    const likedIds = await likedIdsFor(viewerId, recitations.map((r) => r.id))
+    // Someone without an account sees their own hearts too, by their phone's guest id.
+    const guestId = searchParams.get('guestId')?.trim()
+    const likerId = viewerId || (isGuestId(guestId) ? guestId : null)
+    const likedIds = await likedIdsFor(likerId, recitations.map((r) => r.id))
 
     return NextResponse.json({
       items: recitations.map((r) => toClientRecitation(r, likedIds.has(r.id))),

@@ -1,6 +1,6 @@
-# Publishing Nadir on Google Play
+# Publishing Naba on Google Play
 
-Nadir is a web app (PWA). It goes on Google Play as a **Trusted Web Activity
+Naba is a web app (PWA). It goes on Google Play as a **Trusted Web Activity
 (TWA)**: a small Android app, built with Google's Bubblewrap tool, that opens
 the live site full screen with no browser bar. Updates to the website reach
 the Play app straight away; a new Play build is only needed to change the
@@ -35,7 +35,7 @@ npm install -g @bubblewrap/cli
 ```
 
 ```bash
-mkdir nadir-android && cd nadir-android
+mkdir naba-android && cd naba-android
 ```
 
 ```bash
@@ -48,9 +48,9 @@ Answers to give `init` (it reads most of them from the manifest):
 |---|---|
 | Domain | `YOUR-DOMAIN` (no https://) |
 | URL path | `/` |
-| Application name | `Nadir` |
-| Short name | `Nadir` |
-| Application ID (package) | e.g. `app.nadir.quran`. **This can never change once published.** |
+| Application name | `Naba` |
+| Short name | `Naba` |
+| Application ID (package) | e.g. `app.nabaquran`. **This can never change once published.** |
 | Display mode | `standalone` |
 | Orientation | `portrait` |
 | Status bar / theme colour | `#000000` |
@@ -86,7 +86,7 @@ This makes `app-release-bundle.aab` (to upload to Play) and
    the *upload key* fingerprint, so builds installed directly from
    Bubblewrap work too.
 3. In your hosting settings, set:
-   - `ANDROID_PACKAGE_NAME` = the package from `init` (e.g. `app.nadir.quran`)
+   - `ANDROID_PACKAGE_NAME` = the package from `init` (e.g. `app.nabaquran`)
    - `ANDROID_SHA256_FINGERPRINTS` = both fingerprints, separated by a comma
 4. Redeploy, then open `https://YOUR-DOMAIN/.well-known/assetlinks.json`. It
    should list the package and fingerprints.

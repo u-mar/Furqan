@@ -114,6 +114,7 @@ export default function ShareVerseSheet({
   const [rendering, setRendering] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
   const [postCaption, setPostCaption] = useState('')
   /** The picture Qari gets: the same card, drawn the shape of a phone screen. */
@@ -274,6 +275,26 @@ export default function ShareVerseSheet({
     })
   }, [])
 
+  // Saving gives no sign of its own on most phones, so say it plainly: a
+  // message on top of the sheet, and the save button turns into a tick.
+  const savedTimer = useRef<number | null>(null)
+  const announceSaved = useCallback(() => {
+    toast(tr('Saved to your downloads.'), 'success')
+    setSaved(true)
+    if (savedTimer.current) window.clearTimeout(savedTimer.current)
+    savedTimer.current = window.setTimeout(() => setSaved(false), 2200)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    // Keeps the message above this sheet's action bar rather than over it.
+    document.documentElement.style.setProperty('--toast-sheet-lift', '4.75rem')
+    return () => {
+      document.documentElement.style.removeProperty('--toast-sheet-lift')
+      if (savedTimer.current) window.clearTimeout(savedTimer.current)
+    }
+  }, [open])
+
   const handleShare = useCallback(async () => {
     const blob = blobRef.current
     if (!blob || !target || busy) return
@@ -285,7 +306,7 @@ export default function ShareVerseSheet({
         surahName: target.surahName,
       })
       if (result === 'shared') onClose()
-      else setNotice(tr('Saved to your downloads.'))
+      else announceSaved()
     } catch (err) {
       console.error('Share verse failed:', err)
       setNotice(err instanceof Error ? err.message : tr('Could not share the card.'))
@@ -303,8 +324,8 @@ export default function ShareVerseSheet({
     document.body.appendChild(link)
     link.click()
     link.remove()
-    setNotice(tr('Saved to your downloads.'))
-  }, [target])
+    announceSaved()
+  }, [announceSaved, target])
 
   const openPost = useCallback(() => {
     if (!getSignedInUser()) {
@@ -625,10 +646,13 @@ export default function ShareVerseSheet({
             type="button"
             onClick={handleDownload}
             disabled={!ready}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--mushaf-popup-badge-bg)] transition-transform active:scale-95 disabled:opacity-50"
-            aria-label={t('Save image')}
+            className={cn(
+              'flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,color] active:scale-95 disabled:opacity-50',
+              saved ? 'bg-[var(--mushaf-read-accent)] text-white' : 'bg-[var(--mushaf-popup-badge-bg)]'
+            )}
+            aria-label={saved ? t('Saved') : t('Save image')}
           >
-            <Download className="h-[18px] w-[18px]" />
+            {saved ? <Check className="h-5 w-5" strokeWidth={2.6} /> : <Download className="h-[18px] w-[18px]" />}
           </button>
           {AYAH_CARD_POSTING ? (
             <button

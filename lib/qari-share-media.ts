@@ -22,7 +22,7 @@ import { getQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 import { isRtlTranslationEdition } from '@/lib/translations'
-import { findVideoBackground } from '@/lib/qari-backgrounds'
+import { backgroundReel, findVideoBackground, type VideoBackground } from '@/lib/qari-backgrounds'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -215,8 +215,8 @@ const UNSAID_ALPHA = 0.38
 interface Scene {
   /** A still background, drawn larger than the frame so it can drift. null for plain black or a clip. */
   still: HTMLCanvasElement | null
-  /** The moving background's frames, one per video frame, already the frame's size. */
-  clip: AsyncGenerator<CanvasImageSource | null> | null
+  /** The moving background — one clip, or several of a kind cut between — frame by frame. */
+  clip: Reel | null
   /** The shade over the background, and the soft black when there is none. */
   shade: HTMLCanvasElement
   captions: Caption[]
@@ -563,7 +563,7 @@ function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasEleme
   }
 
   // Drawn as the ayah card draws it (lib/verse-image.ts), at this frame's size:
-  // the icon's letter on its black tile, then "Nadir App" in the card's soft white.
+  // the icon's letter on its black tile, then "Naba App" in the card's soft white.
   const mark = Math.round(46 * CARD)
   const top = Math.round(4 * CARD)
   ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
@@ -650,6 +650,105 @@ async function openClip(mb: Mediabunny, url: string, frames: number): Promise<As
   return null
 }
 
+/** One clip's stretch of the video, in frames: from `from` up to (not including) `to`. */
+interface Shot {
+  clip: VideoBackground
+  from: number
+  to: number
+}
+
+/** A cut is at least this far from the last, and from the end; a gap longer than the longest gets one partway. */
+const MIN_SHOT_SECONDS = 3.5
+const MAX_SHOT_SECONDS = 8
+const FILL_SHOT_SECONDS = 6
+/** Each scene dissolves into the next over this long. */
+const DISSOLVE_FRAMES = Math.round(0.5 * FPS)
+
+/**
+ * Where a video moves from one clip of the kind to the next: on a new ayah (or
+ * part) wherever one comes, so the picture changes with the words, and partway
+ * through a long one. A single clip just plays the whole way.
+ */
+function planShots(reel: VideoBackground[], captions: Caption[], frames: number): Shot[] {
+  if (reel.length < 2) return [{ clip: reel[0], from: 0, to: frames }]
+  const seconds = frames / FPS
+  const cuts = [0]
+  let last = 0
+  for (const t of [...captions.map((c) => c.atSeconds).filter((t) => t > 0), seconds]) {
+    while (t - last > MAX_SHOT_SECONDS && seconds - (last + FILL_SHOT_SECONDS) >= MIN_SHOT_SECONDS) {
+      last += FILL_SHOT_SECONDS
+      cuts.push(Math.round(last * FPS))
+    }
+    if (t < seconds && t - last >= MIN_SHOT_SECONDS && seconds - t >= MIN_SHOT_SECONDS) {
+      cuts.push(Math.round(t * FPS))
+      last = t
+    }
+  }
+  return cuts.map((from, i) => ({ clip: reel[i % reel.length], from, to: cuts[i + 1] ?? frames }))
+}
+
+interface ReelFrame {
+  frame: CanvasImageSource | null
+  /** The next scene coming in over the last moments of this one, and how far it has come (0–1). */
+  incoming: CanvasImageSource | null
+  mix: number
+}
+
+interface Reel {
+  /** The frames for video frame `i`; called once for each frame, in order. */
+  next: (i: number) => Promise<ReelFrame>
+  close: () => void
+}
+
+/**
+ * Plays the shots one after another. Each clip is opened as the one before it
+ * starts, so it is ready by its cut, and let go once it has played.
+ */
+async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
+  type Frames = AsyncGenerator<CanvasImageSource | null>
+  const opened = new Map<number, Promise<Frames | null>>()
+  const open = (k: number): Promise<Frames | null> => {
+    let frames = opened.get(k)
+    if (!frames) {
+      const shot = shots[k]
+      // A shot after the first also plays under the dissolve into it.
+      const length = shot.to - shot.from + (k > 0 ? DISSOLVE_FRAMES : 0)
+      const first = shots[0].clip.videoUrl
+      frames = (shot.clip.videoUrl ? openClip(mb, shot.clip.videoUrl, length) : Promise.resolve(null)).then(
+        // A clip that will not load gives way to the first one again rather than a frozen frame.
+        (opened) => opened ?? (k > 0 && first ? openClip(mb, first, length) : null)
+      )
+      opened.set(k, frames)
+    }
+    return frames
+  }
+  const release = (k: number) => void opened.get(k)?.then((frames) => frames?.return(undefined))
+  const pull = async (frames: Frames | null) => (frames ? ((await frames.next()).value ?? null) : null)
+
+  if (!(await open(0))) return null
+  if (shots.length > 1) void open(1)
+  let k = 0
+
+  return {
+    async next(i) {
+      while (k < shots.length - 1 && i >= shots[k].to) {
+        release(k)
+        k += 1
+        if (k + 1 < shots.length) void open(k + 1)
+      }
+      const frame = await pull(await open(k))
+      const dissolveFrom = shots[k].to - DISSOLVE_FRAMES
+      if (k < shots.length - 1 && i >= dissolveFrom) {
+        return { frame, incoming: await pull(await open(k + 1)), mix: (i - dissolveFrom + 1) / (DISSOLVE_FRAMES + 1) }
+      }
+      return { frame, incoming: null, mix: 0 }
+    },
+    close() {
+      for (const key of opened.keys()) release(key)
+    },
+  }
+}
+
 async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
@@ -661,9 +760,8 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
   const translationFont = amiri
   const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
 
-  const [still, clip, captions] = await Promise.all([
+  const [still, captions] = await Promise.all([
     !background.videoUrl && background.url ? loadImage(background.url) : null,
-    background.videoUrl ? openClip(mb, background.videoUrl, frames) : null,
     prepareCaptions(r, translationFont, translationRtl),
     document.fonts
       ? Promise.all([
@@ -676,6 +774,8 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
       : null,
   ])
 
+  // Cut where the ayat change, so the captions are needed first.
+  const clip = background.videoUrl ? await openReel(mb, planShots(backgroundReel(background), captions, frames)) : null
   // A clip that cannot be read stands still on its poster frame instead.
   const fallback = background.videoUrl && !clip && background.url ? await loadImage(background.url) : null
   const picturePresent = Boolean(still || clip || fallback)
@@ -692,12 +792,17 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
   }
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipFrame: CanvasImageSource | null) {
+function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipFrame: CanvasImageSource | null, incoming: ReelFrame | null) {
   ctx.fillStyle = '#070707'
   ctx.fillRect(0, 0, W, H)
 
   if (clipFrame) {
     ctx.drawImage(clipFrame, 0, 0, W, H)
+    if (incoming?.incoming && incoming.mix > 0) {
+      ctx.globalAlpha = Math.min(1, incoming.mix)
+      ctx.drawImage(incoming.incoming, 0, 0, W, H)
+      ctx.globalAlpha = 1
+    }
   } else if (scene.still) {
     // The swipe view's slow drift: in a little and across, and back, every 26 seconds.
     const phase = (1 - Math.cos((t / 26) * Math.PI)) / 2
@@ -799,17 +904,18 @@ export async function makeRecitationVideo(
   const audioChunk = buffer.sampleRate
   let audioCursor = 0
   let clipFrame: CanvasImageSource | null = null
+  let reelFrame: ReelFrame | null = null
 
   try {
     for (let i = 0; i < totalFrames; i += 1) {
       throwIfCancelled(signal)
       const t = i / FPS
       if (scene.clip) {
-        const next = await scene.clip.next()
+        reelFrame = await scene.clip.next(i)
         // A frame that did not decode keeps the one before it.
-        if (!next.done && next.value) clipFrame = next.value
+        if (reelFrame.frame) clipFrame = reelFrame.frame
       }
-      drawFrame(ctx, scene, t, clipFrame)
+      drawFrame(ctx, scene, t, clipFrame, reelFrame)
       await video.add(t, 1 / FPS)
 
       // Audio is fed alongside the frames so the file interleaves as it is written.
@@ -830,7 +936,7 @@ export async function makeRecitationVideo(
     if (output.state !== 'finalized') await output.cancel().catch(() => {})
     throw err
   } finally {
-    void scene.clip?.return(undefined)
+    scene.clip?.close()
   }
 
   const data = output.target.buffer

@@ -1800,22 +1800,158 @@ html.dark .legal-summary li::before {
   animation: auth-step-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+/* The sign-in screen's own accent: the brand's deep green on light, its bright sage on dark. */
+.auth-screen {
+  --auth-accent: #0b5f54;
+  --auth-accent-fg: #ffffff;
+  --auth-danger: #e11d48;
+}
+
+html.dark .auth-screen {
+  --auth-accent: #5cc4ab;
+  --auth-accent-fg: #0b1512;
+  --auth-danger: #fb7185;
+}
+
+/* The band across the top: colour only — deep green into night, with a little light in two corners. */
+.auth-hero {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  min-height: 15.5rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding: max(1.25rem, env(safe-area-inset-top)) 1.5rem 3.4rem;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(92, 196, 171, 0.3), transparent 55%),
+    radial-gradient(80% 70% at 100% 0%, rgba(217, 184, 106, 0.16), transparent 60%),
+    linear-gradient(160deg, #0f4d45 0%, #0b2f2b 55%, #071816 100%);
+  color: #fff;
+}
+
+.auth-hero__close {
+  position: absolute;
+  top: max(0.9rem, env(safe-area-inset-top));
+  right: 1rem;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: background-color 0.15s ease;
+}
+
+.auth-hero__close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.auth-hero__text {
+  position: relative;
+  padding-top: 2.75rem;
+}
+
+/* The mark as frosted glass on the green, rather than a black tile. */
+.auth-hero .auth-hero__mark {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #f5ecd8;
+}
+
+/* The form rises over the band on a rounded edge. */
+.auth-panel {
+  position: relative;
+  margin-top: -1.75rem;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  border-radius: 1.75rem 1.75rem 0 0;
+  background: var(--app-bg);
+  padding: 1.5rem 1.5rem max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: var(--home-track);
+}
+
+.auth-tab {
+  height: 2.6rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--home-muted);
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-tab.is-on {
+  background: var(--home-card-bg);
+  color: var(--home-heading);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px -6px rgba(0, 0, 0, 0.2);
+}
+
+.auth-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--home-heading);
+}
+
+.auth-label__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: -0.5rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--auth-accent);
+}
+
+.auth-note {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--home-muted);
+}
+
 .auth-primary,
 .auth-secondary {
   display: flex;
   width: 100%;
-  min-height: 3.5rem;
+  min-height: 3.375rem;
   align-items: center;
   justify-content: center;
-  border-radius: 1rem;
+  gap: 0.5rem;
+  border-radius: 999px;
   font-size: 1rem;
   font-weight: 600;
-  transition: transform 0.12s ease, opacity 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .auth-primary {
-  background: var(--home-ink);
-  color: var(--home-ink-fg);
+  background: var(--auth-accent, var(--home-ink));
+  color: var(--auth-accent-fg, var(--home-ink-fg));
+  box-shadow: 0 12px 24px -14px color-mix(in srgb, var(--auth-accent, #000) 85%, transparent);
 }
 
 .auth-secondary {
@@ -1825,26 +1961,159 @@ html.dark .legal-summary li::before {
 
 .auth-primary:active:not(:disabled),
 .auth-secondary:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
 
 .auth-primary:disabled {
-  opacity: 0.35;
+  opacity: 0.38;
+  box-shadow: none;
 }
 
-/* One large field per screen: an underline, not a box, so it reads as the
-   answer to the question above it. */
+.auth-quiet {
+  width: 100%;
+  padding: 0.55rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--home-muted);
+  transition: color 0.15s ease;
+}
+
+.auth-quiet:hover {
+  color: var(--home-heading);
+}
+
+/* A field: a calm box with its icon, that takes the accent while it is being typed in. */
 .auth-field {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 2px solid var(--home-rule-strong);
-  transition: border-color 0.15s ease;
+  gap: 0.7rem;
+  min-height: 3.375rem;
+  padding: 0 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid var(--home-rule-strong);
+  background: var(--home-card-bg);
+  box-shadow: 0 1px 2px rgba(20, 18, 14, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .auth-field:focus-within {
-  border-color: var(--home-sage-deep);
+  border-color: var(--auth-accent, var(--home-sage-deep));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--auth-accent, var(--home-sage-deep)) 15%, transparent);
+}
+
+.auth-field.is-invalid {
+  border-color: var(--auth-danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--auth-danger) 12%, transparent);
+}
+
+.auth-field__icon {
+  height: 18px;
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--home-muted);
+  transition: color 0.15s ease;
+}
+
+.auth-field:focus-within .auth-field__icon {
+  color: var(--auth-accent);
+}
+
+.auth-field__ok {
+  height: 18px;
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--auth-accent);
+}
+
+.auth-input {
+  min-width: 0;
+  flex: 1;
+  height: 3.25rem;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--home-heading);
+}
+
+.auth-input::placeholder {
+  font-weight: 400;
+  color: var(--home-muted);
+  opacity: 0.8;
+  letter-spacing: normal;
+}
+
+.auth-input:focus {
+  outline: none;
+}
+
+/* The PIN, one box per digit. */
+.auth-pin {
+  display: flex;
+  height: 3.6rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.95rem;
+  border: 1px solid var(--home-rule-strong);
+  background: var(--home-card-bg);
+  box-shadow: 0 1px 2px rgba(20, 18, 14, 0.04);
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-heading);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-pin.is-filled {
+  border-color: color-mix(in srgb, var(--home-heading) 38%, transparent);
+}
+
+.auth-pin.is-current {
+  border-color: var(--auth-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--auth-accent) 15%, transparent);
+}
+
+.auth-pin.is-current:not(.is-filled)::after {
+  content: '';
+  height: 1.4rem;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--auth-accent);
+  animation: auth-caret 1s steps(1) infinite;
+}
+
+@keyframes auth-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.auth-pin.is-invalid {
+  border-color: var(--auth-danger);
+}
+
+.auth-pin__dot {
+  height: 0.7rem;
+  width: 0.7rem;
+  border-radius: 999px;
+  background: var(--home-heading);
+}
+
+.auth-error {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.8rem;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: #be123c;
+  background: rgba(225, 29, 72, 0.08);
+}
+
+html.dark .auth-error {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.12);
 }
 
 @keyframes auth-shake {
@@ -1861,7 +2130,8 @@ html.dark .legal-summary li::before {
 
 @media (prefers-reduced-motion: reduce) {
   .auth-step,
-  .auth-shake {
+  .auth-shake,
+  .auth-pin.is-current:not(.is-filled)::after {
     animation: none;
   }
 }

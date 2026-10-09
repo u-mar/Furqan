@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
-import type { VideoBackground } from '@/lib/qari-backgrounds'
+import { backgroundReel, type VideoBackground } from '@/lib/qari-backgrounds'
 
 /**
  * A recitation's background filling its box: the picture, the clip itself for
@@ -28,6 +28,8 @@ export default function BackgroundCover({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const clip = moving && background.videoUrl ? background.videoUrl : null
+  // A clip of a kind moves on to the others like it, as the shared video does.
+  const reel = useMemo(() => (clip ? backgroundReel(background) : []), [clip, background])
 
   useEffect(() => {
     const video = videoRef.current
@@ -47,6 +49,8 @@ export default function BackgroundCover({
     <div className={cn('absolute inset-0 overflow-hidden bg-[#070707]', className)} aria-hidden>
       {!src ? (
         <div className="absolute inset-0 bg-[radial-gradient(110%_75%_at_50%_38%,#232323,#060606)]" />
+      ) : clip && reel.length > 1 ? (
+        <ClipReel key={background.id} reel={reel} paused={paused} className={media} />
       ) : clip ? (
         <video
           key={clip}
@@ -64,5 +68,45 @@ export default function BackgroundCover({
         <img key={src} src={src} alt="" decoding="async" draggable={false} className={media} />
       )}
     </div>
+  )
+}
+
+/**
+ * Each clip of the reel once through, then the next. Two players take turns: while one
+ * shows, the other has the next clip loaded and waiting, so the cut is clean.
+ */
+function ClipReel({ reel, paused, className }: { reel: VideoBackground[]; paused: boolean; className: string }) {
+  const first = useRef<HTMLVideoElement | null>(null)
+  const second = useRef<HTMLVideoElement | null>(null)
+  const [step, setStep] = useState(0)
+  const showing = step % 2
+
+  useEffect(() => {
+    const video = (showing === 0 ? first : second).current
+    if (!video) return
+    if (paused) video.pause()
+    else void video.play().catch(() => {})
+  }, [paused, showing])
+
+  return (
+    <>
+      {[first, second].map((ref, slot) => {
+        const shown = slot === showing
+        const clip = reel[(shown ? step : step + 1) % reel.length]
+        return (
+          <video
+            key={slot}
+            ref={ref}
+            src={clip.videoUrl ?? undefined}
+            poster={shown ? (clip.url ?? undefined) : undefined}
+            muted
+            playsInline
+            preload="auto"
+            onEnded={shown ? () => setStep((n) => n + 1) : undefined}
+            className={cn(className, !shown && 'invisible')}
+          />
+        )
+      })}
+    </>
   )
 }

@@ -1,8 +1,8 @@
 'use client'
 
 import { getSignedInUser } from '@/lib/auth'
+import { getGuestId } from '@/lib/guest-id'
 
-const DEVICE_ID_KEY = 'muyassar_device_id'
 const FIRST_SEEN_KEY = 'muyassar_first_seen_at'
 
 /** When this browser profile first opened the app (ms). Used to skip old admin popups. */
@@ -29,20 +29,6 @@ export function getUsageIdentity(): { userId: string; userName: string } {
     return { userId: signedIn.id, userName: signedIn.name }
   }
 
-  if (typeof window === 'undefined') {
-    return { userId: 'anon', userName: 'Guest' }
-  }
-
-  try {
-    let deviceId = localStorage.getItem(DEVICE_ID_KEY)
-    if (!deviceId) {
-      const now = Date.now()
-      deviceId = `guest_${crypto.randomUUID()}`
-      localStorage.setItem(DEVICE_ID_KEY, deviceId)
-      localStorage.setItem(FIRST_SEEN_KEY, String(now))
-    }
-    return { userId: deviceId, userName: 'Guest' }
-  } catch {
-    return { userId: 'anon', userName: 'Guest' }
-  }
+  const deviceId = getGuestId()
+  return deviceId ? { userId: deviceId, userName: 'Guest' } : { userId: 'anon', userName: 'Guest' }
 }

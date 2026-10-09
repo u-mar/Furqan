@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
  * address bar at the top.
  *
  * Set in the hosting environment:
- *   ANDROID_PACKAGE_NAME          e.g. app.nadir.twa
+ *   ANDROID_PACKAGE_NAME          e.g. app.nabaquran
  *   ANDROID_SHA256_FINGERPRINTS   the app signing key's SHA-256, from Play
  *                                 Console → Test and release → App integrity.
  *                                 Several are allowed, comma-separated (for

@@ -31,6 +31,14 @@ export type ShareBackgroundGroup =
   | 'Nature'
   | 'Flowers and wildlife'
   | 'Quiet everyday'
+  | 'Night sky'
+  | 'Golden hour'
+  | 'Clouds'
+  | 'Mountains'
+  | 'Ocean'
+  | 'Desert'
+  | 'Forest'
+  | 'Waterfalls & lakes'
 
 /** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
@@ -39,6 +47,14 @@ export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
   'Sacred',
   'Night drives',
   'Streets',
+  'Night sky',
+  'Golden hour',
+  'Clouds',
+  'Mountains',
+  'Ocean',
+  'Desert',
+  'Forest',
+  'Waterfalls & lakes',
   'Cinematic',
   'Soft aesthetic',
   'Light and sky',
@@ -197,6 +213,32 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   bg('candle', 'Candle', 'Light and sky', '#ffcf94'),
   bg('lantern', 'Lantern', 'Light and sky', '#ffd39a'),
 
+  // Scenery (Pexels), grouped with the clips of the same kind.
+  cloudBg('galaxy', 'Galaxy', 'Night sky', '#c9d6ff'),
+  cloudBg('twilight-stars', 'Twilight stars', 'Night sky', '#d8c8f0'),
+  cloudBg('milky-way-glow', 'Milky Way glow', 'Night sky', '#ffd7a8'),
+  cloudBg('crescent-cloud', 'Crescent & cloud', 'Night sky', '#ffd1b8'),
+  cloudBg('violet-crescent', 'Violet crescent', 'Night sky', '#e8c4ff'),
+  cloudBg('sunset-streaks', 'Sunset streaks', 'Golden hour', '#ffc98f'),
+  cloudBg('lamp-at-dusk', 'Lamp at dusk', 'Golden hour', '#ffc4b0'),
+  cloudBg('pine-at-sunset', 'Pine at sunset', 'Golden hour', '#ffc0a0'),
+  cloudBg('violet-storm', 'Violet storm', 'Clouds', '#f1c6e4'),
+  cloudBg('lavender-clouds', 'Lavender clouds', 'Clouds', '#e6d0f5'),
+  cloudBg('ember-cloud', 'Ember cloud', 'Clouds', '#ffc19a'),
+  cloudBg('peach-clouds', 'Peach clouds', 'Clouds', '#ffd0c0'),
+  cloudBg('snowy-summit', 'Snowy summit', 'Mountains', '#dfe6ee'),
+  cloudBg('stone-peak', 'Stone peak', 'Mountains', '#dcdcdc'),
+  cloudBg('storm-sea', 'Storm sea', 'Ocean', '#cfe3ee'),
+  cloudBg('midnight-waves', 'Midnight waves', 'Ocean', '#b8d4ea'),
+  cloudBg('desert-lights', 'Desert lights', 'Desert', '#ffd6a0'),
+  cloudBg('dune-stars', 'Dune under stars', 'Desert', '#ffd39a'),
+  cloudBg('light-trail', 'Light trail', 'Desert', '#ffcf94'),
+  cloudBg('caravan-dusk', 'Caravan at dusk', 'Desert', '#ffd39a'),
+  cloudBg('lit-rock', 'Lit rock', 'Desert', '#ffe08a'),
+  cloudBg('foggy-pines', 'Foggy pines', 'Forest', '#d4dee6'),
+  cloudBg('teal-forest', 'Teal forest', 'Forest', '#b8e0d8'),
+  cloudBg('amber-woods', 'Amber woods', 'Forest', '#ffd18f'),
+  cloudBg('lake-glow', 'Lake glow', 'Waterfalls & lakes', '#ffd09a'),
   // Quiet everyday
   bg('white-rose', 'White rose', 'Quiet everyday', '#f3d9a0'),
   cloudBg('old-alley', 'Old alley', 'Quiet everyday', '#ffd39a'),

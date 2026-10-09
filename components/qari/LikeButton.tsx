@@ -7,6 +7,7 @@ import { toggleLike, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 import { askToSignIn } from '@/lib/account-prompt'
+import { getGuestId } from '@/lib/guest-id'
 
 /** The heart: fills at once, pops, and quietly corrects itself if the server disagrees. */
 export default function LikeButton({
@@ -32,7 +33,10 @@ export default function LikeButton({
   }, [recitation.liked, recitation.likeCount])
 
   const handle = useCallback(async () => {
-    if (!viewerId) {
+    // No account needed to like: a phone without one likes as its guest id,
+    // and those likes move to the account once one is made.
+    const likerId = viewerId ?? getGuestId()
+    if (!likerId) {
       askToSignIn({ reason: tr('Create a free account to save the recitations you love.') })
       return
     }
@@ -42,7 +46,7 @@ export default function LikeButton({
     setCount((n) => Math.max(0, n + (next ? 1 : -1)))
     if (next) setPopKey((k) => k + 1)
     try {
-      const result = await toggleLike(recitation.id, viewerId, liked)
+      const result = await toggleLike(recitation.id, likerId, liked)
       setLiked(result.liked)
       setCount(result.likeCount)
     } catch {

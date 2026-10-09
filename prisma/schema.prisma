@@ -12,14 +12,23 @@ model User {
   username    String    @unique
   name        String
   /// `scrypt$<salt>$<hash>`. Older rows hold a bare SHA-256 hex digest and
-  /// are upgraded the next time that PIN is entered correctly.
-  pinHash     String
+  /// are upgraded the next time that PIN is entered correctly. Absent for an
+  /// account made with Google, which signs in through Google instead.
+  pinHash     String?
+  /// Google's stable id for the person (the `sub` of their sign-in token), for
+  /// accounts made or linked with "Continue with Google". Uniqueness is guarded
+  /// in code: a unique index can't be created on this connection.
+  googleId    String?
+  /// The Google account's email, kept for support and account recovery only.
+  email       String?
   /// Wrong PINs in a row. A 4-digit PIN has only 10,000 values, so without
   /// a limit any account falls to a script in minutes.
   failedPins  Int?
   lockedUntil DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([googleId])
 }
 
 model AdminConfig {

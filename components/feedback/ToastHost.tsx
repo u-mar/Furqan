@@ -35,8 +35,8 @@ export default function ToastHost() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 z-[70] flex justify-center px-4"
-      style={{ bottom: 'calc(max(1.25rem, env(safe-area-inset-bottom)) + var(--toast-lift, 0px))' }}
+      className="pointer-events-none fixed inset-x-0 z-[250] flex justify-center px-4"
+      style={{ bottom: 'calc(max(1.25rem, env(safe-area-inset-bottom)) + max(var(--toast-lift, 0px), var(--toast-sheet-lift, 0px)))' }}
     >
       <div
         key={shown.id}

@@ -2,10 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { removeAudio, removeImage } from '@/lib/qari-storage'
 import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
+import { isGuestId } from '@/lib/guest-id'
 
 export const runtime = 'nodejs'
 
 type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy'
+
+/** Likes from one guest id per minute. Kept per server instance, which is enough to stop a script. */
+const GUEST_LIKES_PER_MINUTE = 30
+const guestTaps = new Map<string, number[]>()
+
+function guestMayLike(guestId: string): boolean {
+  const now = Date.now()
+  const recent = (guestTaps.get(guestId) ?? []).filter((t) => now - t < 60_000)
+  if (recent.length >= GUEST_LIKES_PER_MINUTE) return false
+  recent.push(now)
+  guestTaps.set(guestId, recent)
+  // Forget quiet guests now and then so the map stays small.
+  if (guestTaps.size > 5000) {
+    for (const [id, taps] of guestTaps) if (taps.every((t) => now - t >= 60_000)) guestTaps.delete(id)
+  }
+  return true
+}
 
 /** POST /api/qari/[id] — like, unlike, count a play, or report. */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -63,6 +81,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     if (action === 'like' || action === 'unlike') {
+      // Liking needs no account: a phone's guest id counts once per recitation,
+      // like an account. A guest may not tap faster than a person would.
+      if (isGuestId(userId) && !guestMayLike(userId)) {
+        return NextResponse.json({ error: 'Too many taps. Wait a moment.' }, { status: 429 })
+      }
       // The unique index can't be created on this connection, so guard here.
       const existing = await prisma.recitationLike.findFirst({
         where: { recitationId: id, userId },

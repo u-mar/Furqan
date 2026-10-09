@@ -2,22 +2,23 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AtSign, BookOpen, Check, ChevronLeft, Loader2, Mic, Sparkles, X } from 'lucide-react'
+import { ArrowRight, AtSign, Check, CircleAlert, Eye, EyeOff, Loader2, ShieldCheck, UserRound, X } from 'lucide-react'
 import AppMark from '@/components/account/AppMark'
+import GoogleButton, { googleSignInAvailable } from '@/components/account/GoogleButton'
 import { APP_NAME } from '@/lib/app-brand'
 import { loginLocalUser, setSignedInUser, signupLocalUser, type AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
-type Step = 'welcome' | 'name' | 'username' | 'pin' | 'confirm' | 'login-username' | 'login-pin'
+type Mode = 'signup' | 'login'
 
 const USERNAME_RULE = /^[a-z0-9_]{3,20}$/
 
 interface AuthFlowProps {
-  /** `welcome` shows the introduction first; the others go straight in. */
+  /** Which tab to open on. `welcome` and `signup` open on Create account. */
   start?: 'welcome' | 'signup' | 'login'
   onDone: () => void
-  /** Offered only alongside the introduction — the app works without one. */
+  /** Offered when the app works without an account. */
   onSkip?: () => void
   onClose?: () => void
   /** Shown under the name in place of the tagline, e.g. "Create a free account to follow qaris." */
@@ -25,428 +26,436 @@ interface AuthFlowProps {
 }
 
 /**
- * Creating an account and signing in, one question per screen.
+ * Creating an account and signing in, on one screen.
  *
- * A single form asking for a name, a username and a PIN at once is where
- * people give up on a phone: small fields, the keyboard covering half of
- * them, and errors that only appear after submitting. One question at a time
- * keeps every target large and every problem next to the thing that caused
- * it — the username is checked while it is typed, and the PIN is entered
- * twice so a slip does not lock someone out of an account they just made.
+ * "Continue with Google" comes first: one tap, nothing to remember, and Google
+ * handles a forgotten password. Under it, a username and a 4-digit PIN for
+ * anyone who would rather not use Google — Create account and Sign in are two
+ * tabs of the same short form, so nobody is walked through screen after screen.
+ * The username is checked while it is typed, and the PIN can be shown to catch
+ * a slip, instead of asking for it twice.
  */
 export default function AuthFlow({ start = 'welcome', onDone, onSkip, onClose, reason }: AuthFlowProps) {
   const t = useT()
-  const first: Step = start === 'login' ? 'login-username' : start === 'signup' ? 'name' : 'welcome'
-  const [step, setStep] = useState<Step>(first)
-  const [history, setHistory] = useState<Step[]>([])
-
+  const [mode, setMode] = useState<Mode>(start === 'login' ? 'login' : 'signup')
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [showPin, setShowPin] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [shake, setShake] = useState(0)
-
-  const go = useCallback((next: Step) => {
-    setHistory((h) => [...h, step])
-    setStep(next)
-    setError('')
-  }, [step])
-
-  const back = useCallback(() => {
-    setError('')
-    setHistory((h) => {
-      const prev = h[h.length - 1]
-      if (prev) {
-        setStep(prev)
-        if (prev === 'pin') setConfirm('')
-        return h.slice(0, -1)
-      }
-      onClose?.()
-      return h
-    })
-  }, [onClose])
+  /** A new Google sign-in, waiting for the handle its recitations will go under. */
+  const [google, setGoogle] = useState<{ credential: string } | null>(null)
 
   const fail = useCallback((message: string) => {
     setError(message)
     setShake((n) => n + 1)
   }, [])
 
-  const signupFlow = ['name', 'username', 'pin', 'confirm'] as const
-  const loginFlow = ['login-username', 'login-pin'] as const
-  const flow: readonly Step[] = (signupFlow as readonly Step[]).includes(step) ? signupFlow : loginFlow
-  const position = flow.indexOf(step)
+  const finish = useCallback(
+    (user: AppUser) => {
+      setSignedInUser(user)
+      onDone()
+    },
+    [onDone]
+  )
 
-  /* --- submission --- */
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError('')
+    setPin('')
+  }
 
-  const submit = useCallback(
-    async (mode: 'signup' | 'login', finalPin: string) => {
+  /* --- username + PIN --- */
+
+  const availability = useUsernameAvailability(mode === 'signup' || google ? username : '')
+  const nameOk = name.trim().length >= 2
+  const usernameOk = USERNAME_RULE.test(username)
+  const pinOk = /^\d{4}$/.test(pin)
+  const canSubmit = google
+    ? nameOk && usernameOk && availability !== 'taken'
+    : mode === 'signup'
+      ? nameOk && usernameOk && pinOk && availability !== 'taken'
+      : usernameOk && pinOk
+
+  const submitPin = useCallback(async () => {
+    setBusy(true)
+    setError('')
+    const cleanUsername = username.trim().toLowerCase()
+    const useLocal = () =>
+      finish(
+        mode === 'signup' ? signupLocalUser(cleanUsername, name.trim(), pin) : loginLocalUser(cleanUsername, pin)
+      )
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: mode, username: cleanUsername, name: name.trim(), pin }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string; user?: AppUser }
+      if (res.ok && data.user) {
+        finish(data.user)
+        return
+      }
+      // No database configured: the app still works, on this device only.
+      if ((data.error || '').toLowerCase().includes('database is not configured')) {
+        useLocal()
+        return
+      }
+      if (mode === 'login') setPin('')
+      fail(data.error ? tr(data.error) : tr('Something went wrong. Please try again.'))
+    } catch {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        try {
+          useLocal()
+          return
+        } catch (err) {
+          fail(err instanceof Error ? err.message : tr('Could not continue.'))
+          return
+        }
+      }
+      fail(tr('Could not reach the server. Check your connection.'))
+    } finally {
+      setBusy(false)
+    }
+  }, [fail, finish, mode, name, pin, username])
+
+  /* --- Google --- */
+
+  const sendGoogle = useCallback(
+    async (credential: string, chosen?: { username: string; name: string }) => {
       setBusy(true)
       setError('')
-      const cleanUsername = username.trim().toLowerCase()
-
-      const finish = (user: AppUser) => {
-        setSignedInUser(user)
-        onDone()
-      }
-      const useLocal = () =>
-        finish(
-          mode === 'signup'
-            ? signupLocalUser(cleanUsername, name.trim(), finalPin)
-            : loginLocalUser(cleanUsername, finalPin)
-        )
-
       try {
-        const res = await fetch('/api/auth/signup', {
+        const res = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: mode, username: cleanUsername, name: name.trim(), pin: finalPin }),
+          body: JSON.stringify({ credential, ...chosen }),
         })
-        const data = (await res.json().catch(() => ({}))) as { error?: string; user?: AppUser }
-
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string
+          user?: AppUser
+          needsUsername?: boolean
+          suggestion?: string
+          name?: string
+        }
         if (res.ok && data.user) {
           finish(data.user)
           return
         }
-        // No database configured: the app still works, on this device only.
-        if ((data.error || '').toLowerCase().includes('database is not configured')) {
-          useLocal()
+        if (res.ok && data.needsUsername) {
+          // New here: one more line to fill in, on this same screen.
+          setGoogle({ credential })
+          setName(data.name ?? '')
+          setUsername(data.suggestion ?? '')
           return
         }
-        if (mode === 'login') setPin('')
-        fail(data.error || tr('Something went wrong. Please try again.'))
+        fail(data.error ? tr(data.error) : tr('Something went wrong. Please try again.'))
       } catch {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          try {
-            useLocal()
-            return
-          } catch (err) {
-            fail(err instanceof Error ? err.message : tr('Could not continue.'))
-            return
-          }
-        }
         fail(tr('Could not reach the server. Check your connection.'))
       } finally {
         setBusy(false)
       }
     },
-    [fail, name, onDone, username]
+    [fail, finish]
   )
 
-  /* --- screens --- */
+  const submit = () => {
+    if (!canSubmit || busy) return
+    if (google) void sendGoogle(google.credential, { username: username.trim().toLowerCase(), name: name.trim() })
+    else void submitPin()
+  }
+
+  const askingName = mode === 'signup' || Boolean(google)
+  const title = google ? t('Almost done') : mode === 'signup' ? t('Create your account') : t('Welcome back')
+  // Why an account is wanted reads as an invitation, so it goes with Create account only.
+  const subtitle = google
+    ? t('Pick the username your recitations will go under.')
+    : mode === 'signup'
+      ? (reason ?? t('Post recitations, follow qaris and keep what you love in one place.'))
+      : t('Sign in to pick up where you left off.')
+  // Google can make a new account too, so its terms line stays while it is offered.
+  const showTerms = mode === 'signup' || Boolean(google) || googleSignInAvailable
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {step !== 'welcome' ? (
-        <header className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-          <button
-            type="button"
-            onClick={back}
-            aria-label={t('Back')}
-            className="ed-focus -ml-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
-          >
-            <ChevronLeft className="h-6 w-6" strokeWidth={1.8} />
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain">
+      {/* The brand's deep green, a soft light behind the mark, and what this screen is for. */}
+      <div className="auth-hero">
+        {onClose ? (
+          <button type="button" onClick={onClose} aria-label={t('Close')} className="auth-hero__close ed-focus">
+            <X className="h-[18px] w-[18px]" strokeWidth={2} />
           </button>
-          <div className="flex gap-1.5" aria-hidden>
-            {flow.map((s, i) => (
-              <span
-                key={s}
-                className="h-1.5 rounded-full transition-all duration-300"
-                style={{
-                  width: i === position ? 22 : 6,
-                  background: i <= position ? 'var(--home-sage-deep)' : 'var(--home-track)',
-                }}
-              />
-            ))}
+        ) : null}
+        <div className="auth-hero__text">
+          <div className="flex items-center gap-2.5">
+            <AppMark size="sm" className="auth-hero__mark" />
+            <span className="home-serif text-[1.15rem] font-semibold tracking-[-0.01em] text-white">{APP_NAME}</span>
           </div>
-          <span className="w-11" />
-        </header>
-      ) : onClose ? (
-        <header className="flex justify-end px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('Close')}
-            className="ed-focus -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:bg-[var(--home-track)]"
+          <h1
+            key={title}
+            className="auth-step home-serif mt-5 text-[1.95rem] font-semibold leading-[1.1] tracking-[-0.02em] text-white"
           >
-            <X className="h-5 w-5" strokeWidth={1.8} />
-          </button>
-        </header>
-      ) : null}
-
-      <div key={step} className="auth-step flex min-h-0 flex-1 flex-col px-6">
-        {step === 'welcome' ? (
-          <Welcome
-            onCreate={() => go('name')}
-            onLogin={() => go('login-username')}
-            onSkip={onSkip}
-            reason={reason}
-          />
-        ) : null}
-
-        {step === 'name' ? (
-          <TextStep
-            title={t('What should we call you?')}
-            hint={t('This is the name people see on your recitations.')}
-            value={name}
-            onChange={(v) => setName(v.slice(0, 40))}
-            placeholder={t('Your name')}
-            autoComplete="name"
-            error={error}
-            shake={shake}
-            canContinue={name.trim().length >= 2}
-            onContinue={() => go('username')}
-          />
-        ) : null}
-
-        {step === 'username' ? (
-          <UsernameStep
-            value={username}
-            onChange={setUsername}
-            error={error}
-            shake={shake}
-            onContinue={() => go('pin')}
-          />
-        ) : null}
-
-        {step === 'pin' ? (
-          <PinStep
-            title={t('Create a 4-digit PIN')}
-            hint={t('You\'ll use it to sign in. Pick something you\'ll remember.')}
-            value={pin}
-            onChange={setPin}
-            error={error}
-            shake={shake}
-            onComplete={() => go('confirm')}
-          />
-        ) : null}
-
-        {step === 'confirm' ? (
-          <PinStep
-            title={t('Enter it once more')}
-            hint={t('Just to be sure there was no slip.')}
-            value={confirm}
-            onChange={(v) => {
-              setConfirm(v)
-              if (error) setError('')
-            }}
-            error={error}
-            shake={shake}
-            busy={busy}
-            onComplete={(entered) => {
-              if (entered !== pin) {
-                setConfirm('')
-                fail(tr('Those PINs don\'t match. Try again.'))
-                return
-              }
-              void submit('signup', entered)
-            }}
-          />
-        ) : null}
-
-        {step === 'login-username' ? (
-          <TextStep
-            title={t('Welcome back')}
-            hint={t('Enter the username you signed up with.')}
-            value={username}
-            onChange={(v) => setUsername(v.toLowerCase().replace(/\s/g, '').slice(0, 20))}
-            placeholder={t('username')}
-            autoComplete="username"
-            prefix={<AtSign className="h-5 w-5" strokeWidth={2} />}
-            error={error}
-            shake={shake}
-            canContinue={USERNAME_RULE.test(username)}
-            onContinue={() => go('login-pin')}
-          />
-        ) : null}
-
-        {step === 'login-pin' ? (
-          <PinStep
-            title={t('Enter your PIN')}
-            hint={t('Signing in as @{username}', { username })}
-            value={pin}
-            onChange={(v) => {
-              setPin(v)
-              if (error) setError('')
-            }}
-            error={error}
-            shake={shake}
-            busy={busy}
-            onComplete={(entered) => void submit('login', entered)}
-          />
-        ) : null}
+            {title}
+          </h1>
+          <p className="mt-2 max-w-[21rem] text-[0.92rem] leading-snug text-white/70">{subtitle}</p>
+        </div>
       </div>
+
+      <form
+        className="auth-panel"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        {!google ? (
+          <>
+            <div className="auth-tabs" role="tablist" aria-label={t('Account')}>
+              {(['signup', 'login'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  onClick={() => switchMode(m)}
+                  className={cn('auth-tab ed-focus', mode === m && 'is-on')}
+                >
+                  {m === 'signup' ? t('Create account') : t('Sign in')}
+                </button>
+              ))}
+            </div>
+
+            {googleSignInAvailable ? (
+              <>
+                <div className="mt-5">
+                  <GoogleButton onCredential={(c) => void sendGoogle(c)} disabled={busy} />
+                </div>
+                <div className="mt-5 flex items-center gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--home-muted)]">
+                  <span className="h-px flex-1 bg-[var(--home-rule)]" />
+                  {t('or')}
+                  <span className="h-px flex-1 bg-[var(--home-rule)]" />
+                </div>
+              </>
+            ) : null}
+          </>
+        ) : null}
+
+        <div key={google ? 'google' : mode} className="auth-step mt-5 space-y-4">
+          {askingName ? (
+            <Field label={t('Your name')}>
+              <UserRound className="auth-field__icon" strokeWidth={1.9} />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 40))}
+                placeholder={t('Your name')}
+                autoComplete="name"
+                autoCapitalize="words"
+                enterKeyHint="next"
+                className="auth-input"
+              />
+              {nameOk ? <Check className="auth-field__ok" strokeWidth={2.6} /> : null}
+            </Field>
+          ) : null}
+
+          <Field
+            label={t('Username')}
+            note={askingName ? <UsernameNote username={username} status={availability} /> : undefined}
+            invalid={askingName && (availability === 'taken' || availability === 'invalid')}
+          >
+            <AtSign className="auth-field__icon" strokeWidth={1.9} />
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
+              placeholder={t('username')}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="next"
+              className="auth-input"
+            />
+            {askingName && availability === 'checking' ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--home-muted)]" />
+            ) : askingName && availability === 'available' ? (
+              <Check className="auth-field__ok" strokeWidth={2.6} />
+            ) : null}
+          </Field>
+
+          {!google ? (
+            <PinBoxes
+              label={mode === 'signup' ? t('Create a 4-digit PIN') : t('PIN')}
+              note={mode === 'signup' ? t("You'll use it to sign in. Pick something you'll remember.") : undefined}
+              value={pin}
+              onChange={(next) => {
+                setPin(next)
+                if (error) setError('')
+              }}
+              show={showPin}
+              onToggleShow={() => setShowPin((v) => !v)}
+              invalid={Boolean(error) && mode === 'login'}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            />
+          ) : null}
+        </div>
+
+        {error ? (
+          <p key={shake} className="auth-shake auth-error" role="alert">
+            <CircleAlert className="h-4 w-4 shrink-0" strokeWidth={2.2} />
+            {error}
+          </p>
+        ) : null}
+
+        <div className="min-h-6 flex-1" />
+
+        <div className="space-y-3 pt-5">
+          <button type="submit" disabled={!canSubmit || busy} className="auth-primary ed-focus">
+            {busy ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                {google ? t('Finish') : mode === 'signup' ? t('Create account') : t('Sign in')}
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} />
+              </>
+            )}
+          </button>
+          {google ? (
+            <button
+              type="button"
+              onClick={() => {
+                setGoogle(null)
+                setError('')
+              }}
+              className="auth-quiet ed-focus"
+            >
+              {t('Back')}
+            </button>
+          ) : onSkip ? (
+            <button type="button" onClick={onSkip} className="auth-quiet ed-focus">
+              {t('Continue without an account')}
+            </button>
+          ) : null}
+          {showTerms ? (
+            <p className="flex items-start justify-center gap-1.5 px-2 pt-1 text-center text-[11.5px] leading-relaxed text-[var(--home-muted)]">
+              <ShieldCheck className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              <span>
+                {t('By creating an account you agree to our')}{' '}
+                <Link href="/terms" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
+                  {t('Terms of Service')}
+                </Link>{' '}
+                {t('and')}{' '}
+                <Link href="/privacy" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
+                  {t('Privacy Policy')}
+                </Link>
+                .
+              </span>
+            </p>
+          ) : null}
+        </div>
+      </form>
     </div>
   )
 }
 
 /* ------------------------------------------------------------------------ */
 
-function Welcome({
-  onCreate,
-  onLogin,
-  onSkip,
-  reason,
+function Field({
+  label,
+  note,
+  invalid = false,
+  children,
 }: {
-  onCreate: () => void
-  onLogin: () => void
-  onSkip?: () => void
-  reason?: string
+  label: string
+  note?: React.ReactNode
+  invalid?: boolean
+  children: React.ReactNode
 }) {
-  const t = useT()
   return (
-    <div className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
-        <AppMark className="mb-6 h-20 w-20 rounded-[1.4rem]" />
-        <h1 className="home-serif text-[2.1rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-          {APP_NAME}
-        </h1>
-        <p className="mt-2 text-[0.95rem] text-[var(--home-muted)]">{reason ?? t('The Quran, wherever you are.')}</p>
-
-        <ul className="mt-9 w-full max-w-[19rem] space-y-4 text-left">
-          <Benefit Icon={BookOpen} text={t('Pick up exactly where you stopped reading')} />
-          <Benefit Icon={Sparkles} text={t('Save the recitations you love to Favourites')} />
-          <Benefit Icon={Mic} text={t('Share your recitation with the Qari community')} />
-        </ul>
-      </div>
-
-      <div className="space-y-3">
-        <button type="button" onClick={onCreate} className="auth-primary ed-focus">
-          {t('Create account')}</button>
-        <button type="button" onClick={onLogin} className="auth-secondary ed-focus">
-          {t('I already have an account')}</button>
-        {onSkip ? (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="ed-focus w-full py-2.5 text-[0.92rem] font-medium text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)]"
-          >
-            {t('Continue without an account')}</button>
-        ) : null}
-        <p className="px-4 pt-1 text-center text-[11px] leading-relaxed text-[var(--home-muted)]">
-          {t('By creating an account you agree to our')}{' '}
-          <Link href="/terms" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
-            {t('Terms of Service')}</Link>{' '}
-          {t('and')}{' '}
-          <Link href="/privacy" className="font-semibold text-[var(--home-heading)] underline-offset-2 hover:underline">
-            {t('Privacy Policy')}</Link>
-          .
-        </p>
-      </div>
-    </div>
+    <label className="block">
+      <span className="auth-label">{label}</span>
+      <span className={cn('auth-field', invalid && 'is-invalid')}>{children}</span>
+      {note ? <span className="auth-note">{note}</span> : null}
+    </label>
   )
 }
 
-function Benefit({ Icon, text }: { Icon: typeof BookOpen; text: string }) {
-  return (
-    <li className="flex items-center gap-3.5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-        <Icon className="h-5 w-5" strokeWidth={1.9} />
-      </span>
-      <span className="text-[0.92rem] leading-snug text-[var(--home-heading)]">{text}</span>
-    </li>
-  )
-}
-
-function StepHeading({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div className="pt-8">
-      <h2 className="home-serif text-[1.85rem] font-semibold leading-[1.15] tracking-[-0.02em] text-[var(--home-heading)]">
-        {title}
-      </h2>
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--home-muted)]">{hint}</p>
-    </div>
-  )
-}
-
-function ErrorLine({ error, shake }: { error: string; shake: number }) {
-  if (!error) return null
-  return (
-    <p key={shake} className="auth-shake mt-3 text-[0.88rem] font-medium text-rose-500" role="alert">
-      {error}
-    </p>
-  )
-}
-
-function TextStep({
-  title,
-  hint,
+/**
+ * The PIN as four boxes, filled as it is typed. One real input lies over them,
+ * so the phone still brings up its number pad and password managers still see it.
+ */
+function PinBoxes({
+  label,
+  note,
   value,
   onChange,
-  placeholder,
+  show,
+  onToggleShow,
+  invalid,
   autoComplete,
-  prefix,
-  error,
-  shake,
-  canContinue,
-  onContinue,
 }: {
-  title: string
-  hint: string
+  label: string
+  note?: string
   value: string
-  onChange: (v: string) => void
-  placeholder: string
+  onChange: (next: string) => void
+  show: boolean
+  onToggleShow: () => void
+  invalid: boolean
   autoComplete: string
-  prefix?: React.ReactNode
-  error: string
-  shake: number
-  canContinue: boolean
-  onContinue: () => void
 }) {
   const t = useT()
+  const [focused, setFocused] = useState(false)
+  const id = 'auth-pin'
   return (
-    <form
-      className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (canContinue) onContinue()
-      }}
-    >
-      <StepHeading title={title} hint={hint} />
-      <div className="auth-field mt-8">
-        {prefix ? <span className="text-[var(--home-muted)]">{prefix}</span> : null}
+    <div>
+      <div className="auth-label">
+        <label htmlFor={id}>{label}</label>
+        <button type="button" onClick={onToggleShow} className="auth-label__action ed-focus">
+          {show ? <EyeOff className="h-3.5 w-3.5" strokeWidth={2.2} /> : <Eye className="h-3.5 w-3.5" strokeWidth={2.2} />}
+          {show ? t('Hide') : t('Show')}
+        </button>
+      </div>
+      <div className="relative">
+        <div className="grid grid-cols-4 gap-2.5" aria-hidden>
+          {[0, 1, 2, 3].map((i) => {
+            const digit = value[i]
+            const current = focused && i === Math.min(value.length, 3)
+            return (
+              <span
+                key={i}
+                className={cn('auth-pin', digit && 'is-filled', current && 'is-current', invalid && 'is-invalid')}
+              >
+                {digit ? show ? digit : <span className="auth-pin__dot" /> : null}
+              </span>
+            )
+          })}
+        </div>
         <input
-          autoFocus
+          id={id}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 4))}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          type={show ? 'text' : 'password'}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={4}
           autoComplete={autoComplete}
-          autoCapitalize={autoComplete === 'name' ? 'words' : 'none'}
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="next"
-          className="min-w-0 flex-1 bg-transparent text-[1.2rem] font-medium text-[var(--home-heading)] placeholder:font-normal placeholder:text-[var(--home-muted)] focus:outline-none"
+          enterKeyHint="go"
+          className="absolute inset-0 h-full w-full cursor-text opacity-0"
         />
       </div>
-      <ErrorLine error={error} shake={shake} />
-      <div className="flex-1" />
-      <button type="submit" disabled={!canContinue} className="auth-primary ed-focus">
-        {t('Continue')}</button>
-    </form>
+      {note ? <span className="auth-note">{note}</span> : null}
+    </div>
   )
 }
 
 type Availability = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'unknown'
 
-function UsernameStep({
-  value,
-  onChange,
-  error,
-  shake,
-  onContinue,
-}: {
-  value: string
-  onChange: (v: string) => void
-  error: string
-  shake: number
-  onContinue: () => void
-}) {
-  const t = useT()
+/** Whether a new username is free, checked a moment after typing stops. */
+function useUsernameAvailability(value: string): Availability {
   const [status, setStatus] = useState<Availability>('idle')
   const latest = useRef(value)
 
-  // Checked as it is typed, so a taken name is known before Continue.
   useEffect(() => {
     latest.current = value
     if (!value) {
@@ -471,153 +480,23 @@ function UsernameStep({
     return () => window.clearTimeout(timer)
   }, [value])
 
-  const canContinue = status === 'available' || status === 'unknown'
-
-  const note: Record<Availability, { text: string; tone: 'muted' | 'good' | 'bad' }> = {
-    idle: { text: t('3–20 letters, numbers or underscores.'), tone: 'muted' },
-    invalid: { text: t('Use 3–20 letters, numbers or underscores.'), tone: 'bad' },
-    checking: { text: t('Checking…'), tone: 'muted' },
-    available: { text: `@${value} is yours if you want it.`, tone: 'good' },
-    taken: { text: `@${value} is already taken.`, tone: 'bad' },
-    unknown: { text: t('Couldn\'t check just now — we\'ll confirm when you finish.'), tone: 'muted' },
-  }
-
-  return (
-    <form
-      className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (canContinue) onContinue()
-      }}
-    >
-      <StepHeading title={t('Pick a username')} hint={t('Your profile link. It can\'t be changed later.')} />
-      <div className="auth-field mt-8">
-        <AtSign className="h-5 w-5 text-[var(--home-muted)]" strokeWidth={2} />
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => onChange(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
-          placeholder={t('username')}
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="next"
-          className="min-w-0 flex-1 bg-transparent text-[1.2rem] font-medium text-[var(--home-heading)] placeholder:font-normal placeholder:text-[var(--home-muted)] focus:outline-none"
-        />
-        <span className="flex h-6 w-6 items-center justify-center" aria-hidden>
-          {status === 'checking' ? (
-            <Loader2 className="h-4 w-4 animate-spin text-[var(--home-muted)]" />
-          ) : status === 'available' ? (
-            <Check className="h-5 w-5 text-[var(--home-sage-deep)]" strokeWidth={2.6} />
-          ) : null}
-        </span>
-      </div>
-      <p
-        className={cn(
-          'mt-3 text-[0.88rem]',
-          note[status].tone === 'good' && 'font-medium text-[var(--home-sage-deep)]',
-          note[status].tone === 'bad' && 'font-medium text-rose-500',
-          note[status].tone === 'muted' && 'text-[var(--home-muted)]'
-        )}
-        aria-live="polite"
-      >
-        {note[status].text}
-      </p>
-      <ErrorLine error={error} shake={shake} />
-      <div className="flex-1" />
-      <button type="submit" disabled={!canContinue} className="auth-primary ed-focus">
-        {t('Continue')}</button>
-    </form>
-  )
+  return status
 }
 
-function PinStep({
-  title,
-  hint,
-  value,
-  onChange,
-  onComplete,
-  error,
-  shake,
-  busy,
-}: {
-  title: string
-  hint: string
-  value: string
-  onChange: (v: string) => void
-  onComplete: (pin: string) => void
-  error: string
-  shake: number
-  busy?: boolean
-}) {
+function UsernameNote({ username, status }: { username: string; status: Availability }) {
   const t = useT()
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  return (
-    <div className="flex flex-1 flex-col pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <StepHeading title={title} hint={hint} />
-
-      <button
-        type="button"
-        onClick={() => inputRef.current?.focus()}
-        disabled={busy}
-        aria-label={t('Enter your 4-digit PIN')}
-        className={cn('mt-10 flex justify-center gap-3', error && 'auth-shake')}
-        key={`pin-${shake}`}
-      >
-        {[0, 1, 2, 3].map((i) => {
-          const filled = value.length > i
-          const active = value.length === i && !busy
-          return (
-            <span
-              key={i}
-              className={cn(
-                'flex h-[4.25rem] w-[3.6rem] items-center justify-center rounded-2xl border-2 transition-all duration-150',
-                error
-                  ? 'border-rose-400/70'
-                  : filled
-                    ? 'border-[var(--home-sage-deep)] bg-[var(--home-sage-soft)]'
-                    : active
-                      ? 'border-[var(--home-heading)]'
-                      : 'border-[var(--home-rule-strong)]'
-              )}
-              aria-hidden
-            >
-              {filled ? <span className="h-3.5 w-3.5 rounded-full bg-[var(--home-heading)]" /> : null}
-            </span>
-          )
-        })}
-      </button>
-
-      <input
-        ref={inputRef}
-        autoFocus
-        type="password"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        autoComplete="off"
-        maxLength={4}
-        value={value}
-        disabled={busy}
-        onChange={(e) => {
-          const next = e.target.value.replace(/\D/g, '').slice(0, 4)
-          onChange(next)
-          if (next.length === 4) onComplete(next)
-        }}
-        className="sr-only"
-        aria-label={title}
-      />
-
-      <div className="mt-6 flex min-h-[1.5rem] justify-center text-center">
-        {busy ? (
-          <Loader2 className="h-5 w-5 animate-spin text-[var(--home-muted)]" />
-        ) : error ? (
-          <p key={shake} className="text-[0.88rem] font-medium text-rose-500" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  )
+  if (status === 'available') {
+    return (
+      <span className="font-medium text-[var(--home-sage-deep)]">
+        {t('@{username} is yours if you want it.', { username })}
+      </span>
+    )
+  }
+  if (status === 'taken') {
+    return <span className="font-medium text-rose-500">{t('@{username} is already taken.', { username })}</span>
+  }
+  if (status === 'invalid') {
+    return <span className="font-medium text-rose-500">{t('Use 3–20 letters, numbers or underscores.')}</span>
+  }
+  return <span>{t('Your profile link. It can\'t be changed later.')}</span>
 }

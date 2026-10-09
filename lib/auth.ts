@@ -1,9 +1,12 @@
 import { tr } from '@/lib/i18n-core'
+import { getGuestId } from '@/lib/guest-id'
 
 export interface AppUser {
   id: string
   username: string
   name: string
+  /** How this account signs in, when it is not a username and PIN. */
+  via?: 'google'
 }
 
 const AUTH_KEY = 'muyassar_auth_user'
@@ -26,6 +29,22 @@ export function setSignedInUser(user: AppUser): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(AUTH_KEY, JSON.stringify(user))
   window.dispatchEvent(new CustomEvent('auth-user-changed', { detail: user }))
+  mergeGuestLikes(user.id)
+}
+
+/**
+ * Hearts given before signing in belong to this phone's guest id; once there
+ * is an account they move to it. Quiet and best-effort: a failure leaves the
+ * guest's likes where they were, still counted, and the next sign-in tries again.
+ */
+function mergeGuestLikes(userId: string): void {
+  const guestId = getGuestId()
+  if (!guestId) return
+  void fetch('/api/qari/likes/merge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guestId, userId }),
+  }).catch(() => {})
 }
 
 export function clearSignedInUser(): void {

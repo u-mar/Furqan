@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2, TriangleAlert, X } from 'lucide-react'
 import { clearSignedInUser, deleteLocalUser, loginLocalUser, type AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import GoogleButton from '@/components/account/GoogleButton'
 import { tr, useT } from '@/lib/i18n'
 
 interface DeleteAccountSheetProps {
@@ -42,9 +43,11 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
   if (!open) return null
 
   const isLocal = user.id.startsWith('local_')
+  // An account made with Google has no PIN: it confirms by signing in with Google again.
+  const viaGoogle = user.via === 'google'
 
-  async function confirmDelete() {
-    if (pin.length !== 4) return
+  async function confirmDelete(googleCredential?: string) {
+    if (!googleCredential && pin.length !== 4) return
     setBusy(true)
     setError('')
 
@@ -64,7 +67,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
       const res = await fetch('/api/auth/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user.username, userId: user.id, pin }),
+        body: JSON.stringify({ username: user.username, userId: user.id, pin, googleCredential }),
       })
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
@@ -124,6 +127,16 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
         <p className="mt-3 text-[0.8rem] leading-relaxed text-[var(--home-muted)]">
           {t('Bookmarks and reading progress stored on this phone stay on this phone.')}</p>
 
+        {viaGoogle ? (
+          <>
+            <p className="mt-5 text-[0.8rem] font-semibold text-[var(--home-heading)]">
+              {t('Sign in with Google again to confirm')}</p>
+            <div className="mt-2.5">
+              <GoogleButton text="signin_with" disabled={busy} onCredential={(c) => void confirmDelete(c)} />
+            </div>
+          </>
+        ) : (
+          <>
         <label htmlFor="delete-pin" className="mt-5 block text-[0.8rem] font-semibold text-[var(--home-heading)]">
           {t('Enter your PIN to confirm')}</label>
         <button
@@ -169,6 +182,8 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
           }}
           className="sr-only"
         />
+          </>
+        )}
 
         {error ? (
           <p className="mt-3 text-center text-[0.85rem] font-medium text-rose-500" role="alert">
@@ -176,7 +191,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
           </p>
         ) : null}
 
-        <div className="mt-5 grid grid-cols-2 gap-2.5">
+        <div className={cn('mt-5 grid gap-2.5', viaGoogle ? 'grid-cols-1' : 'grid-cols-2')}>
           <button
             type="button"
             onClick={onClose}
@@ -184,14 +199,16 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
             className="ed-focus h-12 rounded-2xl border border-[var(--home-rule-strong)] text-[0.92rem] font-semibold text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)] disabled:opacity-50"
           >
             {t('Keep account')}</button>
-          <button
-            type="button"
-            onClick={() => void confirmDelete()}
-            disabled={busy || pin.length !== 4}
-            className="ed-focus flex h-12 items-center justify-center rounded-2xl bg-rose-600 text-[0.92rem] font-semibold text-white transition-opacity disabled:opacity-40"
-          >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t('Delete')}
-          </button>
+          {viaGoogle ? null : (
+            <button
+              type="button"
+              onClick={() => void confirmDelete()}
+              disabled={busy || pin.length !== 4}
+              className="ed-focus flex h-12 items-center justify-center rounded-2xl bg-rose-600 text-[0.92rem] font-semibold text-white transition-opacity disabled:opacity-40"
+            >
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t('Delete')}
+            </button>
+          )}
         </div>
       </div>
     </div>

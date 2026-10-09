@@ -1,5 +1,6 @@
 
 import { tr } from '@/lib/i18n-core'
+import { getGuestId } from '@/lib/guest-id'
 
 /** Client-side access to the Qari recitation feed. */
 
@@ -178,6 +179,11 @@ export async function fetchFeed(options: {
   if (options.sort) params.set('sort', options.sort)
   if (options.user) params.set('user', options.user)
   if (options.viewerId) params.set('viewerId', options.viewerId)
+  else {
+    // Without an account the phone's own hearts still show filled.
+    const guestId = getGuestId()
+    if (guestId) params.set('guestId', guestId)
+  }
   if (options.likedBy) params.set('likedBy', options.likedBy)
   if (options.query) params.set('q', options.query)
   if (options.imitating) params.set('imitating', options.imitating)

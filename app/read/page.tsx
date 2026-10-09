@@ -534,6 +534,41 @@ function ReadPageContent() {
     ? bothVerseKey
     : recitation.highlightedVerseKey ?? somaliVoiceState.verseKey
 
+  // Continuous scroll: looking around while something plays (or is paused) must not move the
+  // recitation to the page scrolled to — a new page ends whatever was playing. The page stays
+  // with the audio, and catches up with where the reader is once it stops.
+  const holdPlaybackPage = playbackActive || Boolean(nowPlayingKey)
+  const holdPlaybackPageRef = useRef(holdPlaybackPage)
+  const scrolledPageRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    holdPlaybackPageRef.current = holdPlaybackPage
+    if (holdPlaybackPage) return
+    // Not straight away: between pages of a recitation it is briefly idle.
+    const id = window.setTimeout(() => {
+      const page = scrolledPageRef.current
+      scrolledPageRef.current = null
+      if (page && !holdPlaybackPageRef.current) void navigatePageRef.current(page, { autoContinue: true })
+    }, 800)
+    return () => window.clearTimeout(id)
+  }, [holdPlaybackPage])
+
+  // The recitation turning the page also brings the view there, so the reader is on it now.
+  useEffect(() => {
+    scrolledPageRef.current = null
+  }, [currentPage])
+
+  const handleContinuousPageChange = useCallback(
+    (page: number) => {
+      if (holdPlaybackPageRef.current) {
+        scrolledPageRef.current = page
+        return
+      }
+      void navigatePage(page, { autoContinue: true })
+    },
+    [navigatePage]
+  )
+
   const playBothFrom = useCallback(
     (verseKey: string) => {
       bothSeqRef.current += 1
@@ -968,8 +1003,13 @@ function ReadPageContent() {
 
   const contentSwipe = { onTouchStart: handleTranslationTouchStart, onTouchEnd: handleTranslationTouchEnd }
 
+  const translationShownRef = useRef(showTranslation)
   useLayoutEffect(() => {
+    const justOpened = showTranslation && !translationShownRef.current
+    translationShownRef.current = showTranslation
     if (showTranslation) {
+      // Opened mid-recitation, the translation view has already brought the ayah being read into sight.
+      if (justOpened && playbackActive && highlightedVerseKey) return
       contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
       return
     }
@@ -1135,7 +1175,7 @@ function ReadPageContent() {
             totalPages={TOTAL_MUSHAF_PAGES}
             fetchPage={fetchVersesForPage}
             renderPage={renderMushafPage}
-            onPageChange={(page) => void navigatePage(page, { autoContinue: true })}
+            onPageChange={handleContinuousPageChange}
             followVerseKey={playbackActive ? highlightedVerseKey : null}
           />
         ) : (
@@ -1367,10 +1407,7 @@ function ReadPageContent() {
               active={showTranslation}
               aria-pressed={showTranslation}
               icon={<MessageSquareText className="h-[19px] w-[19px]" />}
-              onClick={() => {
-                stopAllAudio()
-                setShowTranslation((v) => !v)
-              }}
+              onClick={() => setShowTranslation((v) => !v)}
             />
           </div>
         </div>

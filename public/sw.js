@@ -182,7 +182,7 @@ async function cacheFirst(request, cacheName = STATIC_CACHE) {
 
 /** A notification from the server: someone liked a recitation or followed. */
 self.addEventListener('push', (event) => {
-  let message = { title: 'Nadir', body: '', url: '/qari/notifications' }
+  let message = { title: 'Naba', body: '', url: '/qari/notifications' }
   try {
     if (event.data) message = { ...message, ...event.data.json() }
   } catch {

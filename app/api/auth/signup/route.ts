@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPin, verifyPin } from '@/lib/pin-hash'
+import { isUsernameTaken, normalizeUsername, USERNAME_RULE } from '@/lib/usernames'
 
 interface AuthPayload {
   action?: 'signup' | 'login'
@@ -12,31 +13,6 @@ interface AuthPayload {
 /** Wrong PINs allowed before the account is locked. */
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
-
-const USERNAME_RULE = /^[a-z0-9_]{3,20}$/
-
-function normalizeUsername(value: string): string {
-  return value.trim().toLowerCase()
-}
-
-/**
- * A handle is taken if an account holds it — or if a local-only account has
- * already published under it. Those never reach the users table, so checking
- * accounts alone would let someone register the name and inherit another
- * person's recitations and picture.
- */
-/** Qari pages live at /qari/<name>, so a handle can never be one of these. */
-const RESERVED_USERNAMES = new Set(['record', 'qaris', 'sheikh', 'sheikhs', 'admin', 'settings'])
-
-async function isUsernameTaken(username: string): Promise<boolean> {
-  if (RESERVED_USERNAMES.has(username)) return true
-  const [account, recitation, avatar] = await Promise.all([
-    prisma.user.findUnique({ where: { username }, select: { id: true } }),
-    prisma.recitation.findFirst({ where: { userUsername: username }, select: { id: true } }),
-    prisma.qariAvatar.findUnique({ where: { username }, select: { id: true } }),
-  ])
-  return Boolean(account || recitation || avatar)
-}
 
 /** GET /api/auth/signup?username= — live availability while choosing one. */
 export async function GET(req: Request) {
@@ -94,6 +70,10 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { username } })
     if (!user) {
       return NextResponse.json({ error: 'Wrong username or PIN.' }, { status: 401 })
+    }
+    // Made with Google: there is no PIN to check.
+    if (!user.pinHash) {
+      return NextResponse.json({ error: 'This account signs in with Google.' }, { status: 401 })
     }
 
     const now = Date.now()
