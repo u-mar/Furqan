@@ -7,6 +7,7 @@ import { shareVerseBlob } from '@/lib/verse-image'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import {
   canMakeVideo,
+  canMixBackground,
   canShareMedia,
   copyText,
   DEFAULT_VIDEO_OPTIONS,
@@ -26,6 +27,7 @@ import {
   type VideoOptions,
 } from '@/lib/qari-share-media'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
+import Switch from '@/components/qari/Switch'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
@@ -307,6 +309,9 @@ ${url}`)
             ) : null}
           </div>
         ) : null}
+        {stage.name === 'choose' && videoView && !isAyahCard && videoPossible ? (
+          <MixClipsRow options={videoOptions} onChange={setVideoOptions} />
+        ) : null}
 
         {stage.name === 'choose' && !videoView && !isAyahCard ? (
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
@@ -543,6 +548,7 @@ function CustomizeVideo({
         onSelect={(id) => onChange({ ...options, backgroundId: id })}
         onClose={() => setGalleryOpen(false)}
       />
+      <MixClipsRow options={options} onChange={onChange} />
 
       <div className="mt-4 flex gap-2">
         <button
@@ -631,5 +637,28 @@ function ReadyView({
       >
         {t('Make something else')}</button>
     </div>
+  )
+}
+
+/**
+ * Just the chosen clip, or the clips like it as well: the video then cuts to
+ * another of the same kind as each ayah starts. Only offered for a clip that
+ * has others of its kind.
+ */
+function MixClipsRow({ options, onChange }: { options: VideoOptions; onChange: (options: VideoOptions) => void }) {
+  const t = useT()
+  if (!canMixBackground(options.backgroundId)) return null
+  return (
+    <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--home-rule)] px-4 py-3">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-[var(--home-heading)]">{t('Mix similar clips')}</span>
+        <span className="mt-0.5 block text-xs leading-snug text-[var(--home-muted)]">
+          {options.mix
+            ? t('Cuts to clips like this one as each ayah starts.')
+            : t('Just the clip you chose, the whole way through.')}
+        </span>
+      </span>
+      <Switch checked={options.mix} onChange={(mix) => onChange({ ...options, mix })} label={t('Mix similar clips')} />
+    </label>
   )
 }

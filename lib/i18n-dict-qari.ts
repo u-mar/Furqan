@@ -518,4 +518,14 @@ export const QARI: Dict = {
   'Neon street': { so: 'Waddo nalal leh', ar: 'شارع النيون' },
   'City street': { so: 'Waddo magaalo', ar: 'شارع المدينة' },
   'Village street': { so: 'Waddo tuulo', ar: 'شارع القرية' },
+  'Show as': { so: 'U muuji sida', ar: 'العرض كـ' },
+  'Mix similar clips': { so: 'Isku dar muuqaallo la mid ah', ar: 'دمج مقاطع مشابهة' },
+  'Cuts to clips like this one as each ayah starts.': {
+    so: 'Waxay u gudbaysaa muuqaallo la mid ah markasta oo aayad bilaabanto.',
+    ar: 'ينتقل إلى مقاطع مشابهة مع بداية كل آية.',
+  },
+  'Just the clip you chose, the whole way through.': {
+    so: 'Kaliya muuqaalka aad dooratay, ilaa dhammaadka.',
+    ar: 'المقطع الذي اخترته فقط، من البداية إلى النهاية.',
+  },
 }

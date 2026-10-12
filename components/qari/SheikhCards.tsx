@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Mic } from 'lucide-react'
+import { compactNumber } from '@/lib/qari'
 import { RECITERS } from '@/lib/reciters'
 import { sheikhLetter, type Sheikh } from '@/lib/sheikhs'
 import { tapFeedback } from '@/lib/haptics'
@@ -87,9 +88,9 @@ export function SheikhCard({
 }
 
 /**
- * The top of a sheikh's page or search result: his portrait in a gold ring
- * over a band of gold stars, his name, how many have imitated him, and a way
- * to join in.
+ * The top of a sheikh's page or search result, kept plain: his portrait, his
+ * name, how many imitations and reciters there are (set out like a profile's
+ * numbers), and the way to join in.
  */
 export function SheikhHeader({
   sheikh,
@@ -102,31 +103,34 @@ export function SheikhHeader({
 }) {
   const t = useT()
   return (
-    <section className="qari-enter home-card overflow-hidden rounded-[20px] text-center">
-      <div className="qari-star-band h-[76px]" aria-hidden />
-      <div className="-mt-12 px-4 pb-4">
-        <span className="relative mx-auto block w-fit rounded-full bg-[var(--home-card-bg)] p-[3px] shadow-[inset_0_0_0_1.5px_var(--qari-gold)]">
-          <SheikhMonogram sheikh={sheikh} size={84} />
-        </span>
-        <h2 className="home-serif mt-2.5 text-[21px] font-medium leading-tight tracking-[-0.015em] text-[var(--home-heading)]">
-          {sheikh.name}
-        </h2>
-        <p className="mt-1 min-h-[1.25rem] text-[13px] text-[var(--home-muted)]">
-          {count === null
-            ? ''
-            : count === 0
-              ? t('No imitations yet')
-              : t('{imitation} from {people}', { imitation: plural(count, 'imitation'), people: plural(people ?? 0, 'person', 'people') })}
-        </p>
-        <Link
-          href={`/qari/record?imitate=${encodeURIComponent(sheikh.id)}`}
-          onClick={tapFeedback}
-          className="ed-ink ed-focus qari-press mt-3.5 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium"
-        >
-          <Mic className="h-4 w-4" strokeWidth={2} />
-          {t('Imitate')} {sheikh.shortName}
-        </Link>
+    <section className="qari-enter home-card rounded-[20px] px-5 pb-5 pt-6 text-center">
+      <SheikhMonogram sheikh={sheikh} size={88} className="mx-auto shadow-[0_0_0_1px_var(--home-rule)]" />
+      <h2 className="home-serif mt-3 text-[21px] font-medium leading-tight tracking-[-0.015em] text-[var(--home-heading)]">
+        {sheikh.name}
+      </h2>
+      <div className="mt-3.5 flex items-start justify-center gap-10">
+        <SheikhStat value={count} label={t('Imitations')} />
+        <SheikhStat value={people} label={t('Reciters')} />
       </div>
+      <Link
+        href={`/qari/record?imitate=${encodeURIComponent(sheikh.id)}`}
+        onClick={tapFeedback}
+        className="ed-ink ed-focus qari-press mt-5 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium"
+      >
+        <Mic className="h-4 w-4" strokeWidth={2} />
+        {t('Imitate')} {sheikh.shortName}
+      </Link>
     </section>
+  )
+}
+
+function SheikhStat({ value, label }: { value: number | null; label: string }) {
+  return (
+    <div className="min-w-[4.5rem] text-center">
+      <div className="flex h-6 items-center justify-center text-[1.1875rem] font-bold tabular-nums text-[var(--home-heading)]">
+        {value === null ? <span className="qari-skeleton block h-4 w-7 rounded-md" /> : compactNumber(value)}
+      </div>
+      <p className="mt-0.5 text-[12.5px] text-[var(--home-muted)]">{label}</p>
+    </div>
   )
 }

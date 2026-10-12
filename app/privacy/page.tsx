@@ -236,9 +236,10 @@ export default function PrivacyPage() {
           who you are and tells us your account identifier and email address.
         </li>
         <li>
-          <strong>Hugging Face</strong> &mdash; when you share part of an ayah, the ayah&rsquo;s reference, its
-          Arabic words and its published translation may be sent to an AI model hosted through Hugging
-          Face to find the matching part of the translation. Nothing about you is included.
+          <strong>Anthropic, Groq and Hugging Face</strong> &mdash; when you share part of an ayah, the
+          ayah&rsquo;s Arabic words, their word-by-word meanings and its published translation may be sent to
+          an AI model (Anthropic&rsquo;s Claude, or an open model run by Groq or Hugging Face) to find the
+          matching part of the translation. Nothing about you is included.
         </li>
         <li>
           <strong>Push services</strong> run by your browser&rsquo;s maker (for example Google, Apple or

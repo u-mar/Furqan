@@ -11,6 +11,8 @@ import { postAyahCard } from '@/lib/qari-upload'
 import {
   DEFAULT_BACKGROUND_ID,
   DEFAULT_VERSE_FONT_SCALE,
+  LONG_VERSE_FONT_SCALE,
+  LONG_VERSE_WORDS,
   MAX_VERSE_FONT_SCALE,
   MIN_VERSE_FONT_SCALE,
   VERSE_FONT_SCALE_STEP,
@@ -108,6 +110,8 @@ export default function ShareVerseSheet({
   const [anchor, setAnchor] = useState<number | null>(null)
   const [showTranslation, setShowTranslation] = useState(true)
   const [fontScale, setFontScale] = useState(DEFAULT_VERSE_FONT_SCALE)
+  // Once the size has been set by hand it stays, until another ayah is opened.
+  const sizedByHand = useRef(false)
   const [part, setPart] = useState<{ text: string | null; source: PartSource | null } | null>(null)
   const [partLoading, setPartLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -144,7 +148,7 @@ export default function ShareVerseSheet({
     setRange(null)
     setAnchor(null)
     setPart(null)
-    setFontScale(DEFAULT_VERSE_FONT_SCALE)
+    sizedByHand.current = false
     setPostOpen(false)
     setPostCaption('')
   }, [target?.verseKey])
@@ -268,7 +272,15 @@ export default function ShareVerseSheet({
     setAnchor(null)
   }, [])
 
+  // A long selection starts at 70%, a short one at 100%: chosen again as the selection changes,
+  // until the size is set by hand.
+  const autoScale = selection.words.length >= LONG_VERSE_WORDS ? LONG_VERSE_FONT_SCALE : DEFAULT_VERSE_FONT_SCALE
+  useEffect(() => {
+    if (!sizedByHand.current) setFontScale(autoScale)
+  }, [autoScale, target?.verseKey])
+
   const changeFontScale = useCallback((delta: number) => {
+    sizedByHand.current = true
     setFontScale((v) => {
       const next = Math.round((v + delta) * 10) / 10
       return Math.min(MAX_VERSE_FONT_SCALE, Math.max(MIN_VERSE_FONT_SCALE, next))

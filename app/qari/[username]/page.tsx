@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Ban, ChevronLeft, Ellipsis, Heart, Mic, Pause, Play } from 'lucide-react'
+import { Ban, ChevronLeft, Ellipsis, Heart, Mic } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
+import QariViewToggle from '@/components/qari/QariViewToggle'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
+import RecitationGrid from '@/components/qari/RecitationGrid'
 import SwipeFeed from '@/components/qari/SwipeFeed'
 import UploadCard from '@/components/qari/UploadCard'
 import {
@@ -16,11 +18,11 @@ import {
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
-import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 import { fetchFeed, fetchFollowState, peekFeed, type Recitation } from '@/lib/qari'
-import { onPlayerError, pausePlayback, playRecitation } from '@/lib/qari-player'
+import { onPlayerError } from '@/lib/qari-player'
+import { useQariView } from '@/lib/qari-view'
 import { dismissUpload, useUploads } from '@/lib/qari-upload'
 import { blockUser, unblockUser, useBlockedUsers } from '@/lib/qari-blocks'
 import { askToSignIn } from '@/lib/account-prompt'
@@ -36,7 +38,6 @@ export default function QariProfilePage() {
   const username = decodeURIComponent(String(params?.username ?? ''))
   const viewer = useViewer()
   const viewerId = viewer?.id ?? null
-  const player = useQariPlayer()
 
   // Usernames are stored lower-case; a link may arrive with any casing.
   const isMe = viewer?.username.toLowerCase() === username.toLowerCase()
@@ -180,21 +181,11 @@ export default function QariProfilePage() {
   const shown = tab === 'recitations' ? recitations : favourites
   const list = useMemo(() => shown?.filter((r) => r.kind !== 'ayah') ?? null, [shown])
   const ayahCards = useMemo(() => shown?.filter((r) => r.kind === 'ayah') ?? [], [shown])
-  const [cardsOpen, setCardsOpen] = useState<{ items: Recitation[]; startId: string } | null>(null)
-  const listIds = useMemo(() => new Set((list ?? []).map((r) => r.id)), [list])
-  const playingHere = Boolean(player.current && listIds.has(player.current.id))
-  const playingNow = playingHere && (player.status === 'playing' || player.status === 'loading')
-
-  const playAll = useCallback(() => {
-    if (!list || list.length === 0) return
-    tapFeedback()
-    if (playingNow) {
-      pausePlayback()
-      return
-    }
-    const start = playingHere && player.current ? player.current : list[0]
-    playRecitation(start, { queue: list, viewerId })
-  }, [list, player, playingHere, playingNow, viewerId])
+  // Audio or video, as on Qari's front page: a list to listen to, or a grid of videos.
+  const [view] = useQariView()
+  const videoView = view === 'swipe'
+  // Opened full screen from a grid tile or an ayah card, swiping on through the rest.
+  const [cardsOpen, setCardsOpen] = useState<{ items: Recitation[]; startId: string; autoplay: boolean } | null>(null)
 
   const toggleBlock = useCallback(async () => {
     if (!viewer) {
@@ -247,7 +238,7 @@ export default function QariProfilePage() {
           loadingMore={false}
           onLoadMore={() => {}}
           startId={cardsOpen.startId}
-          autoplay={false}
+          autoplay={cardsOpen.autoplay}
           viewerId={viewerId}
           viewerUsername={viewer?.username ?? null}
           onRemoved={(id) => {
@@ -390,21 +381,7 @@ export default function QariProfilePage() {
             </button>
           ))}
         </div>
-        {list && list.length > 0 ? (
-          <button
-            type="button"
-            onClick={playAll}
-            aria-label={playingNow ? t('Pause') : t('Play all')}
-            className="qari-press ed-focus mb-1 flex h-[34px] items-center gap-1.5 rounded-full bg-[var(--home-sage)] pl-2.5 pr-[13px] text-[13px] font-medium text-[var(--qari-on-teal)]"
-          >
-            {playingNow ? (
-              <Pause key="pause" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
-            ) : (
-              <Play key="play" className="qari-swap h-[13px] w-[13px] fill-current" strokeWidth={0} />
-            )}
-            {playingNow ? t('Pause') : t('Play all')}
-          </button>
-        ) : null}
+        {shown && shown.length > 0 ? <QariViewToggle className="mb-1" /> : null}
       </div>
 
       <div className={cn('mt-3', isBlocked && 'hidden')}>
@@ -415,8 +392,8 @@ export default function QariProfilePage() {
             ))}
           </div>
         ) : null}
-        {ayahCards.length > 0 ? (
-          <AyahCardRow cards={ayahCards} onOpen={(startId) => setCardsOpen({ items: ayahCards, startId })} />
+        {ayahCards.length > 0 && !videoView ? (
+          <AyahCardRow cards={ayahCards} onOpen={(startId) => setCardsOpen({ items: ayahCards, startId, autoplay: false })} />
         ) : null}
         {list === null ? (
           <RecitationSkeletons count={3} />
@@ -427,6 +404,8 @@ export default function QariProfilePage() {
             body={t('Check your connection and try again.')}
             action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
+        ) : videoView && shown && shown.length > 0 ? (
+          <RecitationGrid items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
         ) : list.length === 0 ? (
           (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 ? null : tab === 'favourites' ? (
             <EmptyState

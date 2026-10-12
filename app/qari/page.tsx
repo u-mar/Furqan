@@ -23,6 +23,7 @@ import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh
 import { useStartRecording } from '@/components/qari/QariRecordFab'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import { SheikhCard, SheikhHeader } from '@/components/qari/SheikhCards'
+import RecitationGrid from '@/components/qari/RecitationGrid'
 import SwipeFeed from '@/components/qari/SwipeFeed'
 import { useBlockedUsers } from '@/lib/qari-blocks'
 import {
@@ -94,7 +95,8 @@ function QariHomeContent() {
   }, [view, sort])
   const unread = useUnreadNotifications(viewer)
   const searching = query.length > 0
-  const swipeOn = !searching && (view === 'swipe' || overlay !== null)
+  // A search keeps the results on screen; a result opened from them still plays full screen.
+  const swipeOn = overlay !== null || (!searching && view === 'swipe')
 
   // Searching swaps the whole list out, taking the playing card with it.
   const wasSearching = useRef(searching)
@@ -451,7 +453,7 @@ function QariHomeContent() {
           {searchBar}
 
       {searching ? (
-        <SearchResults key={query} query={query} viewer={viewer} />
+        <SearchResults key={query} query={query} viewer={viewer} video={view === 'swipe'} onOpen={openSwipe} />
       ) : (
         <>
           <div className="qari-no-scrollbar -mx-4 mt-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 pt-0.5">
@@ -617,7 +619,18 @@ function SeeAll({ href }: { href: string }) {
 }
 
 /** A search: a sheikh's imitations first when the query names one, then everything else it matches. */
-function SearchResults({ query, viewer }: { query: string; viewer: AppUser | null }) {
+function SearchResults({
+  query,
+  viewer,
+  video,
+  onOpen,
+}: {
+  query: string
+  viewer: AppUser | null
+  /** Watching videos: the results are a grid of them, each opening full screen. */
+  video: boolean
+  onOpen: (list: Recitation[], startId: string) => void
+}) {
   const t = useT()
   const sheikh = useMemo(() => matchSheikh(query), [query])
   const viewerId = viewer?.id ?? null
@@ -670,7 +683,10 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
     setImitations((prev) => prev?.filter((x) => x.id !== id) ?? prev)
   }, [])
 
-  const cards = (list: Recitation[]) => (
+  const cards = (list: Recitation[]) =>
+    video ? (
+      <RecitationGrid items={list} onOpen={(startId) => onOpen(list, startId)} />
+    ) : (
     <RecitationCards>
       {list.map((r, i) => (
         <RecitationCard
@@ -685,7 +701,7 @@ function SearchResults({ query, viewer }: { query: string; viewer: AppUser | nul
         />
       ))}
     </RecitationCards>
-  )
+    )
 
   return (
     <div className="mt-4">

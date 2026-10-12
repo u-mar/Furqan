@@ -7,15 +7,20 @@
  * in their own order — cut down to the part that carries the chosen Arabic:
  *
  *   ai       an AI model reads the whole ayah and its translation and picks
- *            out the part; what it returns is checked against the translation
- *            word for word, and thrown away if it strays from it
+ *            out the part — Claude if it is set up, else Groq's free models,
+ *            else a Hugging Face model; what any of them returns is checked
+ *            against the translation word for word, and thrown away if it
+ *            strays from it
  *   matched  without the model, the word meanings are lined up against the
  *            translation and the stretch they cover is cut out
  *   words    the word meanings joined, when neither of those finds anything
  *
- * Server only: the model is reached with HF_API_TOKEN (a Hugging Face token
- * allowed to call Inference Providers). PART_TRANSLATION_MODEL picks the model.
+ * Server only. Claude is reached with ANTHROPIC_API_KEY, Groq with GROQ_API_KEY,
+ * and the Hugging Face model with HF_API_TOKEN (a token allowed to call
+ * Inference Providers; PART_TRANSLATION_MODEL picks which one).
  */
+
+import Anthropic from '@anthropic-ai/sdk'
 
 export type PartTranslationSource = 'ai' | 'matched' | 'words'
 
@@ -40,7 +45,10 @@ export interface PartTranslationRequest {
 }
 
 export async function translatePart(request: PartTranslationRequest): Promise<PartTranslation | null> {
-  const ai = await pickWithModel(request).catch(() => null)
+  const ai =
+    (await pickWithClaude(request).catch(() => null)) ??
+    (await pickWithGroq(request).catch(() => null)) ??
+    (await pickWithModel(request).catch(() => null))
   if (ai) return { text: ai, source: 'ai' }
   const matched = matchAgainstTranslation(request)
   if (matched) return { text: matched, source: 'matched' }
@@ -151,6 +159,175 @@ function tidy(text: string, endsAyah: boolean): string {
   return out ? out.charAt(0).toLocaleUpperCase() + out.slice(1) : out
 }
 
+/* ------------------------------------------------------------------ the ask */
+
+/** Shown to the model before every request: who it is here and what a good answer is. */
+const ALIGN_SYSTEM = [
+  'You align the Quran with its published translations, for an app that lets people share part of an ayah as a picture.',
+  'You read Classical Arabic closely: you know which words of a published translation render which Arabic words, including where a translator reorders them, splits one Arabic word into several English ones, or adds a bracketed word for sense.',
+  "Your answer is always the translator's own wording, copied exactly — never your own translation, paraphrase or explanation.",
+].join(' ')
+
+/**
+ * The ayah word by word, with each word's dictionary meaning beside it when
+ * there is one, so the model can see where the choice starts and ends, then the
+ * whole translation, then what makes a good excerpt.
+ */
+function alignPrompt({ arabicWords, glosses, translation, start, end, languageName }: PartTranslationRequest): string {
+  const numbered = arabicWords
+    .map((word, i) => `${i + 1}. ${word}${glosses?.[i] ? ` — ${glosses[i]}` : ''}${i >= start && i <= end ? '   ← chosen' : ''}`)
+    .join('\n')
+  return [
+    `The ayah, word by word (words ${start + 1}–${end + 1} are the ones chosen):`,
+    numbered,
+    '',
+    `The published ${languageName} translation of the whole ayah:`,
+    `"${translation}"`,
+    '',
+    'Give the part of this translation that renders the chosen Arabic words, understood as they are meant in the whole ayah, so that it reads as a complete, meaningful phrase on its own.',
+    "- Copy the translator's words exactly and in their order. Do not reword, add to, shorten inside, or explain them.",
+    '- Include every word the translator used for the chosen Arabic, wherever it sits — a verb the translator moved, a negation, a bracketed word that belongs to the phrase.',
+    '- Leave out words that only translate Arabic outside the choice, such as a "they said" or a subject that belongs to an earlier phrase.',
+    '- Keep the small words the excerpt needs to read as a complete phrase, and the punctuation the translator put inside it.',
+    '- If the meaning of the chosen words is split across two places in the translation, give both, joined with " … ".',
+    'Reply with JSON only: {"text": "..."} holding only the excerpt.',
+  ].join('\n')
+}
+
+/** The excerpt from a model's JSON reply, if it is the translator's own words; tidied at its edges. */
+function acceptExcerpt(reply: string, request: PartTranslationRequest): string | null {
+  const json = reply.match(/\{[\s\S]*\}/)?.[0]
+  if (!json) return null
+  let text: unknown
+  try {
+    text = (JSON.parse(json) as { text?: unknown }).text
+  } catch {
+    // Not JSON after all: the next model gets its turn.
+    return null
+  }
+  if (typeof text !== 'string' || !text.trim()) return null
+  // Only the translator's words count; anything the model wrote itself is refused.
+  if (!isDrawnFrom(text, request.translation)) return null
+  return tidy(text, request.end === request.arabicWords.length - 1)
+}
+
+/* ------------------------------------------------------------------ Claude */
+
+const CLAUDE_MODEL = 'claude-opus-5-5'
+
+let claudeClient: Anthropic | null = null
+/** After Claude refuses the key, it is left alone for a while rather than asked again for every share. */
+let claudeOffUntil = 0
+
+function claude(): Anthropic | null {
+  if (!process.env.ANTHROPIC_API_KEY?.trim() || Date.now() < claudeOffUntil) return null
+  claudeClient ??= new Anthropic({ timeout: 25_000, maxRetries: 1 })
+  return claudeClient
+}
+
+/**
+ * Asks Claude which words of the published translation carry the chosen Arabic,
+ * read in the light of the whole ayah. The ayah goes in word by word, with each
+ * word's dictionary meaning beside it when there is one, so it can see where
+ * the choice starts and ends; the reply is held to a one-field JSON shape.
+ */
+async function pickWithClaude(request: PartTranslationRequest): Promise<string | null> {
+  const client = claude()
+  if (!client) return null
+
+  try {
+    const response = await client.beta.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 16000,
+      // A declined request is re-run on Anthropic's recommended model instead of coming back empty.
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: {
+        effort: 'medium',
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: { text: { type: 'string' } },
+            required: ['text'],
+            additionalProperties: false,
+          },
+        },
+      },
+      system: ALIGN_SYSTEM,
+      messages: [{ role: 'user', content: alignPrompt(request) }],
+    })
+
+    // A decline that the fallback could not rescue either: nothing to use.
+    if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') return null
+    const reply = response.content.find((block) => block.type === 'text')
+    if (!reply || reply.type !== 'text') return null
+    return acceptExcerpt(reply.text, request)
+  } catch (error) {
+    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+      claudeOffUntil = Date.now() + 10 * 60_000
+    } else if (error instanceof Anthropic.RateLimitError) {
+      claudeOffUntil = Date.now() + 30_000
+    }
+    return null
+  }
+}
+
+/* ------------------------------------------------------------------ Groq */
+
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+/**
+ * Tried in order. GPT-OSS 120B answered every case of a test set of well-known
+ * ayah parts exactly; Qwen is nearly as good and four times quicker, and has a
+ * rate limit of its own, so it takes over while the first is busy.
+ */
+const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b']
+const GROQ_TIMEOUT_MS = 12_000
+
+/** Groq's free tier allows so many tokens a minute per model; one that is out waits rather than being asked again. */
+const groqBusyUntil = new Map<string, number>()
+let groqOffUntil = 0
+
+async function pickWithGroq(request: PartTranslationRequest): Promise<string | null> {
+  const key = process.env.GROQ_API_KEY?.trim()
+  if (!key || Date.now() < groqOffUntil) return null
+  for (const model of GROQ_MODELS) {
+    if (Date.now() < (groqBusyUntil.get(model) ?? 0)) continue
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_completion_tokens: 2048,
+        response_format: { type: 'json_object' },
+        // Both think before answering; only the answer is wanted back.
+        ...(model.startsWith('openai/') ? { reasoning_effort: 'medium' } : { reasoning_format: 'hidden' }),
+        messages: [
+          { role: 'system', content: ALIGN_SYSTEM },
+          { role: 'user', content: alignPrompt(request) },
+        ],
+      }),
+    }).catch(() => null)
+    if (!res) continue
+    if (res.status === 401 || res.status === 403) {
+      groqOffUntil = Date.now() + 10 * 60_000
+      return null
+    }
+    if (res.status === 429) {
+      const wait = Number(res.headers.get('retry-after'))
+      groqBusyUntil.set(model, Date.now() + (Number.isFinite(wait) && wait > 0 ? wait * 1000 : 20_000))
+      continue
+    }
+    if (!res.ok) continue
+    const data = (await res.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null
+    const excerpt = acceptExcerpt(data?.choices?.[0]?.message?.content ?? '', request)
+    if (excerpt) return excerpt
+  }
+  return null
+}
+
 /* ------------------------------------------------------------------ model */
 
 const MODEL_URL = 'https://router.huggingface.co/v1/chat/completions'
@@ -206,7 +383,8 @@ async function pickWithModel(request: PartTranslationRequest): Promise<string | 
     }),
   })
 
-  if (res.status === 401 || res.status === 403) {
+  // Refused, or out of credits: there is no point asking again for every share.
+  if (res.status === 401 || res.status === 402 || res.status === 403) {
     modelOffUntil = Date.now() + 10 * 60_000
     return null
   }

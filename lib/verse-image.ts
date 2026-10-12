@@ -40,9 +40,12 @@ export const VERSE_IMAGE_BACKGROUNDS: VerseImageBackground[] = SHARE_BACKGROUNDS
 export const DEFAULT_BACKGROUND_ID = VERSE_IMAGE_BACKGROUNDS[0].id
 
 export const DEFAULT_VERSE_FONT_SCALE = 1
-export const MIN_VERSE_FONT_SCALE = 0.7
+export const MIN_VERSE_FONT_SCALE = 0.4
 export const MAX_VERSE_FONT_SCALE = 1.3
 export const VERSE_FONT_SCALE_STEP = 0.1
+/** A selection this many words long or more starts smaller, so a long ayah sits on the card with room around it. */
+export const LONG_VERSE_WORDS = 20
+export const LONG_VERSE_FONT_SCALE = 0.7
 
 export interface VerseImageInput {
   /** Arabic words in reading order — sliced already if sharing part of an ayah. */

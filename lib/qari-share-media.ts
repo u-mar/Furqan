@@ -151,10 +151,18 @@ export {
 export interface VideoOptions {
   /** One of VIDEO_BACKGROUNDS' ids. */
   backgroundId: string
+  /** Cut to other clips of the same kind as each ayah starts, rather than the chosen clip alone. */
+  mix: boolean
 }
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   backgroundId: 'black',
+  mix: false,
+}
+
+/** Whether this background has others of its kind to mix in. */
+export function canMixBackground(backgroundId: string): boolean {
+  return backgroundReel(findVideoBackground(backgroundId)).length > 1
 }
 
 const VIDEO_OPTIONS_KEY = 'muyassar_qari_video_options'
@@ -167,6 +175,7 @@ export function loadVideoOptions(): VideoOptions {
     const saved = JSON.parse(raw) as Partial<VideoOptions>
     return {
       backgroundId: findVideoBackground(String(saved.backgroundId)).id,
+      mix: saved.mix === true,
     }
   } catch {
     return DEFAULT_VIDEO_OPTIONS
@@ -840,7 +849,9 @@ async function prepareScene(
   ])
 
   // Cut where the ayat change, so the captions are needed first.
-  const clip = background.videoUrl ? await openReel(mb, planShots(backgroundReel(background), captions, frames)) : null
+  // Just the chosen clip, unless the clips like it were asked for too.
+  const reel = options.mix ? backgroundReel(background) : [background]
+  const clip = background.videoUrl ? await openReel(mb, planShots(reel, captions, frames)) : null
   // A clip that cannot be read stands still on its poster frame instead.
   const fallback = background.videoUrl && !clip && background.url ? await loadImage(background.url) : null
   const picturePresent = Boolean(still || clip || fallback)
