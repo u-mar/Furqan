@@ -15,6 +15,11 @@
  *            translation and the stretch they cover is cut out
  *   words    the word meanings joined, when neither of those finds anything
  *
+ * An ayah shown a phrase at a time (the Qari video view, and the video shared
+ * from it) has all its phrases asked for together instead, so the model
+ * divides the translation among them and neighbours never share words; see
+ * translatePhrases.
+ *
  * Server only. Claude is reached with ANTHROPIC_API_KEY, Groq with GROQ_API_KEY,
  * and the Hugging Face model with HF_API_TOKEN (a token allowed to call
  * Inference Providers; PART_TRANSLATION_MODEL picks which one).
@@ -54,6 +59,42 @@ export async function translatePart(request: PartTranslationRequest): Promise<Pa
   if (matched) return { text: matched, source: 'matched' }
   const words = request.glosses?.slice(request.start, request.end + 1).filter(Boolean).join(' ').trim()
   return words ? { text: words, source: 'words' } : null
+}
+
+export interface PhrasesRequest extends Omit<PartTranslationRequest, 'start' | 'end'> {
+  /** The phrases the ayah is shown in, one after another: each one's first and last word, counted from 0. */
+  phrases: { start: number; end: number }[]
+}
+
+export interface PhraseTranslations {
+  /** One per phrase; null where none could be found. */
+  texts: (string | null)[]
+  /** The weakest way any of them was found. */
+  source: PartTranslationSource
+}
+
+const SOURCE_RANK: Record<PartTranslationSource, number> = { ai: 2, matched: 1, words: 0 }
+
+/**
+ * The translation of each phrase of an ayah that is shown a phrase at a time.
+ * Asked for one by one, neighbouring phrases can share words ("He is Allah,
+ * other than whom there is no", then "Other than whom there is no deity").
+ * Asked for together, the model divides the translation among them, so read one
+ * after another they give the whole of it once. Phrase by phrase is the fallback.
+ */
+export async function translatePhrases(request: PhrasesRequest): Promise<PhraseTranslations | null> {
+  const split = (await splitWithClaude(request).catch(() => null)) ?? (await splitWithGroq(request).catch(() => null))
+  if (split) return { texts: split, source: 'ai' }
+
+  const texts: (string | null)[] = []
+  let source: PartTranslationSource = 'ai'
+  for (const phrase of request.phrases) {
+    const part = await translatePart({ ...request, start: phrase.start, end: phrase.end })
+    texts.push(part?.text ?? null)
+    const found = part?.source ?? 'words'
+    if (SOURCE_RANK[found] < SOURCE_RANK[source]) source = found
+  }
+  return texts.some(Boolean) ? { texts, source } : null
 }
 
 /* ------------------------------------------------------------------ words */
@@ -161,12 +202,17 @@ function tidy(text: string, endsAyah: boolean): string {
 
 /* ------------------------------------------------------------------ the ask */
 
-/** Shown to the model before every request: who it is here and what a good answer is. */
-const ALIGN_SYSTEM = [
-  'You align the Quran with its published translations, for an app that lets people share part of an ayah as a picture.',
+/** What the model is good at here and what a good answer is, whichever job it is doing. */
+const READER = [
   'You read Classical Arabic closely: you know which words of a published translation render which Arabic words, including where a translator reorders them, splits one Arabic word into several English ones, or adds a bracketed word for sense.',
   "Your answer is always the translator's own wording, copied exactly — never your own translation, paraphrase or explanation.",
 ].join(' ')
+
+/** Shown to the model before every request for part of an ayah. */
+const ALIGN_SYSTEM = `You align the Quran with its published translations, for an app that lets people share part of an ayah as a picture. ${READER}`
+
+/** Shown to the model before every request for an ayah's phrases. */
+const PHRASES_SYSTEM = `You align the Quran with its published translations, for an app that shows a recited ayah on screen a phrase at a time, with the translation of each phrase beneath it. ${READER}`
 
 /**
  * The ayah word by word, with each word's dictionary meaning beside it when
@@ -211,6 +257,68 @@ function acceptExcerpt(reply: string, request: PartTranslationRequest): string |
   return tidy(text, request.end === request.arabicWords.length - 1)
 }
 
+/** The ayah word by word, the phrases it is shown in, the whole translation, and how to divide it. */
+function phrasesPrompt({ arabicWords, glosses, translation, languageName, phrases }: PhrasesRequest): string {
+  const numbered = arabicWords.map((word, i) => `${i + 1}. ${word}${glosses?.[i] ? ` — ${glosses[i]}` : ''}`).join('\n')
+  const listed = phrases
+    .map((p, k) => `Phrase ${k + 1}: words ${p.start + 1}–${p.end + 1}  (${arabicWords.slice(p.start, p.end + 1).join(' ')})`)
+    .join('\n')
+  return [
+    'The ayah, word by word:',
+    numbered,
+    '',
+    `It is shown in ${phrases.length} phrases, one after another:`,
+    listed,
+    '',
+    `The published ${languageName} translation of the whole ayah:`,
+    `"${translation}"`,
+    '',
+    'Divide this translation among the phrases: for each phrase, the part of the translation that renders its Arabic words.',
+    "- Copy the translator's words exactly and in their order. Do not reword, add to or explain them.",
+    '- Each word of the translation goes to exactly one phrase: read one after another, the phrases give the whole translation once, with nothing repeated.',
+    '- A word goes with the phrase whose Arabic it renders. Where the translator moved a word, keep it with its Arabic if that still reads naturally; otherwise keep the translation in its order.',
+    '- Each phrase should read as naturally as it can on its own, and none may be empty.',
+    `Reply with JSON only: {"parts": [...]} with exactly ${phrases.length} strings, one per phrase, in order.`,
+  ].join('\n')
+}
+
+/** Of the translation's words, the share a division may leave out (a stray bracketed word) and still be used. */
+const PHRASES_MAY_MISS = 0.1
+
+/**
+ * The phrases from a model's JSON reply, if together they are the translator's
+ * own words: one per phrase, none empty, nothing used twice and next to nothing
+ * left out. Tidied at their edges.
+ */
+function acceptPhrases(reply: string, request: PhrasesRequest): string[] | null {
+  const json = reply.match(/\{[\s\S]*\}/)?.[0]
+  if (!json) return null
+  let parts: unknown
+  try {
+    parts = (JSON.parse(json) as { parts?: unknown }).parts
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parts) || parts.length !== request.phrases.length) return null
+  if (!parts.every((p): p is string => typeof p === 'string' && Boolean(p.trim()) && isDrawnFrom(p, request.translation))) return null
+
+  // Each word of the translation is used at most as often as it is there, and nearly all of them are.
+  const available = new Map<string, number>()
+  for (const token of tokenize(request.translation)) available.set(token.norm, (available.get(token.norm) ?? 0) + 1)
+  let used = 0
+  for (const token of parts.flatMap((p) => tokenize(p))) {
+    const left = available.get(token.norm) ?? 0
+    if (left === 0) return null
+    available.set(token.norm, left - 1)
+    used += 1
+  }
+  if (used < tokenize(request.translation).length * (1 - PHRASES_MAY_MISS)) return null
+
+  const last = parts.length - 1
+  const endsAyah = request.phrases[last].end === request.arabicWords.length - 1
+  return parts.map((p, k) => tidy(p, k === last && endsAyah))
+}
+
 /* ------------------------------------------------------------------ Claude */
 
 const CLAUDE_MODEL = 'claude-opus-5-5'
@@ -226,12 +334,10 @@ function claude(): Anthropic | null {
 }
 
 /**
- * Asks Claude which words of the published translation carry the chosen Arabic,
- * read in the light of the whole ayah. The ayah goes in word by word, with each
- * word's dictionary meaning beside it when there is one, so it can see where
- * the choice starts and ends; the reply is held to a one-field JSON shape.
+ * One request to Claude, its reply held to `schema`: the reply's text, or null
+ * when Claude is not set up, declined, or failed.
  */
-async function pickWithClaude(request: PartTranslationRequest): Promise<string | null> {
+async function askClaude(system: string, prompt: string, schema: Record<string, unknown>): Promise<string | null> {
   const client = claude()
   if (!client) return null
 
@@ -242,27 +348,15 @@ async function pickWithClaude(request: PartTranslationRequest): Promise<string |
       // A declined request is re-run on Anthropic's recommended model instead of coming back empty.
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      output_config: {
-        effort: 'medium',
-        format: {
-          type: 'json_schema',
-          schema: {
-            type: 'object',
-            properties: { text: { type: 'string' } },
-            required: ['text'],
-            additionalProperties: false,
-          },
-        },
-      },
-      system: ALIGN_SYSTEM,
-      messages: [{ role: 'user', content: alignPrompt(request) }],
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
+      system,
+      messages: [{ role: 'user', content: prompt }],
     })
 
     // A decline that the fallback could not rescue either: nothing to use.
     if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') return null
     const reply = response.content.find((block) => block.type === 'text')
-    if (!reply || reply.type !== 'text') return null
-    return acceptExcerpt(reply.text, request)
+    return reply && reply.type === 'text' ? reply.text : null
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
       claudeOffUntil = Date.now() + 10 * 60_000
@@ -273,25 +367,60 @@ async function pickWithClaude(request: PartTranslationRequest): Promise<string |
   }
 }
 
+/**
+ * Asks Claude which words of the published translation carry the chosen Arabic,
+ * read in the light of the whole ayah. The ayah goes in word by word, with each
+ * word's dictionary meaning beside it when there is one, so it can see where
+ * the choice starts and ends; the reply is held to a one-field JSON shape.
+ */
+async function pickWithClaude(request: PartTranslationRequest): Promise<string | null> {
+  const reply = await askClaude(ALIGN_SYSTEM, alignPrompt(request), {
+    type: 'object',
+    properties: { text: { type: 'string' } },
+    required: ['text'],
+    additionalProperties: false,
+  })
+  return reply ? acceptExcerpt(reply, request) : null
+}
+
+/** Asks Claude to divide an ayah's translation among the phrases it is shown in. */
+async function splitWithClaude(request: PhrasesRequest): Promise<string[] | null> {
+  const reply = await askClaude(PHRASES_SYSTEM, phrasesPrompt(request), {
+    type: 'object',
+    properties: { parts: { type: 'array', items: { type: 'string' } } },
+    required: ['parts'],
+    additionalProperties: false,
+  })
+  return reply ? acceptPhrases(reply, request) : null
+}
+
 /* ------------------------------------------------------------------ Groq */
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 /**
- * Tried in order. GPT-OSS 120B answered every case of a test set of well-known
- * ayah parts exactly; Qwen is nearly as good and four times quicker, and has a
- * rate limit of its own, so it takes over while the first is busy.
+ * For part of an ayah, tried in order: GPT-OSS 120B answered every case of a
+ * test set of well-known ayah parts exactly; Qwen is nearly as good and four
+ * times quicker, and has a rate limit of its own, so it takes over while the
+ * first is busy.
  */
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b']
+/**
+ * For an ayah's phrases the other way round: Qwen divided every ayah of a test
+ * set cleanly (2:255 in 14 phrases among them), in under a second and with a
+ * quarter of the tokens GPT-OSS spent.
+ */
+const GROQ_PHRASE_MODELS = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b']
 const GROQ_TIMEOUT_MS = 12_000
 
 /** Groq's free tier allows so many tokens a minute per model; one that is out waits rather than being asked again. */
 const groqBusyUntil = new Map<string, number>()
 let groqOffUntil = 0
 
-async function pickWithGroq(request: PartTranslationRequest): Promise<string | null> {
+/** Asks Groq's models in turn until one gives a reply `accept` takes. */
+async function askGroq<T>(models: string[], system: string, prompt: string, accept: (reply: string) => T | null): Promise<T | null> {
   const key = process.env.GROQ_API_KEY?.trim()
   if (!key || Date.now() < groqOffUntil) return null
-  for (const model of GROQ_MODELS) {
+  for (const model of models) {
     if (Date.now() < (groqBusyUntil.get(model) ?? 0)) continue
     const res = await fetch(GROQ_URL, {
       method: 'POST',
@@ -300,13 +429,13 @@ async function pickWithGroq(request: PartTranslationRequest): Promise<string | n
       body: JSON.stringify({
         model,
         temperature: 0,
-        max_completion_tokens: 2048,
+        max_completion_tokens: 4096,
         response_format: { type: 'json_object' },
         // Both think before answering; only the answer is wanted back.
         ...(model.startsWith('openai/') ? { reasoning_effort: 'medium' } : { reasoning_format: 'hidden' }),
         messages: [
-          { role: 'system', content: ALIGN_SYSTEM },
-          { role: 'user', content: alignPrompt(request) },
+          { role: 'system', content: system },
+          { role: 'user', content: prompt },
         ],
       }),
     }).catch(() => null)
@@ -322,10 +451,18 @@ async function pickWithGroq(request: PartTranslationRequest): Promise<string | n
     }
     if (!res.ok) continue
     const data = (await res.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null
-    const excerpt = acceptExcerpt(data?.choices?.[0]?.message?.content ?? '', request)
-    if (excerpt) return excerpt
+    const accepted = accept(data?.choices?.[0]?.message?.content ?? '')
+    if (accepted) return accepted
   }
   return null
+}
+
+function pickWithGroq(request: PartTranslationRequest): Promise<string | null> {
+  return askGroq(GROQ_MODELS, ALIGN_SYSTEM, alignPrompt(request), (reply) => acceptExcerpt(reply, request))
+}
+
+function splitWithGroq(request: PhrasesRequest): Promise<string[] | null> {
+  return askGroq(GROQ_PHRASE_MODELS, PHRASES_SYSTEM, phrasesPrompt(request), (reply) => acceptPhrases(reply, request))
 }
 
 /* ------------------------------------------------------------------ model */

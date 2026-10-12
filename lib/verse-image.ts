@@ -46,6 +46,10 @@ export const VERSE_FONT_SCALE_STEP = 0.1
 /** A selection this many words long or more starts smaller, so a long ayah sits on the card with room around it. */
 export const LONG_VERSE_WORDS = 20
 export const LONG_VERSE_FONT_SCALE = 0.7
+/** A shorter choice starts at the first of these that puts its Arabic on one line. */
+export const ONE_LINE_FONT_SCALES = [0.6, 0.5]
+/** The translation is never drawn smaller than this, however small the Arabic is set. */
+const MIN_TRANSLATION_SCALE = 0.8
 
 export interface VerseImageInput {
   /** Arabic words in reading order — sliced already if sharing part of an ayah. */
@@ -180,6 +184,29 @@ function paintBackground(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W
   ctx.fillRect(0, 0, W, H)
 }
 
+/** The font the card draws these Arabic words in: the mushaf page's own when it loads, Amiri otherwise. */
+async function arabicFontFor(words: string[], page: number, isQcf: boolean): Promise<string> {
+  const fallback = fontStacks().arabic
+  if (!isQcf || page <= 0) return fallback
+  const ok = await loadPageFont(page, words.join('').slice(0, 12)).catch(() => false)
+  return ok ? `"${qcfFontFamily(page)}", ${fallback}` : fallback
+}
+
+/** Whether these words sit on one line of the card at this size, measured in the font the card uses. */
+export async function fitsOnOneLine(input: {
+  words: string[]
+  page: number
+  isQcf: boolean
+  fontScale: number
+  format?: VerseImageFormat
+}): Promise<boolean> {
+  if (typeof document === 'undefined' || input.words.length === 0) return false
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx) return false
+  ctx.font = `${Math.round(78 * input.fontScale)}px ${await arabicFontFor(input.words, input.page, input.isQcf)}`
+  return wrapLines(ctx, input.words, LAYOUT[input.format ?? 'card'].arabicWidth).length === 1
+}
+
 export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const { words, page, isQcf, translation } = input
   const { W, H, top, bottom, arabicWidth, translationWidth } = LAYOUT[input.format ?? 'card']
@@ -194,13 +221,8 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const fonts = fontStacks()
 
   /* Prefer the mushaf's own script; fall back to Amiri if it won't load. */
-  let arabicFont = fonts.arabic
-  let arabicWords = words
-  if (isQcf && page > 0) {
-    const ok = await loadPageFont(page, words.join('').slice(0, 12)).catch(() => false)
-    if (ok) arabicFont = `"${qcfFontFamily(page)}", ${fonts.arabic}`
-    else arabicWords = words
-  }
+  const arabicFont = await arabicFontFor(words, page, isQcf)
+  const arabicWords = words
 
   const [bgImage] = await Promise.all([
     loadImage(background.src),
@@ -252,9 +274,10 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
         weight: '500',
         maxWidth: translationWidth,
         maxHeight: available * 0.36,
-        // The size control is for the whole card, not only the Arabic.
-        startSize: Math.round(38 * fontScale),
-        minSize: Math.max(16, Math.round(22 * fontScale)),
+        // The size control is for the whole card, but below 80% only the Arabic keeps shrinking:
+        // a one-line ayah set small must not leave its translation too small to read.
+        startSize: Math.round(38 * Math.max(fontScale, MIN_TRANSLATION_SCALE)),
+        minSize: Math.max(16, Math.round(22 * Math.max(fontScale, MIN_TRANSLATION_SCALE))),
         lineHeightRatio: 1.55,
       })
     : null

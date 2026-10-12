@@ -1,16 +1,22 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import { tr } from '@/lib/i18n-core'
-import { deleteRecitation, reportRecitation, setRecitationPrivacy, type Recitation } from '@/lib/qari'
+import {
+  deleteRecitation,
+  reportRecitation,
+  setRecitationBackground,
+  setRecitationPrivacy,
+  type Recitation,
+} from '@/lib/qari'
 import { blockUser } from '@/lib/qari-blocks'
 
 /**
  * What can be done to one recitation besides playing it — delete, make
- * private, report, share — shared by the list card and the swipe view so both
- * behave the same.
+ * private, change its background, report, share — shared by the list card and
+ * the swipe view so both behave the same.
  */
 export function useRecitationActions({
   recitation,
@@ -24,18 +30,29 @@ export function useRecitationActions({
   viewerId: string | null
   viewerUsername: string | null
   onRemoved?: (id: string) => void
-  /** Its visibility changed rather than being deleted — the parent list decides what that means for it. */
+  /** Its visibility or background changed rather than it being deleted — the parent list decides what that means for it. */
   onUpdated?: (id: string, patch: Partial<Recitation>) => void
   onNotice?: (message: string) => void
 }) {
   const [shareOpen, setShareOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const [backgroundOpen, setBackgroundOpen] = useState(false)
   // Set only while a toggle is in flight, or if it failed and had to be put back.
   const [optimisticPrivate, setOptimisticPrivate] = useState<boolean | null>(null)
+  // The background just picked, shown at once while it is saved.
+  const [optimisticBackground, setOptimisticBackground] = useState<string | null>(null)
 
   const isOwner = Boolean(viewerId && viewerUsername && viewerUsername === recitation.userUsername)
   const isPrivate = optimisticPrivate ?? recitation.isPrivate
+  /** The recitation as it should be drawn: with the background just picked, before every list has caught up. */
+  const shown = useMemo(
+    () =>
+      optimisticBackground && optimisticBackground !== recitation.background
+        ? { ...recitation, background: optimisticBackground }
+        : recitation,
+    [optimisticBackground, recitation]
+  )
 
   const handleDelete = useCallback(async () => {
     if (!viewerId) return
@@ -64,6 +81,23 @@ export function useRecitationActions({
       onNotice?.(tr('Could not change that.'))
     }
   }, [isPrivate, onNotice, onUpdated, recitation.id, viewerId])
+
+  const handleChangeBackground = useCallback(
+    async (background: string) => {
+      if (!viewerId || background === shown.background) return
+      const before = optimisticBackground
+      setOptimisticBackground(background)
+      try {
+        await setRecitationBackground(recitation.id, viewerId, background)
+        onNotice?.(tr('Background changed.'))
+        onUpdated?.(recitation.id, { background })
+      } catch {
+        setOptimisticBackground(before)
+        onNotice?.(tr('Could not change that.'))
+      }
+    },
+    [onNotice, onUpdated, optimisticBackground, recitation.id, shown.background, viewerId]
+  )
 
   const handleReportTap = useCallback(() => {
     if (!viewerId) {
@@ -104,8 +138,12 @@ export function useRecitationActions({
 
   return {
     isOwner,
+    shown,
     handleBlock,
     isPrivate,
+    backgroundOpen,
+    setBackgroundOpen,
+    handleChangeBackground,
     removing,
     shareOpen,
     setShareOpen,

@@ -230,6 +230,11 @@ export async function setRecitationPrivacy(id: string, userId: string, isPrivate
   await post(id, { action: 'setPrivacy', userId, isPrivate })
 }
 
+/** Only the reciter may call this — what their recitation is shown on, an id from lib/qari-backgrounds. */
+export async function setRecitationBackground(id: string, userId: string, background: string): Promise<void> {
+  await post(id, { action: 'setBackground', userId, background })
+}
+
 export async function deleteRecitation(id: string, userId: string): Promise<void> {
   const res = await fetch(`/api/qari/${id}?userId=${encodeURIComponent(userId)}`, {
     method: 'DELETE',

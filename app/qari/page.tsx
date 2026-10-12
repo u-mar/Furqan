@@ -186,7 +186,9 @@ function QariHomeContent() {
   // This feed is what everyone sees, so a recitation made private drops out of it.
   const onPrivacyChanged = useCallback(
     (id: string, patch: Partial<Recitation>) => {
+      // Made private: it leaves the feed. Anything else, such as a new background, is kept in it.
       if (patch.isPrivate) removeItem(id)
+      else setItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
     },
     [removeItem]
   )

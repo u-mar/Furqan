@@ -17,7 +17,7 @@ import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 import { loadAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
-import { ayahParts, loadPartTranslation } from '@/lib/qari-ayah-parts'
+import { ayahParts, loadPhraseTranslations } from '@/lib/qari-ayah-parts'
 import { getQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
@@ -449,6 +449,13 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
   const edition = viewerTranslation(getAppSettings().translationEditionId)
   const views = new Map<string, AyahView | null>()
   await Promise.all([...new Set(timeline.map((e) => e.verseKey))].map(async (key) => views.set(key, await loadAyah(key, edition))))
+  // Each long ayah's phrases with their share of the translation, one ayah after another so the
+  // translation service is not asked for them all at once (the swipe view has usually asked already).
+  const phraseTexts = new Map<string, (string | null)[]>()
+  for (const [key, view] of views) {
+    const parts = view ? ayahParts(view.pauseAfter) : []
+    if (parts.length > 1) phraseTexts.set(key, await loadPhraseTranslations(key, edition, parts))
+  }
 
   const captions = await Promise.all(
     timeline.map(async (entry, i): Promise<Caption[]> => {
@@ -456,8 +463,7 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
       if (!view) return []
       const parts = ayahParts(view.pauseAfter)
       const endsAt = timeline[i + 1]?.atSeconds ?? r.durationSec
-      const texts =
-        parts.length > 1 ? await Promise.all(parts.map((part) => loadPartTranslation(view.verseKey, edition, part))) : [view.translation]
+      const texts = phraseTexts.get(entry.verseKey) ?? [view.translation]
       return parts.map((part, k): Caption => {
         const last = k === parts.length - 1
         // The last phrase ends with the ayah's ornament and its number.

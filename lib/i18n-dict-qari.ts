@@ -365,6 +365,7 @@ export const QARI: Dict = {
   'Ayat marked': { so: 'Aayadaha la calaamadeeyay', ar: 'الآيات المعلَّمة' },
   Change: { so: 'Beddel', ar: 'تغيير' },
   'Change background': { so: 'Beddel gadaalka', ar: 'تغيير الخلفية' },
+  'Background changed.': { so: 'Gadaalka waa la beddelay.', ar: 'تم تغيير الخلفية.' },
   'Could not post': { so: 'Lama dhigi karin', ar: 'تعذّر النشر' },
   Dismiss: { so: 'Iska dhaaf', ar: 'تجاهل' },
   Draft: { so: 'Qabyo', ar: 'مسودة' },

@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  getTranslationsByPageServer,
-  getVerseByKeyServer,
-  getVersesByPageServer,
-} from '@/lib/quran-server'
-import {
-  DEFAULT_TRANSLATION_EDITION,
-  isTranslationEditionId,
-  languageForEdition,
-  quranComTranslationId,
-  translationLanguageLabel,
-} from '@/lib/translations'
-import { translatePart, type PartTranslation } from '@/lib/part-translation'
+import { getVerseByKeyServer, getVersesByPageServer } from '@/lib/quran-server'
+import { DEFAULT_TRANSLATION_EDITION, isTranslationEditionId } from '@/lib/translations'
+import { API_TIMEOUT_MS, QURAN_API_BASE, fetchTranslationsForPage } from '@/lib/translations-server'
+import { PartRequestError, partTranslationFor, phraseTranslationsFor } from '@/lib/part-translation-store'
 import type { Verse } from '@/types'
 import hadiToureTimings from '@/lib/reciter-timings/hadi_toure.json'
 
-const QURAN_API_BASE = process.env.QURAN_API_BASE || 'https://api.quran.com/api/v4'
-const API_TIMEOUT_MS = 20_000
 
 /** Ayah timings that ship with the app, for reciters no public API has them for: verse key → [start, end] ms. */
 const BUNDLED_TIMINGS: Record<string, Record<string, [number, number]>> = {
@@ -118,154 +107,13 @@ async function fetchVisualPages(params: URLSearchParams): Promise<Record<string,
   return Object.fromEntries((data.verses || []).map((verse) => [verse.verse_key, verse.v2_page || 1]))
 }
 
-interface TranslationItem {
-  verse_key: string
-  text_uthmani: string
-  translation: string
-}
-
-/** One of AlQuran Cloud's pages in an edition: verse key → translation. Kept a month, like Quran.com's. */
-async function alQuranCloudPage(page: number, editionId: string): Promise<Map<string, string>> {
-  const response = await fetch(`https://api.alquran.cloud/v1/page/${page}/${editionId}`, {
-    next: { revalidate: 60 * 60 * 24 * 30 },
-    signal: AbortSignal.timeout(API_TIMEOUT_MS),
-  })
-  if (!response.ok) throw new Error('AlQuran Cloud translation failed')
-  const payload = (await response.json()) as {
-    data?: { ayahs?: Array<{ text: string; numberInSurah: number; surah: { number: number } }> }
-  }
-  return new Map((payload.data?.ayahs || []).map((a) => [`${a.surah.number}:${a.numberInSurah}`, a.text]))
-}
-
 /**
- * The translations of the ayat on one of this app's mushaf pages. AlQuran
- * Cloud splits its pages a little differently (56 ayat sit on a neighbouring
- * page there, e.g. 5:77 or 55:17), so an ayah not on its page of the same
- * number is looked for on the pages either side. Asking by page alone left
- * those ayat without a translation.
+ * The AI's answers do not change, so they are kept a month, by the phone and by
+ * the CDN (s-maxage) alike. A stand-in is not kept: the next request should get
+ * the AI's answer instead.
  */
-async function fetchTranslationsFromAlQuranCloud(page: number, editionId: string): Promise<TranslationItem[]> {
-  const verses = await getVersesByPageServer(page)
-  const found = new Map<string, string>()
-  const take = (rows: Map<string, string>) => {
-    for (const v of verses) {
-      const text = rows.get(v.verse_key)
-      if (text && !found.has(v.verse_key)) found.set(v.verse_key, text)
-    }
-  }
-  take(await alQuranCloudPage(page, editionId))
-  for (const neighbour of [page - 1, page + 1]) {
-    if (found.size >= verses.length) break
-    if (neighbour < 1 || neighbour > 604) continue
-    try {
-      take(await alQuranCloudPage(neighbour, editionId))
-    } catch {
-      // What was found on the page itself is still worth returning.
-    }
-  }
-  return verses.map((v) => ({
-    verse_key: v.verse_key,
-    text_uthmani: v.text_uthmani,
-    translation: found.get(v.verse_key) ?? '',
-  }))
-}
-
-/** Quran.com marks footnotes and emphasis with HTML; the app shows plain text. */
-function plainTranslation(html: string): string {
-  return html
-    .replace(/<sup[^>]*>.*?<\/sup>/gi, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-/** One mushaf page of one Quran.com translation, verse by verse. */
-async function fetchTranslationsFromQuranCom(page: number, translationId: number): Promise<TranslationItem[]> {
-  const params = new URLSearchParams({ translations: String(translationId), per_page: '50', fields: 'verse_key' })
-  const response = await fetch(`${QURAN_API_BASE}/verses/by_page/${page}?${params.toString()}`, {
-    // Translations do not change, so a page is kept for a month.
-    next: { revalidate: 60 * 60 * 24 * 30 },
-    signal: AbortSignal.timeout(API_TIMEOUT_MS),
-  })
-  if (!response.ok) throw new Error('Quran.com translation failed')
-
-  const payload = (await response.json()) as {
-    verses?: Array<{ verse_key: string; translations?: Array<{ text?: string }> }>
-  }
-  const offline = await getVersesByPageServer(page)
-  const arabicByKey = Object.fromEntries(offline.map((v) => [v.verse_key, v.text_uthmani]))
-
-  return (payload.verses || []).map((verse) => ({
-    verse_key: verse.verse_key,
-    text_uthmani: arabicByKey[verse.verse_key] || '',
-    translation: plainTranslation(verse.translations?.[0]?.text || ''),
-  }))
-}
-
-async function fetchTranslationsForPage(page: number, editionId: string): Promise<TranslationItem[]> {
-  const quranComId = quranComTranslationId(editionId)
-  if (quranComId !== null) {
-    try {
-      const rows = await fetchTranslationsFromQuranCom(page, quranComId)
-      if (rows.some((r) => r.translation.length > 0)) return rows
-    } catch (err) {
-      console.warn('Quran.com translations failed:', err)
-    }
-    return []
-  }
-
-  try {
-    const cloud = await fetchTranslationsFromAlQuranCloud(page, editionId)
-    if (cloud.length > 0 && cloud.some((r) => r.translation.length > 0)) {
-      return cloud
-    }
-  } catch (err) {
-    console.warn('AlQuran Cloud translations failed:', err)
-  }
-
-  if (editionId === 'en.sahih') {
-    const offline = await getTranslationsByPageServer(page)
-    return offline.filter((r) => r.translation.length > 0)
-  }
-
-  return []
-}
-
-/** Parts already worked out, so sharing the same few words again answers at once. */
-const PART_CACHE = new Map<string, PartTranslation>()
-const PART_CACHE_LIMIT = 2000
-
-/**
- * The meaning of each word of an ayah in one language, from Quran.com. A
- * language it has no word meanings in comes back in English, so those count
- * as missing rather than being shown under, say, a Somali translation.
- */
-async function wordMeanings(verseKey: string, wordCount: number, language: string): Promise<string[] | null> {
-  try {
-    // `language` is what picks the word meanings' language; `word_translation_language` alone is ignored.
-    const params = new URLSearchParams({ words: 'true', language, word_translation_language: language })
-    const res = await fetch(`${QURAN_API_BASE}/verses/by_key/${encodeURIComponent(verseKey)}?${params.toString()}`, {
-      next: { revalidate: 60 * 60 * 24 * 30 },
-      signal: AbortSignal.timeout(API_TIMEOUT_MS),
-    })
-    if (!res.ok) return null
-    const data = (await res.json()) as {
-      verse?: { words?: { char_type_name?: string; translation?: { text?: string | null; language_name?: string } | null }[] }
-    }
-    const words = (data.verse?.words ?? []).filter((w) => w.char_type_name === 'word')
-    if (words.length !== wordCount) return null
-    if (language !== 'en' && words.every((w) => (w.translation?.language_name ?? 'english').toLowerCase() === 'english')) {
-      return null
-    }
-    const meanings = words.map((w) => (w.translation?.text ?? '').trim())
-    return meanings.some(Boolean) ? meanings : null
-  } catch {
-    return null
-  }
+function aiCacheHeaders(source: string) {
+  return { 'Cache-Control': source === 'ai' ? 'public, max-age=2592000, s-maxage=2592000' : 'no-store' }
 }
 
 export async function GET(request: NextRequest) {
@@ -321,48 +169,37 @@ export async function GET(request: NextRequest) {
       if (!/^\d{1,3}:\d{1,3}$/.test(verseKey) || !isTranslationEditionId(edition) || !Number.isInteger(start) || !Number.isInteger(end)) {
         return NextResponse.json({ error: 'verse, edition, start and end required' }, { status: 400 })
       }
-
-      const cacheKey = `${edition}|${verseKey}|${start}|${end}`
-      const known = PART_CACHE.get(cacheKey)
-      if (known) return NextResponse.json(known)
-
-      const verse = await getVerseByKeyServer(verseKey)
-      if (!verse) return NextResponse.json({ error: 'Verse not found' }, { status: 404 })
-      // The same words, in the same order, as the share page counts them.
-      const words = (verse.words ?? []).filter(
-        (w) => w.char_type_name === 'word' && (w.text_uthmani || w.text_qpc_hafs || '').trim()
-      )
-      if (start < 0 || end < start || end >= words.length) {
-        return NextResponse.json({ error: 'start and end must be within the ayah' }, { status: 400 })
+      try {
+        const part = await partTranslationFor(verseKey, edition, start, end)
+        if (!part) return NextResponse.json({ text: null, source: null })
+        return NextResponse.json(part, { headers: aiCacheHeaders(part.source) })
+      } catch (err) {
+        if (err instanceof PartRequestError) return NextResponse.json({ error: err.message }, { status: err.status })
+        throw err
       }
+    }
 
-      const rows = verse.page_number ? await fetchTranslationsForPage(verse.page_number, edition) : []
-      const translation = rows.find((r) => r.verse_key === verseKey)?.translation?.trim()
-      if (!translation) return NextResponse.json({ text: null, source: null })
-
-      const language = languageForEdition(edition)
-      const part = await translatePart({
-        arabicWords: words.map((w) => (w.text_uthmani || w.text_qpc_hafs || '').trim()),
-        glosses: await wordMeanings(verseKey, words.length, language),
-        translation,
-        start,
-        end,
-        language,
-        languageName: translationLanguageLabel(language),
-      })
-      if (!part) return NextResponse.json({ text: null, source: null })
-
-      // The model's answers are kept; a matched one only briefly, in case the model is switched on.
-      if (part.source === 'ai') {
-        if (PART_CACHE.size >= PART_CACHE_LIMIT) PART_CACHE.delete(PART_CACHE.keys().next().value as string)
-        PART_CACHE.set(cacheKey, part)
+    // An ayah shown a phrase at a time (the Qari video view): every phrase's translation in one go.
+    // Without `phrases`, the ayah is cut where the mushaf pauses, as the app cuts it.
+    if (type === 'phrase-translations') {
+      const verseKey = searchParams.get('verse') ?? ''
+      const edition = searchParams.get('edition') ?? ''
+      const listed = searchParams.get('phrases')
+      if (!/^\d{1,3}:\d{1,3}$/.test(verseKey) || !isTranslationEditionId(edition) || (listed !== null && !/^\d+-\d+(,\d+-\d+){1,39}$/.test(listed))) {
+        return NextResponse.json({ error: 'verse and edition required; phrases as start-end,start-end…' }, { status: 400 })
       }
-      return NextResponse.json(part, {
-        headers: {
-          'Cache-Control':
-            part.source === 'ai' ? 'public, max-age=2592000' : part.source === 'matched' ? 'public, max-age=3600' : 'no-store',
-        },
+      const phrases = listed?.split(',').map((pair) => {
+        const [start, end] = pair.split('-').map(Number)
+        return { start, end }
       })
+      try {
+        const translated = await phraseTranslationsFor(verseKey, edition, phrases)
+        if (!translated) return NextResponse.json({ texts: null, source: null })
+        return NextResponse.json(translated, { headers: aiCacheHeaders(translated.source) })
+      } catch (err) {
+        if (err instanceof PartRequestError) return NextResponse.json({ error: err.message }, { status: err.status })
+        throw err
+      }
     }
 
     if (type === 'translations') {

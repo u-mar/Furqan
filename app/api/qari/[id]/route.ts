@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { removeAudio, removeImage } from '@/lib/qari-storage'
 import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
 import { isGuestId } from '@/lib/guest-id'
+import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 
 export const runtime = 'nodejs'
 
-type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy'
+type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy' | 'setBackground'
 
 /** Likes from one guest id per minute. Kept per server instance, which is enough to stop a script. */
 const GUEST_LIKES_PER_MINUTE = 30
@@ -25,7 +26,7 @@ function guestMayLike(guestId: string): boolean {
   return true
 }
 
-/** POST /api/qari/[id] — like, unlike, count a play, or report. */
+/** POST /api/qari/[id] — like, unlike, count a play, report, or (the reciter) change who hears it or what it is shown on. */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params
 
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       userId?: string
       reason?: string
       isPrivate?: boolean
+      background?: string
     }
     const action = body.action
     const userId = body.userId?.trim()
@@ -71,6 +73,23 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         select: { isPrivate: true },
       })
       return NextResponse.json({ isPrivate: updated.isPrivate })
+    }
+
+    if (action === 'setBackground') {
+      // Only the reciter picks what their recitation is shown on. A picture made on the
+      // Read screen is its own background.
+      if (recitation.userId !== userId) {
+        return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
+      }
+      if (recitation.kind === 'ayah' || !isVideoBackgroundId(body.background)) {
+        return NextResponse.json({ error: 'Unknown background.' }, { status: 400 })
+      }
+      const updated = await prisma.recitation.update({
+        where: { id },
+        data: { background: body.background },
+        select: { background: true },
+      })
+      return NextResponse.json({ background: updated.background })
     }
 
     if (action === 'report') {

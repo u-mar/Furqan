@@ -326,3 +326,15 @@ model HalaqaPushSubscription {
   @@index([memberKey])
   @@index([endpoint])
 }
+
+/// An answer the AI cut from a published translation, kept so it is worked out
+/// once: part of an ayah for the share picture, or an ayah's translation divided
+/// among the phrases the Qari video view shows it in (lib/part-translation-store.ts).
+model AiTranslation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// "v1|phrases|en.sahih|59:22|0-3,4-6,7-9,10-12" or "v1|part|en.sahih|2:255|7-11".
+  key       String   @unique
+  /// One per phrase, in order; a single entry for a part.
+  texts     String[]
+  createdAt DateTime @default(now())
+}

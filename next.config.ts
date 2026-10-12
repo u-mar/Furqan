@@ -21,16 +21,12 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/:path*',
+        // Pages are always checked for a newer version, so phones get the latest app. Not the API,
+        // which says for itself how long each answer keeps (a verse forever, a feed not at all), nor
+        // Next's own files, which it already marks: kept for good once built (their names change
+        // with every build), never kept in development. A rule here overrides whatever the server
+        // or a route sets itself.
+        source: '/:path((?!api/|_next/static/|sw\\.js$).*)',
         headers: [
           {
             key: 'Cache-Control',

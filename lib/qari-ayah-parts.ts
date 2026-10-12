@@ -67,38 +67,37 @@ export function partFor(parts: AyahPart[], word: number): number {
   return 0
 }
 
-const partTranslations = new Map<string, Promise<string | null>>()
+const phraseTranslations = new Map<string, Promise<(string | null)[]>>()
 
 /**
- * The translation of words `start`–`end` of an ayah, cut from the published
- * translation of the whole ayah (see lib/part-translation.ts). Null when none
- * could be found.
+ * The translation of each of an ayah's phrases, in one go: the published
+ * translation of the whole ayah divided among them (see translatePhrases in
+ * lib/part-translation.ts), so read one after another they give it once. Null
+ * where none could be found for a phrase; all null when the request failed.
  */
-export function loadPartTranslation(verseKey: string, edition: string, part: AyahPart): Promise<string | null> {
-  const key = `${edition}|${verseKey}|${part.start}|${part.end}`
-  let pending = partTranslations.get(key)
+export function loadPhraseTranslations(verseKey: string, edition: string, parts: AyahPart[]): Promise<(string | null)[]> {
+  const listed = parts.map((p) => `${p.start}-${p.end}`).join(',')
+  const key = `${edition}|${verseKey}|${listed}`
+  let pending = phraseTranslations.get(key)
   if (!pending) {
     pending = (async () => {
       try {
-        const params = new URLSearchParams({
-          type: 'part-translation',
-          verse: verseKey,
-          edition,
-          start: String(part.start),
-          end: String(part.end),
-        })
+        const params = new URLSearchParams({ type: 'phrase-translations', verse: verseKey, edition, phrases: listed })
         const res = await fetch(`/api/ayah?${params.toString()}`)
-        if (!res.ok) throw new Error('part translation failed')
-        const data = (await res.json()) as { text?: string | null }
+        if (!res.ok) throw new Error('phrase translations failed')
+        const data = (await res.json()) as { texts?: (string | null)[] | null; source?: string | null }
+        // Only the AI's answer is kept for good. A stand-in (the AI was busy, or is not set up)
+        // is used for now and asked for again a minute later, when the AI may have a better one.
+        if (data.source !== 'ai') window.setTimeout(() => phraseTranslations.delete(key), 60_000)
         // Without the "…" a meaning split across the translation is joined by: a phrase reads as plain words.
-        return data.text?.replace(/\s*(?:…|\.{2,})\s*/g, ' ').trim() || null
+        return parts.map((_, k) => data.texts?.[k]?.replace(/\s*(?:…|\.{2,})\s*/g, ' ').trim() || null)
       } catch {
         // Tried again the next time it is needed.
-        partTranslations.delete(key)
-        return null
+        phraseTranslations.delete(key)
+        return parts.map(() => null)
       }
     })()
-    partTranslations.set(key, pending)
+    phraseTranslations.set(key, pending)
   }
   return pending
 }

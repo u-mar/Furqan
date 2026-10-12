@@ -8,6 +8,7 @@ import QariAvatar from '@/components/qari/QariAvatar'
 import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
 import RowMenu from '@/components/qari/RowMenu'
 import ShareSheet from '@/components/qari/ShareSheet'
+import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { useRecitationActions } from '@/hooks/useRecitationActions'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
@@ -23,7 +24,7 @@ import {
   type VerseTimelineEntry,
 } from '@/lib/qari'
 import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
-import { ayahParts, loadPartTranslation, partFor, wordAt } from '@/lib/qari-ayah-parts'
+import { ayahParts, loadPhraseTranslations, partFor, wordAt } from '@/lib/qari-ayah-parts'
 import { cycleQariTextMode, useQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import {
@@ -35,7 +36,7 @@ import {
   type PlayerSnapshot,
 } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
-import { recitationBackground } from '@/lib/qari-backgrounds'
+import { recitationBackground, VIDEO_BACKGROUND_GROUPS, VIDEO_BACKGROUNDS } from '@/lib/qari-backgrounds'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { askToSignIn } from '@/lib/account-prompt'
 import { cn } from '@/lib/cn'
@@ -164,6 +165,27 @@ function AyahStage({
     if (near) timeline.forEach((entry) => void loadAyah(entry.verseKey, edition))
   }, [edition, near, timeline])
 
+  // A long ayah is shown a phrase at a time, each with its own part of the translation, which
+  // takes the translation service a moment the first time. Every ayah's phrases are asked for
+  // ahead, one ayah after another so the service is never asked for everything at once, and
+  // are ready when the voice gets there.
+  useEffect(() => {
+    if (!near) return
+    let cancelled = false
+    void (async () => {
+      for (const marked of timeline) {
+        const view = await loadAyah(marked.verseKey, edition)
+        if (cancelled) return
+        const phrases = view ? ayahParts(view.pauseAfter ?? []) : []
+        if (phrases.length > 1) await loadPhraseTranslations(marked.verseKey, edition, phrases)
+        if (cancelled) return
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [edition, near, timeline])
+
   // A phrase at a time, cut where the mushaf pauses: the one holding the word being recited.
   const parts = useMemo(() => ayahParts(ayah?.pauseAfter ?? []), [ayah])
   const lastPartRef = useRef(0)
@@ -181,15 +203,13 @@ function AyahStage({
   const part = parts[partIndex]
   const split = parts.length > 1
 
-  // Each part with the translation of just its words; all of the ayah's parts are asked for at once.
-  const [partTexts, setPartTexts] = useState<Record<string, string | null>>({})
+  // Each phrase with its share of the translation (usually fetched already, by the asking ahead above).
+  const [phraseTexts, setPhraseTexts] = useState<Record<string, (string | null)[]>>({})
   useEffect(() => {
     if (!ayah || parts.length < 2) return
     let cancelled = false
-    parts.forEach((p, k) => {
-      void loadPartTranslation(ayah.verseKey, edition, p).then((text) => {
-        if (!cancelled) setPartTexts((prev) => ({ ...prev, [`${edition}|${ayah.verseKey}|${k}`]: text }))
-      })
+    void loadPhraseTranslations(ayah.verseKey, edition, parts).then((texts) => {
+      if (!cancelled) setPhraseTexts((prev) => ({ ...prev, [`${edition}|${ayah.verseKey}`]: texts }))
     })
     return () => {
       cancelled = true
@@ -197,7 +217,7 @@ function AyahStage({
   }, [ayah, edition, parts])
   // A phrase's own translation; when none could be worked out for it (Somali has no
   // word-by-word meanings to cut it by), its ayah's whole translation instead.
-  const partText = ayah && split ? partTexts[`${edition}|${ayah.verseKey}|${partIndex}`] : undefined
+  const partText = ayah && split ? phraseTexts[`${edition}|${ayah.verseKey}`]?.[partIndex] : undefined
   const translation = ayah ? (split ? (partText === undefined ? null : partText ?? ayah.translation) : ayah.translation) : null
   // The last phrase ends with the ayah's ornament and its number.
   const shownWords = ayah
@@ -452,13 +472,17 @@ const Slide = memo(function Slide({
   const t = useT()
   const {
     isOwner,
+    shown,
     isPrivate,
     shareOpen,
     setShareOpen,
     reportOpen,
     setReportOpen,
+    backgroundOpen,
+    setBackgroundOpen,
     handleDelete,
     handleTogglePrivacy,
+    handleChangeBackground,
     handleReportTap,
     handleReportReason,
     handleBlock,
@@ -576,7 +600,7 @@ const Slide = memo(function Slide({
         isAyahCard && recitation.imageUrl ? (
           <AyahCardMedia src={recitation.imageUrl} alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })} />
         ) : (
-          <Backdrop recitation={recitation} playing={active && playing} />
+          <Backdrop recitation={shown} playing={active && playing} />
         )
       ) : null}
 
@@ -699,6 +723,7 @@ const Slide = memo(function Slide({
                 isOwner={isOwner}
                 isPrivate={isPrivate}
                 onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
+                onChangeBackground={isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
                 onReport={handleReportTap}
                 onDelete={() => void handleDelete()}
                 blockUsername={recitation.userUsername}
@@ -718,8 +743,18 @@ const Slide = memo(function Slide({
         />
       )}
 
-      <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} videoView />
+      <ShareSheet recitation={shown} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} videoView />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
+      {isOwner && !isAyahCard ? (
+        <BackgroundGallery
+          open={backgroundOpen}
+          items={VIDEO_BACKGROUNDS}
+          groups={VIDEO_BACKGROUND_GROUPS}
+          selectedId={shown.background ?? 'black'}
+          onSelect={(id) => void handleChangeBackground(id)}
+          onClose={() => setBackgroundOpen(false)}
+        />
+      ) : null}
     </section>
   )
 })

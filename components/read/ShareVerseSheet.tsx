@@ -11,8 +11,10 @@ import { postAyahCard } from '@/lib/qari-upload'
 import {
   DEFAULT_BACKGROUND_ID,
   DEFAULT_VERSE_FONT_SCALE,
+  fitsOnOneLine,
   LONG_VERSE_FONT_SCALE,
   LONG_VERSE_WORDS,
+  ONE_LINE_FONT_SCALES,
   MAX_VERSE_FONT_SCALE,
   MIN_VERSE_FONT_SCALE,
   VERSE_FONT_SCALE_STEP,
@@ -272,9 +274,30 @@ export default function ShareVerseSheet({
     setAnchor(null)
   }, [])
 
-  // A long selection starts at 70%, a short one at 100%: chosen again as the selection changes,
-  // until the size is set by hand.
-  const autoScale = selection.words.length >= LONG_VERSE_WORDS ? LONG_VERSE_FONT_SCALE : DEFAULT_VERSE_FONT_SCALE
+  // The size a choice starts at, chosen again as the selection changes until the size is set by hand:
+  // a long one at 70%; a shorter one at 60%, or 50%, when that puts it on a single line; else 100%.
+  const [autoScale, setAutoScale] = useState(DEFAULT_VERSE_FONT_SCALE)
+  useEffect(() => {
+    if (!target) return
+    const words = selection.words
+    if (words.length >= LONG_VERSE_WORDS) {
+      setAutoScale(LONG_VERSE_FONT_SCALE)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      for (const scale of ONE_LINE_FONT_SCALES) {
+        if (await fitsOnOneLine({ words, page: target.page, isQcf: useQcf, fontScale: scale })) {
+          if (!cancelled) setAutoScale(scale)
+          return
+        }
+      }
+      if (!cancelled) setAutoScale(DEFAULT_VERSE_FONT_SCALE)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selection.words, target, useQcf])
   useEffect(() => {
     if (!sizedByHand.current) setFontScale(autoScale)
   }, [autoScale, target?.verseKey])

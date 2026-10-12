@@ -9,6 +9,7 @@ import QariAvatar from '@/components/qari/QariAvatar'
 import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
 import RowMenu from '@/components/qari/RowMenu'
 import ShareSheet from '@/components/qari/ShareSheet'
+import BackgroundGallery from '@/components/share/BackgroundGallery'
 import Waveform from '@/components/qari/Waveform'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { useRecitationActions } from '@/hooks/useRecitationActions'
@@ -16,6 +17,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { compactNumber, formatDuration, prefetchRecitationAudio, timeAgoLong, type Recitation } from '@/lib/qari'
 import { seekPlayback, togglePlayback } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
+import { VIDEO_BACKGROUND_GROUPS, VIDEO_BACKGROUNDS } from '@/lib/qari-backgrounds'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -58,14 +60,18 @@ function RecitationCard({
   const player = useQariPlayer()
   const {
     isOwner,
+    shown,
     isPrivate,
     removing,
     shareOpen,
     setShareOpen,
     reportOpen,
     setReportOpen,
+    backgroundOpen,
+    setBackgroundOpen,
     handleDelete,
     handleTogglePrivacy,
+    handleChangeBackground,
     handleReportTap,
     handleReportReason,
     handleBlock,
@@ -118,6 +124,7 @@ function RecitationCard({
       isOwner={isOwner}
       isPrivate={isPrivate}
       onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
+      onChangeBackground={isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
       onReport={handleReportTap}
       onDelete={() => void handleDelete()}
       blockUsername={recitation.userUsername}
@@ -257,8 +264,18 @@ function RecitationCard({
         </button>
       </div>
 
-      <ShareSheet recitation={recitation} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
+      <ShareSheet recitation={shown} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
+      {isOwner && !isAyahCard ? (
+        <BackgroundGallery
+          open={backgroundOpen}
+          items={VIDEO_BACKGROUNDS}
+          groups={VIDEO_BACKGROUND_GROUPS}
+          selectedId={shown.background ?? 'black'}
+          onSelect={(id) => void handleChangeBackground(id)}
+          onClose={() => setBackgroundOpen(false)}
+        />
+      ) : null}
     </article>
   )
 }

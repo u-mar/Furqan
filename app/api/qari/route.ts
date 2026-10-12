@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { parseVerseTimeline } from '@/lib/qari-verse-timeline'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
@@ -8,6 +8,7 @@ import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
 import { isGuestId } from '@/lib/guest-id'
+import { warmRecitationCaptions } from '@/lib/part-translation-store'
 
 export const runtime = 'nodejs'
 
@@ -306,6 +307,10 @@ export async function POST(request: NextRequest) {
         caption: clean(form.get('caption'), 280),
       },
     })
+
+    // Once the reciter has their answer: the translation of every phrase the video view will
+    // show, worked out now by the AI and kept, so no viewer waits for it.
+    if (verseTimeline.length) after(() => warmRecitationCaptions(verseTimeline.map((entry) => entry.verseKey)))
 
     return NextResponse.json({ id: created.id }, { status: 201 })
   } catch (err) {

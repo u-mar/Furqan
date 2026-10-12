@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Ban, Ellipsis, Flag, Globe, Lock, Trash2 } from 'lucide-react'
+import { Ban, Ellipsis, Flag, Globe, ImageIcon, Lock, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 
-/** The quieter actions on a recitation: who can hear it and delete for your own, report and block for anyone else's. */
+/** The quieter actions on a recitation: who can hear it, its background and delete for your own, report and block for anyone else's. */
 export default function RowMenu({
   isOwner,
   isPrivate,
   onTogglePrivacy,
+  onChangeBackground,
   onReport,
   onDelete,
   blockUsername,
@@ -18,6 +19,8 @@ export default function RowMenu({
   /** Only meaningful when `isOwner` — whether it's currently visible to everyone or only the reciter. */
   isPrivate?: boolean
   onTogglePrivacy?: () => void
+  /** Only for your own recitation, and not for a picture made on the Read screen. */
+  onChangeBackground?: () => void
   onReport: () => void
   onDelete: () => void
   /** Who posted it, for "Block @name"; leave out to not offer blocking. */
@@ -55,7 +58,7 @@ export default function RowMenu({
         <Ellipsis className="h-[18px] w-[18px]" strokeWidth={2} />
       </button>
       {open ? (
-        <div className="qari-dropdown__menu bottom-[calc(100%+0.3rem)] right-0 w-[12rem] origin-bottom-right">
+        <div className="qari-dropdown__menu bottom-[calc(100%+0.3rem)] right-0 w-[13.5rem] origin-bottom-right">
           {isOwner ? (
             <>
               {onTogglePrivacy ? (
@@ -73,6 +76,19 @@ export default function RowMenu({
                     <Lock className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
                   )}
                   {isPrivate ? t('Make public') : t('Make private')}
+                </button>
+              ) : null}
+              {onChangeBackground ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    onChangeBackground()
+                  }}
+                  className="qari-dropdown__item ed-focus"
+                >
+                  <ImageIcon className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
+                  {t('Change background')}
                 </button>
               ) : null}
               <button
