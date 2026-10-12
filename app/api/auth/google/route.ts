@@ -33,6 +33,18 @@ export async function POST(req: Request) {
     })
     if (existing) return NextResponse.json({ user: { ...existing, via: 'google' } })
 
+    // An email account with the address Google has confirmed is the same person: link the two.
+    if (google.email) {
+      const sameEmail = await prisma.user.findFirst({
+        where: { email: google.email, googleId: null },
+        select: { id: true, username: true, name: true },
+      })
+      if (sameEmail) {
+        await prisma.user.update({ where: { id: sameEmail.id }, data: { googleId: google.sub } })
+        return NextResponse.json({ user: { ...sameEmail, via: 'google' } })
+      }
+    }
+
     const name = (body.name?.trim() || google.name || '').slice(0, 40)
     const requested = normalizeUsername(body.username ?? '')
 

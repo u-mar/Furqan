@@ -22,7 +22,7 @@ export const APP_ICON_THEME_COLOR = '#000000'
 export const SUPPORT_EMAIL = 'support@example.com'
 
 /** Shown on the privacy policy. Update whenever the policy text changes. */
-export const PRIVACY_UPDATED = '1 October 2026'
+export const PRIVACY_UPDATED = '12 October 2026'
 
 /** Shown on the terms of service. Update whenever the terms text changes. */
 export const TERMS_UPDATED = '1 October 2026'

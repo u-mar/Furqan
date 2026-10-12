@@ -39,14 +39,22 @@ export type ShareBackgroundGroup =
   | 'Desert'
   | 'Forest'
   | 'Waterfalls & lakes'
+  | 'Moody night'
+  | 'Storms'
+  | 'Prayer'
+  | 'Silhouettes'
 
 /** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
   'Makkah & Madinah',
   'Mosques',
   'Sacred',
+  'Prayer',
   'Night drives',
   'Streets',
+  'Moody night',
+  'Silhouettes',
+  'Storms',
   'Night sky',
   'Golden hour',
   'Clouds',
@@ -239,6 +247,39 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   cloudBg('teal-forest', 'Teal forest', 'Forest', '#b8e0d8'),
   cloudBg('amber-woods', 'Amber woods', 'Forest', '#ffd18f'),
   cloudBg('lake-glow', 'Lake glow', 'Waterfalls & lakes', '#ffd09a'),
+  // Moody night, Islamic, cinematic nature and silhouettes (Pexels).
+  cloudBg('candle-glow', 'Candle glow', 'Moody night', '#ffcf94'),
+  cloudBg('rainy-avenue', 'Rainy avenue', 'Streets', '#cfe3ff'),
+  cloudBg('raindrop-bokeh', 'Raindrop bokeh', 'Moody night', '#ffd9a8'),
+  cloudBg('blue-alley', 'Blue alley', 'Streets', '#bcd2ff'),
+  cloudBg('navy-crescent', 'Navy crescent', 'Night sky', '#dfe8ff'),
+  cloudBg('teal-bokeh', 'Teal bokeh', 'Moody night', '#b8f0e4'),
+  cloudBg('wet-pavement', 'Wet pavement', 'Moody night', '#ffd7a8'),
+  cloudBg('cloudy-full-moon', 'Full moon', 'Night sky', '#e6e6f0'),
+  cloudBg('open-quran-light', 'Open Quran', 'Sacred', '#f3d9a0'),
+  cloudBg('blue-arches', 'Blue arches', 'Mosques', '#cfe6ff'),
+  cloudBg('kiswah-lantern', 'Kiswah lantern', 'Makkah & Madinah', '#f3d489'),
+  cloudBg('skyline-mosque-dusk', 'Mosque skyline', 'Mosques', '#ffc98f'),
+  cloudBg('pink-minaret', 'Pink minaret', 'Mosques', '#ffd0e0'),
+  cloudBg('red-lantern', 'Red lantern', 'Sacred', '#ffc4b0'),
+  cloudBg('stormy-minaret', 'Stormy minaret', 'Mosques', '#e6e6e6'),
+  cloudBg('courtyard-night', 'Courtyard at night', 'Mosques', '#ffd39a'),
+  cloudBg('raging-sea', 'Raging sea', 'Storms', '#d4e4ee'),
+  cloudBg('stork-pair', 'Two storks', 'Golden hour', '#ffc98f'),
+  cloudBg('lightning-town', 'Lightning', 'Storms', '#d8c8ff'),
+  cloudBg('dark-cloudburst', 'Cloudburst', 'Storms', '#f0dcc0'),
+  cloudBg('pink-cloudscape', 'Pink clouds', 'Clouds', '#ffd0dc'),
+  cloudBg('mammatus', 'Mammatus', 'Clouds', '#ffd9a8'),
+  cloudBg('bird-flock', 'Bird flock', 'Clouds', '#ffd8b8'),
+  cloudBg('pink-branches', 'Pink branches', 'Soft aesthetic', '#ffd6e4'),
+  cloudBg('dusk-silhouette', 'Dusk silhouette', 'Silhouettes', '#ffd39a'),
+  cloudBg('sujood-close', 'Sujood', 'Prayer', '#ffd9b0'),
+  cloudBg('city-lights-watcher', 'City lights', 'Silhouettes', '#cfe3ff'),
+  cloudBg('sujood-mosque', 'Sujood in the mosque', 'Prayer', '#ffd39a'),
+  cloudBg('bench-by-the-sea', 'Bench by the sea', 'Silhouettes', '#cfeaf0'),
+  cloudBg('teal-fog-man', 'Teal fog', 'Silhouettes', '#c8ece6'),
+  cloudBg('golden-fog-walker', 'Golden fog', 'Silhouettes', '#ffd9a0'),
+  cloudBg('night-alley-walker', 'Night alley', 'Silhouettes', '#d8d8e8'),
   // Quiet everyday
   bg('white-rose', 'White rose', 'Quiet everyday', '#f3d9a0'),
   cloudBg('old-alley', 'Old alley', 'Quiet everyday', '#ffd39a'),

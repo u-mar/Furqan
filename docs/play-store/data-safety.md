@@ -12,8 +12,8 @@ Based on what the app stores (`prisma/schema.prisma`) and the Privacy Policy
 | Do you provide a way for users to request that their data is deleted? | **Yes**: in Settings → Delete account, and at `/delete-account` |
 
 "Shared" in Play's sense means passed to a third party. Naba doesn't share
-user data. Hosting providers working on our behalf (MongoDB Atlas) count as
-service providers, not sharing. Posts that other users can see are not
+user data. Providers working on our behalf (MongoDB Atlas for hosting, Resend
+for password reset emails) count as service providers, not sharing. Posts that other users can see are not
 "sharing" either.
 
 ## Data types collected
@@ -26,6 +26,7 @@ optional? why?
 |---|---|---|---|---|
 | Name (display name) | Yes | No | Optional (only with an account) | App functionality, Account management |
 | User IDs (username) | Yes | No | Optional | App functionality, Account management |
+| Email address | Yes | No | Optional (only with an account) | Account management (signing in, password reset emails) |
 
 ### Photos and videos
 | Type | Collected | Shared | Required? | Purposes |
@@ -55,7 +56,7 @@ Answer **No** for these:
 
 - **Location.** Prayer times and the qibla are calculated on the phone; the
   location never reaches our servers.
-- **Email, phone number, address.** Not asked for.
+- **Phone number, address.** Not asked for. (Email *is* collected, for accounts only: see Personal info above.)
 - **Financial info, health, contacts, calendar, messages, files, web browsing.**
   Not collected.
 - **Voice search speech.** Handled by the phone's own speech recognition

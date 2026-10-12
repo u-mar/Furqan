@@ -25,6 +25,7 @@ interface DeleteAccountSheetProps {
 export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: DeleteAccountSheetProps) {
   const t = useT()
   const [pin, setPin] = useState('')
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -32,6 +33,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
   useEffect(() => {
     if (!open) return
     setPin('')
+    setPassword('')
     setError('')
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -45,9 +47,11 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
   const isLocal = user.id.startsWith('local_')
   // An account made with Google has no PIN: it confirms by signing in with Google again.
   const viaGoogle = user.via === 'google'
+  // An account made with an email confirms with its password.
+  const viaEmail = user.via === 'email'
 
   async function confirmDelete(googleCredential?: string) {
-    if (!googleCredential && pin.length !== 4) return
+    if (!googleCredential && (viaEmail ? !password : pin.length !== 4)) return
     setBusy(true)
     setError('')
 
@@ -67,11 +71,12 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
       const res = await fetch('/api/auth/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user.username, userId: user.id, pin, googleCredential }),
+        body: JSON.stringify({ username: user.username, userId: user.id, pin, password, googleCredential }),
       })
       const data = (await res.json().catch(() => ({}))) as { error?: string }
       if (!res.ok) {
         setPin('')
+        setPassword('')
         setError(data.error || tr('Could not delete the account. Please try again.'))
         return
       }
@@ -134,6 +139,26 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
             <div className="mt-2.5">
               <GoogleButton text="signin_with" disabled={busy} onCredential={(c) => void confirmDelete(c)} />
             </div>
+          </>
+        ) : viaEmail ? (
+          <>
+            <label htmlFor="delete-password" className="mt-5 block text-[0.8rem] font-semibold text-[var(--home-heading)]">
+              {t('Enter your password to confirm')}</label>
+            <input
+              id="delete-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              disabled={busy}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                if (error) setError('')
+              }}
+              className={cn(
+                'mt-2.5 h-12 w-full rounded-xl border-2 bg-transparent px-3.5 text-[0.95rem] text-[var(--home-heading)] outline-none transition-colors focus:border-rose-500/70',
+                error ? 'border-rose-400/70' : 'border-[var(--home-rule-strong)]'
+              )}
+            />
           </>
         ) : (
           <>
@@ -203,7 +228,7 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
             <button
               type="button"
               onClick={() => void confirmDelete()}
-              disabled={busy || pin.length !== 4}
+              disabled={busy || (viaEmail ? !password : pin.length !== 4)}
               className="ed-focus flex h-12 items-center justify-center rounded-2xl bg-rose-600 text-[0.92rem] font-semibold text-white transition-opacity disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : t('Delete')}

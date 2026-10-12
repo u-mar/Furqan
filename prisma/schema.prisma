@@ -19,8 +19,18 @@ model User {
   /// accounts made or linked with "Continue with Google". Uniqueness is guarded
   /// in code: a unique index can't be created on this connection.
   googleId    String?
-  /// The Google account's email, kept for support and account recovery only.
+  /// Lower-cased. What an email account signs in with, and where a password
+  /// reset is sent; for a Google account, the address Google confirmed.
+  /// Uniqueness is guarded in code, like `googleId`.
   email       String?
+  /// `scrypt$<salt>$<hash>` of the password, for accounts made with an email.
+  passwordHash String?
+  /// SHA-256 of the one-time token in the last "reset your password" email,
+  /// and when it stops working. Cleared once used.
+  resetTokenHash    String?
+  resetTokenExpires DateTime?
+  /// When the last reset email went out, so the button can't be used to flood an inbox.
+  resetSentAt       DateTime?
   /// Wrong PINs in a row. A 4-digit PIN has only 10,000 values, so without
   /// a limit any account falls to a script in minutes.
   failedPins  Int?
@@ -29,6 +39,7 @@ model User {
   updatedAt   DateTime  @updatedAt
 
   @@index([googleId])
+  @@index([email])
 }
 
 model AdminConfig {

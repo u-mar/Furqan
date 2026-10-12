@@ -46,7 +46,8 @@ const SAMPLE_RATE = 44100
 /** Vertical HD. 720p encodes several times faster than 1080p on a phone and TikTok takes it as is. */
 const W = 720
 const H = 1280
-const FPS = 30
+/** The cinema's frame rate: the look of the edits it is shared beside, and a fifth fewer frames to make than 30. */
+const FPS = 24
 
 /** True when this browser can make the video at all. Checked before offering it. */
 export function canMakeVideo(): boolean {
@@ -65,20 +66,26 @@ function fileStem(r: Pick<Recitation, 'title' | 'userName'>): string {
   return stem || APP_NAME
 }
 
-/** The recording with its room put back: exactly what a listener hears in the app. */
-async function renderRecitationAudio(r: Recitation, signal?: AbortSignal): Promise<AudioBuffer> {
+/** The recording as recorded, decoded. */
+async function decodeRecitationAudio(r: Recitation, signal?: AbortSignal): Promise<AudioBuffer> {
   const blob = await prefetchRecitationAudio(r.id)
   if (!blob || blob.size === 0) throw new Error(tr('Could not download that recitation.'))
   throwIfCancelled(signal)
-
   // An offline context decodes without ever asking for the speaker.
   const decoder = new OfflineAudioContext(1, 1, SAMPLE_RATE)
-  const dry = await decoder.decodeAudioData(await blob.arrayBuffer())
-  throwIfCancelled(signal)
+  return decoder.decodeAudioData(await blob.arrayBuffer())
+}
 
+/** How long the room's echo rings on after the last word. */
+function echoTail(r: Recitation): number {
   const space = findSpace(r.space as SpaceId)
-  const tail = space.wet > 0 ? Math.min(space.seconds, 2.5) : 0
-  const ctx = new OfflineAudioContext(2, Math.ceil((dry.duration + tail) * SAMPLE_RATE), SAMPLE_RATE)
+  return space.wet > 0 ? Math.min(space.seconds, 2.5) : 0
+}
+
+/** The recording with its room put back: exactly what a listener hears in the app. */
+function addRoom(r: Recitation, dry: AudioBuffer): Promise<AudioBuffer> {
+  const space = findSpace(r.space as SpaceId)
+  const ctx = new OfflineAudioContext(2, Math.ceil((dry.duration + echoTail(r)) * SAMPLE_RATE), SAMPLE_RATE)
   const source = ctx.createBufferSource()
   source.buffer = dry
   const mixer = createSpaceMixer(ctx, source)
@@ -86,6 +93,12 @@ async function renderRecitationAudio(r: Recitation, signal?: AbortSignal): Promi
   mixer.output.connect(ctx.destination)
   source.start()
   return ctx.startRendering()
+}
+
+async function renderRecitationAudio(r: Recitation, signal?: AbortSignal): Promise<AudioBuffer> {
+  const dry = await decodeRecitationAudio(r, signal)
+  throwIfCancelled(signal)
+  return addRoom(r, dry)
 }
 
 export async function makeRecitationAudio(
@@ -217,6 +230,8 @@ interface Scene {
   still: HTMLCanvasElement | null
   /** The moving background — one clip, or several of a kind cut between — frame by frame. */
   clip: Reel | null
+  /** A few frames of film grain, laid over the picture one after another. null on plain black. */
+  grain: HTMLCanvasElement[] | null
   /** The shade over the background, and the soft black when there is none. */
   shade: HTMLCanvasElement
   captions: Caption[]
@@ -533,6 +548,14 @@ function drawShade(hasPicture: boolean): HTMLCanvasElement {
   shade.addColorStop(1, 'rgba(0, 0, 0, 0.75)')
   ctx.fillStyle = shade
   ctx.fillRect(0, 0, W, H)
+  if (hasPicture) {
+    // The darker edges of a film frame, which also hold the eye on the ayah.
+    const vignette = ctx.createRadialGradient(W / 2, H * 0.45, H * 0.22, W / 2, H * 0.45, H * 0.78)
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)')
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.55)')
+    ctx.fillStyle = vignette
+    ctx.fillRect(0, 0, W, H)
+  }
   // The faint mist that drifts over the swipe view, held still.
   for (const [x, y, rx, a] of [
     [0.3, 0.4, 0.4, 0.11],
@@ -623,14 +646,16 @@ function clipAtVideoSize(url: string): string {
  * straight through, which is many times faster than seeking to each frame.
  */
 async function openClip(mb: Mediabunny, url: string, frames: number): Promise<AsyncGenerator<CanvasImageSource | null> | null> {
-  for (const src of [clipAtVideoSize(url), url]) {
+  // Ours are cut to the video's size already; a resized copy would only mean waiting for Cloudinary to make it.
+  for (const src of [url, clipAtVideoSize(url)]) {
     try {
       const input = new mb.Input({ source: new mb.UrlSource(src), formats: mb.ALL_FORMATS })
       const track = await input.getPrimaryVideoTrack()
       if (!track || !(await track.canDecode())) continue
       const duration = await track.computeDuration()
       if (!(duration > 0.5)) continue
-      const sink = new mb.CanvasSink(track, { width: W, height: H, fit: 'cover', poolSize: 3 })
+      // One more canvas than in use at once: the frame being drawn and the next being decoded.
+      const sink = new mb.CanvasSink(track, { width: W, height: H, fit: 'cover', poolSize: 4 })
       return (async function* () {
         let i = 0
         while (i < frames) {
@@ -644,7 +669,7 @@ async function openClip(mb: Mediabunny, url: string, frames: number): Promise<As
         }
       })()
     } catch {
-      // Try the full-size clip, then no clip at all.
+      // Try the resized copy, then no clip at all.
     }
   }
   return null
@@ -657,45 +682,42 @@ interface Shot {
   to: number
 }
 
-/** A cut is at least this far from the last, and from the end; a gap longer than the longest gets one partway. */
-const MIN_SHOT_SECONDS = 3.5
-const MAX_SHOT_SECONDS = 8
-const FILL_SHOT_SECONDS = 6
-/** Each scene dissolves into the next over this long. */
-const DISSOLVE_FRAMES = Math.round(0.5 * FPS)
+/** A cut is at least this far from the last and from the end; no shot runs longer than the longest. */
+const MIN_SHOT_SECONDS = 3
+const MAX_SHOT_SECONDS = 12
+/** How far each shot moves in on its picture, from its first frame to its last. */
+const PUSH_IN = 0.06
 
 /**
- * Where a video moves from one clip of the kind to the next: on a new ayah (or
- * part) wherever one comes, so the picture changes with the words, and partway
- * through a long one. A single clip just plays the whole way.
+ * Where a video cuts from one clip of the kind to the next: a clean cut on the
+ * moment a new ayah (or part) starts, as an edit cuts on the beat, and a long
+ * stretch without one split evenly. A single clip plays the whole way.
  */
 function planShots(reel: VideoBackground[], captions: Caption[], frames: number): Shot[] {
   if (reel.length < 2) return [{ clip: reel[0], from: 0, to: frames }]
   const seconds = frames / FPS
   const cuts = [0]
-  let last = 0
-  for (const t of [...captions.map((c) => c.atSeconds).filter((t) => t > 0), seconds]) {
-    while (t - last > MAX_SHOT_SECONDS && seconds - (last + FILL_SHOT_SECONDS) >= MIN_SHOT_SECONDS) {
-      last += FILL_SHOT_SECONDS
-      cuts.push(Math.round(last * FPS))
-    }
-    if (t < seconds && t - last >= MIN_SHOT_SECONDS && seconds - t >= MIN_SHOT_SECONDS) {
-      cuts.push(Math.round(t * FPS))
-      last = t
-    }
+  for (const t of captions.map((c) => c.atSeconds)) {
+    const last = cuts[cuts.length - 1] / FPS
+    if (t - last >= MIN_SHOT_SECONDS && seconds - t >= MIN_SHOT_SECONDS) cuts.push(Math.round(t * FPS))
   }
-  return cuts.map((from, i) => ({ clip: reel[i % reel.length], from, to: cuts[i + 1] ?? frames }))
+  const starts: number[] = []
+  cuts.forEach((from, k) => {
+    const to = cuts[k + 1] ?? frames
+    const pieces = Math.max(1, Math.ceil((to - from) / FPS / MAX_SHOT_SECONDS))
+    for (let p = 0; p < pieces; p += 1) starts.push(Math.round(from + ((to - from) * p) / pieces))
+  })
+  return starts.map((from, i) => ({ clip: reel[i % reel.length], from, to: starts[i + 1] ?? frames }))
 }
 
 interface ReelFrame {
   frame: CanvasImageSource | null
-  /** The next scene coming in over the last moments of this one, and how far it has come (0–1). */
-  incoming: CanvasImageSource | null
-  mix: number
+  /** How far into its shot this frame is, 0–1, for the slow push in. */
+  progress: number
 }
 
 interface Reel {
-  /** The frames for video frame `i`; called once for each frame, in order. */
+  /** The frame for video frame `i`; called once for each frame, in order. */
   next: (i: number) => Promise<ReelFrame>
   close: () => void
 }
@@ -711,8 +733,7 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
     let frames = opened.get(k)
     if (!frames) {
       const shot = shots[k]
-      // A shot after the first also plays under the dissolve into it.
-      const length = shot.to - shot.from + (k > 0 ? DISSOLVE_FRAMES : 0)
+      const length = shot.to - shot.from
       const first = shots[0].clip.videoUrl
       frames = (shot.clip.videoUrl ? openClip(mb, shot.clip.videoUrl, length) : Promise.resolve(null)).then(
         // A clip that will not load gives way to the first one again rather than a frozen frame.
@@ -723,7 +744,6 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
     return frames
   }
   const release = (k: number) => void opened.get(k)?.then((frames) => frames?.return(undefined))
-  const pull = async (frames: Frames | null) => (frames ? ((await frames.next()).value ?? null) : null)
 
   if (!(await open(0))) return null
   if (shots.length > 1) void open(1)
@@ -736,12 +756,10 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
         k += 1
         if (k + 1 < shots.length) void open(k + 1)
       }
-      const frame = await pull(await open(k))
-      const dissolveFrom = shots[k].to - DISSOLVE_FRAMES
-      if (k < shots.length - 1 && i >= dissolveFrom) {
-        return { frame, incoming: await pull(await open(k + 1)), mix: (i - dissolveFrom + 1) / (DISSOLVE_FRAMES + 1) }
-      }
-      return { frame, incoming: null, mix: 0 }
+      const frames = await open(k)
+      const frame = frames ? ((await frames.next()).value ?? null) : null
+      const shot = shots[k]
+      return { frame, progress: (i - shot.from) / Math.max(1, shot.to - shot.from - 1) }
     },
     close() {
       for (const key of opened.keys()) release(key)
@@ -749,20 +767,67 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
   }
 }
 
-async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, options: VideoOptions): Promise<Scene> {
+/**
+ * Film grain: a few frames of fine black and white specks, each of its own
+ * strength, laid lightly over the picture one after another. Full size, so
+ * nothing has to be scaled while the video is made.
+ */
+function makeGrain(): HTMLCanvasElement[] {
+  return Array.from({ length: 3 }, () => {
+    const [canvas, ctx] = makeCanvas()
+    const image = ctx.createImageData(W, H)
+    const data = image.data
+    for (let p = 0; p < data.length; p += 4) {
+      const v = Math.random() < 0.5 ? 0 : 255
+      data[p] = v
+      data[p + 1] = v
+      data[p + 2] = v
+      data[p + 3] = Math.random() * 255
+    }
+    ctx.putImageData(image, 0, 0)
+    return canvas
+  })
+}
+
+/**
+ * One colour for every clip, so a cut between two never jumps: darker and cooler
+ * in the shadows, and the blacks lifted a touch toward warm, as on film. Two
+ * plain blends, which cost a phone next to nothing per frame (a full colour
+ * filter cost ten times as much where the canvas is drawn without a GPU).
+ */
+function grade(ctx: CanvasRenderingContext2D) {
+  ctx.globalCompositeOperation = 'multiply'
+  ctx.fillStyle = 'rgb(214, 222, 232)'
+  ctx.fillRect(0, 0, W, H)
+  ctx.globalCompositeOperation = 'screen'
+  ctx.fillStyle = 'rgb(24, 15, 6)'
+  ctx.fillRect(0, 0, W, H)
+  ctx.globalCompositeOperation = 'source-over'
+}
+
+/** The ayat to show, with their translation in the viewer's language. */
+function startCaptions(r: Recitation): Promise<Caption[]> {
+  const edition = viewerTranslation(getAppSettings().translationEditionId)
+  // In Amiri, like the ayah: a light, classical face that also has every Arabic-script letter.
+  return prepareCaptions(r, cssFont('--font-amiri', "'Amiri', serif"), isRtlTranslationEdition(edition))
+}
+
+async function prepareScene(
+  mb: Mediabunny,
+  r: Recitation,
+  seconds: number,
+  options: VideoOptions,
+  captionsReady: Promise<Caption[]>
+): Promise<Scene> {
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
   const amiri = cssFont('--font-amiri', "'Amiri', serif")
   const background = findVideoBackground(options.backgroundId)
-  const edition = viewerTranslation(getAppSettings().translationEditionId)
-  const translationRtl = isRtlTranslationEdition(edition)
-  // In Amiri, like the ayah: a light, classical face that also has every Arabic-script letter.
-  const translationFont = amiri
-  const frames = Math.max(1, Math.ceil(buffer.duration * FPS))
+  const frames = Math.max(1, Math.ceil(seconds * FPS))
 
   const [still, captions] = await Promise.all([
     !background.videoUrl && background.url ? loadImage(background.url) : null,
-    prepareCaptions(r, translationFont, translationRtl),
+    captionsReady,
     document.fonts
       ? Promise.all([
           document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
@@ -783,26 +848,25 @@ async function prepareScene(mb: Mediabunny, r: Recitation, buffer: AudioBuffer, 
   return {
     still: still ? drawStill(still) : fallback ? drawStill(fallback) : null,
     clip,
+    grain: picturePresent ? makeGrain() : null,
     shade: drawShade(picturePresent),
     captions,
     titleCard: captions.length ? null : drawTitleCard(r.title, serif),
     footer: drawFooter(r, serif, sans),
     frames,
-    seconds: buffer.duration,
+    seconds,
   }
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipFrame: CanvasImageSource | null, incoming: ReelFrame | null) {
+function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, i: number, clipFrame: CanvasImageSource | null, progress: number) {
+  const t = i / FPS
   ctx.fillStyle = '#070707'
   ctx.fillRect(0, 0, W, H)
 
   if (clipFrame) {
-    ctx.drawImage(clipFrame, 0, 0, W, H)
-    if (incoming?.incoming && incoming.mix > 0) {
-      ctx.globalAlpha = Math.min(1, incoming.mix)
-      ctx.drawImage(incoming.incoming, 0, 0, W, H)
-      ctx.globalAlpha = 1
-    }
+    // Each shot moves slowly in on its picture, so a cut lands on movement.
+    const zoom = 1 + PUSH_IN * progress
+    ctx.drawImage(clipFrame, (W - W * zoom) / 2, (H - H * zoom) / 2, W * zoom, H * zoom)
   } else if (scene.still) {
     // The swipe view's slow drift: in a little and across, and back, every 26 seconds.
     const phase = (1 - Math.cos((t / 26) * Math.PI)) / 2
@@ -813,7 +877,13 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, clipF
     const y = (H - dh) / 2 + (-0.01 + 0.02 * phase) * H
     ctx.drawImage(scene.still, x, y, dw, dh)
   }
+  if (scene.grain) grade(ctx)
   ctx.drawImage(scene.shade, 0, 0)
+  if (scene.grain) {
+    ctx.globalAlpha = 0.07
+    ctx.drawImage(scene.grain[i % scene.grain.length], 0, 0)
+    ctx.globalAlpha = 1
+  }
 
   // The ayah (or part) being recited: the last one whose time has come, held until the next.
   let caption: Caption | null = null
@@ -871,9 +941,11 @@ export async function makeRecitationVideo(
   options: VideoOptions = DEFAULT_VIDEO_OPTIONS
 ): Promise<ShareMedia> {
   onProgress(0.02)
-  const mb = await import('mediabunny')
-  const [buffer, canVideo, canAac] = await Promise.all([
-    renderRecitationAudio(r, signal),
+  // All at once: the encoder library, the recording, and the ayat to show over it.
+  const captionsReady = startCaptions(r)
+  captionsReady.catch(() => {})
+  const [mb, dry] = await Promise.all([import('mediabunny'), decodeRecitationAudio(r, signal)])
+  const [canVideo, canAac] = await Promise.all([
     mb.canEncodeVideo('avc', { width: W, height: H }),
     mb.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: SAMPLE_RATE }),
   ])
@@ -882,10 +954,16 @@ export async function makeRecitationVideo(
   // encoder, MP3 inside the MP4 plays just as widely.
   const audioCodec: 'aac' | 'mp3' = canAac ? 'aac' : 'mp3'
   if (!canAac) await ensureMp3Encoder()
-  onProgress(0.08)
   throwIfCancelled(signal)
 
-  const scene = await prepareScene(mb, r, buffer, options)
+  // The room's echo takes seconds to render; the pictures only need to know how
+  // long it will be, so they are made while it renders.
+  const seconds = dry.duration + echoTail(r)
+  const rendering = addRoom(r, dry)
+  rendering.catch(() => {})
+  onProgress(0.08)
+
+  const scene = await prepareScene(mb, r, seconds, options, captionsReady)
   onProgress(0.12)
   throwIfCancelled(signal)
 
@@ -894,43 +972,56 @@ export async function makeRecitationVideo(
     format: new mb.Mp4OutputFormat({ fastStart: 'in-memory' }),
     target: new mb.BufferTarget(),
   })
-  const video = new mb.CanvasSource(canvas, { codec: 'avc', quality: mb.QUALITY_HIGH, keyFrameInterval: 2 })
+  // A set bitrate rather than a quality level: a phone's hardware encoder can take "high" to mean
+  // 25+ Mbps, a hundred megabytes for half a minute. 4 Mbps is plenty for 720p, and what TikTok re-encodes to anyway.
+  const video = new mb.CanvasSource(canvas, {
+    codec: 'avc',
+    quality: new mb.Quality({ bitrate: 4_000_000, bitrateMode: 'constant' }),
+    keyFrameInterval: 2,
+  })
   output.addVideoTrack(video, { frameRate: FPS })
   const audio = new mb.AudioBufferSource({ codec: audioCodec, quality: mb.QUALITY_HIGH })
   output.addAudioTrack(audio)
   await output.start()
 
   const totalFrames = scene.frames
-  const audioChunk = buffer.sampleRate
+  let buffer: AudioBuffer | null = null
+  void rendering.then((b) => (buffer = b), () => {})
   let audioCursor = 0
-  let clipFrame: CanvasImageSource | null = null
-  let reelFrame: ReelFrame | null = null
-
-  try {
-    for (let i = 0; i < totalFrames; i += 1) {
-      throwIfCancelled(signal)
-      const t = i / FPS
-      if (scene.clip) {
-        reelFrame = await scene.clip.next(i)
-        // A frame that did not decode keeps the one before it.
-        if (reelFrame.frame) clipFrame = reelFrame.frame
-      }
-      drawFrame(ctx, scene, t, clipFrame, reelFrame)
-      await video.add(t, 1 / FPS)
-
-      // Audio is fed alongside the frames so the file interleaves as it is written.
-      while (audioCursor < buffer.length && audioCursor / buffer.sampleRate <= t + 1) {
-        const end = Math.min(buffer.length, audioCursor + audioChunk)
-        await audio.add(sliceBuffer(buffer, audioCursor, end))
-        audioCursor = end
-      }
-      if (i % 6 === 0) onProgress(0.12 + 0.86 * (i / totalFrames))
-    }
-    while (audioCursor < buffer.length) {
-      const end = Math.min(buffer.length, audioCursor + audioChunk)
-      await audio.add(sliceBuffer(buffer, audioCursor, end))
+  // Audio is fed alongside the frames, once it has rendered, so the file interleaves as it is written.
+  const feedAudio = async (upTo: number) => {
+    const b = buffer
+    if (!b) return
+    while (audioCursor < b.length && audioCursor / b.sampleRate <= upTo) {
+      const end = Math.min(b.length, audioCursor + b.sampleRate)
+      await audio.add(sliceBuffer(b, audioCursor, end))
       audioCursor = end
     }
+  }
+  let clipFrame: CanvasImageSource | null = null
+  let progress = 0
+
+  try {
+    // The next frame is decoded while this one is drawn and encoded.
+    let upcoming = scene.clip ? scene.clip.next(0) : null
+    for (let i = 0; i < totalFrames; i += 1) {
+      throwIfCancelled(signal)
+      if (upcoming) {
+        const reelFrame = await upcoming
+        // A frame that did not decode keeps the one before it.
+        if (reelFrame.frame) clipFrame = reelFrame.frame
+        progress = reelFrame.progress
+        upcoming = scene.clip && i + 1 < totalFrames ? scene.clip.next(i + 1) : null
+      } else {
+        progress = i / Math.max(1, totalFrames - 1)
+      }
+      drawFrame(ctx, scene, i, clipFrame, progress)
+      await video.add(i / FPS, 1 / FPS)
+      await feedAudio(i / FPS + 1)
+      if (i % 6 === 0) onProgress(0.12 + 0.86 * (i / totalFrames))
+    }
+    buffer = await rendering
+    await feedAudio(Infinity)
     await output.finalize()
   } catch (err) {
     if (output.state !== 'finalized') await output.cancel().catch(() => {})

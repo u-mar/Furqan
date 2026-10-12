@@ -6,10 +6,13 @@ export interface AppUser {
   username: string
   name: string
   /** How this account signs in, when it is not a username and PIN. */
-  via?: 'google'
+  via?: 'google' | 'email'
 }
 
 const AUTH_KEY = 'muyassar_auth_user'
+/** Set when "Remember me" was left off: the sign-in lasts until the app is closed. */
+const SESSION_ONLY_KEY = 'muyassar_auth_session_only'
+const SESSION_ALIVE_KEY = 'muyassar_auth_alive'
 const LOCAL_USERS_KEY = 'muyassar_local_users'
 
 export function getSignedInUser(): AppUser | null {
@@ -17,6 +20,12 @@ export function getSignedInUser(): AppUser | null {
   try {
     const raw = localStorage.getItem(AUTH_KEY)
     if (!raw) return null
+    // Not remembered, and this is a fresh launch: sign out now.
+    if (localStorage.getItem(SESSION_ONLY_KEY) && !sessionStorage.getItem(SESSION_ALIVE_KEY)) {
+      localStorage.removeItem(AUTH_KEY)
+      localStorage.removeItem(SESSION_ONLY_KEY)
+      return null
+    }
     const parsed = JSON.parse(raw) as AppUser
     if (!parsed?.id || !parsed?.username || !parsed?.name) return null
     return parsed
@@ -25,9 +34,19 @@ export function getSignedInUser(): AppUser | null {
   }
 }
 
-export function setSignedInUser(user: AppUser): void {
+export function setSignedInUser(user: AppUser, options: { remember?: boolean } = {}): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(AUTH_KEY, JSON.stringify(user))
+  try {
+    if (options.remember === false) {
+      localStorage.setItem(SESSION_ONLY_KEY, '1')
+      sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
+    } else {
+      localStorage.removeItem(SESSION_ONLY_KEY)
+    }
+  } catch {
+    // Without storage the choice just isn't kept.
+  }
   window.dispatchEvent(new CustomEvent('auth-user-changed', { detail: user }))
   mergeGuestLikes(user.id)
 }
@@ -50,6 +69,7 @@ function mergeGuestLikes(userId: string): void {
 export function clearSignedInUser(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(AUTH_KEY)
+  localStorage.removeItem(SESSION_ONLY_KEY)
   window.dispatchEvent(new CustomEvent('auth-user-changed', { detail: null }))
 }
 

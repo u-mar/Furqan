@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyPin } from '@/lib/pin-hash'
+import { verifyPassword, verifyPin } from '@/lib/pin-hash'
 import { verifyGoogleCredential } from '@/lib/google-auth'
 import { ownsUsername } from '@/lib/qari-owner'
 import { removeAudio, removeFile, removeImage } from '@/lib/qari-storage'
@@ -21,7 +21,7 @@ export const runtime = 'nodejs'
  * the same ownership rule as every other Qari write.
  */
 export async function DELETE(req: Request) {
-  let body: { username?: string; userId?: string; pin?: string; googleCredential?: string }
+  let body: { username?: string; userId?: string; pin?: string; password?: string; googleCredential?: string }
   try {
     body = (await req.json()) as typeof body
   } catch {
@@ -43,17 +43,21 @@ export async function DELETE(req: Request) {
       if (account.id !== userId) {
         return NextResponse.json({ error: 'That is not your account.' }, { status: 403 })
       }
-      if (account.pinHash) {
+      const google = body.googleCredential ? await verifyGoogleCredential(body.googleCredential) : null
+      if (google && account.googleId && google.sub === account.googleId) {
+        // Confirmed by signing in with Google again.
+      } else if (account.passwordHash) {
+        if (!(await verifyPassword(body.password ?? '', account.passwordHash))) {
+          return NextResponse.json({ error: 'That password is not right.' }, { status: 401 })
+        }
+      } else if (account.pinHash) {
         const { ok } = await verifyPin(pin, account.pinHash)
         if (!ok) {
           return NextResponse.json({ error: 'That PIN is not right.' }, { status: 401 })
         }
       } else {
-        // Made with Google: they confirm by signing in with Google once more.
-        const google = await verifyGoogleCredential(body.googleCredential)
-        if (!google || google.sub !== account.googleId) {
-          return NextResponse.json({ error: 'Confirm with the Google account this was made with.' }, { status: 401 })
-        }
+        // Made with Google, and not confirmed with it above.
+        return NextResponse.json({ error: 'Confirm with the Google account this was made with.' }, { status: 401 })
       }
     } else if (!(await ownsUsername(username, userId))) {
       return NextResponse.json({ error: 'That is not your account.' }, { status: 403 })

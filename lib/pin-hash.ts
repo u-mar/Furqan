@@ -50,3 +50,10 @@ export async function verifyPin(
   const ok = legacy.length === saved.length && timingSafeEqual(legacy, saved)
   return { ok, needsUpgrade: ok }
 }
+
+/** A password is stored the same way: salted scrypt, in the same format. */
+export const hashPassword = hashPin
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  return (await verifyPin(password, stored)).ok
+}

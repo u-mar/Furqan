@@ -55,8 +55,12 @@ export const VIDEO_BACKGROUND_GROUPS = [
     'Makkah & Madinah',
     'Mosques',
     'Quran',
+    'Prayer',
     'Night drives',
     'Streets',
+    'Moody night',
+    'Silhouettes',
+    'Storms',
     ...SCENERY_GROUPS,
     'Motion',
     'Landscapes',
@@ -68,7 +72,18 @@ const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadi
 
 type SceneryGroup = (typeof SCENERY_GROUPS)[number]
 
-type MotionGroup = 'Motion' | 'Makkah & Madinah' | 'Mosques' | 'Quran' | 'Night drives' | 'Streets' | SceneryGroup
+type MotionGroup =
+  | 'Motion'
+  | 'Makkah & Madinah'
+  | 'Mosques'
+  | 'Quran'
+  | 'Prayer'
+  | 'Night drives'
+  | 'Streets'
+  | 'Moody night'
+  | 'Silhouettes'
+  | 'Storms'
+  | SceneryGroup
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -263,6 +278,54 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
     ['scenery-lone-pine', 'Lone pine', 'Waterfalls & lakes'],
     ['scenery-reed-lake', 'Reed lake', 'Waterfalls & lakes'],
     ['scenery-still-sunset', 'Still sunset', 'Waterfalls & lakes'],
+    // Moody night, Islamic, cinematic nature and silhouettes: Pexels clips.
+    ['night-crescent', 'Night crescent', 'Night sky'],
+    ['city-lights-drive', 'City lights drive', 'Night drives'],
+    ['porch-light-rain', 'Porch light rain', 'Rain'],
+    ['single-candle', 'Single candle', 'Moody night'],
+    ['full-moon-clouds', 'Full moon in cloud', 'Night sky'],
+    ['red-lights-wet-road', 'Red lights, wet road', 'Night drives'],
+    ['windshield-rain-rays', 'Rain and light rays', 'Rain'],
+    ['neon-wet-street', 'Neon wet street', 'Moody night'],
+    ['stormy-sea-dusk', 'Stormy sea at dusk', 'Storms'],
+    ['teal-street-lamps', 'Teal street lamps', 'Moody night'],
+    ['rainy-bus-window', 'Rainy bus window', 'Rain'],
+    ['foggy-city-night', 'Foggy city night', 'Moody night'],
+    ['quran-on-carpet', 'Quran on the carpet', 'Quran'],
+    ['minaret-crescent-dusk', 'Minarets and crescent', 'Mosques'],
+    ['teal-sky-mosque', 'Mosque, teal sky', 'Mosques'],
+    ['sujood', 'Sujood', 'Prayer'],
+    ['ramadan-lights-mosque', 'Ramadan lights', 'Mosques'],
+    ['standing-in-prayer', 'Standing in prayer', 'Prayer'],
+    ['lit-minaret-night', 'Lit minaret', 'Mosques'],
+    ['hands-holding-quran', 'Holding the Quran', 'Quran'],
+    ['blue-mosque-dusk', 'Blue mosque at dusk', 'Mosques'],
+    ['candle-lanterns', 'Candle lanterns', 'Quran'],
+    ['golden-mosque-night', 'Golden mosque at night', 'Mosques'],
+    ['dome-and-arches', 'Dome and arches', 'Mosques'],
+    ['ocean-foam-aerial', 'Ocean foam', 'Ocean'],
+    ['foggy-road-headlights', 'Foggy road at night', 'Night drives'],
+    ['gulls-golden-sea', 'Gulls, golden sea', 'Ocean'],
+    ['violet-lightning', 'Violet lightning', 'Storms'],
+    ['sun-through-fog', 'Sun through fog', 'Forest'],
+    ['fiery-cloud', 'Fiery cloud', 'Clouds'],
+    ['sun-halo', 'Sun halo', 'Clouds'],
+    ['bird-flock-dusk', 'Birds at dusk', 'Clouds'],
+    ['misty-pine-forest', 'Misty pine forest', 'Forest'],
+    ['golden-storm-clouds', 'Golden storm clouds', 'Storms'],
+    ['glittering-dark-water', 'Glittering dark water', 'Ocean'],
+    ['city-lightning', 'Lightning over the city', 'Storms'],
+    ['kneeling-prayer-rug', 'On the prayer rug', 'Prayer'],
+    ['hilltop-silhouette', 'Hilltop silhouette', 'Silhouettes'],
+    ['rocks-by-the-sea', 'By the sea', 'Silhouettes'],
+    ['kufi-by-the-sea', 'Watching the sea', 'Silhouettes'],
+    ['backlit-silhouette', 'Backlit', 'Silhouettes'],
+    ['shadow-lane-walk', 'Walk in the shadows', 'Silhouettes'],
+    ['rooftop-dusk', 'Rooftop at dusk', 'Silhouettes'],
+    ['sunset-railing', 'Sunset railing', 'Silhouettes'],
+    ['walk-into-the-light', 'Into the light', 'Silhouettes'],
+    ['streetlamp-walk', 'Under the streetlamp', 'Silhouettes'],
+    ['foggy-road-walker', 'Foggy road walker', 'Silhouettes'],
   ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
 ).map(([id, label, group]) => ({
   id: `motion-${id}`,
@@ -368,7 +431,18 @@ export function rememberRecitationBackground(id: string): void {
 }
 
 /** Kinds whose clips look alike enough to cut between: not the old mixed "Motion" set. */
-const MIXABLE_GROUPS = new Set<string>(['Makkah & Madinah', 'Mosques', 'Quran', 'Night drives', 'Streets', ...SCENERY_GROUPS])
+const MIXABLE_GROUPS = new Set<string>([
+  'Makkah & Madinah',
+  'Mosques',
+  'Quran',
+  'Prayer',
+  'Night drives',
+  'Streets',
+  'Moody night',
+  'Silhouettes',
+  'Storms',
+  ...SCENERY_GROUPS,
+])
 
 /**
  * The clips a recitation's background moves through: the one chosen first, then

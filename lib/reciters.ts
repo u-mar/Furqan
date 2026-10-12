@@ -997,7 +997,12 @@ export const RECITERS: Reciter[] = [
   },
 ]
 
-export const DEFAULT_RECITER_ID = 'alafasy'
+/**
+ * The reciter a new install starts on, in Read and Listen: Sheikh Abdul Rashid Sufi
+ * (Hafs). His MP3Quran recording has ayah timings, so Read can follow it ayah by ayah.
+ * Anyone who has already picked a reciter keeps theirs.
+ */
+export const DEFAULT_RECITER_ID = 'soufi'
 
 export function getReciterById(id: string): Reciter {
   return RECITERS.find((r) => r.id === id) ?? RECITERS[0]

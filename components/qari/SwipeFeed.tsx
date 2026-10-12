@@ -264,13 +264,19 @@ function AyahStage({
   )
 }
 
-/** The background its reciter chose, drifting slowly; only mounted for the slides on or next to the screen. */
-function Backdrop({ recitation, active, playing }: { recitation: Recitation; active: boolean; playing: boolean }) {
+/**
+ * The background its reciter chose; only mounted for the slides on or next to the screen.
+ * The ones next to it load their clip too, held on its first frame, so a swipe lands on
+ * a clip that is ready to play instead of one that has only started downloading.
+ */
+function Backdrop({ recitation, playing }: { recitation: Recitation; playing: boolean }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
-      <BackgroundCover background={recitationBackground(recitation)} moving={active} drift paused={!playing} />
+      <BackgroundCover background={recitationBackground(recitation)} moving drift paused={!playing} />
       <div className={cn('qari-mist', !playing && 'is-paused')} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/75" />
+      {/* The darker edges of a film frame, as in the shared video. */}
+      <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(0,0,0,0.5))]" />
     </div>
   )
 }
@@ -570,7 +576,7 @@ const Slide = memo(function Slide({
         isAyahCard && recitation.imageUrl ? (
           <AyahCardMedia src={recitation.imageUrl} alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })} />
         ) : (
-          <Backdrop recitation={recitation} active={active} playing={active && playing} />
+          <Backdrop recitation={recitation} playing={active && playing} />
         )
       ) : null}
 

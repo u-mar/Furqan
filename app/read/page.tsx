@@ -863,10 +863,11 @@ function ReadPageContent() {
   useEffect(() => {
     const moved = lastHighlightRef.current !== highlightedVerseKey
     lastHighlightRef.current = highlightedVerseKey
-    if (moved && ayahMenu && highlightedVerseKey && highlightedVerseKey !== ayahMenu.verseKey) {
-      setAyahMenu(null)
-    }
-  }, [ayahMenu, highlightedVerseKey])
+    if (!moved || !highlightedVerseKey) return
+    if (ayahMenu && highlightedVerseKey !== ayahMenu.verseKey) setAyahMenu(null)
+    // An ayah opened from search, Contents or a bookmark is marked too: let it go the same way.
+    if (navSelectedVerseKey && highlightedVerseKey !== navSelectedVerseKey) setNavSelectedVerseKey(null)
+  }, [ayahMenu, highlightedVerseKey, navSelectedVerseKey])
 
   const handleToggleBookmark = useCallback(() => {
     if (!ayahMenu) return

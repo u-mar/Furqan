@@ -75,10 +75,14 @@ export default function PrivacyPage() {
       <h3>3.1 Your account</h3>
       <p>
         An account is optional. If you create one, we store your <strong>username</strong> (your public
-        profile address), your <strong>display name</strong>, and your <strong>PIN in protected form
-        only</strong> &mdash; salted and hashed so that it cannot be read back, even by us. We also record
-        failed sign-in attempts so that an account can be locked temporarily against guessing. We do
-        not ask for an email address or phone number.
+        profile address), your <strong>display name</strong>, and your <strong>email address</strong>,
+        which you sign in with and which we use only to send you a link to reset your password when you
+        ask for one. Your <strong>password</strong> (or, for accounts made before passwords, your PIN)
+        is kept in protected form only &mdash; salted and hashed so that it cannot be read back, even by
+        us. If you sign in with Google, we receive and keep the account identifier and email address
+        Google confirms; we never see your Google password. We also record failed sign-in attempts so
+        that an account can be locked temporarily against guessing. We do not ask for a phone number,
+        and we never use your email for marketing.
       </p>
 
       <h3>3.2 What you publish in Qari</h3>
@@ -224,6 +228,14 @@ export default function PrivacyPage() {
           videos.
         </li>
         <li>
+          <strong>Resend</strong> &mdash; delivers the password reset emails you ask for. It receives your
+          email address and the message, and nothing else.
+        </li>
+        <li>
+          <strong>Google</strong> &mdash; if you choose &ldquo;Continue with Google&rdquo;, Google confirms
+          who you are and tells us your account identifier and email address.
+        </li>
+        <li>
           <strong>Hugging Face</strong> &mdash; when you share part of an ayah, the ayah&rsquo;s reference, its
           Arabic words and its published translation may be sent to an AI model hosted through Hugging
           Face to find the matching part of the translation. Nothing about you is included.
@@ -262,7 +274,8 @@ export default function PrivacyPage() {
 
       <h2 id="security">10. Security</h2>
       <p>
-        Connections to the Service are encrypted. PINs and halaqa keys are stored only as salted hashes,
+        Connections to the Service are encrypted. Passwords, PINs and halaqa keys are stored only as
+        salted hashes, password reset links work once and expire after 30 minutes,
         and repeated failed sign-ins lock an account temporarily. No method of transmission or storage
         is completely secure, so while we work to protect your information, we cannot guarantee its
         absolute security.
