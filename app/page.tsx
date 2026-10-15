@@ -3,9 +3,7 @@
 import { useEffect, useState } from 'react'
 import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
-import HomeHero from '@/components/home/HomeHero'
-import HomeScreen from '@/components/home/HomeScreen'
-import PrayerQiblaCard from '@/components/home/PrayerQiblaCard'
+import HomeSkyScreen from '@/components/home/HomeSkyScreen'
 import PrayerQiblaTiles from '@/components/home/PrayerQiblaTiles'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getSignedInUser } from '@/lib/auth'
@@ -24,24 +22,18 @@ export default function Home() {
   }, [])
 
   return (
-    <HomeScreen className="max-w-lg mx-auto" withBottomNav>
-      <HomeHero displayName={displayName === 'Guest' ? t('Guest') : displayName} />
-
-      <div className="reveal mt-[22px]" style={{ animationDelay: '80ms' }}>
-        <PrayerQiblaCard />
-      </div>
-
-      <div className="reveal mt-3" style={{ animationDelay: '120ms' }}>
+    <HomeSkyScreen displayName={displayName === 'Guest' ? t('Guest') : displayName}>
+      <div className="reveal" style={{ animationDelay: '80ms' }}>
         <PrayerQiblaTiles />
       </div>
 
-      <div className="reveal mt-[22px]" style={{ animationDelay: '160ms' }}>
-        <DailyVerseCard />
-      </div>
-
-      <div className="reveal mt-[22px]" style={{ animationDelay: '200ms' }}>
+      <div className="reveal" style={{ animationDelay: '120ms' }}>
         <ContinueReadingCard />
       </div>
-    </HomeScreen>
+
+      <div className="reveal" style={{ animationDelay: '160ms' }}>
+        <DailyVerseCard />
+      </div>
+    </HomeSkyScreen>
   )
 }

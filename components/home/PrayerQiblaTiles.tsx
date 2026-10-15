@@ -13,7 +13,7 @@ import { useT } from '@/lib/i18n'
  */
 function QiblaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-10 w-10 shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-11 w-11 shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-case" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#f4f1e8" />
@@ -45,7 +45,7 @@ function QiblaGlyph() {
  */
 function HalaqaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-10 w-10 shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-11 w-11 shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-halaqa-dot" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5cc4ab" />
@@ -63,14 +63,18 @@ function HalaqaGlyph() {
       <circle cx="32" cy="56.5" r="5.6" fill="url(#pqt-halaqa-dot)" />
       <circle cx="10.7" cy="44.2" r="5.6" fill="url(#pqt-halaqa-dot)" />
       <circle cx="10.7" cy="19.8" r="5.6" fill="url(#pqt-halaqa-dot)" />
-      {/* An open book at the centre. */}
+      {/* An open book at the centre, outlined so it still shows on a light tile. */}
       <path
         d="M30 22.5c-3.2-1.9-7-2.7-11.2-2.4a1.8 1.8 0 0 0-1.6 1.8v17.4c0 1 .8 1.8 1.9 1.8 4-.1 7.5.8 11 2.6V22.5z"
         fill="#f1efe8"
+        stroke="rgba(60, 44, 18, 0.32)"
+        strokeWidth="0.9"
       />
       <path
         d="M34 22.5c3.2-1.9 7-2.7 11.2-2.4a1.8 1.8 0 0 1 1.6 1.8v17.4c0 1-.8 1.8-1.9 1.8-4-.1-7.5.8-11 2.6V22.5z"
         fill="#f1efe8"
+        stroke="rgba(60, 44, 18, 0.32)"
+        strokeWidth="0.9"
       />
       <rect x="31.2" y="21.5" width="1.6" height="22.8" rx="0.8" fill="url(#pqt-halaqa-gold)" />
     </svg>
@@ -91,25 +95,21 @@ function Tile({
   return (
     <Link
       href={href}
-      className="home-press ed-focus flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3.5 text-center"
+      className="home-v2-card home-press ed-focus flex flex-col items-center gap-2.5 rounded-[1.375rem] px-1.5 pb-4 pt-[1.125rem] text-center"
     >
       {image}
-      <span className="min-w-0 w-full">
-        <span className="block truncate text-[0.8125rem] font-semibold text-[var(--home-heading)]">
-          {title}
-        </span>
-        <span className="block truncate text-[0.6875rem] tabular-nums text-[var(--home-muted)]">
-          {subtitle}
-        </span>
+      <span className="flex w-full min-w-0 flex-col items-center gap-0.5">
+        <span className="block max-w-full truncate text-[0.84375rem] font-semibold tracking-[-0.005em]">{title}</span>
+        <span className="block max-w-full truncate text-[0.75rem] tabular-nums text-[var(--hv-text3)]">{subtitle}</span>
       </span>
     </Link>
   )
 }
 
 /**
- * Three small shortcuts below the next-prayer card and above the weekly
- * verse — a picture each instead of a row of text, matching how the rest
- * of Home leads with an image before a label.
+ * Three small shortcuts below today's prayers — a picture each instead of a
+ * row of text, matching how the rest of Home leads with an image before a
+ * label.
  */
 export default function PrayerQiblaTiles() {
   const t = useT()
@@ -119,15 +119,15 @@ export default function PrayerQiblaTiles() {
   if (!ready) {
     return (
       <div className="grid grid-cols-3 gap-3">
-        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
-        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
-        <div className="h-[6.5rem] animate-pulse rounded-2xl bg-[var(--home-track)]" />
+        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
+        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
+        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <nav aria-label={t('Quick actions')} className="grid grid-cols-3 gap-3">
       <Tile
         href="/prayer/qibla"
         image={<QiblaGlyph />}
@@ -136,7 +136,7 @@ export default function PrayerQiblaTiles() {
       />
       <Tile
         href="/prayer"
-        image={<img src="/icons/noto/mosque.svg" alt="" className="h-10 w-10 shrink-0" />}
+        image={<img src="/icons/noto/mosque.svg" alt="" className="h-11 w-11 shrink-0" />}
         title={t('Prayer')}
         subtitle={t('Times')}
       />
@@ -146,6 +146,6 @@ export default function PrayerQiblaTiles() {
         title={t('Halaqa')}
         subtitle={t('Group reading')}
       />
-    </div>
+    </nav>
   )
 }

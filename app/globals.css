@@ -4202,3 +4202,500 @@ html.splash-seen .app-splash {
     animation: none;
   }
 }
+
+/* ======================================================================
+   Home — the sky of the hour. The top of Home is the sky where the reader
+   is (set by HomeSkyScreen as --hv-s* and --hv-l*), the sun on its real
+   path, the next prayer large beneath it and a skyline at its foot. In the
+   dark themes the page settles into that sky's own ground; in light the sky
+   runs on down into warm sand, with linen cards, ink and a deep emerald.
+   ====================================================================== */
+
+.home-v2 {
+  --hv-ground: var(--app-bg);
+  --hv-ink: #f5efe3;
+  --hv-ink2: rgba(245, 239, 227, 0.78);
+  --hv-ink3: rgba(245, 239, 227, 0.5);
+  --hv-gold: #e0bc74;
+  --hv-hero-shadow: 0 2px 20px rgba(0, 0, 0, 0.28);
+  --hv-btn-bg: rgba(8, 20, 22, 0.34);
+  --hv-btn-border: rgba(255, 255, 255, 0.14);
+  --hv-arc: rgba(245, 239, 227, 0.4);
+  --hv-mark-on: #e0bc74;
+  --hv-mark-off: rgba(245, 239, 227, 0.6);
+  --hv-mark-ring: rgba(224, 188, 116, 0.28);
+  --hv-sun-glow: #ffd68a;
+  --hv-sun-core: #ffe9b8;
+  --hv-moon: #f3efe6;
+  --hv-moon-glow: #e8e2cf;
+  --hv-pill-bg: rgba(8, 20, 22, 0.4);
+  --hv-pill-border: rgba(224, 188, 116, 0.38);
+  --hv-skyline: var(--hv-ground);
+  --hv-skyline-mask: none;
+  --hv-now-dot: #ffe9b8;
+  --hv-now-shadow: 0 0 0 4px rgba(224, 188, 116, 0.2), 0 0 14px rgba(255, 214, 138, 0.75);
+  /* Today's prayers */
+  --hv-pc-bg: rgba(9, 22, 24, 0.58);
+  --hv-pc-border: rgba(255, 255, 255, 0.1);
+  --hv-pc-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 30px 60px -32px rgba(0, 0, 0, 0.75);
+  --hv-pc-label: rgba(245, 239, 227, 0.6);
+  --hv-pc-link: #5cc4ab;
+  --hv-pc-track: rgba(255, 255, 255, 0.1);
+  --hv-on-color: #f4dba4;
+  --hv-on-bg: linear-gradient(180deg, rgba(224, 188, 116, 0.24), rgba(224, 188, 116, 0.06));
+  --hv-on-border: rgba(224, 188, 116, 0.5);
+  --hv-on-icon: #e0bc74;
+  --hv-past-color: rgba(245, 239, 227, 0.5);
+  --hv-past-icon: rgba(245, 239, 227, 0.4);
+  --hv-normal-color: #f5efe3;
+  --hv-normal-icon: rgba(245, 239, 227, 0.82);
+  --hv-rail-from: rgba(224, 188, 116, 0.2);
+  --hv-rail-to: #e0bc74;
+  /* The cards below */
+  --hv-surface: rgba(255, 255, 255, 0.045);
+  --hv-border: rgba(255, 255, 255, 0.08);
+  --hv-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --hv-text: #f5efe3;
+  --hv-text2: rgba(245, 239, 227, 0.72);
+  --hv-text3: rgba(245, 239, 227, 0.58);
+  --hv-arabic: #f8f2e6;
+  --hv-translation: rgba(245, 239, 227, 0.84);
+  --hv-accent-gold: #e0bc74;
+  --hv-teal: #5cc4ab;
+  --hv-on-teal: #0a201c;
+  --hv-teal-glow: rgba(92, 196, 171, 0.7);
+  --hv-teal-wash: radial-gradient(circle at 50% 30%, rgba(92, 196, 171, 0.22), rgba(92, 196, 171, 0.05));
+  --hv-teal-line: rgba(92, 196, 171, 0.22);
+  --hv-track: rgba(255, 255, 255, 0.1);
+  background-color: var(--hv-ground);
+  color: var(--hv-text);
+  transition: background-color 0.7s ease;
+}
+
+.home-v2[data-sky] {
+  --hv-ground: var(--hv-ground-sky);
+}
+
+html.dark.black .home-v2[data-sky] {
+  --hv-ground: #000000;
+}
+
+html:not(.dark) .home-v2 {
+  --hv-ground: #e9e2d2;
+  --hv-ink: #1e1b16;
+  --hv-ink2: #5b554a;
+  --hv-ink3: rgba(30, 27, 22, 0.35);
+  --hv-gold: #9a7633;
+  --hv-hero-shadow: none;
+  --hv-btn-bg: rgba(255, 252, 245, 0.55);
+  --hv-btn-border: rgba(48, 38, 20, 0.1);
+  --hv-arc: rgba(30, 27, 22, 0.28);
+  --hv-mark-on: #9a7633;
+  --hv-mark-off: rgba(30, 27, 22, 0.35);
+  --hv-mark-ring: rgba(154, 118, 51, 0.22);
+  --hv-sun-glow: #f0bf62;
+  --hv-sun-core: #f3c46c;
+  --hv-moon: #6f685b;
+  --hv-moon-glow: #9a9282;
+  --hv-pill-bg: #0e3a35;
+  --hv-pill-border: rgba(14, 58, 53, 0.9);
+  --hv-skyline: #d4cbb7;
+  --hv-skyline-mask: linear-gradient(180deg, #000 45%, transparent 92%);
+  --hv-now-dot: #0e3a35;
+  --hv-now-shadow: 0 0 0 4px rgba(14, 58, 53, 0.14);
+  --hv-pc-bg: #f2ecdf;
+  --hv-pc-border: rgba(48, 38, 20, 0.08);
+  --hv-pc-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 16px 36px -24px rgba(60, 44, 18, 0.3);
+  --hv-pc-label: #6f685b;
+  --hv-pc-link: #0e5f55;
+  --hv-pc-track: rgba(48, 38, 20, 0.1);
+  --hv-on-color: #f3e6c4;
+  --hv-on-bg: #0e3a35;
+  --hv-on-border: transparent;
+  --hv-on-icon: #e6cc8f;
+  --hv-past-color: rgba(30, 27, 22, 0.4);
+  --hv-past-icon: rgba(30, 27, 22, 0.3);
+  --hv-normal-color: #1e1b16;
+  --hv-normal-icon: rgba(30, 27, 22, 0.62);
+  --hv-rail-from: rgba(14, 58, 53, 0.25);
+  --hv-rail-to: #0e3a35;
+  --hv-surface: #f2ecdf;
+  --hv-border: rgba(48, 38, 20, 0.08);
+  --hv-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 12px 28px -20px rgba(60, 44, 18, 0.28);
+  --hv-text: #1e1b16;
+  --hv-text2: #5b554a;
+  --hv-text3: #6f685b;
+  --hv-arabic: #1e1b16;
+  --hv-translation: #3f3a31;
+  --hv-accent-gold: #9a7633;
+  --hv-teal: #0e5f55;
+  --hv-on-teal: #f3efe4;
+  --hv-teal-glow: rgba(14, 95, 85, 0.4);
+  --hv-teal-wash: radial-gradient(circle at 50% 30%, rgba(14, 95, 85, 0.14), rgba(14, 95, 85, 0.04));
+  --hv-teal-line: rgba(14, 95, 85, 0.18);
+  --hv-track: rgba(48, 38, 20, 0.1);
+}
+
+/* The sky itself: down to the skyline's foot in the dark themes, and on
+   into the sand in light. A faint gold star lattice and a little grain sit
+   on it so it is never a flat fill. */
+.home-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--hv-s0) 0%, var(--hv-s1) 48%, var(--hv-s2) 82%, var(--hv-ground) 100%);
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+html:not(.dark) .home-sky {
+  bottom: -158px;
+  background: linear-gradient(180deg, var(--hv-l0) 0%, var(--hv-l1) 41%, var(--hv-l2) 70%, var(--hv-ground) 100%);
+}
+
+.home-v2[data-sky] .home-sky {
+  opacity: 1;
+}
+
+.home-sky::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 900px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cg fill='none' stroke='%23e0bc74' stroke-width='0.7' stroke-opacity='0.1'%3E%3Cpolygon points='16,16 40,16 40,40 16,40'/%3E%3Cpolygon points='28,11 45,28 28,45 11,28'/%3E%3Cpath d='M28 0V11M28 45V56M0 28H11M45 28H56'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
+}
+
+.home-sky::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* The light around the sun or moon, 120% of the screen wide. */
+.home-sky-glow {
+  position: absolute;
+  width: 120%;
+  aspect-ratio: 468 / 496;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, var(--hv-sky-glow), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.home-v2[data-sky] .home-sky-glow {
+  opacity: 1;
+}
+
+.home-hero-ink {
+  text-shadow: var(--hv-hero-shadow);
+}
+
+/* Hijri and Gregorian dates with a dot between them. Each date carries a dot
+   before it and the row is pulled back by one dot's width, so whichever date
+   starts a line has its dot clipped away. */
+.home-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  margin-inline-start: -19px;
+}
+
+.home-dates__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.home-dates__item::before {
+  content: '';
+  flex: none;
+  width: 3px;
+  height: 3px;
+  margin-inline-start: 8px;
+  border-radius: 999px;
+  background: var(--hv-ink3);
+}
+
+.home-glass-round {
+  display: flex;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--hv-btn-border);
+  background: var(--hv-btn-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: var(--hv-ink);
+  transition: transform 0.12s ease;
+}
+
+.home-glass-round:active {
+  transform: scale(0.94);
+}
+
+/* The sun's path */
+.home-arc {
+  transition: opacity 0.7s ease;
+}
+
+.home-v2:not([data-sky]) .home-arc,
+.home-v2:not([data-sky]) .home-skyline {
+  opacity: 0;
+}
+
+.home-arc__path {
+  fill: none;
+  stroke: var(--hv-arc);
+  stroke-width: 1.2;
+  stroke-dasharray: 1.4 7;
+  stroke-linecap: round;
+}
+
+.home-arc__mark {
+  fill: var(--hv-mark-off);
+  stroke: transparent;
+  stroke-width: 4;
+}
+
+.home-arc__mark--on {
+  fill: var(--hv-mark-on);
+  stroke: var(--hv-mark-ring);
+}
+
+.home-arc__sun-glow {
+  fill: var(--hv-sun-glow);
+}
+
+.home-arc__sun {
+  fill: var(--hv-sun-core);
+}
+
+.home-arc__moon {
+  fill: var(--hv-moon);
+}
+
+.home-arc__moon-glow {
+  stop-color: var(--hv-moon-glow);
+}
+
+/* "in 1h 50m · at 3:00 PM", on smoked glass (deep emerald in light) */
+.home-pill {
+  display: inline-flex;
+  height: 2.125rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px solid var(--hv-pill-border);
+  background: var(--hv-pill-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+.home-pill:empty {
+  visibility: hidden;
+}
+
+.home-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e0bc74;
+  box-shadow: 0 0 10px rgba(224, 188, 116, 0.9);
+}
+
+/* The skyline at the sky's foot */
+.home-skyline {
+  -webkit-mask-image: var(--hv-skyline-mask);
+  mask-image: var(--hv-skyline-mask);
+  transition: opacity 0.7s ease;
+}
+
+.home-skyline__far,
+.home-skyline__near {
+  fill: var(--hv-skyline);
+  transition: fill 0.7s ease;
+}
+
+.home-skyline__far {
+  opacity: 0.45;
+}
+
+.home-skyline__crescent {
+  fill: none;
+  stroke: var(--hv-skyline);
+  stroke-width: 2;
+}
+
+.home-skyline__windows {
+  fill: #f2c879;
+  opacity: var(--hv-windows);
+  transition: opacity 0.7s ease;
+}
+
+/* Today's five prayers */
+.home-today {
+  border-radius: 1.625rem;
+  padding: 1.125rem 0.75rem;
+  border: 1px solid var(--hv-pc-border);
+  background: var(--hv-pc-bg);
+  box-shadow: var(--hv-pc-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  color: var(--hv-normal-color);
+}
+
+.home-today--loading {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.home-today__cell {
+  display: flex;
+  min-width: 0;
+  min-height: 5.5rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 1.125rem;
+  border: 1px solid transparent;
+  color: var(--hv-normal-color);
+  --hv-icon: var(--hv-normal-icon);
+}
+
+.home-today__cell--past {
+  color: var(--hv-past-color);
+  --hv-icon: var(--hv-past-icon);
+}
+
+.home-today__cell--on {
+  border-color: var(--hv-on-border);
+  background: var(--hv-on-bg);
+  color: var(--hv-on-color);
+  --hv-icon: var(--hv-on-icon);
+}
+
+.home-today__icon {
+  fill: none;
+  stroke: var(--hv-icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-today__rail {
+  position: relative;
+  display: block;
+  height: 3px;
+  margin: 1rem 10% 2px;
+  border-radius: 999px;
+  background: var(--hv-pc-track);
+}
+
+.home-today__fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--hv-rail-from), var(--hv-rail-to));
+  transition: width 0.7s ease;
+}
+
+[dir='rtl'] .home-today__fill {
+  background: linear-gradient(to left, var(--hv-rail-from), var(--hv-rail-to));
+}
+
+.home-today__now {
+  position: absolute;
+  top: -4.5px;
+  width: 12px;
+  height: 12px;
+  margin-inline-start: -6px;
+  border-radius: 999px;
+  background: var(--hv-now-dot);
+  box-shadow: var(--hv-now-shadow);
+  transition: inset-inline-start 0.7s ease;
+}
+
+/* The cards below the sky */
+.home-v2-label {
+  margin: 0 0 0.875rem;
+  padding: 0 0.25rem;
+  font-size: 0.65625rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hv-text3);
+}
+
+.home-v2-card {
+  border: 1px solid var(--hv-border);
+  background: var(--hv-surface);
+  box-shadow: var(--hv-shadow);
+  color: var(--hv-text);
+}
+
+/* The tab bar: a teal dot with a little light under the tab you are on. */
+.bottom-nav__dot {
+  height: 4px;
+  width: 4px;
+}
+
+.bottom-nav__dot--active {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--home-sage) 90%, transparent);
+}
+
+/* On Home in light, the tab bar is the same linen as the cards. */
+html:not(.dark):has(.home-v2) .bottom-nav {
+  background: rgba(242, 236, 223, 0.97);
+  border-top-color: rgba(48, 38, 20, 0.09);
+  box-shadow: 0 -12px 28px -20px rgba(60, 44, 18, 0.28);
+}
+
+html:not(.dark):has(.home-v2) .bottom-nav__item {
+  color: #6f685b;
+}
+
+html:not(.dark):has(.home-v2) .bottom-nav__label--active {
+  color: #1e1b16;
+}
+
+html:not(.dark):has(.home-v2) .bottom-nav__dot--active {
+  background: #0e5f55;
+  box-shadow: 0 0 8px rgba(14, 95, 85, 0.45);
+}
+
+/* The weekly verse on the new Home: larger script, and the translation in
+   the same light italic serif the Qari videos use. */
+.home-v2 .weekly-verse__qcf {
+  font-size: 1.625rem;
+}
+
+.home-v2 .weekly-verse__arabic {
+  font-size: 1.75rem;
+}
+
+.home-v2 .weekly-verse__translation {
+  font-family: var(--font-edit), 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--hv-translation);
+}
