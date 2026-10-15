@@ -43,6 +43,14 @@ export type ShareBackgroundGroup =
   | 'Storms'
   | 'Prayer'
   | 'Silhouettes'
+  | 'Winter sunsets'
+  | 'Waterfalls'
+  | 'Misty rivers'
+  | 'Night sea'
+  | 'Mountain meadows'
+  | 'Light through clouds'
+  | 'Foggy mountains'
+  | 'Snowy nights'
 
 /** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
@@ -50,6 +58,14 @@ export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
   'Mosques',
   'Sacred',
   'Prayer',
+  'Winter sunsets',
+  'Waterfalls',
+  'Misty rivers',
+  'Night sea',
+  'Mountain meadows',
+  'Light through clouds',
+  'Foggy mountains',
+  'Snowy nights',
   'Night drives',
   'Streets',
   'Moody night',
@@ -284,6 +300,29 @@ export const SHARE_BACKGROUNDS: ShareBackground[] = [
   bg('white-rose', 'White rose', 'Quiet everyday', '#f3d9a0'),
   cloudBg('old-alley', 'Old alley', 'Quiet everyday', '#ffd39a'),
   cloudBg('city-corner', 'City corner', 'Quiet everyday', '#dcdcdc'),
+
+  // Frames from the Quran-edit clips (the EDIT_GROUPS in lib/qari-backgrounds.ts), taken at full size.
+  cloudBg('snow-field-sunset', 'Snow field sunset', 'Winter sunsets', '#ffd2a6'),
+  cloudBg('pink-frozen-lake', 'Pink frozen lake', 'Winter sunsets', '#f3cfe0'),
+  cloudBg('sunset-through-pines', 'Sunset through pines', 'Winter sunsets', '#ffd59a'),
+  cloudBg('falls-and-flowers', 'Falls & flowers', 'Waterfalls', '#d9d2f2'),
+  cloudBg('two-tier-falls', 'Two-tier falls', 'Waterfalls', '#c9ecd6'),
+  cloudBg('peonies-in-mist', 'Peonies in mist', 'Misty rivers', '#f6c9d6'),
+  cloudBg('golden-mist-swans', 'Golden mist', 'Misty rivers', '#f6dcaa'),
+  cloudBg('pink-mist', 'Pink mist', 'Misty rivers', '#e9d6e2'),
+  cloudBg('moon-path', 'Moon path', 'Night sea', '#e2e0f0'),
+  cloudBg('pier-lights', 'Pier lights', 'Night sea', '#f4d8a6'),
+  cloudBg('golden-moon', 'Golden moon', 'Night sea', '#f6d58a'),
+  cloudBg('golden-meadow', 'Golden meadow', 'Mountain meadows', '#f6d88f'),
+  cloudBg('alpine-lake', 'Alpine lake', 'Mountain meadows', '#cfe9dc'),
+  cloudBg('rays-over-fields', 'Rays over fields', 'Light through clouds', '#f1e2c0'),
+  cloudBg('sun-behind-cloud', 'Sun behind a cloud', 'Light through clouds', '#ffd89a'),
+  cloudBg('forest-sunbeams', 'Forest sunbeams', 'Light through clouds', '#eef0dc'),
+  cloudBg('jagged-peaks', 'Jagged peaks', 'Foggy mountains', '#dfe4ea'),
+  cloudBg('fog-over-the-ridge', 'Fog over the ridge', 'Foggy mountains', '#d4e6f0'),
+  cloudBg('valley-of-clouds', 'Valley of clouds', 'Foggy mountains', '#d8e6e0'),
+  cloudBg('lamp-in-branches', 'Lamp in branches', 'Snowy nights', '#f6d9a0'),
+  cloudBg('snowy-pine', 'Snowy pine', 'Snowy nights', '#e8eef4'),
   bg('rain-window', 'Rain (warm)', 'Quiet everyday', '#e8d5a4'),
   bg('rain-cool', 'Rain (cool)', 'Quiet everyday', '#aed8de'),
   bg('teacup', 'Quiet morning', 'Quiet everyday', '#e9cfae'),

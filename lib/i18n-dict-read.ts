@@ -52,6 +52,8 @@ export const READ: Dict = {
   'Download offline in Settings': { so: 'Ka soo deji Dejinta si aad internet la’aan u isticmaasho', ar: 'نزّل للاستخدام دون اتصال من الإعدادات' },
   'Loading page': { so: 'Bogga waa la soo raadinayaa', ar: 'جارٍ تحميل الصفحة' },
   'Open contents': { so: 'Fur tusmada', ar: 'فتح الفهرس' },
+  Back: { so: 'Dib u noqo', ar: 'رجوع' },
+  Selected: { so: 'La doortay', ar: 'المحدد' },
   'Search surah': { so: 'Raadi suurad', ar: 'ابحث عن سورة' },
   'Change theme': { so: 'Beddel muuqaalka', ar: 'تغيير المظهر' },
   'Stop Somali voice': { so: 'Jooji codka Soomaaliga', ar: 'إيقاف الصوت الصومالي' },

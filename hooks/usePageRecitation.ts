@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getReciterById, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
+import { getReciterById, hasOwnAyahFiles, isSurahOnlyReciter, SURAH_ONLY_RECITER_HINT } from '@/lib/reciters'
 import { getChapterAudio, hasTimedAudio, type ChapterAudio } from '@/lib/chapter-audio'
 import { getPlayableAyahAudioUrl, revokePlayableAyahAudioUrl } from '@/lib/offline-audio'
 import type { Verse } from '@/types'
@@ -237,6 +237,21 @@ export function usePageRecitation({
    * recording is already loaded and playing, this only moves the position — usually not at
    * all, since the voice is already there. Returns false when there is no timing to use.
    */
+  /** Playback could not start at (or carry on from) this ayah: say so, and leave Play to try again. */
+  const failAt = useCallback((verseKey: string) => {
+    const ayah = verseKey.split(':')[1] ?? ''
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine
+    setState((s) => ({
+      ...s,
+      playing: false,
+      loading: false,
+      highlightedVerseKey: null,
+      error: offline
+        ? tr('Audio unavailable offline. Download this surah in Listen first.')
+        : tr('Could not play ayah {ayah}', { ayah }),
+    }))
+  }, [])
+
   const playTimed = useCallback(
     async (index: number, session: number, verseKey: string, surah: number): Promise<boolean> => {
       const audio = audioRef.current
@@ -287,16 +302,30 @@ export function usePageRecitation({
         if (session !== sessionRef.current) return true
         setState((s) => ({ ...s, loading: false }))
         return true
-      } catch {
+      } catch (err) {
         if (session !== sessionRef.current) return true
-        // The whole-surah recording would not play: use the ayah-by-ayah files for this reciter.
-        timedDisabledRef.current = true
+        const reason = err instanceof DOMException ? err.name : ''
+        // Paused before it began (picking another ayah pauses), or held back until the next tap:
+        // nothing is wrong with the recording, so this reciter keeps being played from it.
+        if (reason === 'AbortError') return true
+        if (reason === 'NotAllowedError') {
+          setState((s) => ({ ...s, playing: false, loading: false }))
+          return true
+        }
         timedRef.current = null
         audio.removeAttribute('src')
+        if (!hasOwnAyahFiles(getReciterById(reciterRef.current))) {
+          // Recorded only as whole surahs: there is no file of just this ayah to fall back on, and
+          // the surah from its start would play the ayat before it. Play tries the recording again.
+          failAt(verseKey)
+          return true
+        }
+        // The whole-surah recording would not play: use the ayah-by-ayah files for this reciter.
+        timedDisabledRef.current = true
         return false
       }
     },
-    [clearMainObjectUrl]
+    [clearMainObjectUrl, failAt]
   )
 
   const playIndex = useCallback(
@@ -317,6 +346,12 @@ export function usePageRecitation({
       if (hasTimedAudio(reciterRef.current) && !timedDisabledRef.current) {
         const handled = await playTimed(index, session, verse.verse_key, parsed.surah)
         if (handled || session !== sessionRef.current) return
+        // No timings for this surah: a reciter recorded only as whole surahs has no file of just
+        // this ayah, and the surah from its start would play the ayat before it.
+        if (!hasOwnAyahFiles(getReciterById(reciterRef.current))) {
+          failAt(verse.verse_key)
+          return
+        }
       }
       timedRef.current = null
 
@@ -379,7 +414,7 @@ export function usePageRecitation({
         }))
       }
     },
-    [clearMainObjectUrl, handlePageEnd, playTimed, preloadAheadFromIndex, takePreloaded]
+    [clearMainObjectUrl, failAt, handlePageEnd, playTimed, preloadAheadFromIndex, takePreloaded]
   )
 
   const pause = useCallback(() => {
@@ -574,10 +609,17 @@ export function usePageRecitation({
       if (session !== sessionRef.current) return
 
       if (timedRef.current) {
-        // The whole-surah recording failed part-way: carry on with the ayah-by-ayah files from here.
-        timedDisabledRef.current = true
         timedRef.current = null
         stopTick()
+        if (!hasOwnAyahFiles(getReciterById(reciterRef.current))) {
+          // Recorded only as whole surahs, so nothing to carry on with: stop at this ayah. Play loads
+          // the recording again from here.
+          audio.removeAttribute('src')
+          failAt(versesRef.current[indexRef.current]?.verse_key ?? '')
+          return
+        }
+        // The whole-surah recording failed part-way: carry on with the ayah-by-ayah files from here.
+        timedDisabledRef.current = true
         void playIndex(indexRef.current, session)
         return
       }
@@ -616,7 +658,7 @@ export function usePageRecitation({
       audio.load()
       abortingRef.current = false
     }
-  }, [clearMainObjectUrl, clearPreload, finishPlayback, handlePageEnd, playIndex, preloadAheadFromIndex])
+  }, [clearMainObjectUrl, clearPreload, failAt, finishPlayback, handlePageEnd, playIndex, preloadAheadFromIndex])
 
   useEffect(() => {
     if (resumeOnPageChangeRef?.current) {

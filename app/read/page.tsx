@@ -10,11 +10,13 @@ import {
   useState,
   type TouchEvent,
 } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   ArrowLeftRight,
   ArrowUpDown,
-  Menu,
+  ChevronDown,
+  ChevronLeft,
   Moon,
   ScrollText,
   Search,
@@ -83,6 +85,7 @@ import {
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 import { tr, useT } from '@/lib/i18n'
+import { toastError } from '@/lib/toast'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
 type ReadAudioMode = 'arabic' | 'somali' | 'both'
@@ -749,6 +752,12 @@ function ReadPageContent() {
     void navigatePageRef.current(currentPageRef.current + 1, { autoContinue: true })
   }
 
+  // A recitation that could not start or carry on (offline, or the recording would not load) says
+  // so, rather than simply stopping.
+  useEffect(() => {
+    if (recitation.error) toastError(recitation.error)
+  }, [recitation.error])
+
   useEffect(() => {
     if (!somaliAutoPlaying || !somaliVoiceState.error) return
     somaliAutoRef.current = false
@@ -914,6 +923,11 @@ function ReadPageContent() {
   }, [ayahMenu, chapters, currentPage, pageVerses])
 
   const mushafSelectedVerseKey = ayahMenu?.verseKey ?? navSelectedVerseKey
+  // Another ayah picked while the recitation is paused on one (picking pauses it): the pick takes
+  // over. Only it is marked, and the dock shows it, since Play now starts from it. Letting the pick
+  // go brings the paused ayah back.
+  const pickedOther = Boolean(ayahMenu && nowPlayingKey && ayahMenu.verseKey !== nowPlayingKey && !audioPlaying)
+  const shownHighlightKey = pickedOther ? null : highlightedVerseKey
 
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
@@ -932,14 +946,14 @@ function ReadPageContent() {
           readMode
           scrollable={readingMode === 'continuous'}
           pageNumber={pageNum}
-          highlightedVerseKey={highlightedVerseKey}
+          highlightedVerseKey={shownHighlightKey}
           selectedVerseKey={mushafSelectedVerseKey}
           onAyahLongPress={handleAyahLongPress}
           suppressHighlightScroll
         />
       )
     },
-    [chapterNamesById, handleAyahLongPress, highlightedVerseKey, mushafSelectedVerseKey, readingMode]
+    [chapterNamesById, handleAyahLongPress, shownHighlightKey, mushafSelectedVerseKey, readingMode]
   )
 
   const toggleUi = () => setUiVisible((v) => !v)
@@ -1091,9 +1105,10 @@ function ReadPageContent() {
     )
   }
 
+  const dockVerseKey = pickedOther && ayahMenu ? ayahMenu.verseKey : nowPlayingKey
   const nowPlaying = (() => {
-    if (!nowPlayingKey) return null
-    const [surahId, ayah] = nowPlayingKey.split(':').map(Number)
+    if (!dockVerseKey) return null
+    const [surahId, ayah] = dockVerseKey.split(':').map(Number)
     const chapter = chapters.find((c) => c.id === surahId)
     return {
       surahName: chapter?.englishName || t('Surah {currentSurahNum}', { currentSurahNum: surahId }),
@@ -1163,7 +1178,7 @@ function ReadPageContent() {
             chapters={chapters}
             translationLanguage={translationLanguage}
             translationEditionId={translationEditionId}
-            highlightedVerseKey={highlightedVerseKey}
+            highlightedVerseKey={shownHighlightKey}
             selectedVerseKey={mushafSelectedVerseKey}
             scrollToVerseKey={navSelectedVerseKey}
             scrollContainerRef={contentScrollRef}
@@ -1214,32 +1229,39 @@ function ReadPageContent() {
         </div>
       )}
 
-      {/* Expanded chrome (menu, slider) — tap screen to toggle */}
+      {/* Expanded chrome — tap screen to toggle. Back on the left, the surah in the middle (tap it
+          for the contents, as in other mushaf apps), the reading controls on the right. */}
       <header
         className={cn(
-          'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 flex items-center justify-between border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
+          'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-1 border-b px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
       >
+        <Link href="/" className="mushaf-read-chrome-btn justify-self-start rounded-lg p-1.5" aria-label={t('Back')}>
+          <ChevronLeft className="h-6 w-6" />
+        </Link>
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="mushaf-read-chrome-btn rounded-lg p-2"
+          className="mushaf-read-chrome-btn flex min-w-0 max-w-[calc(100vw-14.5rem)] flex-col items-center rounded-xl px-1.5 py-1 sm:max-w-[18rem]"
           aria-label={t('Open contents')}
+          aria-haspopup="dialog"
         >
-          <Menu className="h-6 w-6" />
+          <span className="flex max-w-full items-center gap-1">
+            <span className="mushaf-read-chrome-title truncate text-[15px] font-semibold">{surahTitle}</span>
+            <ChevronDown className="mushaf-read-chrome-subtitle h-4 w-4 shrink-0" strokeWidth={2.2} />
+          </span>
+          <span className="mushaf-read-chrome-subtitle text-xs">
+            {t('Juz')} {juzPart}
+          </span>
         </button>
-        <div className="min-w-0 flex-1 px-2 text-center">
-          <p className="mushaf-read-chrome-title truncate text-sm">{surahTitle}</p>
-          <p className="mushaf-read-chrome-subtitle text-xs">{t('Juz')} {juzPart}</p>
-        </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 justify-self-end">
           <button
             type="button"
             onClick={openSearch}
-            className="mushaf-read-chrome-btn rounded-lg p-2"
+            className="mushaf-read-chrome-btn rounded-lg p-1.5"
             aria-label={t('Search surah')}
           >
             <Search className="h-5 w-5" />
@@ -1247,7 +1269,7 @@ function ReadPageContent() {
           <button
             type="button"
             onClick={cycleTheme}
-            className="mushaf-read-chrome-btn rounded-lg p-2"
+            className="mushaf-read-chrome-btn rounded-lg p-1.5"
             aria-label={t('Change theme')}
           >
             <Moon className="h-5 w-5" />
@@ -1255,7 +1277,7 @@ function ReadPageContent() {
           <button
             type="button"
             onClick={cycleReadingMode}
-            className="mushaf-read-chrome-btn rounded-lg p-2"
+            className="mushaf-read-chrome-btn rounded-lg p-1.5"
             aria-label={t('Page navigation')}
           >
             {readingMode === 'horizontal' ? (
@@ -1302,7 +1324,8 @@ function ReadPageContent() {
             <div className="mushaf-read-dock__now">
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="mushaf-dock-select__caption">
-                  {audioPlaying ? t('Now playing') : t('Paused')} · {t(AUDIO_MODE_LABELS[sessionMode])}
+                  {audioPlaying ? t('Now playing') : pickedOther ? t('Selected') : t('Paused')} ·{' '}
+                  {t(AUDIO_MODE_LABELS[sessionMode])}
                 </span>
                 <span className="mushaf-read-dock__now-title">
                   <span className="truncate">{nowPlaying.surahName}</span>

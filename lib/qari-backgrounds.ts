@@ -34,6 +34,22 @@ export const FEATURED_VIDEO_BACKGROUND_IDS = [
   'motion-quran-script',
 ]
 
+/**
+ * The kinds of scene a Quran edit cuts between, a new one for every ayah — the
+ * look of the videos people share (one mood, many places): fifteen clips each,
+ * no two alike.
+ */
+export const EDIT_GROUPS = [
+  'Winter sunsets',
+  'Waterfalls',
+  'Misty rivers',
+  'Night sea',
+  'Mountain meadows',
+  'Light through clouds',
+  'Foggy mountains',
+  'Snowy nights',
+] as const
+
 /** The kinds of scenery, each a set of clips alike enough to cut between in one video. */
 export const SCENERY_GROUPS = [
   'Night sky',
@@ -52,6 +68,7 @@ export const SCENERY_GROUPS = [
 export const VIDEO_BACKGROUND_GROUPS = [
   ...new Set([
     'Plain',
+    ...EDIT_GROUPS,
     'Makkah & Madinah',
     'Mosques',
     'Quran',
@@ -71,6 +88,7 @@ export const VIDEO_BACKGROUND_GROUPS = [
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
 
 type SceneryGroup = (typeof SCENERY_GROUPS)[number]
+type EditGroup = (typeof EDIT_GROUPS)[number]
 
 type MotionGroup =
   | 'Motion'
@@ -84,6 +102,7 @@ type MotionGroup =
   | 'Silhouettes'
   | 'Storms'
   | SceneryGroup
+  | EditGroup
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -326,6 +345,134 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
     ['walk-into-the-light', 'Into the light', 'Silhouettes'],
     ['streetlamp-walk', 'Under the streetlamp', 'Silhouettes'],
     ['foggy-road-walker', 'Foggy road walker', 'Silhouettes'],
+
+    ['snow-field-sunset', 'Snow field sunset', 'Winter sunsets'],
+    ['frozen-reflection', 'Frozen reflection', 'Winter sunsets'],
+    ['snowy-river-dusk', 'Snowy river at dusk', 'Winter sunsets'],
+    ['sun-over-snow', 'Sun over the snow', 'Winter sunsets'],
+    ['icy-shore', 'Icy shore', 'Winter sunsets'],
+    ['sunset-through-pines', 'Sunset through pines', 'Winter sunsets'],
+    ['blue-hour-forest', 'Blue hour forest', 'Winter sunsets'],
+    ['pink-frozen-lake', 'Pink frozen lake', 'Winter sunsets'],
+    ['red-winter-sun', 'Red winter sun', 'Winter sunsets'],
+    ['lake-tree-sunset', 'Lake tree at sunset', 'Winter sunsets'],
+    ['frozen-sea-haze', 'Frozen sea haze', 'Winter sunsets'],
+    ['snowy-rail-sunset', 'Snowy rail at sunset', 'Winter sunsets'],
+    ['pink-cloud-dusk', 'Pink cloud at dusk', 'Winter sunsets'],
+    ['bare-trees-sunset', 'Bare trees at sunset', 'Winter sunsets'],
+    ['reeds-in-snow', 'Reeds in snow', 'Winter sunsets'],
+
+    ['two-tier-falls', 'Two-tier falls', 'Waterfalls'],
+    ['falls-and-flowers', 'Falls & flowers', 'Waterfalls'],
+    ['jungle-falls', 'Jungle falls', 'Waterfalls'],
+    ['blue-rapids', 'Blue rapids', 'Waterfalls'],
+    ['mossy-cascade', 'Mossy cascade', 'Waterfalls'],
+    ['curtain-falls', 'Curtain falls', 'Waterfalls'],
+    ['falls-from-below', 'Falls from below', 'Waterfalls'],
+    ['roaring-falls', 'Roaring falls', 'Waterfalls'],
+    ['black-rock-cascade', 'Black rock cascade', 'Waterfalls'],
+    ['green-cliff-falls', 'Green cliff falls', 'Waterfalls'],
+    ['dark-gorge', 'Dark gorge', 'Waterfalls'],
+    ['blue-gorge', 'Blue gorge', 'Waterfalls'],
+    ['canyon-falls', 'Canyon falls', 'Waterfalls'],
+    ['pine-falls', 'Pine falls', 'Waterfalls'],
+    ['wide-falls', 'Wide falls', 'Waterfalls'],
+
+    ['peonies-in-mist', 'Peonies in mist', 'Misty rivers'],
+    ['misty-sun', 'Misty sun', 'Misty rivers'],
+    ['dawn-lake', 'Dawn lake', 'Misty rivers'],
+    ['foggy-pier', 'Foggy pier', 'Misty rivers'],
+    ['misty-woods', 'Misty woods', 'Misty rivers'],
+    ['mirror-lake', 'Mirror lake', 'Misty rivers'],
+    ['blue-mist', 'Blue mist', 'Misty rivers'],
+    ['pink-mist', 'Pink mist', 'Misty rivers'],
+    ['golden-mist-swans', 'Golden mist', 'Misty rivers'],
+    ['misty-pines', 'Misty pines', 'Misty rivers'],
+    ['rose-fog', 'Rose fog', 'Misty rivers'],
+    ['river-glow', 'River glow', 'Misty rivers'],
+    ['dusk-river', 'Dusk river', 'Misty rivers'],
+    ['lake-through-branches', 'Lake through branches', 'Misty rivers'],
+    ['green-river', 'Green river', 'Misty rivers'],
+
+    ['pier-lights', 'Pier lights', 'Night sea'],
+    ['silver-sea', 'Silver sea', 'Night sea'],
+    ['moon-path', 'Moon path', 'Night sea'],
+    ['dark-waves', 'Dark waves', 'Night sea'],
+    ['lighthouse-storm', 'Lighthouse', 'Night sea'],
+    ['night-foam', 'Night foam', 'Night sea'],
+    ['glinting-waves', 'Glinting waves', 'Night sea'],
+    ['ships-at-night', 'Ships at night', 'Night sea'],
+    ['harbour-at-night', 'Harbour at night', 'Night sea'],
+    ['last-light', 'Last light', 'Night sea'],
+    ['black-sand-shore', 'Black sand shore', 'Night sea'],
+    ['ember-horizon', 'Ember horizon', 'Night sea'],
+    ['golden-moon', 'Golden moon', 'Night sea'],
+    ['storm-surf', 'Storm surf', 'Night sea'],
+    ['coast-lights', 'Coast lights', 'Night sea'],
+
+    ['golden-meadow', 'Golden meadow', 'Mountain meadows'],
+    ['alpine-lake', 'Alpine lake', 'Mountain meadows'],
+    ['meadow-stream', 'Meadow stream', 'Mountain meadows'],
+    ['valley-at-dusk', 'Valley at dusk', 'Mountain meadows'],
+    ['valley-sunset', 'Valley sunset', 'Mountain meadows'],
+    ['peaks-in-fog', 'Peaks in fog', 'Mountain meadows'],
+    ['river-gorge', 'River gorge', 'Mountain meadows'],
+    ['sunbeam-valley', 'Sunbeam valley', 'Mountain meadows'],
+    ['alpine-valley', 'Alpine valley', 'Mountain meadows'],
+    ['dusk-ridges', 'Dusk ridges', 'Mountain meadows'],
+    ['mountain-range', 'Mountain range', 'Mountain meadows'],
+    ['pink-hills', 'Pink hills', 'Mountain meadows'],
+    ['lake-from-above', 'Lake from above', 'Mountain meadows'],
+    ['mountain-huts', 'Mountain huts', 'Mountain meadows'],
+    ['snowy-peak-dusk', 'Snowy peak', 'Mountain meadows'],
+
+    ['rays-over-fields', 'Rays over fields', 'Light through clouds'],
+    ['sun-behind-cloud', 'Sun behind a cloud', 'Light through clouds'],
+    ['forest-sunbeams', 'Forest sunbeams', 'Light through clouds'],
+    ['light-shaft', 'Light shaft', 'Light through clouds'],
+    ['glowing-storm', 'Glowing storm', 'Light through clouds'],
+    ['golden-layers', 'Golden layers', 'Light through clouds'],
+    ['golden-sun', 'Golden sun', 'Light through clouds'],
+    ['gilded-clouds', 'Gilded clouds', 'Light through clouds'],
+    ['sun-through-leaves', 'Sun through leaves', 'Light through clouds'],
+    ['above-the-clouds-dusk', 'Above the clouds', 'Light through clouds'],
+    ['sun-over-clouds', 'Sun over clouds', 'Light through clouds'],
+    ['towering-cloud', 'Towering cloud', 'Light through clouds'],
+    ['pink-sky', 'Pink sky', 'Light through clouds'],
+    ['lit-clouds', 'Lit clouds', 'Light through clouds'],
+    ['break-in-the-clouds', 'Break in the clouds', 'Light through clouds'],
+
+    ['jagged-peaks', 'Jagged peaks', 'Foggy mountains'],
+    ['fog-over-the-ridge', 'Fog over the ridge', 'Foggy mountains'],
+    ['peak-in-fog', 'Peak in fog', 'Foggy mountains'],
+    ['misty-hill', 'Misty hill', 'Foggy mountains'],
+    ['golden-haze', 'Golden haze', 'Foggy mountains'],
+    ['blue-dusk-peaks', 'Blue dusk peaks', 'Foggy mountains'],
+    ['misty-crag', 'Misty crag', 'Foggy mountains'],
+    ['cloud-ridge', 'Cloud ridge', 'Foggy mountains'],
+    ['valley-of-clouds', 'Valley of clouds', 'Foggy mountains'],
+    ['cliff-falls', 'Cliff falls', 'Foggy mountains'],
+    ['green-peak-in-mist', 'Green peak in mist', 'Foggy mountains'],
+    ['fog-and-blossom', 'Fog & blossom', 'Foggy mountains'],
+    ['rising-fog', 'Rising fog', 'Foggy mountains'],
+    ['peaks-above-clouds', 'Peaks above clouds', 'Foggy mountains'],
+    ['misty-cliffs', 'Misty cliffs', 'Foggy mountains'],
+
+    ['lamp-in-branches', 'Lamp in branches', 'Snowy nights'],
+    ['globe-lamp', 'Globe lamp', 'Snowy nights'],
+    ['warm-lamp', 'Warm lamp', 'Snowy nights'],
+    ['snowy-pine', 'Snowy pine', 'Snowy nights'],
+    ['snowstorm-light', 'Snowstorm light', 'Snowy nights'],
+    ['frosted-branch', 'Frosted branch', 'Snowy nights'],
+    ['snowy-lane', 'Snowy lane', 'Snowy nights'],
+    ['quiet-street', 'Quiet street', 'Snowy nights'],
+    ['lantern-in-snow', 'Lantern in snow', 'Snowy nights'],
+    ['golden-flakes', 'Golden flakes', 'Snowy nights'],
+    ['teal-lamp', 'Teal lamp', 'Snowy nights'],
+    ['lamps-and-trees', 'Lamps & trees', 'Snowy nights'],
+    ['snowfall', 'Snowfall', 'Snowy nights'],
+    ['frost-tree', 'Frost tree', 'Snowy nights'],
+    ['snowy-road', 'Snowy road', 'Snowy nights'],
   ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
 ).map(([id, label, group]) => ({
   id: `motion-${id}`,
@@ -379,6 +526,10 @@ export function isVideoBackgroundId(id: unknown): id is string {
 
 /** The strip under the preview when posting: a quick handful across every kind, before "More". */
 export const FEATURED_RECITATION_BACKGROUND_IDS = [
+  'motion-snow-field-sunset',
+  'motion-falls-and-flowers',
+  'motion-pier-lights',
+  'motion-rays-over-fields',
   'motion-kaaba-door',
   'motion-neon-rain',
   'motion-moonlit-minaret',
@@ -432,6 +583,7 @@ export function rememberRecitationBackground(id: string): void {
 
 /** Kinds whose clips look alike enough to cut between: not the old mixed "Motion" set. */
 const MIXABLE_GROUPS = new Set<string>([
+  ...EDIT_GROUPS,
   'Makkah & Madinah',
   'Mosques',
   'Quran',
@@ -460,6 +612,6 @@ export function backgroundReel(background: VideoBackground): VideoBackground[] {
     .map((b, i) => ({ b, k: Math.abs((seed + i * 2654435761) | 0) % 997 }))
     .sort((x, y) => x.k - y.k)
     .map((x) => x.b)
-  // Six scenes at most: enough variety, without fetching a whole gallery for one video.
-  return [background, ...order.slice(0, 5)]
+  // Ten scenes at most: a new one for each ayah of most recitations, without fetching a whole gallery.
+  return [background, ...order.slice(0, 9)]
 }

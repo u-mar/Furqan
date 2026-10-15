@@ -1092,6 +1092,15 @@ export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {
   return null
 }
 
+/**
+ * Whether the reciter has a recording of each ayah on its own. Those from MP3Quran (Sufi, Hadi
+ * Toure…) are recorded only as whole surahs: their "ayah" file is the whole surah from its
+ * start, so an ayah of theirs can only be played from its place in that recording.
+ */
+export function hasOwnAyahFiles(reciter: Reciter): boolean {
+  return reciter.source !== 'mp3quran'
+}
+
 export function isSurahOnlyReciter(reciter: Reciter): boolean {
   return reciter.source === 'mp3quran' && timedSurahSource(reciter) === null
 }

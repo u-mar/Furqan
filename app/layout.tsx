@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Amiri, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
+import { Amiri, Cormorant_Garamond, Fraunces, Plus_Jakarta_Sans } from 'next/font/google'
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import BottomNav from '@/components/nav/BottomNav'
@@ -28,6 +28,15 @@ const homeSerif = Fraunces({
   weight: ['400', '500', '600', '700'],
   style: ['normal', 'italic'],
   variable: '--font-home-serif',
+  display: 'swap',
+})
+
+/** The translation over a Qari video: a light italic serif, as Quran edits set it. */
+const edit = Cormorant_Garamond({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['500'],
+  style: ['italic'],
+  variable: '--font-edit',
   display: 'swap',
 })
 
@@ -74,7 +83,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${amiri.variable} ${homeSerif.variable} ${sans.variable}`}
+      className={`${amiri.variable} ${homeSerif.variable} ${edit.variable} ${sans.variable}`}
       suppressHydrationWarning
     >
       <head>

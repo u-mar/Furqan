@@ -23,6 +23,7 @@ import { getAppSettings } from '@/lib/app-settings'
 import { encodeMp3, ensureMp3Encoder, sliceBuffer } from '@/lib/qari-mp3'
 import { isRtlTranslationEdition } from '@/lib/translations'
 import { backgroundReel, findVideoBackground, type VideoBackground } from '@/lib/qari-backgrounds'
+import { shotStarts } from '@/lib/qari-shots'
 
 export type ShareKind = 'audio' | 'video'
 
@@ -157,8 +158,14 @@ export interface VideoOptions {
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
   backgroundId: 'black',
-  mix: false,
+  mix: true,
 }
+
+/**
+ * Raised when what the options mean changes. Choices saved before mixing became
+ * the default were saved with every video made, not chosen, so they are not kept.
+ */
+const VIDEO_OPTIONS_VERSION = 2
 
 /** Whether this background has others of its kind to mix in. */
 export function canMixBackground(backgroundId: string): boolean {
@@ -172,10 +179,10 @@ export function loadVideoOptions(): VideoOptions {
   try {
     const raw = localStorage.getItem(VIDEO_OPTIONS_KEY)
     if (!raw) return DEFAULT_VIDEO_OPTIONS
-    const saved = JSON.parse(raw) as Partial<VideoOptions>
+    const saved = JSON.parse(raw) as Partial<VideoOptions> & { v?: number }
     return {
       backgroundId: findVideoBackground(String(saved.backgroundId)).id,
-      mix: saved.mix === true,
+      mix: saved.v === VIDEO_OPTIONS_VERSION ? saved.mix !== false : DEFAULT_VIDEO_OPTIONS.mix,
     }
   } catch {
     return DEFAULT_VIDEO_OPTIONS
@@ -184,7 +191,7 @@ export function loadVideoOptions(): VideoOptions {
 
 export function saveVideoOptions(options: VideoOptions): void {
   try {
-    localStorage.setItem(VIDEO_OPTIONS_KEY, JSON.stringify(options))
+    localStorage.setItem(VIDEO_OPTIONS_KEY, JSON.stringify({ ...options, v: VIDEO_OPTIONS_VERSION }))
   } catch {
     // Remembering is a nicety.
   }
@@ -353,14 +360,17 @@ function drawCaption(opts: {
   arabicWeight: string
   translation: string | null
   translationFont: string
+  /** Style and weight before the size, e.g. "italic 500"; empty for the face's regular. */
+  translationStyle: string
   translationRtl: boolean
   /** The ayah and its translation, or either alone, as chosen on the swipe view. */
   mode: QariTextMode
 }): CaptionArt {
   const showAyah = opts.mode !== 'translation'
   const translationText = opts.mode === 'ayah' ? null : opts.translation
-  // On its own the translation is the text to read, so it is set larger.
-  const translationSize = opts.mode === 'translation' ? (opts.translationRtl ? 22 : 21) : opts.translationRtl ? 17 : 16
+  // On its own the translation is the text to read, so it is set larger. The italic serif's
+  // letters are small for their size, so it is set a little larger than Amiri.
+  const translationSize = opts.mode === 'translation' ? (opts.translationRtl ? 22 : 23) : opts.translationRtl ? 17 : 18
   const [, measure] = makeCanvas(10, 10)
   // On one line, as large as fits; a phrase too long even at the smallest size takes more.
   let size = LINE_MAX
@@ -377,6 +387,7 @@ function drawCaption(opts: {
   const translation = translationText
     ? fitBlock(measure, translationText.split(/\s+/), {
         family: opts.translationFont,
+        weight: opts.translationStyle,
         maxWidth: Math.min(CAPTION_WIDTH, Math.round(300 * S)),
         maxHeight: CAPTION_MAX_HEIGHT * (showAyah ? 0.3 : 0.6),
         size: Math.round(translationSize * S),
@@ -430,7 +441,7 @@ function drawCaption(opts: {
     litCtx.shadowOffsetY = S
     litCtx.direction = opts.translationRtl ? 'rtl' : 'ltr'
     litCtx.textAlign = 'center'
-    litCtx.fillStyle = showAyah ? 'rgba(243, 234, 214, 0.88)' : IVORY
+    litCtx.fillStyle = showAyah ? 'rgba(250, 247, 240, 0.92)' : IVORY
     litCtx.font = translation.font
     for (const line of translation.lines) {
       litCtx.fillText(line, W / 2, y + translation.lineHeight / 2)
@@ -441,7 +452,12 @@ function drawCaption(opts: {
 }
 
 /** Every phrase of the recitation, in order: each ayah cut where the mushaf pauses. */
-async function prepareCaptions(r: Recitation, translationFont: string, translationRtl: boolean): Promise<Caption[]> {
+async function prepareCaptions(
+  r: Recitation,
+  translationFont: string,
+  translationStyle: string,
+  translationRtl: boolean
+): Promise<Caption[]> {
   const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
   if (!timeline.length) return []
   const mode = getQariTextMode()
@@ -487,6 +503,7 @@ async function prepareCaptions(r: Recitation, translationFont: string, translati
               // A phrase with no translation of its own shows its ayah's whole one.
               translation: texts[k] ?? view.translation,
               translationFont,
+              translationStyle,
               translationRtl,
               mode,
             }),
@@ -697,43 +714,21 @@ interface Shot {
   to: number
 }
 
-/** A cut is at least this far from the last and from the end; no shot runs longer than the longest. */
-const MIN_SHOT_SECONDS = 3
-const MAX_SHOT_SECONDS = 12
-/** How far each shot moves in on its picture, from its first frame to its last. */
-const PUSH_IN = 0.06
 
 /**
- * Where a video cuts from one clip of the kind to the next: a clean cut on the
- * moment a new ayah (or part) starts, as an edit cuts on the beat, and a long
- * stretch without one split evenly. A single clip plays the whole way.
+ * The video's shots: a scene of its own for every ayah, cut on the moment the
+ * reciter starts it, the same as the swipe view (lib/qari-shots.ts). A single
+ * clip plays the whole way.
  */
-function planShots(reel: VideoBackground[], captions: Caption[], frames: number): Shot[] {
+function planShots(reel: VideoBackground[], ayahStarts: number[], frames: number): Shot[] {
   if (reel.length < 2) return [{ clip: reel[0], from: 0, to: frames }]
-  const seconds = frames / FPS
-  const cuts = [0]
-  for (const t of captions.map((c) => c.atSeconds)) {
-    const last = cuts[cuts.length - 1] / FPS
-    if (t - last >= MIN_SHOT_SECONDS && seconds - t >= MIN_SHOT_SECONDS) cuts.push(Math.round(t * FPS))
-  }
-  const starts: number[] = []
-  cuts.forEach((from, k) => {
-    const to = cuts[k + 1] ?? frames
-    const pieces = Math.max(1, Math.ceil((to - from) / FPS / MAX_SHOT_SECONDS))
-    for (let p = 0; p < pieces; p += 1) starts.push(Math.round(from + ((to - from) * p) / pieces))
-  })
+  const starts = shotStarts(ayahStarts, frames / FPS).map((t) => Math.round(t * FPS))
   return starts.map((from, i) => ({ clip: reel[i % reel.length], from, to: starts[i + 1] ?? frames }))
-}
-
-interface ReelFrame {
-  frame: CanvasImageSource | null
-  /** How far into its shot this frame is, 0–1, for the slow push in. */
-  progress: number
 }
 
 interface Reel {
   /** The frame for video frame `i`; called once for each frame, in order. */
-  next: (i: number) => Promise<ReelFrame>
+  next: (i: number) => Promise<CanvasImageSource | null>
   close: () => void
 }
 
@@ -772,9 +767,7 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
         if (k + 1 < shots.length) void open(k + 1)
       }
       const frames = await open(k)
-      const frame = frames ? ((await frames.next()).value ?? null) : null
-      const shot = shots[k]
-      return { frame, progress: (i - shot.from) / Math.max(1, shot.to - shot.from - 1) }
+      return frames ? ((await frames.next()).value ?? null) : null
     },
     close() {
       for (const key of opened.keys()) release(key)
@@ -823,8 +816,12 @@ function grade(ctx: CanvasRenderingContext2D) {
 /** The ayat to show, with their translation in the viewer's language. */
 function startCaptions(r: Recitation): Promise<Caption[]> {
   const edition = viewerTranslation(getAppSettings().translationEditionId)
-  // In Amiri, like the ayah: a light, classical face that also has every Arabic-script letter.
-  return prepareCaptions(r, cssFont('--font-amiri', "'Amiri', serif"), isRtlTranslationEdition(edition))
+  const rtl = isRtlTranslationEdition(edition)
+  // In a light italic serif, as Quran edits set it; a right-to-left translation (Urdu, Persian…)
+  // in Amiri, which has every Arabic-script letter.
+  return rtl
+    ? prepareCaptions(r, cssFont('--font-amiri', "'Amiri', serif"), '', true)
+    : prepareCaptions(r, cssFont('--font-edit', "'Cormorant Garamond', Georgia, serif"), 'italic 500', false)
 }
 
 async function prepareScene(
@@ -837,6 +834,7 @@ async function prepareScene(
   const serif = cssFont('--font-home-serif', "'Fraunces', Georgia, serif")
   const sans = cssFont('--font-sans', 'system-ui, sans-serif')
   const amiri = cssFont('--font-amiri', "'Amiri', serif")
+  const edit = cssFont('--font-edit', "'Cormorant Garamond', Georgia, serif")
   const background = findVideoBackground(options.backgroundId)
   const frames = Math.max(1, Math.ceil(seconds * FPS))
 
@@ -850,6 +848,7 @@ async function prepareScene(
           document.fonts.load(`600 30px ${sans}`, r.userUsername),
           document.fonts.load(`700 30px ${amiri}`, 'ا'),
           document.fonts.load(`400 30px ${amiri}`, 'Aa ا'),
+          document.fonts.load(`italic 500 30px ${edit}`, 'Aa'),
         ]).catch(() => null)
       : null,
   ])
@@ -857,7 +856,8 @@ async function prepareScene(
   // Cut where the ayat change, so the captions are needed first.
   // Just the chosen clip, unless the clips like it were asked for too.
   const reel = options.mix ? backgroundReel(background) : [background]
-  const clip = background.videoUrl ? await openReel(mb, planShots(reel, captions, frames)) : null
+  const ayahStarts = (r.verseTimeline ?? []).map((entry) => entry.atSeconds)
+  const clip = background.videoUrl ? await openReel(mb, planShots(reel, ayahStarts, frames)) : null
   // A clip that cannot be read stands still on its poster frame instead.
   const fallback = background.videoUrl && !clip && background.url ? await loadImage(background.url) : null
   const picturePresent = Boolean(still || clip || fallback)
@@ -875,15 +875,14 @@ async function prepareScene(
   }
 }
 
-function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, i: number, clipFrame: CanvasImageSource | null, progress: number) {
+function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, i: number, clipFrame: CanvasImageSource | null) {
   const t = i / FPS
   ctx.fillStyle = '#070707'
   ctx.fillRect(0, 0, W, H)
 
   if (clipFrame) {
-    // Each shot moves slowly in on its picture, so a cut lands on movement.
-    const zoom = 1 + PUSH_IN * progress
-    ctx.drawImage(clipFrame, (W - W * zoom) / 2, (H - H * zoom) / 2, W * zoom, H * zoom)
+    // As it was filmed: the footage's own movement is the motion, as in an edit.
+    ctx.drawImage(clipFrame, 0, 0, W, H)
   } else if (scene.still) {
     // The swipe view's slow drift: in a little and across, and back, every 26 seconds.
     const phase = (1 - Math.cos((t / 26) * Math.PI)) / 2
@@ -943,8 +942,8 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, i: number, clipF
 
   ctx.drawImage(scene.footer, 0, FOOTER_BOTTOM - scene.footer.height)
 
-  // In from black, and out again over the last moments of the tail.
-  const fade = Math.min(1, t / 0.4, (scene.seconds - t) / 0.7)
+  // In from black, and slowly out again over the last moments of the tail.
+  const fade = Math.min(1, t / 0.6, (scene.seconds - t) / 1.2)
   if (fade < 1) {
     ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, 1 - Math.max(0, fade))})`
     ctx.fillRect(0, 0, W, H)
@@ -990,10 +989,11 @@ export async function makeRecitationVideo(
     target: new mb.BufferTarget(),
   })
   // A set bitrate rather than a quality level: a phone's hardware encoder can take "high" to mean
-  // 25+ Mbps, a hundred megabytes for half a minute. 4 Mbps is plenty for 720p, and what TikTok re-encodes to anyway.
+  // 25+ Mbps, a hundred megabytes for half a minute. 2.5 Mbps is about what TikTok and Instagram
+  // keep 720p at once they re-encode it, and keeps a two-minute recitation near 40 MB to send.
   const video = new mb.CanvasSource(canvas, {
     codec: 'avc',
-    quality: new mb.Quality({ bitrate: 4_000_000, bitrateMode: 'constant' }),
+    quality: new mb.Quality({ bitrate: 2_500_000, bitrateMode: 'constant' }),
     keyFrameInterval: 2,
   })
   output.addVideoTrack(video, { frameRate: FPS })
@@ -1016,7 +1016,6 @@ export async function makeRecitationVideo(
     }
   }
   let clipFrame: CanvasImageSource | null = null
-  let progress = 0
 
   try {
     // The next frame is decoded while this one is drawn and encoded.
@@ -1024,15 +1023,11 @@ export async function makeRecitationVideo(
     for (let i = 0; i < totalFrames; i += 1) {
       throwIfCancelled(signal)
       if (upcoming) {
-        const reelFrame = await upcoming
         // A frame that did not decode keeps the one before it.
-        if (reelFrame.frame) clipFrame = reelFrame.frame
-        progress = reelFrame.progress
+        clipFrame = (await upcoming) ?? clipFrame
         upcoming = scene.clip && i + 1 < totalFrames ? scene.clip.next(i + 1) : null
-      } else {
-        progress = i / Math.max(1, totalFrames - 1)
       }
-      drawFrame(ctx, scene, i, clipFrame, progress)
+      drawFrame(ctx, scene, i, clipFrame)
       await video.add(i / FPS, 1 / FPS)
       await feedAudio(i / FPS + 1)
       if (i % 6 === 0) onProgress(0.12 + 0.86 * (i / totalFrames))

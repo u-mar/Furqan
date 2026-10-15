@@ -1,4 +1,5 @@
-import { getReciterById, surahAudioUrl, timedSurahSource } from '@/lib/reciters'
+import { getPlayableSurahAudioUrl } from '@/lib/offline-audio'
+import { getReciterById, timedSurahSource } from '@/lib/reciters'
 
 /** One ayah's place inside a whole-surah recording, in milliseconds. */
 export interface TimedAyah {
@@ -24,14 +25,14 @@ export function hasTimedAudio(reciterId: string): boolean {
 
 /**
  * A surah as one recording plus where each ayah starts and ends in it. Null when
- * this reciter has no timings, the request fails, or the phone is offline — the
- * caller then plays ayah by ayah as before.
+ * this reciter has no timings or they cannot be had. Offline, the timings fetched
+ * before still come (the service worker keeps them) and a surah downloaded in
+ * Listen plays from the phone.
  */
 export function getChapterAudio(reciterId: string, chapter: number): Promise<ChapterAudio | null> {
   const reciter = getReciterById(reciterId)
   const timing = timedSurahSource(reciter)
   if (!timing) return Promise.resolve(null)
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return Promise.resolve(null)
 
   const key = `${timing.source}:${timing.id}:${chapter}`
   let pending = cache.get(key)
@@ -40,8 +41,9 @@ export function getChapterAudio(reciterId: string, chapter: number): Promise<Cha
       .then(async (res): Promise<ChapterAudio | null> => {
         if (!res.ok) return null
         const data = (await res.json()) as { url?: string; ayat?: TimedAyah[] }
-        // Quran.com sends the recording's address with its timings; for the others it is the reciter's own file.
-        const url = timing.source === 'quran.com' ? data.url : surahAudioUrl(reciter, chapter)
+        // Quran.com sends the recording's address with its timings; for the others it is the reciter's
+        // own file, from the phone when it was downloaded.
+        const url = timing.source === 'quran.com' ? data.url : await getPlayableSurahAudioUrl(reciterId, chapter)
         if (!url || !data.ayat?.length) return null
         return { url, ayat: data.ayat, byKey: new Map(data.ayat.map((a) => [a.key, a])) }
       })

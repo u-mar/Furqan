@@ -36,7 +36,15 @@ import {
   type PlayerSnapshot,
 } from '@/lib/qari-player'
 import { findSheikh } from '@/lib/sheikhs'
-import { recitationBackground, VIDEO_BACKGROUND_GROUPS, VIDEO_BACKGROUNDS } from '@/lib/qari-backgrounds'
+import {
+  backgroundReel,
+  recitationBackground,
+  VIDEO_BACKGROUND_GROUPS,
+  VIDEO_BACKGROUNDS,
+  type VideoBackground,
+} from '@/lib/qari-backgrounds'
+import { shotAt, shotStarts } from '@/lib/qari-shots'
+import { loadVideoOptions } from '@/lib/qari-share-media'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { askToSignIn } from '@/lib/account-prompt'
 import { cn } from '@/lib/cn'
@@ -247,17 +255,28 @@ function AyahStage({
                 'max-w-[34ch] leading-relaxed',
                 // On its own it is the text to read, so it is larger and fully bright.
                 mode === 'translation'
-                  ? 'text-[21px] text-[var(--home-heading)]'
-                  : 'mt-2 text-[16px] text-[color-mix(in_srgb,var(--home-heading)_86%,transparent)]'
+                  ? 'text-[var(--home-heading)]'
+                  : 'mt-2 text-[color-mix(in_srgb,var(--home-heading)_92%,transparent)]'
               )}
-              // In Amiri, like the ayah: a light, classical face, never bold, with a softer
-              // glow than the ayah's so the strokes stay thin.
-              style={{
-                fontFamily: 'var(--font-amiri), Amiri, serif',
-                fontWeight: 400,
-                textShadow: TRANSLATION_SHADOW,
-                ...(ayah.translationRtl ? { fontSize: mode === 'translation' ? 22 : 17 } : {}),
-              }}
+              // A light italic serif, as Quran edits set it, with a softer glow than the ayah's so
+              // the strokes stay thin. A right-to-left translation (Urdu, Persian…) in Amiri,
+              // which has every Arabic-script letter.
+              style={
+                ayah.translationRtl
+                  ? {
+                      fontFamily: 'var(--font-amiri), Amiri, serif',
+                      fontWeight: 400,
+                      textShadow: TRANSLATION_SHADOW,
+                      fontSize: mode === 'translation' ? 22 : 17,
+                    }
+                  : {
+                      fontFamily: "var(--font-edit), 'Cormorant Garamond', Georgia, serif",
+                      fontStyle: 'italic',
+                      fontWeight: 500,
+                      textShadow: TRANSLATION_SHADOW,
+                      fontSize: mode === 'translation' ? 23 : 18,
+                    }
+              }
             >
               {translation}
             </p>
@@ -289,15 +308,79 @@ function AyahStage({
  * The ones next to it load their clip too, held on its first frame, so a swipe lands on
  * a clip that is ready to play instead of one that has only started downloading.
  */
-function Backdrop({ recitation, playing }: { recitation: Recitation; playing: boolean }) {
+function Backdrop({ recitation, playing, position }: { recitation: Recitation; playing: boolean; position: number }) {
+  // Cutting between clips of the kind is the reciter's video setting too (on unless turned off).
+  const [mixScenes, setMixScenes] = useState(true)
+  useEffect(() => setMixScenes(loadVideoOptions().mix), [])
+  const background = recitationBackground(recitation)
+  const reel = useMemo(() => (mixScenes ? backgroundReel(background) : [background]), [background, mixScenes])
+  const starts = useMemo(
+    () => shotStarts((recitation.verseTimeline ?? []).map((entry) => entry.atSeconds), recitation.durationSec),
+    [recitation.durationSec, recitation.verseTimeline]
+  )
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
-      <BackgroundCover background={recitationBackground(recitation)} moving drift paused={!playing} />
+      {reel.length > 1 ? (
+        <SceneReel reel={reel} shot={shotAt(starts, position)} playing={playing} />
+      ) : (
+        <BackgroundCover background={background} moving drift paused={!playing} />
+      )}
       <div className={cn('qari-mist', !playing && 'is-paused')} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/75" />
       {/* The darker edges of a film frame, as in the shared video. */}
       <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(0,0,0,0.5))]" />
     </div>
+  )
+}
+
+/**
+ * A recitation's clips, a new one for each ayah, cut the moment the reciter
+ * starts it — as in the video shared from it. The next clip waits behind the
+ * one on screen, loaded and paused on its first frame, so the cut is instant.
+ */
+function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: number; playing: boolean }) {
+  const current = reel[shot % reel.length]
+  const next = reel[(shot + 1) % reel.length]
+  const videos = useRef(new Map<string, HTMLVideoElement>())
+
+  useEffect(() => {
+    for (const [id, video] of videos.current) {
+      if (id !== current.id) {
+        video.pause()
+        continue
+      }
+      if (playing) void video.play().catch(() => {})
+      else video.pause()
+    }
+  }, [current.id, playing])
+
+  // Each scene starts from its own beginning, as a cut in an edit does.
+  useEffect(() => {
+    const video = videos.current.get(current.id)
+    if (video && video.currentTime > 0.05) video.currentTime = 0
+  }, [shot, current.id])
+
+  return (
+    <>
+      {[current, next]
+        .filter((clip, k, all) => all.findIndex((c) => c.id === clip.id) === k)
+        .map((clip) => (
+          <video
+            key={clip.id}
+            ref={(element) => {
+              if (element) videos.current.set(clip.id, element)
+              else videos.current.delete(clip.id)
+            }}
+            src={clip.videoUrl ?? undefined}
+            poster={clip.url ?? undefined}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className={cn('absolute inset-0 h-full w-full object-cover', clip.id !== current.id && 'opacity-0')}
+          />
+        ))}
+    </>
   )
 }
 
@@ -600,7 +683,7 @@ const Slide = memo(function Slide({
         isAyahCard && recitation.imageUrl ? (
           <AyahCardMedia src={recitation.imageUrl} alt={t('Ayah card for {verseKey}', { verseKey: recitation.verseKey ?? '' })} />
         ) : (
-          <Backdrop recitation={shown} playing={active && playing} />
+          <Backdrop recitation={shown} playing={active && playing} position={position} />
         )
       ) : null}
 
