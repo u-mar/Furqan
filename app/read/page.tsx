@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
   type TouchEvent,
 } from 'react'
 import Link from 'next/link'
@@ -85,6 +86,7 @@ import {
 import type { SomaliVoiceSegment } from '@/lib/somali-voice'
 import type { Chapter, Verse } from '@/types'
 import { tr, useT } from '@/lib/i18n'
+import { DOUBLE_TAP_MS } from '@/hooks/useLongPress'
 import { toastError } from '@/lib/toast'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
@@ -122,6 +124,10 @@ function ReadPageContent() {
   const didSwipe = useRef(false)
   const longPressBlockTap = useRef(false)
   const ayahChangeBlockTapUntilRef = useRef(0)
+  /** A single tap's show/hide of the bars, waiting to see whether a second tap makes it a double tap. */
+  const pendingUiToggleRef = useRef<number | undefined>(undefined)
+  const topBarRef = useRef<HTMLElement>(null)
+  const bottomDockRef = useRef<HTMLDivElement>(null)
   const prevHighlightedVerseKeyRef = useRef<string | null>(null)
   const translationTouchStart = useRef({ x: 0, y: 0 })
   const pageVersesRef = useRef<Verse[]>([])
@@ -853,11 +859,17 @@ function ReadPageContent() {
 
   const handleAyahLongPress = useCallback(
     (verseKey: string) => {
+      // The first of the two taps had asked to show or hide the bars: that is called off.
+      window.clearTimeout(pendingUiToggleRef.current)
+      pendingUiToggleRef.current = undefined
       longPressBlockTap.current = true
       openAyahMenu(verseKey)
     },
     [openAyahMenu]
   )
+
+  // A single tap still waiting when Read closes must not fire afterwards.
+  useEffect(() => () => window.clearTimeout(pendingUiToggleRef.current), [])
 
   useEffect(() => {
     setShowAyahTranslation(false)
@@ -1059,7 +1071,21 @@ function ReadPageContent() {
     return () => el.removeEventListener('scroll', lockScroll)
   }, [showTranslation, currentPage])
 
-  const handleContentTap = () => {
+  /**
+   * Whether the bars, sliding in, would cover the ayah just tapped: the top
+   * lines of the page under the top bar, the last ones under the bottom dock.
+   */
+  const tapUnderBars = (e: MouseEvent<HTMLDivElement>): boolean => {
+    if (uiVisible) return false
+    const ayah = e.target instanceof Element ? e.target.closest('[data-verse-key]') : null
+    if (!ayah) return false
+    const rect = ayah.getBoundingClientRect()
+    const topBar = topBarRef.current?.offsetHeight ?? 0
+    const dock = bottomDockRef.current?.offsetHeight ?? 0
+    return rect.top < topBar || rect.bottom > window.innerHeight - dock
+  }
+
+  const handleContentTap = (e: MouseEvent<HTMLDivElement>) => {
     if (Date.now() < ayahChangeBlockTapUntilRef.current) return
     if (didSwipe.current) {
       didSwipe.current = false
@@ -1073,7 +1099,19 @@ function ReadPageContent() {
       setAyahMenu(null)
       return
     }
-    toggleUi()
+    window.clearTimeout(pendingUiToggleRef.current)
+    pendingUiToggleRef.current = undefined
+    if (!tapUnderBars(e)) {
+      toggleUi()
+      return
+    }
+    // A tap on an ayah a bar would slide over waits out the double-tap window first. Shown at
+    // once, the bottom bar covered the last lines of the page, so the second tap of a double
+    // tap on the last ayah landed on the bar instead of the ayah.
+    pendingUiToggleRef.current = window.setTimeout(() => {
+      pendingUiToggleRef.current = undefined
+      toggleUi()
+    }, DOUBLE_TAP_MS)
   }
 
   if (loading && pageVerses.length === 0 && !loadError) {
@@ -1232,6 +1270,7 @@ function ReadPageContent() {
       {/* Expanded chrome — tap screen to toggle. Back on the left, the surah in the middle (tap it
           for the contents, as in other mushaf apps), the reading controls on the right. */}
       <header
+        ref={topBarRef}
         className={cn(
           'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-1 border-b px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
@@ -1293,6 +1332,7 @@ function ReadPageContent() {
 
       {/* Bottom dock — notices float just above it */}
       <div
+        ref={bottomDockRef}
         className={cn(
           'absolute inset-x-0 bottom-0 z-30',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',

@@ -4,6 +4,7 @@ import type { MushafLineModel, MushafLineSegment, MushafPageModel } from '@/lib/
 import { surahHeaderGlyph } from '@/lib/mushaf-engine/surah-header-glyphs'
 import {
   compareMushafWords,
+  mushafLine,
   sortVersesByKey,
   wordOnVisualPage,
 } from '@/lib/mushaf-engine/word-order'
@@ -48,7 +49,7 @@ function markSurahDecorations(
       .sort((a, b) => a.position - b.position)
 
     const firstOnPage = pageWords[0]
-    const firstLine = firstOnPage?.line_number
+    const firstLine = firstOnPage ? mushafLine(firstOnPage, verse.verse_key) : undefined
     if (!firstLine) continue
 
     const hasBasmalah = surahHasOpeningBasmalah(chapter)
@@ -137,7 +138,7 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
     const segment = segmentFromWord(word)
     if (!segment) continue
 
-    const lineNumber = word.line_number || 1
+    const lineNumber = mushafLine(word, word.verseKey)
     const bucket = lineSegments.get(lineNumber) || []
     bucket.push(segment)
     lineSegments.set(lineNumber, bucket)

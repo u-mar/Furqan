@@ -9,11 +9,11 @@ import { useCallback, useRef } from 'react'
  * line; only what counts as "pressed" changes here.
  */
 
-const DEFAULT_DOUBLE_TAP_MS = 350
+export const DOUBLE_TAP_MS = 350
 /** More than this and it's a scroll, not a tap. */
 const MOVE_TOLERANCE_PX = 10
 
-export function useLongPress(onLongPress: () => void, doubleTapMs = DEFAULT_DOUBLE_TAP_MS) {
+export function useLongPress(onLongPress: () => void, doubleTapMs = DOUBLE_TAP_MS) {
   const lastTapAt = useRef(0)
   const firedRef = useRef(false)
   const startPoint = useRef<{ x: number; y: number } | null>(null)

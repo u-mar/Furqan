@@ -89,7 +89,7 @@ export default function ContinueReadingCard() {
   if (loading) {
     return (
       <section aria-label={t('Continue reading')}>
-        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-continue h-[4.375rem]" />
       </section>
     )
   }
@@ -100,11 +100,11 @@ export default function ContinueReadingCard() {
     <section aria-label={t('Continue reading')}>
       <Link
         href={`/read?page=${state.page}`}
-        className="home-v2-card home-press ed-focus flex items-center gap-3 rounded-[1.125rem] p-2.5"
+        className="home-continue home-press ed-focus flex items-center gap-3 py-2.5"
         aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
       >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[0.875rem] border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
-          <img src="/icons/read.png" alt="" className="h-[1.875rem] w-[1.875rem] object-contain" draggable={false} />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
+          <img src="/icons/read.png" alt="" className="h-[1.625rem] w-[1.625rem] object-contain" draggable={false} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-baseline justify-between gap-2">
@@ -118,13 +118,13 @@ export default function ContinueReadingCard() {
           <span className="mt-0.5 text-[0.71875rem] tabular-nums text-[var(--hv-text2)]">
             {state.ayah ? t('Ayah {ayah} · ', { ayah: state.ayah }) : ''}{t('Page')} {state.page} {t('of 604')}
           </span>
-          <span aria-hidden className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-[var(--hv-track)]">
+          <span aria-hidden className="home-continue__track mt-1.5 block h-[3px] overflow-hidden rounded-full">
             <span className="block h-full min-w-2 rounded-full bg-[var(--hv-teal)]" style={{ width: `${state.progress}%` }} />
           </span>
         </span>
         <span
           aria-hidden
-          className="flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full bg-[var(--hv-teal)] text-[var(--hv-on-teal)] shadow-[0_8px_20px_-8px_var(--hv-teal-glow)]"
+          className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-[var(--hv-teal)] text-[var(--hv-on-teal)] shadow-[0_8px_20px_-8px_var(--hv-teal-glow)]"
         >
           <ArrowRight className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2.4} />
         </span>

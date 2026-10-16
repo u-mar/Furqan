@@ -61,20 +61,30 @@ function dayDates(date: Date, language: string): { hijri: string; gregorian: str
 }
 
 /**
- * Everything on Home is sized to fit one phone screen. Where it still does not
- * — a small phone, or an iPhone's notch and home bar taking their share — the
- * page tightens itself a step at a time (data-tight 1, then 2) until it does.
+ * The first screen of Home shows everything down to Continue reading; the
+ * weekly verse may sit just below it, a short scroll away. Where even that
+ * does not fit — a small phone, or an iPhone's notch and home bar taking their
+ * share — the top tightens itself a step at a time (data-tight 1, then 2)
+ * until it does. The block marked data-fit-end is the last one that must show.
  */
 function useFitToScreen() {
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
     const main = ref.current
     if (!main) return
+    const fits = () => {
+      const end = main.querySelector('[data-fit-end]')
+      if (!end) return main.offsetHeight <= window.innerHeight + 1
+      // Measured on the page, not the screen, so it holds while scrolled.
+      const bottom = end.getBoundingClientRect().bottom + window.scrollY
+      const navTop = document.querySelector('.bottom-nav')?.getBoundingClientRect().top ?? window.innerHeight
+      return bottom <= navTop - 8
+    }
     const fit = () => {
       for (const step of ['', '1', '2']) {
         if (step) main.dataset.tight = step
         else delete main.dataset.tight
-        if (main.offsetHeight <= window.innerHeight + 1) return
+        if (fits()) return
       }
     }
     fit()
@@ -98,11 +108,10 @@ function useFitToScreen() {
 }
 
 /**
- * Home, all on one screen: the sky of the hour where the person is, the sun
- * on its real path (the moon once it has set), the next prayer beneath it and
- * the day's five prayers on a card at the skyline. The rest of Home follows as
- * children, compact, on the ground the sky settles into. On a taller phone the
- * sky takes the extra room.
+ * Home: the sky where the person is, the sun on its real path (the moon once
+ * it has set), the next prayer beneath it and the day's five prayers on a card
+ * at the skyline. The rest of Home follows as children, on the ground the sky
+ * settles into. On a taller phone the sky takes the extra room.
  */
 export default function HomeSkyScreen({ displayName, children }: { displayName: string; children: ReactNode }) {
   const { place, settings, ready } = usePrayerState()
@@ -267,8 +276,8 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
           {state && clock ? (
             <>
               <span aria-hidden className="home-pill__dot" />
-              <span className="text-[0.84375rem] font-bold tabular-nums text-[#f2d394]">{t('in {time}', { time: timeLeft })}</span>
-              <span className="text-[0.71875rem] font-medium tabular-nums text-[rgba(245,239,227,0.72)]">
+              <span className="text-[0.75rem] font-bold tabular-nums text-[#f2d394]">{t('in {time}', { time: timeLeft })}</span>
+              <span className="text-[0.65625rem] font-medium tabular-nums text-[rgba(245,239,227,0.72)]">
                 {t('at {time}', { time: formatTime(state.next.at, language, timeZone) })}
               </span>
             </>

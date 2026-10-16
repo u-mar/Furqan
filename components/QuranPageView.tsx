@@ -14,6 +14,7 @@ import {
 import { pageHasQcfData, qcfPageSampleGlyphs } from '@/lib/qcf-page'
 import { isOfflineReady } from '@/lib/local-quran-store'
 import { PLAIN_MUSHAF_FONT } from '@/lib/mushaf-render'
+import { mushafLine } from '@/lib/mushaf-engine'
 import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText } from '@/lib/quran-display'
 import type { Verse, VerseWord } from '@/types'
@@ -253,7 +254,7 @@ function getVerseWords(verse: Verse): PageWord[] {
           text: plainText,
           fallbackText: plainText,
           codeV2: word.code_v2,
-          lineNumber: word.line_number || 1,
+          lineNumber: mushafLine(word, verse.verse_key),
           pageNumber,
           isEndMark,
         }

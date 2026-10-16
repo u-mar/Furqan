@@ -1,7 +1,7 @@
 import { buildMushafPageModel, surahHeaderToken } from '@/lib/mushaf-engine'
 import type { MushafLineKind, MushafLineModel } from '@/lib/mushaf-engine'
 import type { Verse, VerseWord } from '@/types'
-import { compareMushafWords, wordOnVisualPage } from '@/lib/mushaf-engine/word-order'
+import { compareMushafWords, mushafLine, wordOnVisualPage } from '@/lib/mushaf-engine/word-order'
 
 const LINES_PER_PAGE = 15
 
@@ -75,7 +75,7 @@ function lineDisplayText(line: MushafLineModel): string {
  * Build fixed 15-line QCF page layout from Quran Foundation word `code_v2` data.
  * All glyph concatenation happens here — UI only renders `line.text` with the page font.
  *
- * Ordering: `lib/mushaf-engine/word-order.ts` — line_number → verse → position → id.
+ * Ordering: `lib/mushaf-engine/word-order.ts` — printed line (mushafLine) → verse → position → id.
  * Only non-empty `code_v2` tokens are included (ayah ends must be QCF glyphs, not Unicode ۝).
  */
 export function buildQcfPageLayout(
@@ -139,7 +139,7 @@ export function getVerseQcfGlyphLines(verse: Verse, pageNumber: number): string[
     if (!wordOnVisualPage(word, pageNumber, verse)) continue
     const code = word.code_v2?.trim()
     if (!code) continue
-    const line = word.line_number ?? 1
+    const line = mushafLine(word, verse.verse_key)
     const bucket = byLine.get(line) || []
     bucket.push(code)
     byLine.set(line, bucket)

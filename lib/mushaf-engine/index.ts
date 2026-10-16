@@ -1,6 +1,7 @@
 export { buildMushafPageModel, surahHeaderToken } from '@/lib/mushaf-engine/build-page-lines'
 export {
   compareMushafWords,
+  mushafLine,
   sortVersesByKey,
   verseOrder,
   wordOnVisualPage,

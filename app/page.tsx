@@ -27,7 +27,8 @@ export default function Home() {
         <PrayerQiblaTiles />
       </div>
 
-      <div className="reveal" style={{ animationDelay: '120ms' }}>
+      {/* The last block the first screen must show; the verse may be a short scroll below. */}
+      <div className="reveal" style={{ animationDelay: '120ms' }} data-fit-end>
         <ContinueReadingCard />
       </div>
 

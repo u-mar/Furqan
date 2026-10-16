@@ -13,7 +13,7 @@ import { useT } from '@/lib/i18n'
  */
 function QiblaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-[1.875rem] w-[1.875rem] shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-[2.125rem] w-[2.125rem] shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-case" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#f4f1e8" />
@@ -45,7 +45,7 @@ function QiblaGlyph() {
  */
 function HalaqaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-[1.875rem] w-[1.875rem] shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-[2.125rem] w-[2.125rem] shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-halaqa-dot" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5cc4ab" />
@@ -96,7 +96,7 @@ function Tile({
   return (
     <Link
       href={href}
-      className="home-v2-card home-press ed-focus flex flex-col items-center gap-1.5 rounded-[1.125rem] px-1.5 pb-2 pt-2.5 text-center"
+      className="home-press ed-focus flex flex-col items-center gap-1.5 rounded-[1.125rem] px-1.5 py-1.5 text-center"
     >
       {image}
       <span className="block max-w-full truncate text-[0.78125rem] font-semibold tracking-[-0.005em]">
@@ -119,9 +119,9 @@ export default function PrayerQiblaTiles() {
   if (!ready) {
     return (
       <div className="grid grid-cols-3 gap-3">
-        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
-        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
-        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-tile-loading h-[3.75rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-tile-loading h-[3.75rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-tile-loading h-[3.75rem] animate-pulse rounded-[1.125rem]" />
       </div>
     )
   }
@@ -136,7 +136,7 @@ export default function PrayerQiblaTiles() {
       />
       <Tile
         href="/prayer"
-        image={<img src="/icons/noto/mosque.svg" alt="" className="h-[1.875rem] w-[1.875rem] shrink-0" />}
+        image={<img src="/icons/noto/mosque.svg" alt="" className="h-[2.125rem] w-[2.125rem] shrink-0" />}
         title={t('Prayer')}
       />
       <Tile
