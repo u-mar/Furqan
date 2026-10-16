@@ -89,8 +89,7 @@ export default function ContinueReadingCard() {
   if (loading) {
     return (
       <section aria-label={t('Continue reading')}>
-        <h2 className="home-v2-label">{t('Continue reading')}</h2>
-        <div className="home-v2-card h-[5.875rem] animate-pulse rounded-3xl" />
+        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
       </section>
     )
   }
@@ -99,37 +98,35 @@ export default function ContinueReadingCard() {
 
   return (
     <section aria-label={t('Continue reading')}>
-      <h2 className="home-v2-label">{t('Continue reading')}</h2>
-
       <Link
         href={`/read?page=${state.page}`}
-        className="home-v2-card home-press ed-focus flex items-center gap-4 rounded-3xl p-3.5"
+        className="home-v2-card home-press ed-focus flex items-center gap-3 rounded-[1.125rem] p-2.5"
         aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
       >
-        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.125rem] border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
-          <img src="/icons/read.png" alt="" className="h-10 w-10 object-contain" draggable={false} />
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[0.875rem] border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
+          <img src="/icons/read.png" alt="" className="h-[1.875rem] w-[1.875rem] object-contain" draggable={false} />
         </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span className="flex min-w-0 flex-1 flex-col">
           <span className="flex items-baseline justify-between gap-2">
-            <span className="home-serif truncate text-[1.3125rem] font-medium tracking-[-0.015em]">{state.surahName}</span>
+            <span className="home-serif truncate text-[1.0625rem] font-medium leading-tight tracking-[-0.015em]">{state.surahName}</span>
             {state.arabicName ? (
-              <span lang="ar" dir="rtl" className="amiri shrink-0 text-[1.0625rem] text-[var(--hv-accent-gold)]">
+              <span lang="ar" dir="rtl" className="amiri shrink-0 text-[0.9375rem] leading-tight text-[var(--hv-accent-gold)]">
                 {state.arabicName}
               </span>
             ) : null}
           </span>
-          <span className="text-[0.78125rem] tabular-nums text-[var(--hv-text2)]">
+          <span className="mt-0.5 text-[0.71875rem] tabular-nums text-[var(--hv-text2)]">
             {state.ayah ? t('Ayah {ayah} · ', { ayah: state.ayah }) : ''}{t('Page')} {state.page} {t('of 604')}
           </span>
-          <span aria-hidden className="mt-2 block h-[3px] overflow-hidden rounded-full bg-[var(--hv-track)]">
+          <span aria-hidden className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-[var(--hv-track)]">
             <span className="block h-full min-w-2 rounded-full bg-[var(--hv-teal)]" style={{ width: `${state.progress}%` }} />
           </span>
         </span>
         <span
           aria-hidden
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--hv-teal)] text-[var(--hv-on-teal)] shadow-[0_8px_20px_-8px_var(--hv-teal-glow)]"
+          className="flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-full bg-[var(--hv-teal)] text-[var(--hv-on-teal)] shadow-[0_8px_20px_-8px_var(--hv-teal-glow)]"
         >
-          <ArrowRight className="h-[18px] w-[18px] rtl:-scale-x-100" strokeWidth={2.4} />
+          <ArrowRight className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2.4} />
         </span>
       </Link>
     </section>

@@ -3,22 +3,22 @@
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, BellRing, BookOpen, ChevronRight, Copy, MessageCircle, MoreHorizontal, RefreshCw, Send, UserPlus } from 'lucide-react'
+import { Bell, BellRing, Check, Copy, MessageCircle, MoreHorizontal, RefreshCw, Send, UserPlus } from 'lucide-react'
 import SettingsSheet from '@/components/settings/SettingsSheet'
-import TodayCard from '@/components/halaqa/TodayCard'
+import HalaqaCircle from '@/components/halaqa/HalaqaCircle'
+import KhatmahShelf from '@/components/halaqa/KhatmahShelf'
 import Switch from '@/components/qari/Switch'
 import {
   ActionButton,
   ErrorCard,
-  HalaqaHeader,
-  HalaqaScreen,
+  HalaqaSkyHeader,
+  HalaqaSkyScreen,
   Rise,
-  SectionLabel,
+  SkyLabel,
   Skeleton,
   copyText,
 } from '@/components/halaqa/HalaqaScreen'
-import { MemberAvatar, ReadingDaysRow, byMeThenName } from '@/components/halaqa/People'
-import { useCountUp } from '@/hooks/useCountUp'
+import { MemberAvatar, ReadingDaysRow, RecentStrip, byMeThenName, daysLabel } from '@/components/halaqa/People'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import {
@@ -95,28 +95,27 @@ export default function HalaqaPage() {
 
   const people = useMemo(() => [...(detail?.members ?? [])].sort(byMeThenName), [detail])
   const read = people.filter((m) => m.readToday)
-  const notYet = people.filter((m) => !m.readToday)
 
   if (!detail) {
     return (
-      <HalaqaScreen>
-        <HalaqaHeader title={t('Halaqa')} />
+      <HalaqaSkyScreen>
+        <HalaqaSkyHeader title={t('Halaqa')} />
         {error ? (
           <ErrorCard message={error} onRetry={load} />
         ) : (
-          <div className="mt-[18px] space-y-3" aria-busy>
-            <Skeleton className="h-[210px] rounded-[18px]" />
-            <Skeleton className="h-[110px] rounded-2xl" />
-            <Skeleton className="h-[220px] rounded-2xl" />
+          <div className="mt-4 flex flex-col items-center" aria-busy>
+            <Skeleton className="h-[288px] w-[288px] rounded-full" />
+            <Skeleton className="mt-6 h-[50px] w-full rounded-full" />
+            <Skeleton className="mt-8 h-[260px] w-full rounded-[1.375rem]" />
           </div>
         )}
-      </HalaqaScreen>
+      </HalaqaSkyScreen>
     )
   }
 
   const { halaqa, khatmah } = detail
   const settingsButton = (
-    <Link href={`/halaqa/${id}/settings`} className="home-round ed-focus" aria-label={t('Halaqa settings')}>
+    <Link href={`/halaqa/${id}/settings`} className="home-glass-round ed-focus" aria-label={t('Halaqa settings')}>
       <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2.2} />
     </Link>
   )
@@ -132,124 +131,61 @@ export default function HalaqaPage() {
     )
   }
 
-  const myJuz = khatmah?.juz.find((j) => j.mine && !j.done)
+  const memberCount = detail.members.length
 
   return (
-    <HalaqaScreen>
-      <HalaqaHeader
+    <HalaqaSkyScreen>
+      <HalaqaSkyHeader
         title={halaqa.name}
-        sub={`${detail.members.length} ${detail.members.length === 1 ? 'member' : 'members'} · ${scheduleLabel(halaqa)}`}
+        sub={`${memberCount === 1 ? t('1 member') : t('{count} members', { count: memberCount })} · ${scheduleLabel(halaqa)}`}
         right={settingsButton}
       />
 
-      <Rise className="mt-[18px]">
-        <TodayCard
-          readToday={detail.me.readToday}
-          justRead={justRead}
-          readCount={read.length}
-          total={people.length}
-          onRead={() => void tick()}
-        />
+      <Rise className="mt-3">
+        <HalaqaCircle people={people} readToday={detail.me.readToday} justRead={justRead} onRead={() => void tick()} />
       </Rise>
 
-      <NotifyBanner />
-
-      <Rise order={1} className="home-card mt-3 overflow-hidden rounded-2xl">
+      <Rise order={1} className="mt-6 grid grid-cols-2 gap-2.5">
         <button
           type="button"
           onClick={() => {
             tapFeedback()
             setSharing(true)
           }}
-          className="set-row"
-          style={{ paddingBlock: 9 }}
+          className="hq-action ed-focus fx-press"
         >
-          <span className="set-row__icon" aria-hidden>
-            <MessageCircle className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-medium">{t('Share today\'s check-in')}</span>
-            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Post who has read to your WhatsApp group')}</span>
-          </span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+          <MessageCircle className="h-[17px] w-[17px] text-[var(--hv-teal)]" strokeWidth={2} />
+          {t('Share check-in')}
         </button>
-        <div className="set-row__divider" aria-hidden />
-        <Link href={`/halaqa/${id}/invite`} className="set-row" style={{ paddingBlock: 9 }}>
-          <span className="set-row__icon" aria-hidden>
-            <UserPlus className="h-[17px] w-[17px]" strokeWidth={1.9} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-medium">{t('Invite people')}</span>
-            <span className="mt-px block text-[0.78125rem] text-[var(--home-muted)]">{t('Anyone with the link can join')}</span>
-          </span>
-          <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+        <Link href={`/halaqa/${id}/invite`} className="hq-action ed-focus fx-press">
+          <UserPlus className="h-[17px] w-[17px] text-[var(--hv-teal)]" strokeWidth={2} />
+          {t('Invite')}
         </Link>
       </Rise>
 
-      <Rise order={2}>
-        {read.length ? (
-          <>
-            <SectionLabel>{t('Read today ·')} {read.length}</SectionLabel>
-            <PeopleList people={read} justRead={justRead} />
-          </>
-        ) : null}
+      <NotifyBanner />
 
-        {notYet.length ? (
-          <>
-            <SectionLabel>{t('Not yet ·')} {notYet.length}</SectionLabel>
-            <PeopleList people={notYet} faded />
-          </>
-        ) : null}
+      <Rise order={2}>
+        <SkyLabel
+          right={
+            <span className="text-[0.75rem] tabular-nums text-[var(--hv-text3)]">
+              {read.length}/{people.length} {t('read today')}
+            </span>
+          }
+        >
+          {t('Members')}
+        </SkyLabel>
+        <MembersList people={people} justRead={justRead} />
       </Rise>
 
       {halaqa.khatmahEnabled && khatmah ? (
-        <Rise order={3}>
-          <SectionLabel>{t('Khatmah')}</SectionLabel>
-          <div className="home-card overflow-hidden rounded-2xl">
-            <Link href={`/halaqa/${id}/khatmah`} className="block px-3.5 pb-[13px] pt-3 transition-colors active:bg-[color-mix(in_srgb,var(--home-heading)_5%,transparent)]">
-              <span className="flex items-center gap-3">
-                <span className="set-row__icon" aria-hidden>
-                  <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
-                </span>
-                <span className="flex-1 text-[0.9375rem] font-medium text-[var(--home-heading)]">
-                  {khatmah.completedAt ? t('Khatmah complete') : <JuzDone done={khatmah.done} />}
-                </span>
-                {khatmah.finishBy && !khatmah.completedAt ? (
-                  <span className="text-[0.8125rem] text-[var(--home-muted)]">{t('by')} {shortDay(khatmah.finishBy)}</span>
-                ) : null}
-              </span>
-              <span className="ml-[42px] mt-2.5 block h-1.5 overflow-hidden rounded-full bg-[var(--home-track)]">
-                <span
-                  className="fx-bar block h-full rounded-full bg-[var(--home-sage)]"
-                  style={{ width: `${Math.round((khatmah.done / 30) * 100)}%` }}
-                />
-              </span>
-            </Link>
-            {!khatmah.completedAt ? (
-              <>
-                <div className="set-row__divider" aria-hidden />
-                <Link href={`/halaqa/${id}/khatmah`} className="set-row">
-                  {myJuz ? (
-                    <span className="home-serif flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg bg-[var(--home-ink)] text-sm font-semibold text-[var(--home-ink-fg)]">
-                      {myJuz.juz}
-                    </span>
-                  ) : (
-                    <span className="set-row__icon" aria-hidden>
-                      <BookOpen className="h-[17px] w-[17px]" strokeWidth={1.9} />
-                    </span>
-                  )}
-                  <span className="set-row__label">{myJuz ? t('Your juz') : t('Take a juz')}</span>
-                  <span className="set-row__value">{myJuz ? t('Juz {juz}', { juz: myJuz.juz }) : t('{count} free', { count: 30 - khatmah.juz.length })}</span>
-                  <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-                </Link>
-              </>
-            ) : null}
-          </div>
+        <Rise order={3} className="mt-7">
+          <KhatmahShelf halaqaId={id} khatmah={khatmah} />
         </Rise>
       ) : null}
 
       <ShareCheckIn open={sharing} detail={detail} onClose={() => setSharing(false)} />
-    </HalaqaScreen>
+    </HalaqaSkyScreen>
   )
 }
 
@@ -279,13 +215,13 @@ function NotifyBanner() {
   }
 
   return (
-    <Rise className="home-card mt-3 flex items-center gap-3 rounded-2xl px-3.5 py-3">
-      <span className="set-row__icon" aria-hidden>
+    <Rise className="hv-card mt-2.5 flex items-center gap-3 rounded-[1.375rem] px-3.5 py-3">
+      <span className="hq-icon" aria-hidden>
         {push === 'on' ? <BellRing className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <Bell className="h-[17px] w-[17px]" strokeWidth={1.9} />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Get reminded to read')}</span>
-        <span className="mt-0.5 block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
+        <span className="block text-[0.875rem] font-semibold text-[var(--hv-text)]">{t('Get reminded to read')}</span>
+        <span className="mt-0.5 block text-[0.75rem] leading-snug text-[var(--hv-text3)]">
           {push === 'needs-install'
             ? t('On iPhone, first add this app to your Home Screen (Share, then Add to Home Screen), then open it from there.')
             : push === 'blocked'
@@ -302,45 +238,56 @@ function NotifyBanner() {
   )
 }
 
-function JuzDone({ done }: { done: number }) {
-  const t = useT()
-  const shown = useCountUp(done)
-  return (
-    <span className="tabular-nums">
-      {shown} {t('of 30 juz done')}</span>
-  )
-}
-
-function PeopleList({
+/**
+ * Everyone in the halaqa, me first and then by name so it never reads as a
+ * ranking: whether they have read today, and their last two weeks.
+ */
+function MembersList({
   people,
-  faded = false,
   justRead = false,
 }: {
   people: HalaqaMemberView[]
-  faded?: boolean
-  /** You ticked a moment ago: your row arrives here with a little motion. */
+  /** You ticked a moment ago: your row lights up with a little motion. */
   justRead?: boolean
 }) {
   const t = useT()
   return (
-    <div className="home-card overflow-hidden rounded-2xl">
+    <div className="hv-card overflow-hidden rounded-[1.375rem]">
       {people.map((person, i) => {
         const arrived = justRead && person.isMe
         return (
           <div key={person.id} className={cn(arrived && 'qari-enter')}>
-            {i ? <div className="set-row__divider" style={{ marginLeft: 62 }} aria-hidden /> : null}
-            <div className="set-row" style={{ minHeight: 54, paddingBlock: 9 }}>
+            {i ? <div className="hq-divider" aria-hidden /> : null}
+            <div className="flex min-h-[3.75rem] items-center gap-3 px-3.5 py-2.5">
               <MemberAvatar
                 name={person.name}
+                size={38}
                 read={person.readToday}
                 me={person.isMe}
-                faded={faded && !person.isMe}
+                faded={!person.readToday && !person.isMe}
                 pop={arrived}
               />
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-                {person.name}
-                {person.isMe ? <span className="font-medium text-[var(--home-muted)]"> {t('(you)')}</span> : null}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.90625rem] font-semibold text-[var(--hv-text)]">
+                  {person.name}
+                  {person.isMe ? <span className="font-medium text-[var(--hv-text3)]"> {t('(you)')}</span> : null}
+                </span>
+                <span className="mt-1.5 flex items-center gap-2" title={daysLabel(person.recent)}>
+                  <RecentStrip line={person.recent} />
+                  <span className="text-[0.6875rem] tabular-nums text-[var(--hv-text3)]">
+                    {person.recent.count}/{person.recent.possible}
+                  </span>
+                  <span className="sr-only">{daysLabel(person.recent)}</span>
+                </span>
               </span>
+              {person.readToday ? (
+                <span className="hq-status hq-status--read">
+                  <Check className="h-3 w-3" strokeWidth={3.2} />
+                  <span className="sr-only">{t('read today')}</span>
+                </span>
+              ) : (
+                <span className="hq-status" aria-hidden />
+              )}
             </div>
           </div>
         )
@@ -474,8 +421,8 @@ function Ended({
   }
 
   return (
-    <HalaqaScreen>
-      <HalaqaHeader title={halaqa.name} right={settingsButton} />
+    <HalaqaSkyScreen>
+      <HalaqaSkyHeader title={halaqa.name} right={settingsButton} />
 
       <Rise className="mt-[26px] px-1">
         <p className="home-label">{t('Ended')} {halaqa.endDay ? shortDay(halaqa.endDay) : ''}</p>
@@ -486,8 +433,8 @@ function Ended({
       </Rise>
 
       <Rise order={1}>
-        <SectionLabel>{t('Reading days')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
+        <SkyLabel>{t('Reading days')}</SkyLabel>
+        <div className="hv-card overflow-hidden rounded-[1.375rem]">
           {people.map((person, i) => {
             const line = lines.get(person.id)
             if (!line) return null
@@ -503,7 +450,7 @@ function Ended({
 
       <Rise order={2}>
         {me.isCreator ? (
-          <ActionButton icon={RefreshCw} busy={busy === 'again'} disabled={busy !== null} onClick={() => void runAgain()} className="mt-6">
+          <ActionButton icon={RefreshCw} busy={busy === 'again'} disabled={busy !== null} onClick={() => void runAgain()} className="hq-cta mt-6">
             {t('Run it again')}</ActionButton>
         ) : null}
         <button
@@ -533,6 +480,6 @@ function Ended({
           {me.isCreator ? t('Close the halaqa') : t('Leave')}
         </ActionButton>
       </SettingsSheet>
-    </HalaqaScreen>
+    </HalaqaSkyScreen>
   )
 }

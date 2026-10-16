@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useNow, usePrayerState } from '@/hooks/usePrayer'
 import { formatHijri, toHijri } from '@/lib/hijri'
 import {
@@ -9,7 +9,8 @@ import {
   ARC_PATH,
   DAILY_PRAYERS,
   MOON_AT,
-  SKIES,
+  DAY_SKY,
+  NIGHT_SKY,
   arcPoint,
   homeSkyState,
   type DailyPrayer,
@@ -51,100 +52,125 @@ function prayerName(id: DailyPrayer): string {
   return tr(PRAYER_NAMES[id]).replace(/\s*\(.*\)\s*$/, '')
 }
 
-/** "3 Jumada I 1448" and "Thursday, 15 October". */
-function heroDates(date: Date, language: string): { hijri: string; gregorian: string } {
+/** "3 Jumada I 1448" and "Thu, 15 Oct". */
+function dayDates(date: Date, language: string): { hijri: string; gregorian: string } {
   const { day, year, monthName } = toHijri(date)
   const hijri = language === 'ar' ? formatHijri(date) : `${day} ${tr(monthName)} ${year}`
   const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale(language), options).format(date)
-  return { hijri, gregorian: `${part({ weekday: 'long' })}, ${date.getDate()} ${part({ month: 'long' })}` }
+  return { hijri, gregorian: `${part({ weekday: 'short' })}, ${date.getDate()} ${part({ month: 'short' })}` }
 }
 
 /**
- * Home's top: the sky of the hour where the person is, the sun on its real
- * path (the moon once it has set), the next prayer large beneath it and the
- * day's five prayers on a card at the skyline. The rest of Home follows as
- * children, on the ground the sky settles into.
+ * Everything on Home is sized to fit one phone screen. Where it still does not
+ * — a small phone, or an iPhone's notch and home bar taking their share — the
+ * page tightens itself a step at a time (data-tight 1, then 2) until it does.
+ */
+function useFitToScreen() {
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const main = ref.current
+    if (!main) return
+    const fit = () => {
+      for (const step of ['', '1', '2']) {
+        if (step) main.dataset.tight = step
+        else delete main.dataset.tight
+        if (main.offsetHeight <= window.innerHeight + 1) return
+      }
+    }
+    fit()
+    // The verse and the times fill in after the first paint, and the phone can
+    // turn. Refitting waits a frame, so it never resizes inside the observer.
+    let frame = 0
+    const refit = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(fit)
+    }
+    const observer = new ResizeObserver(refit)
+    observer.observe(main)
+    window.addEventListener('resize', refit)
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      window.removeEventListener('resize', refit)
+    }
+  }, [])
+  return ref
+}
+
+/**
+ * Home, all on one screen: the sky of the hour where the person is, the sun
+ * on its real path (the moon once it has set), the next prayer beneath it and
+ * the day's five prayers on a card at the skyline. The rest of Home follows as
+ * children, compact, on the ground the sky settles into. On a taller phone the
+ * sky takes the extra room.
  */
 export default function HomeSkyScreen({ displayName, children }: { displayName: string; children: ReactNode }) {
-  const language = useLanguage()
   const { place, settings, ready } = usePrayerState()
   const clock = useNow(10_000)
   const state = useMemo(
     () => (ready && clock ? homeSkyState(place, settings, clock) : null),
     [ready, clock, place, settings]
   )
-  const [dates, setDates] = useState<{ hijri: string; gregorian: string } | null>(null)
+  const mainRef = useFitToScreen()
 
-  useEffect(() => {
-    setDates(heroDates(new Date(), language))
-  }, [language])
-
-  const sky = SKIES[state?.sky ?? 'isha']
+  // One sky all day in each theme, lit by the sun while it is up and by the
+  // moon once it has set. In light the skyline's windows come on after sunset.
+  const moon = state !== null && state.sun === null
   const vars = {
-    '--hv-s0': sky.dark[0],
-    '--hv-s1': sky.dark[1],
-    '--hv-s2': sky.dark[2],
-    '--hv-l0': sky.light[0],
-    '--hv-l1': sky.light[1],
-    '--hv-l2': sky.light[2],
-    '--hv-ground-sky': sky.ground,
-    '--hv-sky-glow': sky.glow,
-    '--hv-windows': sky.windows,
+    '--hv-s0': NIGHT_SKY.colors[0],
+    '--hv-s1': NIGHT_SKY.colors[1],
+    '--hv-s2': NIGHT_SKY.colors[2],
+    '--hv-l0': DAY_SKY.colors[0],
+    '--hv-l1': DAY_SKY.colors[1],
+    '--hv-l2': DAY_SKY.colors[2],
+    '--hv-ground-sky': NIGHT_SKY.ground,
+    '--hv-sky-glow-dark': moon ? NIGHT_SKY.moonGlow : NIGHT_SKY.sunGlow,
+    '--hv-sky-glow': moon ? DAY_SKY.moonGlow : DAY_SKY.sunGlow,
+    '--hv-windows': moon ? 0.9 : 0,
   } as CSSProperties
 
   return (
     <main
-      className="home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+2.25rem)] [overscroll-behavior-x:none] [touch-action:pan-y]"
-      data-sky={state ? state.sky : undefined}
+      ref={mainRef}
+      className="hv-theme home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+0.625rem)] [overscroll-behavior-x:none] [touch-action:pan-y]"
+      data-sky={state ? (moon ? 'moon' : 'sun') : undefined}
       style={vars}
     >
-      <div className="relative">
+      <div className="relative flex flex-1 flex-col">
         <div className="home-sky" aria-hidden />
 
-        <div className="relative mx-auto w-full max-w-lg px-5 pt-[max(3.25rem,calc(env(safe-area-inset-top)+0.75rem))]">
-          <HeroTop displayName={displayName} dates={dates} />
-          <SunPath state={state} clock={clock} timeZone={place.timeZone} />
-          <Skyline />
+        <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col px-5 pt-[max(0.875rem,calc(env(safe-area-inset-top)+0.5rem))]">
+          <HeroTop displayName={displayName} />
+          <div className="mt-auto pt-2">
+            <SunPath state={state} clock={clock} timeZone={place.timeZone} />
+            <Skyline />
+          </div>
         </div>
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-lg flex-col gap-8 px-5">
-        <TodayCard state={state} timeZone={place.timeZone} />
+      <div className="home-cards relative mx-auto flex w-full max-w-lg flex-col gap-2.5 px-5">
+        <TodayCard state={state} clock={clock} timeZone={place.timeZone} />
         {children}
       </div>
     </main>
   )
 }
 
-function HeroTop({ displayName, dates }: { displayName: string; dates: { hijri: string; gregorian: string } | null }) {
+function HeroTop({ displayName }: { displayName: string }) {
   const t = useT()
   return (
     <header className="reveal flex items-start justify-between gap-3">
       <div className="home-hero-ink flex min-w-0 flex-1 flex-col">
-        <span lang="ar" dir="rtl" className="amiri self-start !text-left text-[1.3125rem] leading-[1.55] text-[var(--hv-gold)]">
+        <span lang="ar" dir="rtl" className="amiri self-start !text-left text-[1.0625rem] leading-[1.4] text-[var(--hv-gold)]">
           ٱلسَّلَامُ عَلَيْكُمْ
         </span>
-        <h1 className="home-serif truncate text-[2.125rem] font-medium leading-[1.08] tracking-[-0.025em] text-[var(--hv-ink)]">
+        <h1 className="home-serif truncate text-[1.625rem] font-medium leading-[1.1] tracking-[-0.025em] text-[var(--hv-ink)]">
           {displayName}
         </h1>
-        {/* The dot between the two dates drops out if they wrap onto two lines. */}
-        <p className="mt-2.5 min-h-[1.25rem] overflow-hidden text-[0.78125rem] tracking-[0.01em] text-[var(--hv-ink2)]">
-          {dates ? (
-            <span className="home-dates">
-              <span className="home-dates__item">
-                <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" className="shrink-0 fill-[var(--hv-gold)]">
-                  <path d="M15.5 3.2A9 9 0 1 0 20.8 15 7.2 7.2 0 0 1 15.5 3.2Z" />
-                </svg>
-                <span className="font-semibold text-[var(--hv-ink)]">{dates.hijri}</span>
-              </span>
-              <span className="home-dates__item">{dates.gregorian}</span>
-            </span>
-          ) : null}
-        </p>
       </div>
 
       <Link href="/settings" className="home-glass-round ed-focus" aria-label={t('Open settings')}>
-        <svg aria-hidden width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
           <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
           <circle cx="16" cy="7" r="2" />
           <circle cx="10" cy="17" r="2" />
@@ -154,7 +180,7 @@ function HeroTop({ displayName, dates }: { displayName: string; dates: { hijri: 
   )
 }
 
-/** The sun's path across the sky, the next prayer large beneath it. */
+/** The sun's path across the sky, the next prayer beneath it. */
 function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock: Date | null; timeZone?: string }) {
   const t = useT()
   const language = useLanguage()
@@ -169,9 +195,9 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
   return (
     // The path is drawn the full width of the screen, so its sizes are the
     // content's width plus the 2.5rem of padding either side of it.
-    <div className="relative -mx-5 mt-[4.5rem] pt-[calc(19.49%+7.8px)]">
+    <div className="home-arc-wrap relative -mx-5 pt-[calc(10.26%+4.1px)]">
       {/* The light around the sun (or the moon), on the sky behind everything */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 aspect-[390/200]">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 aspect-[390/150]">
         <div
           className="home-sky-glow"
           style={{ left: `${(glowAt.x / ARC_BOX.width) * 100}%`, top: `${(glowAt.y / ARC_BOX.height) * 100}%` }}
@@ -199,9 +225,9 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
         })}
         {sun ? (
           <g>
-            <circle cx={sun.x} cy={sun.y} r="36" className="home-arc__sun-glow" opacity="0.14" />
-            <circle cx={sun.x} cy={sun.y} r="21" className="home-arc__sun-glow" opacity="0.26" />
-            <circle cx={sun.x} cy={sun.y} r="11" className="home-arc__sun" />
+            <circle cx={sun.x} cy={sun.y} r="30" className="home-arc__sun-glow" opacity="0.14" />
+            <circle cx={sun.x} cy={sun.y} r="18" className="home-arc__sun-glow" opacity="0.26" />
+            <circle cx={sun.x} cy={sun.y} r="9.5" className="home-arc__sun" />
           </g>
         ) : state ? (
           <g>
@@ -211,13 +237,13 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
                 <stop offset="1" className="home-arc__moon-glow" stopOpacity="0" />
               </radialGradient>
             </defs>
-            <circle cx={MOON_AT.x} cy={MOON_AT.y} r="40" fill="url(#home-moon-glow)" />
-            <path d="M305 48 A16 16 0 1 0 316 75 A12.5 12.5 0 0 1 305 48 Z" className="home-arc__moon" />
-            <circle cx="250" cy="40" r="1.4" className="home-arc__moon" />
-            <circle cx="340" cy="30" r="1.1" className="home-arc__moon" />
-            <circle cx="120" cy="56" r="1.2" className="home-arc__moon" />
-            <circle cx="70" cy="96" r="1" className="home-arc__moon" />
-            <circle cx="196" cy="22" r="0.9" className="home-arc__moon" />
+            <circle cx={MOON_AT.x} cy={MOON_AT.y} r="36" fill="url(#home-moon-glow)" />
+            <path d="M305 31 A15 15 0 1 0 315 56 A11.5 11.5 0 0 1 305 31 Z" className="home-arc__moon" />
+            <circle cx="250" cy="28" r="1.4" className="home-arc__moon" />
+            <circle cx="342" cy="20" r="1.1" className="home-arc__moon" />
+            <circle cx="122" cy="40" r="1.2" className="home-arc__moon" />
+            <circle cx="68" cy="74" r="1" className="home-arc__moon" />
+            <circle cx="196" cy="12" r="0.9" className="home-arc__moon" />
           </g>
         ) : null}
       </svg>
@@ -226,23 +252,23 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
         href="/prayer"
         className="home-hero-ink relative z-10 mx-auto flex w-fit max-w-full flex-col items-center px-5 text-center text-[var(--hv-ink)]"
       >
-        <span className="text-[0.65625rem] font-semibold uppercase tracking-[0.24em] text-[var(--hv-ink2)]">
+        <span className="home-next-label text-[0.625rem] font-semibold uppercase leading-[1.3] tracking-[0.22em] text-[var(--hv-ink2)]">
           {t('Next prayer')}
         </span>
         {/* Long names step down a size, so they clear the sun on its path. */}
         <span
-          className={`home-serif mt-1.5 flex h-16 items-center whitespace-nowrap font-medium leading-none tracking-[-0.035em] ${
-            name.length > 5 ? 'text-[clamp(2.75rem,14.5vw,3.5rem)]' : 'text-[clamp(3rem,16.5vw,4rem)]'
+          className={`home-next-name home-serif mt-0.5 flex h-11 items-center whitespace-nowrap font-medium leading-none tracking-[-0.035em] ${
+            name.length > 5 ? 'text-[2.25rem]' : 'text-[2.625rem]'
           }`}
         >
           {name}
         </span>
-        <span className="home-pill mt-3">
+        <span className="home-pill mt-2">
           {state && clock ? (
             <>
               <span aria-hidden className="home-pill__dot" />
-              <span className="text-[0.9375rem] font-bold tabular-nums text-[#f2d394]">{t('in {time}', { time: timeLeft })}</span>
-              <span className="text-[0.78125rem] font-medium tabular-nums text-[rgba(245,239,227,0.72)]">
+              <span className="text-[0.84375rem] font-bold tabular-nums text-[#f2d394]">{t('in {time}', { time: timeLeft })}</span>
+              <span className="text-[0.71875rem] font-medium tabular-nums text-[rgba(245,239,227,0.72)]">
                 {t('at {time}', { time: formatTime(state.next.at, language, timeZone) })}
               </span>
             </>
@@ -253,71 +279,86 @@ function SunPath({ state, clock, timeZone }: { state: HomeSkyState | null; clock
   )
 }
 
-/** A far row of domes and minarets and a near one, the windows lit after dark. */
+/**
+ * A far row of domes and minarets and a near one, the windows lit after
+ * dark. Its dome tops sit just under the next prayer's pill.
+ */
 function Skyline() {
   return (
     <svg
       aria-hidden
-      viewBox="0 0 390 180"
-      className="home-skyline pointer-events-none relative -mx-5 mt-[calc(-12.82%+7px)] block h-auto w-[calc(100%+2.5rem)] overflow-visible"
+      viewBox="0 0 390 110"
+      className="home-skyline pointer-events-none relative -mx-5 mt-[calc(-9.23%+4.3px)] block h-auto w-[calc(100%+2.5rem)] overflow-visible"
     >
       <g className="home-skyline__far">
-        <path d="M0 146 L0 128 Q4 112 26 108 Q48 112 52 128 L52 146 Z" />
-        <path d="M113 62 L118 42 L123 62 Z" />
-        <rect x="114.5" y="62" width="7" height="84" />
-        <path d="M263 54 L268 34 L273 54 Z" />
-        <rect x="264.5" y="54" width="7" height="92" />
-        <path d="M338 146 L338 128 Q342 112 362 108 Q384 112 388 128 L388 146 Z" />
-        <rect x="0" y="132" width="390" height="14" />
+        <path d="M0 100 L0 90 Q4 79 24 76 Q44 79 48 90 L48 100 Z" />
+        <path d="M113 44 L118 30 L123 44 Z" />
+        <rect x="114.5" y="44" width="7" height="56" />
+        <path d="M263 40 L268 26 L273 40 Z" />
+        <rect x="264.5" y="40" width="7" height="60" />
+        <path d="M342 100 L342 90 Q346 79 366 76 Q386 79 390 90 L390 100 Z" />
+        <rect x="0" y="92" width="390" height="8" />
       </g>
       <g className="home-skyline__near">
-        <path d="M44 34 L52 6 L60 34 Z" />
-        <rect x="46" y="34" width="12" height="130" />
-        <rect x="42" y="74" width="20" height="5" rx="1" />
-        <rect x="43" y="110" width="18" height="4" rx="1" />
-        <path d="M330 22 L338 -4 L346 22 Z" />
-        <rect x="332" y="22" width="12" height="142" />
-        <rect x="328" y="64" width="20" height="5" rx="1" />
-        <rect x="329" y="104" width="18" height="4" rx="1" />
-        <path d="M135 164 L135 112 Q135 62 195 50 Q255 62 255 112 L255 164 Z" />
-        <rect x="194" y="30" width="2" height="22" />
-        <path d="M72 164 L72 134 Q72 110 98 104 Q124 110 124 134 L124 164 Z" />
-        <path d="M266 164 L266 134 Q266 110 292 104 Q318 110 318 134 L318 164 Z" />
-        <rect x="0" y="146" width="390" height="34" />
+        <path d="M45 26 L52 6 L59 26 Z" />
+        <rect x="46" y="26" width="12" height="84" />
+        <rect x="42" y="50" width="20" height="4" rx="1" />
+        <rect x="43" y="74" width="18" height="3" rx="1" />
+        <path d="M331 20 L338 0 L345 20 Z" />
+        <rect x="332" y="20" width="12" height="90" />
+        <rect x="328" y="44" width="20" height="4" rx="1" />
+        <rect x="329" y="70" width="18" height="3" rx="1" />
+        <path d="M138 104 L138 76 Q138 44 195 36 Q252 44 252 76 L252 104 Z" />
+        <rect x="194" y="20" width="2" height="17" />
+        <path d="M76 104 L76 86 Q76 70 100 66 Q124 70 124 86 L124 104 Z" />
+        <path d="M266 104 L266 86 Q266 70 290 66 Q314 70 314 86 L314 104 Z" />
+        <rect x="0" y="100" width="390" height="10" />
       </g>
-      <circle cx="195" cy="26" r="5" className="home-skyline__crescent" />
+      <circle cx="195" cy="16" r="4" className="home-skyline__crescent" />
       <g className="home-skyline__windows">
-        <path d="M183 164 L183 132 Q183 120 195 118 Q207 120 207 132 L207 164 Z" />
-        <path d="M154 150 L154 132 Q154 124 161 123 Q168 124 168 132 L168 150 Z" />
-        <path d="M222 150 L222 132 Q222 124 229 123 Q236 124 236 132 L236 150 Z" />
-        <rect x="94" y="138" width="8" height="12" rx="4" />
-        <rect x="288" y="138" width="8" height="12" rx="4" />
-        <rect x="50" y="90" width="4" height="9" rx="2" />
-        <rect x="336" y="82" width="4" height="9" rx="2" />
+        <path d="M184 104 L184 84 Q184 76 195 74 Q206 76 206 84 L206 104 Z" />
+        <path d="M156 94 L156 82 Q156 77 162 76 Q168 77 168 82 L168 94 Z" />
+        <path d="M222 94 L222 82 Q222 77 228 76 Q234 77 234 82 L234 94 Z" />
+        <rect x="96" y="88" width="8" height="10" rx="4" />
+        <rect x="286" y="88" width="8" height="10" rx="4" />
+        <rect x="50" y="60" width="4" height="8" rx="2" />
+        <rect x="336" y="54" width="4" height="8" rx="2" />
       </g>
     </svg>
   )
 }
 
-/** The day's five prayers, the next one lit, the day so far along a line beneath them. */
-function TodayCard({ state, timeZone }: { state: HomeSkyState | null; timeZone?: string }) {
+/**
+ * The day's five prayers, the next one lit, the day so far along a line
+ * beneath them, under the day's date.
+ */
+function TodayCard({ state, clock, timeZone }: { state: HomeSkyState | null; clock: Date | null; timeZone?: string }) {
   const t = useT()
   const language = useLanguage()
 
-  if (!state) {
-    return <div className="home-today home-today--loading mt-5 h-[11rem] animate-pulse" aria-hidden />
+  if (!state || !clock) {
+    return <div className="home-today home-today--loading h-[6.25rem] animate-pulse" aria-hidden />
   }
 
   const nextIndex = state.tomorrow ? 0 : DAILY_PRAYERS.indexOf(state.next.id)
-  const heading = state.tomorrow ? t('Tomorrow') : t('Today')
+  const dates = dayDates(state.tomorrow ? state.next.at : clock, language)
 
   return (
-    <Link href="/prayer" className="home-today home-press reveal ed-focus mt-5 block" aria-label={`${heading}, ${t('All times')}`}>
-      <span className="flex items-center justify-between px-2 pb-3.5">
-        <span className="text-[0.65625rem] font-semibold uppercase tracking-[0.2em] text-[var(--hv-pc-label)]">{heading}</span>
-        <span className="inline-flex items-center gap-[3px] text-[0.78125rem] font-semibold text-[var(--hv-pc-link)]">
+    <Link href="/prayer" className="home-today home-press reveal ed-focus block" aria-label={`${dates.gregorian}, ${t('All times')}`}>
+      <span className="flex items-center justify-between gap-3 px-1.5 pb-1.5">
+        <span className="flex min-w-0 items-center gap-1.5 text-[0.71875rem] text-[var(--hv-pc-label)]">
+          <svg aria-hidden width="11" height="11" viewBox="0 0 24 24" className="shrink-0 fill-[var(--hv-accent-gold)]">
+            <path d="M15.5 3.2A9 9 0 1 0 20.8 15 7.2 7.2 0 0 1 15.5 3.2Z" />
+          </svg>
+          <span className="truncate">
+            <span className="font-semibold text-[var(--hv-normal-color)]">{state.tomorrow ? t('Tomorrow') : dates.hijri}</span>
+            <span aria-hidden> · </span>
+            {dates.gregorian}
+          </span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-[2px] text-[0.75rem] font-semibold text-[var(--hv-pc-link)]">
           {t('All times')}
-          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="rtl:-scale-x-100">
+          <svg aria-hidden width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="rtl:-scale-x-100">
             <path d="M9 6l6 6-6 6" />
           </svg>
         </span>
@@ -332,12 +373,15 @@ function TodayCard({ state, timeZone }: { state: HomeSkyState | null; timeZone?:
               className={on ? 'home-today__cell home-today__cell--on' : past ? 'home-today__cell home-today__cell--past' : 'home-today__cell'}
               aria-current={on ? 'time' : undefined}
             >
-              <span className="max-w-full truncate px-0.5 text-[0.71875rem] font-semibold tracking-[0.02em]">{prayerName(id)}</span>
-              <svg aria-hidden width="22" height="22" viewBox="0 0 24 24" className="home-today__icon">
-                <path d={PRAYER_ICONS[id]} />
-              </svg>
-              <span className="text-[0.875rem] font-semibold tabular-nums tracking-[-0.01em]">
-                {shortTime(state.day[id], language, timeZone)}
+              <span className="max-w-full truncate px-0.5 text-[0.6875rem] font-semibold tracking-[0.02em]">{prayerName(id)}</span>
+              {/* The time with its small picture beside it, so the card stays one slim row. */}
+              <span className="flex items-center gap-[3px]">
+                <svg aria-hidden width="13" height="13" viewBox="0 0 24 24" className="home-today__icon shrink-0">
+                  <path d={PRAYER_ICONS[id]} />
+                </svg>
+                <span className="text-[0.8125rem] font-semibold tabular-nums tracking-[-0.01em]">
+                  {shortTime(state.day[id], language, timeZone)}
+                </span>
               </span>
             </li>
           )

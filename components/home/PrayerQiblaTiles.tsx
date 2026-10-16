@@ -13,7 +13,7 @@ import { useT } from '@/lib/i18n'
  */
 function QiblaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-11 w-11 shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-[1.875rem] w-[1.875rem] shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-case" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#f4f1e8" />
@@ -45,7 +45,7 @@ function QiblaGlyph() {
  */
 function HalaqaGlyph() {
   return (
-    <svg viewBox="0 0 64 64" className="h-11 w-11 shrink-0" role="img" aria-hidden>
+    <svg viewBox="0 0 64 64" className="h-[1.875rem] w-[1.875rem] shrink-0" role="img" aria-hidden>
       <defs>
         <linearGradient id="pqt-halaqa-dot" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#5cc4ab" />
@@ -85,31 +85,31 @@ function Tile({
   href,
   image,
   title,
-  subtitle,
+  detail,
 }: {
   href: string
   image: React.ReactNode
   title: string
-  subtitle: string
+  /** A short fact beside the name, such as the qibla's bearing. */
+  detail?: string
 }) {
   return (
     <Link
       href={href}
-      className="home-v2-card home-press ed-focus flex flex-col items-center gap-2.5 rounded-[1.375rem] px-1.5 pb-4 pt-[1.125rem] text-center"
+      className="home-v2-card home-press ed-focus flex flex-col items-center gap-1.5 rounded-[1.125rem] px-1.5 pb-2 pt-2.5 text-center"
     >
       {image}
-      <span className="flex w-full min-w-0 flex-col items-center gap-0.5">
-        <span className="block max-w-full truncate text-[0.84375rem] font-semibold tracking-[-0.005em]">{title}</span>
-        <span className="block max-w-full truncate text-[0.75rem] tabular-nums text-[var(--hv-text3)]">{subtitle}</span>
+      <span className="block max-w-full truncate text-[0.78125rem] font-semibold tracking-[-0.005em]">
+        {title}
+        {detail ? <span className="ms-1 font-medium tabular-nums text-[var(--hv-text3)]">{detail}</span> : null}
       </span>
     </Link>
   )
 }
 
 /**
- * Three small shortcuts below today's prayers — a picture each instead of a
- * row of text, matching how the rest of Home leads with an image before a
- * label.
+ * Three small shortcuts below today's prayers — a picture and a name each,
+ * kept short so all of Home fits on one screen.
  */
 export default function PrayerQiblaTiles() {
   const t = useT()
@@ -119,9 +119,9 @@ export default function PrayerQiblaTiles() {
   if (!ready) {
     return (
       <div className="grid grid-cols-3 gap-3">
-        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
-        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
-        <div className="home-v2-card h-[7.75rem] animate-pulse rounded-[1.375rem]" />
+        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
+        <div className="home-v2-card h-[4.375rem] animate-pulse rounded-[1.125rem]" />
       </div>
     )
   }
@@ -132,19 +132,17 @@ export default function PrayerQiblaTiles() {
         href="/prayer/qibla"
         image={<QiblaGlyph />}
         title={t('Qibla')}
-        subtitle={t('{degrees}°', { degrees: bearing })}
+        detail={t('{degrees}°', { degrees: bearing })}
       />
       <Tile
         href="/prayer"
-        image={<img src="/icons/noto/mosque.svg" alt="" className="h-11 w-11 shrink-0" />}
+        image={<img src="/icons/noto/mosque.svg" alt="" className="h-[1.875rem] w-[1.875rem] shrink-0" />}
         title={t('Prayer')}
-        subtitle={t('Times')}
       />
       <Tile
         href="/halaqa"
         image={<HalaqaGlyph />}
         title={t('Halaqa')}
-        subtitle={t('Group reading')}
       />
     </nav>
   )

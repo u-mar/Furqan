@@ -4209,9 +4209,10 @@ html.splash-seen .app-splash {
    path, the next prayer large beneath it and a skyline at its foot. In the
    dark themes the page settles into that sky's own ground; in light the sky
    runs on down into warm sand, with linen cards, ink and a deep emerald.
+   The colours are a theme of their own (.hv-theme) that a halaqa wears too.
    ====================================================================== */
 
-.home-v2 {
+.hv-theme {
   --hv-ground: var(--app-bg);
   --hv-ink: #f5efe3;
   --hv-ink2: rgba(245, 239, 227, 0.78);
@@ -4280,7 +4281,7 @@ html.dark.black .home-v2[data-sky] {
   --hv-ground: #000000;
 }
 
-html:not(.dark) .home-v2 {
+html:not(.dark) .hv-theme {
   --hv-ground: #e9e2d2;
   --hv-ink: #1e1b16;
   --hv-ink2: #5b554a;
@@ -4299,8 +4300,8 @@ html:not(.dark) .home-v2 {
   --hv-moon-glow: #9a9282;
   --hv-pill-bg: #0e3a35;
   --hv-pill-border: rgba(14, 58, 53, 0.9);
-  --hv-skyline: #d4cbb7;
-  --hv-skyline-mask: linear-gradient(180deg, #000 45%, transparent 92%);
+  --hv-skyline: #c9b994;
+  --hv-skyline-mask: linear-gradient(180deg, #000 78%, transparent 100%);
   --hv-now-dot: #0e3a35;
   --hv-now-shadow: 0 0 0 4px rgba(14, 58, 53, 0.14);
   --hv-pc-bg: #f2ecdf;
@@ -4349,7 +4350,7 @@ html:not(.dark) .home-v2 {
 }
 
 html:not(.dark) .home-sky {
-  bottom: -158px;
+  bottom: -5.5rem;
   background: linear-gradient(180deg, var(--hv-l0) 0%, var(--hv-l1) 41%, var(--hv-l2) 70%, var(--hv-ground) 100%);
 }
 
@@ -4360,8 +4361,7 @@ html:not(.dark) .home-sky {
 .home-sky::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto;
-  height: 900px;
+  inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cg fill='none' stroke='%23e0bc74' stroke-width='0.7' stroke-opacity='0.1'%3E%3Cpolygon points='16,16 40,16 40,40 16,40'/%3E%3Cpolygon points='28,11 45,28 28,45 11,28'/%3E%3Cpath d='M28 0V11M28 45V56M0 28H11M45 28H56'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3C/g%3E%3C/svg%3E");
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
@@ -4382,9 +4382,13 @@ html:not(.dark) .home-sky {
   width: 120%;
   aspect-ratio: 468 / 496;
   transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, var(--hv-sky-glow), transparent 70%);
+  background: radial-gradient(closest-side, var(--hv-sky-glow-dark), transparent 70%);
   opacity: 0;
   transition: opacity 0.7s ease;
+}
+
+html:not(.dark) .home-sky-glow {
+  background: radial-gradient(closest-side, var(--hv-sky-glow), transparent 70%);
 }
 
 .home-v2[data-sky] .home-sky-glow {
@@ -4426,8 +4430,8 @@ html:not(.dark) .home-sky {
 .home-glass-round {
   display: flex;
   flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -4492,10 +4496,10 @@ html:not(.dark) .home-sky {
 /* "in 1h 50m · at 3:00 PM", on smoked glass (deep emerald in light) */
 .home-pill {
   display: inline-flex;
-  height: 2.125rem;
+  height: 1.875rem;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 0.875rem;
+  gap: 0.4375rem;
+  padding: 0 0.8125rem;
   border-radius: 999px;
   border: 1px solid var(--hv-pill-border);
   background: var(--hv-pill-bg);
@@ -4543,14 +4547,21 @@ html:not(.dark) .home-sky {
 
 .home-skyline__windows {
   fill: #f2c879;
-  opacity: var(--hv-windows);
+  opacity: 1;
   transition: opacity 0.7s ease;
 }
 
+html:not(.dark) .home-skyline__windows {
+  opacity: var(--hv-windows);
+}
+
 /* Today's five prayers */
+/* Slim, with a little ground between it and the skyline so the mosque
+   stands on something. */
 .home-today {
-  border-radius: 1.625rem;
-  padding: 1.125rem 0.75rem;
+  margin-top: 0.875rem;
+  border-radius: 1.25rem;
+  padding: 0.625rem 0.5625rem 0.5rem;
   border: 1px solid var(--hv-pc-border);
   background: var(--hv-pc-bg);
   box-shadow: var(--hv-pc-shadow);
@@ -4567,12 +4578,12 @@ html:not(.dark) .home-sky {
 .home-today__cell {
   display: flex;
   min-width: 0;
-  min-height: 5.5rem;
+  min-height: 2.875rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border-radius: 1.125rem;
+  gap: 2px;
+  border-radius: 0.8125rem;
   border: 1px solid transparent;
   color: var(--hv-normal-color);
   --hv-icon: var(--hv-normal-icon);
@@ -4602,7 +4613,7 @@ html:not(.dark) .home-sky {
   position: relative;
   display: block;
   height: 3px;
-  margin: 1rem 10% 2px;
+  margin: 0.5rem 10% 0.25rem;
   border-radius: 999px;
   background: var(--hv-pc-track);
 }
@@ -4632,18 +4643,58 @@ html:not(.dark) .home-sky {
   transition: inset-inline-start 0.7s ease;
 }
 
-/* The cards below the sky */
-.home-v2-label {
-  margin: 0 0 0.875rem;
-  padding: 0 0.25rem;
-  font-size: 0.65625rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--hv-text3);
+/* Where all of Home does not fit the screen, it tightens a step at a time
+   (see useFitToScreen): first the small label, the prayer pictures and a
+   second line of Arabic go; then a second line of translation, and the
+   prayer's name steps down a size. */
+.home-v2[data-tight] .home-cards {
+  gap: 0.5rem;
 }
 
-.home-v2-card {
+.home-v2[data-tight] .home-next-label,
+.home-v2[data-tight] .home-today__icon {
+  display: none;
+}
+
+.home-v2[data-tight] .home-today__cell {
+  min-height: 2.625rem;
+}
+
+.home-v2[data-tight] .home-today {
+  margin-top: 0.5rem;
+}
+
+.home-v2[data-tight] .weekly-verse__qcf,
+.home-v2[data-tight] .weekly-verse__arabic {
+  -webkit-line-clamp: 1;
+  max-height: 1.85em;
+}
+
+.home-v2[data-tight='2'] .weekly-verse__translation {
+  -webkit-line-clamp: 1;
+}
+
+.home-v2[data-tight='2'] .home-next-name {
+  height: 2.375rem;
+  font-size: 2rem;
+}
+
+.home-v2[data-tight='2'] .home-arc-wrap {
+  padding-top: calc(7.7% + 3px);
+}
+
+.home-v2[data-tight='2'] .home-skyline {
+  margin-top: calc(-9.23% - 10px);
+}
+
+.home-v2[data-tight='2'] .home-today {
+  padding-top: 0.625rem;
+  padding-bottom: 0.5rem;
+}
+
+/* The cards below the sky */
+.home-v2-card,
+.hv-card {
   border: 1px solid var(--hv-border);
   background: var(--hv-surface);
   box-shadow: var(--hv-shadow);
@@ -4660,42 +4711,363 @@ html:not(.dark) .home-sky {
   box-shadow: 0 0 8px color-mix(in srgb, var(--home-sage) 90%, transparent);
 }
 
-/* On Home in light, the tab bar is the same linen as the cards. */
-html:not(.dark):has(.home-v2) .bottom-nav {
+/* On Home and in a halaqa, in light, the tab bar is the same linen as the cards. */
+html:not(.dark):has(.hv-theme) .bottom-nav {
   background: rgba(242, 236, 223, 0.97);
   border-top-color: rgba(48, 38, 20, 0.09);
   box-shadow: 0 -12px 28px -20px rgba(60, 44, 18, 0.28);
 }
 
-html:not(.dark):has(.home-v2) .bottom-nav__item {
+html:not(.dark):has(.hv-theme) .bottom-nav__item {
   color: #6f685b;
 }
 
-html:not(.dark):has(.home-v2) .bottom-nav__label--active {
+html:not(.dark):has(.hv-theme) .bottom-nav__label--active {
   color: #1e1b16;
 }
 
-html:not(.dark):has(.home-v2) .bottom-nav__dot--active {
+html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   background: #0e5f55;
   box-shadow: 0 0 8px rgba(14, 95, 85, 0.45);
 }
 
 /* The weekly verse on the new Home: larger script, and the translation in
    the same light italic serif the Qari videos use. */
+/* At most two lines of each, so the card keeps its size on one screen; the
+   whole verse is a tap away in the reader. */
+.home-v2 .weekly-verse__qcf,
+.home-v2 .weekly-verse__arabic {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  padding-block: 0;
+  text-align: center;
+  line-height: 1.85;
+  max-height: calc(2 * 1.85em);
+}
+
 .home-v2 .weekly-verse__qcf {
-  font-size: 1.625rem;
+  font-size: 1.3125rem;
+}
+
+.home-v2 .weekly-verse__qcf .mushaf-translation-qcf-word {
+  display: inline;
+  margin-inline: 0.14em;
 }
 
 .home-v2 .weekly-verse__arabic {
-  font-size: 1.75rem;
+  font-size: 1.375rem;
 }
 
 .home-v2 .weekly-verse__translation {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font-family: var(--font-edit), 'Cormorant Garamond', Georgia, serif;
   font-style: italic;
   font-weight: 500;
-  font-size: 1.25rem;
-  line-height: 1.5;
+  font-size: 1.03125rem;
+  line-height: 1.35;
   letter-spacing: 0;
   color: var(--hv-translation);
+}
+
+/* ======================================================================
+   Inside a halaqa: its members seated in a circle, gold for whoever has
+   read today, and the khatmah as a shelf of thirty
+   spines. Wears Home's colours (.hv-theme).
+   ====================================================================== */
+
+/* No colour behind the circle: the page's own ground, with only the faint
+   gold star lattice at the top. */
+.hq-sky {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 34rem;
+  pointer-events: none;
+}
+
+/* The same faint gold star lattice as Home's sky */
+.hq-sky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cg fill='none' stroke='%23e0bc74' stroke-width='0.7' stroke-opacity='0.1'%3E%3Cpolygon points='16,16 40,16 40,40 16,40'/%3E%3Cpolygon points='28,11 45,28 28,45 11,28'/%3E%3Cpath d='M28 0V11M28 45V56M0 28H11M45 28H56'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.25) 45%, transparent 80%);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.25) 45%, transparent 80%);
+}
+
+/* The circle */
+.hq-circle__line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--hv-text) 16%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 1.5 5;
+  stroke-linecap: round;
+}
+
+.hq-circle__track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--hv-text) 9%, transparent);
+  stroke-width: 5;
+}
+
+.hq-circle__progress {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.hq-ring-stop-a {
+  stop-color: #f3dc9b;
+}
+
+.hq-ring-stop-b {
+  stop-color: #c99a45;
+}
+
+html:not(.dark) .hq-ring-stop-a {
+  stop-color: #d6b061;
+}
+
+html:not(.dark) .hq-ring-stop-b {
+  stop-color: #9a7633;
+}
+
+.hq-circle__book {
+  fill: none;
+  stroke: var(--hv-accent-gold);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+/* A seat on the circle: lit gold once they have read, a dashed ring while not yet */
+.hq-seat {
+  position: absolute;
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.hq-seat--read {
+  box-shadow: 0 0 0 2px var(--hv-accent-gold), 0 0 0 6px color-mix(in srgb, var(--hv-accent-gold) 16%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--hv-accent-gold) 60%, transparent);
+}
+
+.hq-seat--waiting {
+  outline: 1.5px dashed color-mix(in srgb, var(--hv-text) 28%, transparent);
+  outline-offset: 3px;
+}
+
+.hq-seat--waiting .halaqa-avatar {
+  opacity: 0.6;
+}
+
+.hq-seat--waiting.hq-seat--me {
+  outline-color: var(--hv-teal);
+}
+
+.hq-seat--waiting.hq-seat--me .halaqa-avatar {
+  opacity: 1;
+}
+
+.hq-seat--more {
+  background: color-mix(in srgb, var(--hv-text) 10%, transparent);
+  color: var(--hv-text2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tick on a seat sits on the sky, not on a card */
+.hq-seat .halaqa-tick {
+  border-color: var(--hv-ground);
+  background: var(--hv-accent-gold);
+  color: #1b1405;
+}
+
+/* "Yes, I read": the one big button */
+.hq-cta {
+  display: flex;
+  width: 100%;
+  height: 3.125rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #74d4bb 0%, #4fb89d 100%);
+  color: #06201b;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 14px 30px -14px rgba(92, 196, 171, 0.75);
+}
+
+html:not(.dark) .hq-cta {
+  background: linear-gradient(180deg, #13705f 0%, #0e5a4f 100%);
+  color: #f3efe4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 14px 30px -14px rgba(14, 90, 79, 0.6);
+}
+
+.hq-done {
+  display: flex;
+  height: 3.125rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--hv-teal) 35%, transparent);
+  background: color-mix(in srgb, var(--hv-teal) 13%, transparent);
+  color: var(--hv-teal);
+  font-size: 0.90625rem;
+  font-weight: 600;
+}
+
+.hq-done__tick {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--hv-teal);
+  color: var(--hv-on-teal);
+}
+
+/* Share check-in, Invite */
+.hq-action {
+  display: flex;
+  height: 3rem;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--hv-border);
+  background: var(--hv-surface);
+  box-shadow: var(--hv-shadow);
+  color: var(--hv-text);
+  font-size: 0.84375rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hq-icon {
+  display: flex;
+  width: 2.125rem;
+  height: 2.125rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--hv-teal-line);
+  background: var(--hv-teal-wash);
+  color: var(--hv-teal);
+}
+
+.hq-divider {
+  height: 1px;
+  margin-inline-start: 4.25rem;
+  background: var(--hv-border);
+}
+
+/* The last two weeks: one slim bar a day, today at the end */
+.hq-strip {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.hq-strip__day {
+  width: 5px;
+  height: 11px;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--hv-text) 12%, transparent);
+}
+
+.hq-strip__day--read {
+  background: var(--hv-teal);
+}
+
+.hq-strip__day--before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hv-text) 10%, transparent);
+}
+
+/* Read today, or not yet */
+.hq-status {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px dashed color-mix(in srgb, var(--hv-text) 22%, transparent);
+}
+
+.hq-status--read {
+  border: none;
+  background: var(--hv-teal);
+  color: var(--hv-on-teal);
+}
+
+/* The khatmah: thirty spines on a shelf */
+.hq-shelf {
+  display: grid;
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  align-items: end;
+  gap: 3px;
+  height: 2.375rem;
+  padding-bottom: 3px;
+  border-bottom: 2px solid color-mix(in srgb, var(--hv-accent-gold) 45%, transparent);
+}
+
+.hq-spine {
+  height: 100%;
+  border-radius: 2px 2px 1px 1px;
+}
+
+/* Every other spine a touch shorter, as books stand */
+.hq-spine:nth-child(3n + 2) {
+  height: 88%;
+}
+
+.hq-spine:nth-child(4n + 3) {
+  height: 94%;
+}
+
+.hq-spine--done {
+  background: linear-gradient(180deg, #f3dc9b 0%, #c99a45 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.25), inset 0 -4px 0 rgba(0, 0, 0, 0.12);
+}
+
+html:not(.dark) .hq-spine--done {
+  background: linear-gradient(180deg, #d6b061 0%, #9a7633 100%);
+}
+
+.hq-spine--mine {
+  background: var(--hv-teal);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.25);
+}
+
+.hq-spine--taken {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hv-text) 32%, transparent);
+}
+
+.hq-spine--free {
+  background: color-mix(in srgb, var(--hv-text) 8%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hq-circle__progress {
+    transition: none;
+  }
 }

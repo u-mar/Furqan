@@ -21,6 +21,53 @@ export function HalaqaScreen({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * A halaqa itself, on Home's colours, with Home's faint gold star lattice
+ * at the top and nothing else behind its circle.
+ */
+export function HalaqaSkyScreen({ children }: { children: ReactNode }) {
+  return (
+    <main className="hv-theme relative min-h-[100dvh] overflow-x-hidden">
+      <div className="hq-sky" aria-hidden />
+      <div
+        className="relative mx-auto w-full max-w-lg px-5 pt-[max(0.875rem,calc(env(safe-area-inset-top)+0.5rem))]"
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem)` }}
+      >
+        {children}
+      </div>
+    </main>
+  )
+}
+
+/** Back, the halaqa's name in the middle, and whatever goes on the right. */
+export function HalaqaSkyHeader({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
+  const t = useT()
+  return (
+    <header className="flex items-center gap-3">
+      <Link href="/halaqa" className="home-glass-round ed-focus" aria-label={t('Back')}>
+        <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" strokeWidth={1.9} />
+      </Link>
+      <div className="min-w-0 flex-1 text-center">
+        <h1 className="home-serif truncate text-[1.375rem] font-medium leading-tight tracking-[-0.02em] text-[var(--hv-text)]">
+          {title}
+        </h1>
+        {sub ? <p className="mt-0.5 truncate text-[0.75rem] text-[var(--hv-text3)]">{sub}</p> : null}
+      </div>
+      {right ?? <span className="w-10 shrink-0" aria-hidden />}
+    </header>
+  )
+}
+
+/** A small tracked label above a block, in the halaqa's own colours. */
+export function SkyLabel({ children, right }: { children: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="mx-1 mb-2.5 mt-7 flex items-baseline justify-between gap-3">
+      <h2 className="text-[0.65625rem] font-semibold uppercase tracking-[0.2em] text-[var(--hv-text3)]">{children}</h2>
+      {right}
+    </div>
+  )
+}
+
 export function HalaqaHeader({
   title,
   sub,

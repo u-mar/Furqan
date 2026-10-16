@@ -64,6 +64,17 @@ export function DayDots({ days, size }: { days: number[]; size?: number }) {
   )
 }
 
+/** The last couple of weeks as one row of slim bars, today at the end. */
+export function RecentStrip({ line }: { line: DayLine }) {
+  return (
+    <span className="hq-strip" aria-hidden>
+      {line.days.map((day, i) => (
+        <span key={i} className={cn('hq-strip__day', day === 1 && 'hq-strip__day--read', day === -1 && 'hq-strip__day--before')} />
+      ))}
+    </span>
+  )
+}
+
 export function daysLabel(line: DayLine): string {
   return tr('Read on {count} of {possible} days', { count: line.count, possible: line.possible })
 }
