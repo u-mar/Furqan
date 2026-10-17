@@ -23,7 +23,8 @@ export default function Home() {
 
   return (
     <HomeSkyScreen displayName={displayName === 'Guest' ? t('Guest') : displayName}>
-      <div className="reveal" style={{ animationDelay: '80ms' }}>
+      {/* Room above and below, so the shortcuts read as their own row */}
+      <div className="reveal my-2.5" style={{ animationDelay: '80ms' }}>
         <PrayerQiblaTiles />
       </div>
 

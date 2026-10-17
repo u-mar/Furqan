@@ -4725,15 +4725,103 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   background: color-mix(in srgb, var(--hv-text) 15%, transparent);
 }
 
-/* The small tracked heading above the weekly verse's card. */
-.home-section-label {
-  margin: 0.375rem 0 0.75rem;
-  padding: 0 0.25rem;
-  font-size: 0.65625rem;
+/* The weekly verse as a page of the mushaf: a thin double gold rule around
+   it, the title set in gold. In light, cream paper and dark ink with an
+   emerald play button; in the dark themes, the night page with cream ink and
+   the teal the rest of dark mode uses. */
+.home-parchment {
+  --pc-ink: #231c12;
+  --pc-ink2: #4a4234;
+  --pc-muted: #6f6553;
+  --pc-faint: #9a8f7a;
+  --pc-gold: #9a7633;
+  --pc-line: rgba(154, 118, 51, 0.22);
+  --pc-emerald: #0e5f55;
+  --pc-on-emerald: #f3efe4;
+  position: relative;
+  margin-top: 0.5rem;
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(154, 118, 51, 0.35);
+  background: linear-gradient(180deg, #fbf6ea 0%, #f3ead7 100%);
+  box-shadow: 0 18px 40px -24px rgba(60, 44, 18, 0.45);
+  color: var(--pc-ink);
+}
+
+html.dark .home-parchment {
+  --pc-ink: #f8f2e6;
+  --pc-ink2: rgba(245, 239, 227, 0.84);
+  --pc-muted: rgba(245, 239, 227, 0.68);
+  --pc-faint: rgba(245, 239, 227, 0.48);
+  --pc-gold: #e0bc74;
+  --pc-line: rgba(224, 188, 116, 0.2);
+  --pc-emerald: #5cc4ab;
+  --pc-on-emerald: #0a201c;
+  border-color: rgba(224, 188, 116, 0.34);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.025) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 18px 40px -22px rgba(0, 0, 0, 0.7);
+}
+
+html.dark .home-parchment .qari-skeleton {
+  background: rgba(224, 188, 116, 0.12);
+}
+
+.home-parchment::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--pc-line);
+  border-radius: 0.9375rem;
+  pointer-events: none;
+}
+
+.home-parchment__label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--pc-gold);
+  font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--hv-text3);
+}
+
+.home-parchment__gem {
+  width: 4px;
+  height: 4px;
+  transform: rotate(45deg);
+  background: var(--pc-gold);
+}
+
+.home-parchment__foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--pc-line);
+}
+
+.home-parchment .qari-skeleton {
+  background: rgba(154, 118, 51, 0.14);
+}
+
+.home-v2 .home-parchment .weekly-verse__qcf,
+.home-v2 .home-parchment .weekly-verse__arabic {
+  color: var(--pc-ink);
+}
+
+.home-v2 .home-parchment .weekly-verse__translation {
+  color: var(--pc-ink2);
+}
+
+/* The ayah's closing mark stays on the line with its last word. */
+.weekly-verse__keep {
+  white-space: nowrap;
 }
 
 /* Up to three lines of each, so a long verse keeps the card a sensible
@@ -4755,7 +4843,7 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
 }
 
 .home-v2 .weekly-verse__qcf .mushaf-translation-qcf-word {
-  display: inline-block;
+  display: inline;
 }
 
 .home-v2 .weekly-verse__arabic {
@@ -4770,8 +4858,8 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   font-family: var(--font-edit), 'Cormorant Garamond', Georgia, serif;
   font-style: italic;
   font-weight: 500;
-  font-size: 1.25rem;
-  line-height: 1.5;
+  font-size: 1.1875rem;
+  line-height: 1.45;
   letter-spacing: 0;
   color: var(--hv-translation);
 }
