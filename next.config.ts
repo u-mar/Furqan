@@ -26,13 +26,24 @@ const nextConfig: NextConfig = {
         // Next's own files, which it already marks: kept for good once built (their names change
         // with every build), never kept in development. A rule here overrides whatever the server
         // or a route sets itself.
-        source: '/:path((?!api/|_next/static/|sw\\.js$).*)',
+        source: '/:path((?!api/|_next/static/|sw\\.js$|qcf/|fonts/|icons/|reciters/).*)',
         headers: [
           {
             key: 'Cache-Control',
             value: 'no-cache, must-revalidate',
           },
         ],
+      },
+      {
+        // The mushaf page fonts and the surah title font never change under the same name: kept
+        // for a year instead of being checked again on every visit.
+        source: '/:dir(qcf|fonts)/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        // The tab pictures and reciter portraits: kept a week.
+        source: '/:dir(icons|reciters)/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }],
       },
     ]
   },

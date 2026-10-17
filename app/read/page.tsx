@@ -50,7 +50,7 @@ import { useSomaliVoicePlayback } from '@/hooks/useSomaliVoicePlayback'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useHalaqaReadingTick } from '@/hooks/useHalaqaReadingTick'
 import { useBackGoesHome } from '@/hooks/useBackGoesHome'
-import { applyThemeToDocument, getAppSettings, READING_MODES, setAppSettings, THEME_MODES } from '@/lib/app-settings'
+import { applyThemeToDocument, READING_MODES, setAppSettings, THEME_MODES } from '@/lib/app-settings'
 import { isBookmarked, toggleBookmark } from '@/lib/bookmarks'
 import { cn } from '@/lib/cn'
 import {
@@ -70,10 +70,10 @@ import {
   getChapters,
   getMushafPage,
   getVerseByKey,
-  getVersesByChapter,
   getVisualPageForVerse,
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
+import { surahStartPage } from '@/lib/juz-pages'
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
 import { getVerseQcfGlyphs, getVerseQcfGlyphWords, versePageNumber } from '@/lib/qcf-page'
@@ -90,6 +90,17 @@ import { DOUBLE_TAP_MS } from '@/hooks/useLongPress'
 import { toastError } from '@/lib/toast'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
+/**
+ * Reads the Quran saved on the phone into memory (a parse that holds a slow
+ * phone still for seconds) only when there is no connection to load the page
+ * from; online, each page comes from the server, a few kilobytes at a time.
+ */
+async function readSavedQuranIfOffline(): Promise<void> {
+  if (isOfflineReady() || navigator.onLine) return
+  const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
+  await ensureOfflineHydrated().catch(() => {})
+}
+
 type ReadAudioMode = 'arabic' | 'somali' | 'both'
 const READ_AUDIO_MODES: ReadAudioMode[] = ['arabic', 'somali', 'both']
 const AUDIO_MODE_KEY = 'nadir-read-audio-mode'
@@ -196,10 +207,7 @@ function ReadPageContent() {
 
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
-    if (!isOfflineReady()) {
-      const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
-      await ensureOfflineHydrated().catch(() => {})
-    }
+    await readSavedQuranIfOffline()
     const instant = getLocalMushafPage(next)
     if (instant && instant.length > 0) return instant
     return getMushafPage(next)
@@ -252,10 +260,7 @@ function ReadPageContent() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      if (!isOfflineReady()) {
-        const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
-        await ensureOfflineHydrated().catch(() => {})
-      }
+      await readSavedQuranIfOffline()
       const index = await resolveBoundaryIndex()
       if (!cancelled) setBoundaryIndex(index)
     })()
@@ -281,10 +286,7 @@ function ReadPageContent() {
       const seq = ++pageLoadSeqRef.current
       setLoadError(null)
 
-      if (!isOfflineReady()) {
-        const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
-        await ensureOfflineHydrated().catch(() => {})
-      }
+      await readSavedQuranIfOffline()
       if (seq !== pageLoadSeqRef.current) return
 
       const instant = getLocalMushafPage(next)
@@ -391,9 +393,10 @@ function ReadPageContent() {
     playSomaliVoiceRef.current = playSomaliVoice
   }, [playSomaliVoice])
 
+  // The Somali voice's index (half a megabyte) is only fetched once that voice is chosen.
   useEffect(() => {
-    void loadSomaliVoiceManifest()
-  }, [])
+    if (audioMode !== 'arabic') void loadSomaliVoiceManifest()
+  }, [audioMode])
 
 
   const arabicByKey = useMemo(
@@ -438,22 +441,13 @@ function ReadPageContent() {
 
   useEffect(() => {
     getChapters().then(setChapters).catch(() => {})
-    const settings = getAppSettings()
-    if (!isOfflineReady()) {
-      import('@/lib/local-quran-store').then(({ hydrateOfflineFromDisk }) => {
-        hydrateOfflineFromDisk().catch(() => {
-          if (!settings.offlineDownloaded) return
-        })
-      })
-    }
   }, [])
 
   useEffect(() => {
     if (initialLoadDone.current) return
     initialLoadDone.current = true
     void (async () => {
-      const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
-      await ensureOfflineHydrated().catch(() => {})
+      await readSavedQuranIfOffline()
       const saved =
         initialPage > 0
           ? initialPage
@@ -471,11 +465,7 @@ function ReadPageContent() {
     setSearchOpen(false)
     setLoadError(null)
     try {
-      const verses = await getVersesByChapter(surahId)
-      const first = verses[0]
-      if (!first) return
-      const page = await getVisualPageForVerse(first.verse_key, first.page_number || 1)
-      await loadPage(page)
+      await loadPage(surahStartPage(surahId))
     } catch (err) {
       const message = err instanceof Error ? err.message : tr('Could not open surah')
       setLoadError(message)

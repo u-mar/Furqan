@@ -5,9 +5,6 @@ export const QCF_FONT_CDN_BASE = 'https://verses.quran.foundation/fonts/quran/ha
 export const SURAH_TITLE_FONT_URL = 'https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf'
 export const SURAH_TITLE_FONT_FAMILY = 'NadirSurahTitle'
 
-export const SURAH_NAME_FONT_URL =
-  'https://static-cdn.tarteel.ai/qul/fonts/surah-names/surah-header/QCF_SurahHeader_COLOR-Regular.ttf'
-
 export const TOTAL_MUSHAF_FONT_PAGES = 604
 
 /** CSS font-family for a mushaf page (e.g. QCF_P542). */

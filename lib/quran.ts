@@ -115,6 +115,10 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 }
 
 async function tryLocalMushafPage(pageNumber: number): Promise<Verse[] | null> {
+  // Online, a page comes from the server (a few kilobytes); the saved Quran is
+  // only read in (a parse that holds a slow phone still for seconds) offline.
+  const online = typeof navigator === 'undefined' || navigator.onLine
+  if (!isOfflineReady() && online) return null
   await ensureOfflineHydrated()
   const local = getLocalMushafPage(pageNumber)
   if (local?.length) {
@@ -154,7 +158,8 @@ export async function getMushafPage(pageNumber: number): Promise<Verse[]> {
     const fallback = await tryLocalMushafPage(pageNumber)
     if (fallback) return fallback
     try {
-      await hydrateOfflineFromDisk()
+      // The page service is down: the Quran file this site serves itself stands in.
+      await hydrateOfflineFromDisk({ allowNetwork: true })
       const retry = getLocalMushafPage(pageNumber)
       if (retry?.length) return retry
     } catch {
@@ -222,6 +227,21 @@ export async function getVisualPagesForScope(scope: {
 }
 
 export async function getVerseByKey(verseKey: string): Promise<Verse> {
+  // Already in memory: no request at all.
+  const inMemory = cachedQuranData?.verses ?? getOfflineQuranSnapshot()?.verses
+  const known = inMemory?.find((v) => v.verse_key === verseKey)
+  if (known) return known
+
+  // Online, one verse from the server instead of the whole Quran (16 MB).
+  if (!inMemory && (typeof navigator === 'undefined' || navigator.onLine)) {
+    try {
+      const res = await fetch(`/api/ayah?type=verse&verseKey=${encodeURIComponent(verseKey)}`)
+      if (res.ok) return (await res.json()) as Verse
+    } catch {
+      // Falls back to the whole file below.
+    }
+  }
+
   const data = await loadQuranData()
   const verse = data.verses.find((v) => v.verse_key === verseKey)
   if (!verse) {

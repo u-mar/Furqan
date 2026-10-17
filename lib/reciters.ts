@@ -986,7 +986,7 @@ export const RECITERS: Reciter[] = [
   },
   {
     id: 'hassan_al_wajdi',
-    photoUrl: '/reciters/hassan-al-wajdi.png',
+    photoUrl: '/reciters/hassan-al-wajdi.jpg',
     name: 'Hassan Al-Wajdi',
     source: 'mp3quran',
     folder: HASSAN_AL_WAJDI_AUDIO,

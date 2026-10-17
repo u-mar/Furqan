@@ -136,7 +136,8 @@ export async function loadSomaliVoiceManifest(): Promise<SomaliVoiceManifest | n
   if (typeof window === 'undefined') return null
 
   if (!manifestPromise) {
-    manifestPromise = fetch(SOMALI_VOICE_MANIFEST_PATH, { cache: 'no-store' })
+    // Revalidated rather than downloaded again every time (it is half a megabyte).
+    manifestPromise = fetch(SOMALI_VOICE_MANIFEST_PATH, { cache: 'no-cache' })
       .then(async (res) => {
         if (!res.ok) return null
         const data = (await res.json()) as SomaliVoiceManifest

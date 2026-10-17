@@ -31,34 +31,31 @@ function isLoaded(family: string): boolean {
 }
 
 /** How far (in em of its text) `glyphs`' baseline is from where it should be in its row. */
-function offsetEm(glyphs: HTMLElement): number | null {
-  const row = glyphs.closest<HTMLElement>('.mushaf-qcf-line')
-  const size = parseFloat(getComputedStyle(glyphs).fontSize)
-  if (!row || !(size > 0)) return null
-  const box = row.getBoundingClientRect()
-  if (!(box.height > 0)) return null
-  const marker = document.createElement('span')
-  marker.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'
-  glyphs.appendChild(marker)
-  const baseline = marker.getBoundingClientRect().top - box.top
-  marker.remove()
-  return Number.isFinite(baseline) ? (TARGET_BASELINE * box.height - baseline) / size : null
-}
-
-/**
- * Moves a page's lines (`glyphs`, set in `family`) so their baselines fall at
- * the same height in their rows as on every other page, through the
- * `--qcf-baseline-shift` property on `page`. Waits for the font: measuring a
- * stand-in font would be measuring the wrong thing.
- */
 export function alignQcfBaselines(page: HTMLElement, glyphs: HTMLElement[], family: string): void {
   if (typeof document === 'undefined' || !document.fonts || !isLoaded(family) || glyphs.length === 0) return
   page.style.setProperty('--qcf-baseline-shift', '0em')
-  const measured = glyphs
-    .slice(0, SAMPLE_LINES)
-    .map(offsetEm)
+  // Every marker goes in before anything is measured, then all are read and
+  // removed together: the page is laid out once, not once per sampled line.
+  const sample = glyphs.slice(0, SAMPLE_LINES)
+  const markers = sample.map((line) => {
+    const marker = document.createElement('span')
+    marker.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'
+    line.appendChild(marker)
+    return marker
+  })
+  const measured = sample
+    .map((line, i) => {
+      const row = line.closest<HTMLElement>('.mushaf-qcf-line')
+      const size = parseFloat(getComputedStyle(line).fontSize)
+      if (!row || !(size > 0)) return null
+      const box = row.getBoundingClientRect()
+      if (!(box.height > 0)) return null
+      const baseline = markers[i].getBoundingClientRect().top - box.top
+      return Number.isFinite(baseline) ? (TARGET_BASELINE * box.height - baseline) / size : null
+    })
     .filter((v): v is number => v !== null)
     .sort((a, b) => a - b)
+  for (const marker of markers) marker.remove()
   if (measured.length === 0) return
   const median = measured[Math.floor(measured.length / 2)]
   page.style.setProperty('--qcf-baseline-shift', `${median.toFixed(4)}em`)

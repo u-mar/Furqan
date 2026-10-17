@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useId, useMemo, useRef } from 'react'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -102,7 +102,16 @@ export default function Waveform({
     [onSeek]
   )
 
-  const playedBars = progress * bars
+  // All the bars as one path in a viewBox one unit per bar: each bar 0.62 wide,
+  // centred in its slot and on the middle line, as tall as its value.
+  const barsPath = useMemo(
+    () =>
+      values
+        .map((value, i) => `M${(i + 0.19).toFixed(2)} ${((100 - value) / 2).toFixed(1)}h0.62v${value.toFixed(1)}h-0.62z`)
+        .join(''),
+    [values]
+  )
+  const clipId = useId()
 
   return (
     <div
@@ -133,21 +142,20 @@ export default function Waveform({
         draggingRef.current = false
       }}
       className={cn(
-        'ed-focus flex touch-none items-center gap-[2px] overflow-hidden',
+        'ed-focus flex touch-none items-center overflow-hidden',
         onSeek && 'cursor-pointer',
         className
       )}
     >
-      {values.map((value, i) => (
-        <span
-          key={i}
-          className="min-w-px flex-1 rounded-[2px] transition-colors duration-150"
-          style={{
-            height: `${value}%`,
-            background: i < playedBars ? playedColor : idleColor,
-          }}
-        />
-      ))}
+      <svg aria-hidden viewBox={`0 0 ${bars} 100`} preserveAspectRatio="none" className="block h-full w-full">
+        <defs>
+          <clipPath id={clipId}>
+            <rect x="0" y="0" height="100" width={Math.max(0, Math.min(1, progress)) * bars} />
+          </clipPath>
+        </defs>
+        <path d={barsPath} style={{ fill: idleColor }} />
+        <path d={barsPath} style={{ fill: playedColor }} clipPath={`url(#${clipId})`} />
+      </svg>
     </div>
   )
 }

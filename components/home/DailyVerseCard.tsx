@@ -334,11 +334,15 @@ export default function DailyVerseCard() {
   const leadingWords = qcfWords.slice(0, -2)
   const closingWords = qcfWords.slice(-2)
 
+  // Light mode follows the design: the heading above the card, the surah and
+  // verse number at its top and a Listen button in its footer. The dark themes
+  // keep the quiet card. Both are here; the theme decides which shows.
   return (
     <section aria-label={t('Verse of the week')}>
+      <h2 className="home-section-label hv-light-only">{t('Verse of the week')}</h2>
       {/* A quiet card on Home's own colours, so the verse sits with the rest of the page */}
       <article className="home-verse-card" aria-busy={!ready}>
-        <h2 className="home-verse-card__label">
+        <h2 className="home-verse-card__label hv-dark-only">
           <span aria-hidden className="home-verse-card__gem" />
           {t('Verse of the week')}
           <span aria-hidden className="home-verse-card__gem" />
@@ -353,6 +357,14 @@ export default function DailyVerseCard() {
           )
         ) : (
           <div className="home-fade">
+            <Link
+              href={`/read?page=${page}`}
+              className="hv-light-only ed-focus -mx-1 flex items-baseline justify-between gap-3 rounded-md px-1"
+            >
+              <span className="min-w-0 truncate text-[0.8125rem] font-semibold text-[var(--pc-muted)]">{surahLabel}</span>
+              <span className="shrink-0 text-[0.78125rem] font-medium tabular-nums text-[var(--pc-faint)]">{config.verseKey}</span>
+            </Link>
+
             {/* Up to three lines of each; the whole verse opens in the reader. */}
             <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
               {useGlyphs ? (
@@ -401,27 +413,44 @@ export default function DailyVerseCard() {
             </Link>
 
             <div className="home-verse-card__foot">
+              <button
+                type="button"
+                onClick={togglePlay}
+                aria-pressed={playing}
+                className="hv-light-only ed-focus flex h-11 items-center gap-2.5 rounded-full pe-3 text-[0.875rem] font-semibold text-[var(--pc-ink)] transition-transform active:scale-95"
+              >
+                <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
+                  {playing ? (
+                    <Pause className="h-[13px] w-[13px] fill-current" strokeWidth={0} />
+                  ) : (
+                    <Play className="h-[13px] w-[13px] translate-x-px fill-current" strokeWidth={0} />
+                  )}
+                </span>
+                {playing ? t('Pause') : t('Listen')}
+              </button>
               <Link
                 href={`/read?page=${page}`}
-                className="ed-focus -mx-1 min-w-0 truncate rounded-md px-1 text-[0.75rem] font-semibold text-[var(--pc-muted)]"
+                className="hv-dark-only ed-focus -mx-1 min-w-0 truncate rounded-md px-1 text-[0.75rem] font-semibold text-[var(--pc-muted)]"
               >
                 {surahLabel}
                 <span className="ms-1.5 font-medium tabular-nums text-[var(--pc-faint)]">{config.verseKey}</span>
               </Link>
               <div className="-me-1.5 flex shrink-0 items-center">
-                <IconButton
-                  label={playing ? t('Pause') : t('Listen to this verse')}
-                  pressed={playing}
-                  onClick={togglePlay}
-                >
-                  <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
-                    {playing ? (
-                      <Pause className="h-3 w-3 fill-current" strokeWidth={0} />
-                    ) : (
-                      <Play className="h-3 w-3 translate-x-px fill-current" strokeWidth={0} />
-                    )}
-                  </span>
-                </IconButton>
+                <span className="hv-dark-only flex">
+                  <IconButton
+                    label={playing ? t('Pause') : t('Listen to this verse')}
+                    pressed={playing}
+                    onClick={togglePlay}
+                  >
+                    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
+                      {playing ? (
+                        <Pause className="h-3 w-3 fill-current" strokeWidth={0} />
+                      ) : (
+                        <Play className="h-3 w-3 translate-x-px fill-current" strokeWidth={0} />
+                      )}
+                    </span>
+                  </IconButton>
+                </span>
                 <IconButton label={saved ? t('Remove bookmark') : t('Bookmark verse')} pressed={saved} onClick={toggleSave}>
                   <Bookmark
                     className={cn('h-[17px] w-[17px]', saved && 'fill-current text-[var(--pc-emerald)]')}

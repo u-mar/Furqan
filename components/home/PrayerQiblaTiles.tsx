@@ -96,7 +96,7 @@ function Tile({
   return (
     <Link
       href={href}
-      className="home-press ed-focus flex flex-col items-center gap-1.5 rounded-[1.125rem] px-1.5 py-1.5 text-center"
+      className="home-tile home-press ed-focus flex flex-col items-center gap-1.5 rounded-[1.125rem] px-1.5 py-1.5 text-center"
     >
       {image}
       <span className="block max-w-full truncate text-[0.78125rem] font-semibold tracking-[-0.005em]">

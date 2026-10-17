@@ -2,7 +2,6 @@ import {
   qcfCdnFontUrl,
   qcfLegacyLocalFontUrl,
   qcfLocalFontUrl,
-  SURAH_NAME_FONT_URL,
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
 import { tr } from '@/lib/i18n-core'
@@ -10,7 +9,7 @@ import { tr } from '@/lib/i18n-core'
 /** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
 export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
 const CACHE_NAME = QCF_FONT_CACHE_NAME
-const SURAH_CACHE_KEY = '/fonts/surah-header-color.ttf'
+const SURAH_CACHE_KEY = '/fonts/surah-header-color.woff2'
 
 export function areOfflineFontsCached(): boolean {
   if (typeof window === 'undefined') return false
@@ -94,28 +93,6 @@ export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]>
   return urls.length > 0 ? urls : [cdn]
 }
 
-export async function resolveSurahNameFontUrl(): Promise<string> {
-  if (typeof caches !== 'undefined') {
-    try {
-      const cache = await caches.open(CACHE_NAME)
-      const hit = await cache.match(SURAH_CACHE_KEY)
-      if (hit) return SURAH_CACHE_KEY
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const local = '/fonts/surah-header-color.ttf'
-  try {
-    const head = await fetch(local, { method: 'HEAD' })
-    if (head.ok) return local
-  } catch {
-    /* ignore */
-  }
-
-  return SURAH_NAME_FONT_URL
-}
-
 export interface FontCacheProgress {
   percent: number
   done: number
@@ -166,7 +143,8 @@ export async function cacheAllMushafFonts(
 
   report()
 
-  await cacheFont(cache, SURAH_NAME_FONT_URL, SURAH_CACHE_KEY)
+  // The app's own compressed copy (119 KB), not the 1.8 MB original.
+  await cacheFont(cache, SURAH_CACHE_KEY, SURAH_CACHE_KEY)
   done += 1
   report()
 

@@ -147,12 +147,18 @@ async function saveQuranBundleToCache(source: Response): Promise<void> {
   await cache.put(QURAN_DATA_URL, source.clone())
 }
 
-async function loadQuranBundleResponse(): Promise<Response> {
+/**
+ * The whole Quran as saved on the phone: by an offline download, or by the
+ * service worker of an earlier version. Fetching it (16 MB) is only allowed
+ * where the caller says so, as a last resort.
+ */
+async function loadQuranBundleResponse(allowNetwork: boolean): Promise<Response> {
   if (typeof caches !== 'undefined') {
     const cache = await caches.open(OFFLINE_CACHE_NAME)
-    const cached = await cache.match(QURAN_DATA_URL)
+    const cached = (await cache.match(QURAN_DATA_URL)) ?? (await caches.match(QURAN_DATA_URL))
     if (cached) return cached
   }
+  if (!allowNetwork) throw new Error(tr('Offline Quran file missing'))
 
   const response = await fetch(QURAN_DATA_URL, { cache: 'force-cache' })
   if (!response.ok) throw new Error(tr('Offline Quran file missing'))
@@ -249,13 +255,13 @@ export async function downloadOfflineQuran(
 /** Hydrate from already-fetched bundle (e.g. after settings flag set). */
 let hydrating: Promise<void> | null = null
 
-export async function hydrateOfflineFromDisk(): Promise<void> {
+export async function hydrateOfflineFromDisk(options?: { allowNetwork?: boolean }): Promise<void> {
   if (pageIndex) return
   // Parsing the whole Quran freezes the page for a moment; callers that ask at
   // the same time share one parse instead of each doing it again.
   if (!hydrating) {
     hydrating = (async () => {
-      const response = await loadQuranBundleResponse()
+      const response = await loadQuranBundleResponse(Boolean(options?.allowNetwork))
       const buffer = await response.arrayBuffer()
       const data = JSON.parse(new TextDecoder().decode(buffer)) as QuranDataFile
       ingestQuranData(data)

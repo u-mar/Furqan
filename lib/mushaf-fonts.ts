@@ -1,8 +1,4 @@
-import {
-  areOfflineFontsCached,
-  resolveQcfFontUrlsForLoad,
-  resolveSurahNameFontUrl,
-} from '@/lib/offline-font-cache'
+import { areOfflineFontsCached, resolveQcfFontUrlsForLoad } from '@/lib/offline-font-cache'
 import {
   qcfCdnFontUrl,
   qcfPageFontFamily,
@@ -157,23 +153,16 @@ export async function loadSurahNameFont(): Promise<boolean> {
         surahNameLoaded = true
         return true
       }
-      const url = await resolveSurahNameFontUrl()
+      // The @font-face rule in globals.css does the loading, so the file is
+      // fetched once (and from the phone's cache once saved). Fetching it here
+      // as well downloaded the same font twice side by side.
       try {
-        const buffer = await fetchFontBuffer(url)
-        const face = new FontFace('SurahNameV2', buffer, { display: 'block' })
-        const loaded = await face.load()
-        document.fonts.add(loaded)
         await document.fonts.load(`${FONT_CHECK_SIZE_PX}px "SurahNameV2"`)
-        surahNameLoaded = true
-        return true
       } catch {
-        /* Bundled @font-face in globals.css — enough for offline surah titles */
-        if (document.fonts.check('16px "SurahNameV2"')) {
-          surahNameLoaded = true
-          return true
-        }
-        return false
+        /* checked below */
       }
+      surahNameLoaded = document.fonts.check('16px "SurahNameV2"')
+      return surahNameLoaded
     } catch {
       return false
     } finally {

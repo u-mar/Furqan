@@ -1,8 +1,7 @@
 import quarterStarts from '@/lib/quarter-starts.json'
-import { juzPageRangeFromVerses, juzStartVerseKey } from '@/lib/juz-pages'
-import { JUZ_STARTS, TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
-import { getOfflineQuranSnapshot } from '@/lib/local-quran-store'
-import { getVisualPageForVerse } from '@/lib/quran'
+import mushafPageIndex from '@/lib/mushaf-page-index.json'
+import { juzPageRangeFromVerses } from '@/lib/juz-pages'
+import { JUZ_STARTS } from '@/lib/mushaf'
 import type { Verse } from '@/types'
 
 export type BoundaryKind = 'juz' | 'hizb'
@@ -62,35 +61,18 @@ export function buildBoundaryIndexFromVerses(verses: Verse[]): MushafBoundaryInd
   return { byPage }
 }
 
+/**
+ * Where each juz and each second hizb starts. These never change, so they are
+ * worked out once and shipped with the app (lib/mushaf-page-index.json):
+ * finding them used to load the whole Quran.
+ */
 export async function resolveBoundaryIndex(): Promise<MushafBoundaryIndex> {
-  const snapshot = getOfflineQuranSnapshot()
-  if (snapshot?.verses?.length) {
-    return buildBoundaryIndexFromVerses(snapshot.verses)
-  }
-
   const byPage = new Map<number, MushafBoundary>()
-
-  for (let juz = 1; juz <= 30; juz++) {
-    const fallback = Math.max(1, Math.ceil((juz - 1) * (TOTAL_MUSHAF_PAGES / 30)))
-    const page = await getVisualPageForVerse(juzStartVerseKey(juz), fallback)
-    byPage.set(page, { kind: 'juz', juz })
-  }
-
-  for (let j = 0; j < JUZ_STARTS.length; j++) {
-    const juz = j + 1
-    const quarter5Key = CANONICAL_QUARTER_STARTS[j * QUARTERS_PER_JUZ + 4]
-    if (!quarter5Key) continue
-
-    const page = await getVisualPageForVerse(quarter5Key, 1)
-    if (byPage.has(page)) continue
-
-    byPage.set(page, {
-      kind: 'hizb',
-      juz,
-      hizb: globalHizbNumber(juz, 2),
-    })
-  }
-
+  mushafPageIndex.juz.forEach(([startPage], j) => byPage.set(startPage, { kind: 'juz', juz: j + 1 }))
+  mushafPageIndex.hizb2.forEach((page, j) => {
+    if (!page || byPage.has(page)) return
+    byPage.set(page, { kind: 'hizb', juz: j + 1, hizb: globalHizbNumber(j + 1, 2) })
+  })
   return { byPage }
 }
 

@@ -1,6 +1,5 @@
 import { JUZ_STARTS, TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
-import { getOfflineQuranSnapshot } from '@/lib/local-quran-store'
-import { getVisualPageForVerse } from '@/lib/quran'
+import mushafPageIndex from '@/lib/mushaf-page-index.json'
 import type { Verse } from '@/types'
 
 export function juzStartVerseKey(juz: number): string {
@@ -34,18 +33,15 @@ export function juzPageRangeFromVerses(allVerses: Verse[], juz: number): { start
   return { startPage, endPage }
 }
 
+/** A juz's first and last page, from the page facts shipped with the app (lib/mushaf-page-index.json). */
 export async function resolveJuzPageRange(juz: number): Promise<{ startPage: number; endPage: number }> {
-  const snapshot = getOfflineQuranSnapshot()
-  if (snapshot?.verses?.length) {
-    return juzPageRangeFromVerses(snapshot.verses, juz)
-  }
+  const range = mushafPageIndex.juz[Math.min(30, Math.max(1, juz)) - 1]
+  return { startPage: range[0], endPage: range[1] }
+}
 
-  const startPage = await getVisualPageForVerse(juzStartVerseKey(juz), 1)
-  if (juz >= 30) {
-    return { startPage, endPage: TOTAL_MUSHAF_PAGES }
-  }
-  const nextStart = await getVisualPageForVerse(juzStartVerseKey(juz + 1), startPage + 1)
-  return { startPage, endPage: Math.max(startPage, nextStart - 1) }
+/** The page a surah starts on. */
+export function surahStartPage(surah: number): number {
+  return mushafPageIndex.surah[Math.min(114, Math.max(1, surah)) - 1] ?? 1
 }
 
 export function splitPageRange(

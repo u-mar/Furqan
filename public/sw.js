@@ -13,8 +13,14 @@ const RECITER_PHOTOS_CACHE = 'muyassar-reciter-photos-v1'
 /** Shown for a screen opened offline that has never been opened online — the one page safe to precache, since it never goes stale. */
 const OFFLINE_PAGE = '/offline.html'
 
-/** Only cache data that is safe to reuse; never precache HTML (stale home UI). */
-const PRECACHE = ['/quran-chapters.json', '/quran-data.json', '/fonts/surah-header-color.ttf', OFFLINE_PAGE]
+/**
+ * Only small data that is safe to reuse; never HTML (stale home UI). The whole
+ * Quran (16 MB) and the surah title font (1.8 MB) used to be fetched here on
+ * every phone's first visit, which choked a slow connection for every screen;
+ * they are saved when someone downloads the Quran for offline reading, or the
+ * first time a screen actually needs them.
+ */
+const PRECACHE = ['/quran-chapters.json', OFFLINE_PAGE]
 
 function isNavigationRequest(request) {
   return (

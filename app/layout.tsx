@@ -16,17 +16,23 @@ import { APP_ICON_THEME_COLOR, APP_NAME } from '@/lib/app-brand'
 import './globals.css'
 import './mushaf-qcf.css'
 
+// The fonts below are kept to what is used and only the two that set nearly
+// every screen's text are preloaded: on a slow connection, preloading all of
+// them (about 360 KB) held up the app's own code on every screen.
+
+/** Arabic labels (greeting, surah names). Regular only; not preloaded, it swaps in. */
 const amiri = Amiri({
   subsets: ['arabic'],
-  weight: ['400', '700'],
+  weight: ['400'],
   variable: '--font-amiri',
   display: 'swap',
+  preload: false,
 })
 
 const homeSerif = Fraunces({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+  style: ['normal'],
   variable: '--font-home-serif',
   display: 'swap',
 })
@@ -38,6 +44,7 @@ const edit = Cormorant_Garamond({
   style: ['italic'],
   variable: '--font-edit',
   display: 'swap',
+  preload: false,
 })
 
 const sans = Plus_Jakarta_Sans({
@@ -89,7 +96,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='dark'||s.theme==='black')?s.theme:'light';var d=document.documentElement;d.classList.remove('dark','black');if(s.language==='so'||s.language==='ar'){d.lang=s.language;if(s.language==='ar')d.dir='rtl';}if(t==='light'){d.style.colorScheme='light';}else{d.classList.add('dark');if(t==='black'){d.classList.add('black');}d.style.colorScheme='dark';}}catch(e){document.documentElement.style.colorScheme='light';}try{if(sessionStorage.getItem('nadir-splash-shown')==='1')document.documentElement.classList.add('splash-seen');}catch(e){}})();`,
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('al_quran_settings')||'{}');var t=(s.theme==='dark'||s.theme==='black')?s.theme:'light';var d=document.documentElement;d.classList.remove('dark','black');if(s.language==='so'||s.language==='ar'){d.lang=s.language;if(s.language==='ar')d.dir='rtl';}if(t==='light'){d.style.colorScheme='light';}else{d.classList.add('dark');if(t==='black'){d.classList.add('black');}d.style.colorScheme='dark';}}catch(e){document.documentElement.style.colorScheme='light';}try{if(sessionStorage.getItem('nadir-splash-shown')==='1')document.documentElement.classList.add('splash-seen');}catch(e){}try{var n=navigator,m=n.deviceMemory,c=n.hardwareConcurrency,sd=n.connection&&n.connection.saveData;if((m&&m<=2)||(m&&m<=4&&c&&c<=4)||sd)document.documentElement.classList.add('lite');}catch(e){}})();`,
           }}
         />
       </head>

@@ -79,23 +79,50 @@ function useFitQcfPageLines(
     }
 
     fit()
-    const observer = new ResizeObserver(fit)
+
+    // Fitting measures every line, which lays the page out again; on a slow
+    // phone that is costly. So it runs at most once a frame, and only when
+    // something that changes the fit has happened: the page got wider or
+    // narrower, or its own font has arrived. It used to run again for every
+    // font that finished loading anywhere (the neighbouring pages' fonts, the
+    // title font, the interface fonts), for each of the three pages mounted.
+    let cancelled = false
+    let frame = 0
+    let lastWidth = grid.clientWidth
+    const refit = () => {
+      if (cancelled) return
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (!cancelled) fit()
+      })
+    }
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? grid.clientWidth
+      // Its height changes when the lines are resized; only a new width needs a new fit.
+      if (Math.abs(width - lastWidth) < 0.5) return
+      lastWidth = width
+      refit()
+    })
     observer.observe(grid)
 
     // Glyph widths change once the page's QCF font swaps in, so the first
-    // measurement can under-report and skip the shrink. Re-fit when fonts settle.
-    let cancelled = false
-    const refit = () => {
-      if (!cancelled) fit()
-    }
+    // measurement can under-report and skip the shrink. Re-fit when it arrives.
+    const family = fontFamily.replace(/["']/g, '').trim()
     const fonts = typeof document !== 'undefined' ? document.fonts : undefined
-    fonts?.ready.then(refit).catch(() => {})
-    fonts?.addEventListener?.('loadingdone', refit)
+    fonts?.load(`16px "${family}"`).then(refit).catch(() => {})
+    const onFontsLoaded = (event: Event) => {
+      const faces = (event as FontFaceSetLoadEvent).fontfaces
+      if (faces?.length && !faces.some((face) => face.family.replace(/["']/g, '').trim() === family)) return
+      refit()
+    }
+    fonts?.addEventListener?.('loadingdone', onFontsLoaded)
 
     return () => {
       cancelled = true
+      cancelAnimationFrame(frame)
       observer.disconnect()
-      fonts?.removeEventListener?.('loadingdone', refit)
+      fonts?.removeEventListener?.('loadingdone', onFontsLoaded)
     }
     // A family swap keeps the same layout but changes every glyph width, so it has to trigger a re-fit too.
   }, [containerRef, layout, fontFamily])

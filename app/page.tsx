@@ -23,8 +23,8 @@ export default function Home() {
 
   return (
     <HomeSkyScreen displayName={displayName === 'Guest' ? t('Guest') : displayName}>
-      {/* Room above and below, so the shortcuts read as their own row */}
-      <div className="reveal my-2.5" style={{ animationDelay: '80ms' }}>
+      {/* Room above and below, so the shortcuts read as their own row (their cards do that in light) */}
+      <div className="home-tiles-row reveal my-2.5" style={{ animationDelay: '80ms' }}>
         <PrayerQiblaTiles />
       </div>
 

@@ -23,10 +23,10 @@ export const NIGHT_SKY: Sky & { ground: string } = {
   moonGlow: 'rgba(150, 178, 255, 0.28)',
 }
 
-/** Light's sky: soft sage above, a warm gold horizon behind the skyline, on into the sand. */
+/** Light's sky, as the design has it: a soft mint above, warming to cream at the horizon, on into the sand. */
 export const DAY_SKY: Sky = {
-  colors: ['#bdd1c7', '#dcdecd', '#eddcba'],
-  sunGlow: 'rgba(255, 200, 112, 0.45)',
+  colors: ['#dde8e2', '#e7e6d7', '#ece4d1'],
+  sunGlow: 'rgba(255, 240, 196, 0.45)',
   moonGlow: 'rgba(140, 150, 140, 0.22)',
 }
 

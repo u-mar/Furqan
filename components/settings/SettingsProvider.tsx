@@ -29,7 +29,8 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
        itself if it is opened before this runs. */
     let warmTimer: number | undefined
     let warmIdle: number | undefined
-    if (settings.offlineDownloaded && !isOfflineReady()) {
+    // Online, the reader takes pages from the server; the saved copy is only needed offline.
+    if (settings.offlineDownloaded && !isOfflineReady() && !navigator.onLine) {
       warmTimer = window.setTimeout(() => {
         const warm = () => void hydrateOfflineFromDisk().catch(() => {})
         if (typeof window.requestIdleCallback === 'function') {

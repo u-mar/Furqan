@@ -33,11 +33,16 @@ export default function AdhanHost() {
   useEffect(() => {
     if (!ready || !settings.adhan) return
     let cancelled = false
+    // When the next prayer is, worked out once: the sums for a day's times are
+    // not done again every few seconds on every screen, only once it arrives.
+    let upcoming: number | null = null
 
     const check = async () => {
       const now = new Date()
+      if (upcoming !== null && now.getTime() < upcoming - 5000) return
       // The prayer that has just begun, or the one about to.
       const next = nextPrayer(place, settings, new Date(now.getTime() - GRACE_MS))
+      upcoming = next.at.getTime()
       const id: PrayerId = next.id
       if (!ADHAN_PRAYERS.includes(id) || !settings.adhanFor[id as Exclude<PrayerId, 'sunrise'>]) return
       const late = now.getTime() - next.at.getTime()

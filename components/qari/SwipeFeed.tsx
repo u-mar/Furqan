@@ -342,6 +342,9 @@ function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: num
   const current = reel[shot % reel.length]
   const next = reel[(shot + 1) % reel.length]
   const videos = useRef(new Map<string, HTMLVideoElement>())
+  // On a weak phone (lite mode, see app/layout.tsx) the next scene is not
+  // downloaded ahead while this one plays; its picture stands in until it starts.
+  const preloadNext = typeof document !== 'undefined' && document.documentElement.classList.contains('lite') ? 'metadata' : 'auto'
 
   useEffect(() => {
     for (const [id, video] of videos.current) {
@@ -376,7 +379,7 @@ function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: num
             muted
             loop
             playsInline
-            preload="auto"
+            preload={clip.id === current.id ? 'auto' : preloadNext}
             className={cn('absolute inset-0 h-full w-full object-cover', clip.id !== current.id && 'opacity-0')}
           />
         ))}

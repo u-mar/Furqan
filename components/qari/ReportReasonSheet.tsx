@@ -23,6 +23,8 @@ interface ReportReasonSheetProps {
 /** What's actually wrong with it — picked, not typed, so the admin Reports panel can sort and triage instead of just reading prose. */
 export default function ReportReasonSheet({ open, onClose, onPick }: ReportReasonSheetProps) {
   const t = useT()
+  // Every card has one; built only when it is opened, not twenty times over on every feed.
+  if (!open) return null
   return (
     <SettingsSheet open={open} title={t('Report this recitation')} description={t('What is wrong with it?')} onClose={onClose}>
       <div className="divide-y divide-[var(--home-rule)] overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup">

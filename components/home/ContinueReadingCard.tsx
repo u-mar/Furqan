@@ -103,7 +103,7 @@ export default function ContinueReadingCard() {
         className="home-continue home-press ed-focus flex items-center gap-3 py-2.5"
         aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
+        <span className="home-continue__icon flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
           <img src="/icons/read.png" alt="" className="h-[1.625rem] w-[1.625rem] object-contain" draggable={false} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
