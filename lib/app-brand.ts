@@ -15,11 +15,10 @@ export const APP_ICON_THEME_COLOR = '#000000'
 
 /**
  * Where people can reach you about their data. Shown on the privacy policy,
- * and both app stores require one that actually works.
- *
- * TODO before store submission: replace with a real, monitored address.
+ * terms and account deletion page, and both app stores require one that
+ * actually works. Cloudflare Email Routing forwards it to the owner's inbox.
  */
-export const SUPPORT_EMAIL = 'support@example.com'
+export const SUPPORT_EMAIL = 'support@qurannaba.com'
 
 /** Shown on the privacy policy. Update whenever the policy text changes. */
 export const PRIVACY_UPDATED = '12 October 2026'

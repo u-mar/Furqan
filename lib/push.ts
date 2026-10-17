@@ -1,5 +1,6 @@
 import webpush from 'web-push'
 import { prisma } from '@/lib/prisma'
+import { SUPPORT_EMAIL } from '@/lib/app-brand'
 
 /**
  * Sending a notification to a phone that has the app closed, through the web's
@@ -23,7 +24,7 @@ function configure(): boolean {
     ready = false
     return false
   }
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:support@example.com', publicKey, privateKey)
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || `mailto:${SUPPORT_EMAIL}`, publicKey, privateKey)
   ready = true
   return true
 }

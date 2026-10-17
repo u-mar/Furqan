@@ -15,9 +15,10 @@ Also in this folder:
 
 ## Before you start
 
-1. **Set a real support email.** `SUPPORT_EMAIL` in `lib/app-brand.ts` is
-   still `support@example.com`. It appears on the privacy policy, terms and
-   account deletion page, and Play shows it to users. Use an address you check.
+1. **Support email.** `SUPPORT_EMAIL` in `lib/app-brand.ts` is
+   `support@qurannaba.com` (Cloudflare Email Routing forwards it to your inbox).
+   It appears on the privacy policy, terms and account deletion page; use the
+   same address in Play Console. Send it a test message before submitting.
 2. **Deploy the site on HTTPS** at the domain the app will use (for example on
    Vercel). Run `npx prisma generate` as part of the build.
 3. **Check these pages load on the live site:**

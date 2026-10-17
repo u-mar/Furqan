@@ -336,12 +336,12 @@ export default function DailyVerseCard() {
 
   return (
     <section aria-label={t('Verse of the week')}>
-      {/* A page of the mushaf: cream paper, a thin double gold rule, dark ink — the same in every theme */}
-      <article className="home-parchment" aria-busy={!ready}>
-        <h2 className="home-parchment__label">
-          <span aria-hidden className="home-parchment__gem" />
+      {/* A quiet card on Home's own colours, so the verse sits with the rest of the page */}
+      <article className="home-verse-card" aria-busy={!ready}>
+        <h2 className="home-verse-card__label">
+          <span aria-hidden className="home-verse-card__gem" />
           {t('Verse of the week')}
-          <span aria-hidden className="home-parchment__gem" />
+          <span aria-hidden className="home-verse-card__gem" />
         </h2>
 
         {!ready ? (
@@ -354,7 +354,7 @@ export default function DailyVerseCard() {
         ) : (
           <div className="home-fade">
             {/* Up to three lines of each; the whole verse opens in the reader. */}
-            <Link href={`/read?page=${page}`} className="ed-focus mt-3 block rounded-lg" aria-label={t('Page {page}', { page })}>
+            <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
               {useGlyphs ? (
                 // The glyph run carries its own ayah marker, so none is added.
                 <p
@@ -394,16 +394,16 @@ export default function DailyVerseCard() {
               {translation === null ? (
                 <TranslationSkeleton />
               ) : translation ? (
-                <p dir="auto" className="weekly-verse__translation home-fade mx-auto mt-2 max-w-[19rem] text-center">
+                <p dir="auto" className="weekly-verse__translation home-fade mx-auto mt-1.5 max-w-[19rem] text-center">
                   {translation}
                 </p>
               ) : null}
             </Link>
 
-            <div className="home-parchment__foot">
+            <div className="home-verse-card__foot">
               <Link
                 href={`/read?page=${page}`}
-                className="ed-focus -mx-1 min-w-0 truncate rounded-md px-1 text-[0.78125rem] font-semibold text-[var(--pc-muted)]"
+                className="ed-focus -mx-1 min-w-0 truncate rounded-md px-1 text-[0.75rem] font-semibold text-[var(--pc-muted)]"
               >
                 {surahLabel}
                 <span className="ms-1.5 font-medium tabular-nums text-[var(--pc-faint)]">{config.verseKey}</span>
@@ -414,25 +414,25 @@ export default function DailyVerseCard() {
                   pressed={playing}
                   onClick={togglePlay}
                 >
-                  <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
+                  <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
                     {playing ? (
-                      <Pause className="h-[13px] w-[13px] fill-current" strokeWidth={0} />
+                      <Pause className="h-3 w-3 fill-current" strokeWidth={0} />
                     ) : (
-                      <Play className="h-[13px] w-[13px] translate-x-px fill-current" strokeWidth={0} />
+                      <Play className="h-3 w-3 translate-x-px fill-current" strokeWidth={0} />
                     )}
                   </span>
                 </IconButton>
                 <IconButton label={saved ? t('Remove bookmark') : t('Bookmark verse')} pressed={saved} onClick={toggleSave}>
                   <Bookmark
-                    className={cn('h-[19px] w-[19px]', saved && 'fill-current text-[var(--pc-emerald)]')}
+                    className={cn('h-[17px] w-[17px]', saved && 'fill-current text-[var(--pc-emerald)]')}
                     strokeWidth={1.8}
                   />
                 </IconButton>
                 <IconButton label={copied ? t('Copied') : t('Share verse')} onClick={() => void handleShare()}>
                   {copied ? (
-                    <Check className="h-[19px] w-[19px] text-[var(--pc-emerald)]" strokeWidth={2.4} />
+                    <Check className="h-[17px] w-[17px] text-[var(--pc-emerald)]" strokeWidth={2.4} />
                   ) : (
-                    <Share className="h-[19px] w-[19px]" strokeWidth={1.8} />
+                    <Share className="h-[17px] w-[17px]" strokeWidth={1.8} />
                   )}
                 </IconButton>
               </div>
@@ -488,12 +488,12 @@ function TranslationSkeleton() {
 /** Roughly the finished card's shape, so nothing below it jumps when it fills in. */
 function VerseSkeleton() {
   return (
-    <div aria-hidden className="mt-3">
+    <div aria-hidden className="mt-2">
       <ArabicSkeleton />
       <TranslationSkeleton />
-      <div className="home-parchment__foot">
+      <div className="home-verse-card__foot">
         <span className="qari-skeleton block h-3 w-28 rounded-full" />
-        <span className="qari-skeleton block h-[34px] w-[6.5rem] rounded-full" />
+        <span className="qari-skeleton block h-[30px] w-[6rem] rounded-full" />
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 /**
  * Sending email, through Resend (resend.com). Set RESEND_API_KEY, and
  * EMAIL_FROM to an address on a domain verified there, e.g.
- * "Naba <no-reply@nabaquran.app>". Until then nothing is sent.
+ * "Naba <no-reply@qurannaba.com>". Until then nothing is sent.
  */
 
 export function canSendEmail(): boolean {
