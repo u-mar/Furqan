@@ -1,20 +1,9 @@
-import { ImageResponse } from 'next/og'
-import {
-  APP_ICON_LETTER,
-  appIconLetterStyle,
-  appIconShellStyle,
-} from '@/lib/app-brand'
+import { appIconResponse } from '@/lib/app-icon'
 
 export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 
+/** The browser tab icon: the word a little larger on its square, so it reads at 16px too. */
 export default function Icon() {
-  return new ImageResponse(
-    (
-      <div style={appIconShellStyle(7)}>
-        <div style={appIconLetterStyle(19)}>{APP_ICON_LETTER}</div>
-      </div>
-    ),
-    { ...size }
-  )
+  return appIconResponse(size.width, { scale: 1.15, radius: 7 })
 }

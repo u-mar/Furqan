@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import LogoMark from '@/components/brand/LogoMark'
 import { APP_NAME } from '@/lib/app-brand'
 import { cn } from '@/lib/cn'
 import { SPLASH_AYAH_PATH, SPLASH_AYAH_VIEWBOX } from '@/components/splash-ayah-paths'
@@ -10,8 +11,8 @@ const SHOW_MS = 1500
 const FADE_MS = 550
 
 /**
- * A brief cover shown once per app open, over the manifest's own black
- * background — the OS-generated PWA splash can only show the icon, so this is
+ * A brief cover shown once per app open, over the manifest's own background
+ * (the icon's near-black) — the OS-generated PWA splash can only show the icon, so this is
  * what carries the verse: أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ (13:28).
  *
  * The ayah is the mushaf's own script saved as outlines, so it is there on the
@@ -63,7 +64,10 @@ export default function SplashScreen() {
         </svg>
       </div>
 
-      <span className="app-splash__name">{APP_NAME}</span>
+      <div className="flex flex-col items-center gap-3">
+        <LogoMark className="app-splash__mark" scale={1.4} />
+        <span className="app-splash__name">{APP_NAME}</span>
+      </div>
     </div>
   )
 }

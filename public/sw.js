@@ -200,7 +200,7 @@ self.addEventListener('push', (event) => {
       body: message.body,
       tag: message.tag,
       icon: '/icons/icon-192',
-      badge: '/icons/icon-192',
+      badge: '/icons/badge-96',
       data: { url: message.url },
     })
   )

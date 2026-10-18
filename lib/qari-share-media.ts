@@ -12,7 +12,8 @@
  * someone actually shares, so it costs nothing on the feed.
  */
 
-import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
+import { APP_NAME } from '@/lib/app-brand'
+import { drawLogoMark, LOGO_GROUND } from '@/lib/app-logo'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
@@ -618,7 +619,7 @@ function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasEleme
   }
 
   // Drawn as the ayah card draws it (lib/verse-image.ts), at this frame's size:
-  // the icon's letter on its black tile, then "Naba App" in the card's soft white.
+  // the icon on its near-black tile, then "Naba App" in the card's soft white.
   const mark = Math.round(46 * CARD)
   const top = Math.round(4 * CARD)
   ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
@@ -626,16 +627,15 @@ function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasEleme
   ctx.shadowOffsetY = 2 * CARD
   ctx.beginPath()
   ctx.roundRect(x, top, mark, mark, mark * 0.24)
-  ctx.fillStyle = '#000000'
+  ctx.fillStyle = LOGO_GROUND
   ctx.fill()
   ctx.lineWidth = 1.5 * CARD
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
   ctx.stroke()
-  ctx.fillStyle = '#f5ecd8'
-  ctx.font = `700 ${Math.round(mark * 0.62)}px ${serif}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(APP_ICON_LETTER, x + mark / 2, top + mark / 2 + mark * 0.04)
+  ctx.save()
+  ctx.shadowColor = 'transparent'
+  drawLogoMark(ctx, x, top, mark)
+  ctx.restore()
 
   // The name sits on the line the card uses: 8px above the tile's foot, in card pixels.
   ctx.textAlign = 'left'
@@ -843,7 +843,7 @@ async function prepareScene(
     captionsReady,
     document.fonts
       ? Promise.all([
-          document.fonts.load(`700 30px ${serif}`, APP_ICON_LETTER),
+          document.fonts.load(`600 30px ${serif}`, `${APP_NAME} App`),
           document.fonts.load(`500 30px ${serif}`, r.title),
           document.fonts.load(`600 30px ${sans}`, r.userUsername),
           document.fonts.load(`700 30px ${amiri}`, 'ا'),

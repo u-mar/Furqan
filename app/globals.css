@@ -128,6 +128,16 @@ body {
   text-size-adjust: 100%;
 }
 
+/* The King Fahd Complex's Uthmanic Hafs font (KFGQPC), the script of the
+   printed Madani mushaf, for Arabic set as text. It is named in the font
+   stacks below but was never loaded, so phones fell back to Amiri or a system
+   font. 88 KB, from the same host as the mushaf page fonts, kept a long time. */
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-display: swap;
+}
+
 /* The surah title font, compressed to WOFF2: 119 KB instead of the 1.8 MB TTF. */
 @font-face {
   font-family: 'SurahNameV2';
@@ -1801,39 +1811,52 @@ html.dark .legal-summary li::before {
   animation: auth-step-in 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-/* Sign in and sign up: soft pastel light behind a clean form, a near-black button.
-   Colour only, no pictures. Dark mode keeps the same light, dimmed, on near-black. */
+/* Sign in and sign up: a plain white page in light, and the app's plain dark
+   ground in the dark themes; the deep emerald (teal in the dark) only on the
+   buttons and the mark. */
 .auth-screen {
-  --auth-text: #111114;
-  --auth-muted: #6b6a76;
-  --auth-line: rgba(17, 17, 20, 0.1);
-  --auth-field-bg: rgba(255, 255, 255, 0.9);
-  --auth-field-border: #e2e0ea;
-  --auth-accent: linear-gradient(135deg, #8b6bff 0%, #6a46f5 55%, #5a34e8 100%);
-  --auth-accent-glow: rgba(106, 70, 245, 0.45);
-  --auth-check: #6d4aff;
-  background:
-    radial-gradient(60% 40% at 0% 0%, rgba(214, 196, 255, 0.75), transparent 70%),
-    radial-gradient(55% 35% at 100% 14%, rgba(255, 205, 228, 0.7), transparent 70%),
-    radial-gradient(70% 45% at 88% 100%, rgba(196, 220, 255, 0.8), transparent 70%),
-    radial-gradient(60% 40% at 0% 78%, rgba(238, 214, 255, 0.6), transparent 70%),
-    #f7f5fb;
+  --auth-text: #1b201e;
+  --auth-muted: #5f6964;
+  --auth-line: rgba(28, 38, 33, 0.1);
+  --auth-field-bg: #f4f6f5;
+  --auth-field-border: rgba(28, 38, 33, 0.12);
+  --auth-google-bg: #ffffff;
+  --auth-accent: linear-gradient(180deg, #13705f 0%, #0e5a4f 100%);
+  --auth-on-accent: #f3f7f4;
+  --auth-accent-glow: rgba(14, 90, 79, 0.45);
+  --auth-check: #0e5f55;
+  --auth-gold: #9a7633;
+  background: #ffffff;
 }
 
 html.dark .auth-screen {
-  --auth-text: #f4f3f8;
-  --auth-muted: #a3a1b0;
-  --auth-line: rgba(255, 255, 255, 0.12);
+  --auth-text: #f5efe3;
+  --auth-muted: rgba(245, 239, 227, 0.62);
+  --auth-line: rgba(255, 255, 255, 0.1);
   --auth-field-bg: rgba(255, 255, 255, 0.05);
-  --auth-field-border: rgba(255, 255, 255, 0.13);
-  --auth-accent: linear-gradient(135deg, #9a7dff 0%, #7552ff 55%, #6440f2 100%);
-  --auth-accent-glow: rgba(117, 82, 255, 0.4);
-  --auth-check: #9b85ff;
-  background:
-    radial-gradient(60% 40% at 0% 0%, rgba(109, 74, 255, 0.28), transparent 70%),
-    radial-gradient(55% 35% at 100% 14%, rgba(236, 72, 153, 0.16), transparent 70%),
-    radial-gradient(70% 45% at 88% 100%, rgba(59, 130, 246, 0.2), transparent 70%),
-    #0d0c12;
+  --auth-field-border: rgba(255, 255, 255, 0.12);
+  --auth-google-bg: rgba(255, 255, 255, 0.06);
+  --auth-accent: linear-gradient(180deg, #74d4bb 0%, #4fb89d 100%);
+  --auth-on-accent: #06201b;
+  --auth-accent-glow: rgba(92, 196, 171, 0.45);
+  --auth-check: #5cc4ab;
+  --auth-gold: #e0bc74;
+  background: var(--app-bg);
+}
+
+.auth-screen__body {
+  position: relative;
+}
+
+/* The app's icon on the welcome screen: نبأ in square Kufic on its near-black square */
+.auth-mark {
+  display: flex;
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  border-radius: 1.0625rem;
+  background: #0b1512;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 18px 40px -18px rgba(5, 20, 16, 0.6);
 }
 
 .auth-icon-button {
@@ -1851,14 +1874,14 @@ html.dark .auth-screen {
   background: var(--auth-line);
 }
 
-/* A field: label above, a white box with a hairline border. */
+/* A field: label above, a soft box with a hairline border. */
 .auth-box {
   display: flex;
-  height: 3rem;
+  height: 3.125rem;
   align-items: center;
   gap: 0.6rem;
-  padding: 0 0.9rem;
-  border-radius: 0.7rem;
+  padding: 0 1rem;
+  border-radius: 0.9rem;
   border: 1px solid var(--auth-field-border);
   background: var(--auth-field-bg);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1894,14 +1917,15 @@ html.dark .auth-screen {
 
 .auth-button {
   display: flex;
-  height: 3.1rem;
+  height: 3.25rem;
   width: 100%;
   align-items: center;
   justify-content: center;
-  border-radius: 0.7rem;
+  gap: 0.6rem;
+  border-radius: 999px;
   background: var(--auth-accent);
-  color: #ffffff;
-  font-size: 0.98rem;
+  color: var(--auth-on-accent);
+  font-size: 0.97rem;
   font-weight: 600;
   box-shadow: 0 12px 26px -14px var(--auth-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease;
@@ -1913,22 +1937,22 @@ html.dark .auth-screen {
 
 .auth-badge {
   background: var(--auth-accent);
-  color: #ffffff;
+  color: var(--auth-on-accent);
   box-shadow: 0 12px 26px -14px var(--auth-accent-glow);
 }
 
 /* "Continue with Google": the plain white button Google's guidelines describe, in the form's own shape. */
 .auth-google {
   display: flex;
-  height: 3.1rem;
+  height: 3.25rem;
   width: 100%;
   align-items: center;
   justify-content: center;
   gap: 0.7rem;
-  border-radius: 0.7rem;
+  border-radius: 999px;
   /* Also used outside the sign-in screen (confirming account deletion): the app's own colours there. */
   border: 1px solid var(--auth-field-border, var(--home-rule-strong));
-  background: var(--auth-field-bg, var(--home-card-bg));
+  background: var(--auth-google-bg, var(--home-card-bg));
   color: var(--auth-text, var(--home-heading));
   font-size: 0.95rem;
   font-weight: 600;
@@ -1936,7 +1960,7 @@ html.dark .auth-screen {
 }
 
 .auth-google:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--auth-field-bg, var(--home-card-bg)) 85%, #6d4aff 5%);
+  background: color-mix(in srgb, var(--auth-google-bg, var(--home-card-bg)) 94%, var(--auth-text, var(--home-heading)) 6%);
 }
 
 .auth-google:active:not(:disabled) {
@@ -1965,7 +1989,7 @@ html.dark .auth-screen {
   border-radius: 0.3rem;
   border: 1.5px solid color-mix(in srgb, var(--auth-text) 28%, transparent);
   background: var(--auth-field-bg);
-  color: #fff;
+  color: var(--auth-on-accent);
   --tw-ring-color: color-mix(in srgb, var(--auth-check) 35%, transparent);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -2549,34 +2573,6 @@ html.dark.black {
 }
 
 /* --- Home: weekly verse --- */
-
-/* Mushaf glyphs, one word per item so a long ayah wraps between words. */
-.weekly-verse__qcf {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 0 0.3em;
-  padding-block: 0.125rem;
-  direction: rtl;
-  unicode-bidi: isolate;
-  font-size: 1.3125rem;
-  line-height: 2;
-  letter-spacing: 0;
-  font-feature-settings: normal;
-  font-synthesis: none;
-}
-
-/* The plain-script fallback, for when the mushaf font cannot be had. */
-.weekly-verse__arabic {
-  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', 'Traditional Arabic', 'Scheherazade New',
-    'Amiri', serif;
-  direction: rtl;
-  text-align: center;
-  font-size: 1.3125rem;
-  line-height: 2;
-  padding-block: 0.125rem;
-}
 
 .weekly-verse__translation {
   color: color-mix(in srgb, var(--home-heading) 80%, transparent);
@@ -4150,8 +4146,9 @@ html.qari-swipe-open .bottom-nav__label--active {
 
 /* ---------------- Opening splash (components/SplashScreen.tsx) ---------------- */
 
+/* The icon's own near-black, so the phone's launch screen hands over without a seam. */
 .app-splash {
-  background: #000;
+  background: #0b1512;
   color: #f3ead6;
 }
 
@@ -4164,6 +4161,12 @@ html.splash-seen .app-splash {
   overflow: visible;
   color: #ffffff;
   animation: app-splash-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.app-splash__mark {
+  width: 2rem;
+  height: 2rem;
+  animation: app-splash-fade 0.8s ease-out 0.3s both;
 }
 
 .app-splash__name {
@@ -4199,6 +4202,7 @@ html.splash-seen .app-splash {
 
 @media (prefers-reduced-motion: reduce) {
   .app-splash__ayah,
+  .app-splash__mark,
   .app-splash__name {
     animation: none;
   }
@@ -4282,60 +4286,63 @@ html.dark.black .home-v2[data-sky] {
   --hv-ground: #000000;
 }
 
+/* Light: cool, soft neutrals with a breath of green rather than sand and
+   linen, so the page reads clean instead of cream; the deep emerald and the
+   small gold touches stay. */
 html:not(.dark) .hv-theme {
-  --hv-ground: #e9e2d2;
-  --hv-ink: #1e1b16;
-  --hv-ink2: #5b554a;
-  --hv-ink3: rgba(30, 27, 22, 0.35);
+  --hv-ground: #e8ecea;
+  --hv-ink: #1b201e;
+  --hv-ink2: #56605b;
+  --hv-ink3: rgba(27, 32, 30, 0.35);
   --hv-gold: #9a7633;
   --hv-hero-shadow: none;
-  --hv-btn-bg: rgba(255, 252, 245, 0.55);
-  --hv-btn-border: rgba(48, 38, 20, 0.1);
-  --hv-arc: rgba(30, 27, 22, 0.28);
+  --hv-btn-bg: rgba(255, 255, 255, 0.6);
+  --hv-btn-border: rgba(28, 38, 33, 0.1);
+  --hv-arc: rgba(27, 32, 30, 0.26);
   --hv-mark-on: #9a7633;
-  --hv-mark-off: rgba(30, 27, 22, 0.35);
+  --hv-mark-off: rgba(27, 32, 30, 0.32);
   --hv-mark-ring: rgba(154, 118, 51, 0.22);
   --hv-sun-glow: #f0bf62;
   --hv-sun-core: #f3c46c;
-  --hv-moon: #6f685b;
-  --hv-moon-glow: #9a9282;
+  --hv-moon: #66706b;
+  --hv-moon-glow: #95a09a;
   --hv-pill-bg: #0e3a35;
   --hv-pill-border: rgba(14, 58, 53, 0.9);
-  --hv-skyline: #d4cbb7;
+  --hv-skyline: #cdd6d0;
   --hv-skyline-mask: linear-gradient(180deg, #000 45%, transparent 92%);
   --hv-now-dot: #0e3a35;
   --hv-now-shadow: 0 0 0 4px rgba(14, 58, 53, 0.14);
-  --hv-pc-bg: #f2ecdf;
-  --hv-pc-border: rgba(48, 38, 20, 0.08);
-  --hv-pc-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 16px 36px -24px rgba(60, 44, 18, 0.3);
-  --hv-pc-label: #6f685b;
+  --hv-pc-bg: #f5f7f6;
+  --hv-pc-border: rgba(28, 38, 33, 0.07);
+  --hv-pc-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 16px 36px -24px rgba(20, 40, 32, 0.24);
+  --hv-pc-label: #66706b;
   --hv-pc-link: #0e5f55;
-  --hv-pc-track: rgba(48, 38, 20, 0.1);
-  --hv-on-color: #f3e6c4;
+  --hv-pc-track: rgba(28, 38, 33, 0.1);
+  --hv-on-color: #eef3ef;
   --hv-on-bg: #0e3a35;
   --hv-on-border: transparent;
   --hv-on-icon: #e6cc8f;
-  --hv-past-color: rgba(30, 27, 22, 0.4);
-  --hv-past-icon: rgba(30, 27, 22, 0.3);
-  --hv-normal-color: #1e1b16;
-  --hv-normal-icon: rgba(30, 27, 22, 0.62);
+  --hv-past-color: rgba(27, 32, 30, 0.4);
+  --hv-past-icon: rgba(27, 32, 30, 0.3);
+  --hv-normal-color: #1b201e;
+  --hv-normal-icon: rgba(27, 32, 30, 0.62);
   --hv-rail-from: rgba(14, 58, 53, 0.25);
   --hv-rail-to: #0e3a35;
-  --hv-surface: #f2ecdf;
-  --hv-border: rgba(48, 38, 20, 0.08);
-  --hv-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 12px 28px -20px rgba(60, 44, 18, 0.28);
-  --hv-text: #1e1b16;
-  --hv-text2: #5b554a;
-  --hv-text3: #6f685b;
-  --hv-arabic: #1e1b16;
-  --hv-translation: #3f3a31;
+  --hv-surface: #f5f7f6;
+  --hv-border: rgba(28, 38, 33, 0.07);
+  --hv-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 12px 28px -20px rgba(20, 40, 32, 0.22);
+  --hv-text: #1b201e;
+  --hv-text2: #56605b;
+  --hv-text3: #66706b;
+  --hv-arabic: #1b201e;
+  --hv-translation: #3b4440;
   --hv-accent-gold: #9a7633;
   --hv-teal: #0e5f55;
-  --hv-on-teal: #f3efe4;
+  --hv-on-teal: #f1f5f2;
   --hv-teal-glow: rgba(14, 95, 85, 0.4);
   --hv-teal-wash: radial-gradient(circle at 50% 30%, rgba(14, 95, 85, 0.14), rgba(14, 95, 85, 0.04));
   --hv-teal-line: rgba(14, 95, 85, 0.18);
-  --hv-track: rgba(48, 38, 20, 0.1);
+  --hv-track: rgba(28, 38, 33, 0.1);
 }
 
 /* The sky itself: down to the skyline's foot in the dark themes, and on
@@ -4695,19 +4702,19 @@ html:not(.dark) .home-skyline__windows {
   box-shadow: 0 0 8px color-mix(in srgb, var(--home-sage) 90%, transparent);
 }
 
-/* On Home and in a halaqa, in light, the tab bar is the same linen as the cards. */
+/* On Home and in a halaqa, in light, the tab bar is the same soft white as the cards. */
 html:not(.dark):has(.hv-theme) .bottom-nav {
-  background: rgba(242, 236, 223, 0.97);
-  border-top-color: rgba(48, 38, 20, 0.09);
-  box-shadow: 0 -12px 28px -20px rgba(60, 44, 18, 0.28);
+  background: rgba(245, 247, 246, 0.97);
+  border-top-color: rgba(28, 38, 33, 0.08);
+  box-shadow: 0 -12px 28px -20px rgba(20, 40, 32, 0.22);
 }
 
 html:not(.dark):has(.hv-theme) .bottom-nav__item {
-  color: #6f685b;
+  color: #66706b;
 }
 
 html:not(.dark):has(.hv-theme) .bottom-nav__label--active {
-  color: #1e1b16;
+  color: #1b201e;
 }
 
 html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
@@ -4780,8 +4787,7 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   background: color-mix(in srgb, var(--hv-text) 8%, transparent);
 }
 
-.home-v2 .home-verse-card .weekly-verse__qcf,
-.home-v2 .home-verse-card .weekly-verse__arabic {
+.home-v2 .home-verse-card .weekly-verse__hafs {
   color: var(--pc-ink);
 }
 
@@ -4794,30 +4800,20 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   white-space: nowrap;
 }
 
-/* Up to three lines of each, so a long verse keeps the card a sensible
-   size; the whole verse is a tap away in the reader. */
-.home-v2 .weekly-verse__qcf,
-.home-v2 .weekly-verse__arabic {
+/* The weekly verse in the King Fahd Complex's Uthmanic Hafs font, up to three
+   lines; the whole verse is a tap away in the reader. */
+.home-v2 .weekly-verse__hafs {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   overflow: hidden;
-  padding-block: 0;
+  max-height: calc(3 * 2em);
+  margin: 0;
+  direction: rtl;
   text-align: center;
-  line-height: 1.9;
-  max-height: calc(3 * 1.9em);
-}
-
-.home-v2 .weekly-verse__qcf {
-  font-size: 1.3125rem;
-}
-
-.home-v2 .weekly-verse__qcf .mushaf-translation-qcf-word {
-  display: inline;
-}
-
-.home-v2 .weekly-verse__arabic {
-  font-size: 1.4375rem;
+  font-family: 'UthmanicHafs', var(--font-amiri), 'Amiri', serif;
+  font-size: 1.25rem;
+  line-height: 2;
 }
 
 .home-v2 .weekly-verse__translation {
@@ -4828,7 +4824,7 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   font-family: var(--font-edit), 'Cormorant Garamond', Georgia, serif;
   font-style: italic;
   font-weight: 500;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   line-height: 1.45;
   letter-spacing: 0;
   color: var(--hv-translation);
@@ -5214,14 +5210,3 @@ html:not(.dark) .home-verse-card {
   border-radius: 1.375rem;
 }
 
-html:not(.dark) .home-v2 .weekly-verse__qcf {
-  font-size: 1.5rem;
-}
-
-html:not(.dark) .home-v2 .weekly-verse__arabic {
-  font-size: 1.625rem;
-}
-
-html:not(.dark) .home-v2 .weekly-verse__translation {
-  font-size: 1.125rem;
-}

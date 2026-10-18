@@ -19,7 +19,8 @@
  *          the name, note and buttons sit over it.
  */
 
-import { APP_ICON_LETTER, APP_NAME } from '@/lib/app-brand'
+import { APP_NAME } from '@/lib/app-brand'
+import { drawLogoMark, LOGO_GROUND } from '@/lib/app-logo'
 import { loadPageFont, qcfFontFamily } from '@/lib/mushaf-fonts'
 import { tr } from '@/lib/i18n-core'
 import { SHARE_BACKGROUNDS, type ShareBackground } from '@/lib/share-backgrounds'
@@ -230,7 +231,7 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
       ? Promise.all([
           document.fonts.load(`600 34px ${fonts.serif}`, 'Sample'),
           document.fonts.load(`500 24px ${fonts.sans}`, 'Sample'),
-          document.fonts.load(`700 30px ${fonts.serif}`, APP_ICON_LETTER),
+          document.fonts.load(`600 26px ${fonts.serif}`, `${APP_NAME} App`),
           document.fonts.ready,
         ]).catch(() => null)
       : null,
@@ -326,17 +327,17 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   withShadow(() => {
     ctx.beginPath()
     ctx.roundRect(margin, baseline - markSize + 6, markSize, markSize, markSize * 0.24)
-    ctx.fillStyle = '#000000'
+    ctx.fillStyle = LOGO_GROUND
     ctx.fill()
     ctx.lineWidth = 1.5
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'
     ctx.stroke()
-    ctx.fillStyle = '#f5ecd8'
-    ctx.font = `700 ${Math.round(markSize * 0.62)}px ${fonts.serif}`
+    // The word itself casts no shadow onto its own square.
+    ctx.save()
+    ctx.shadowColor = 'transparent'
+    drawLogoMark(ctx, margin, baseline - markSize + 6, markSize)
+    ctx.restore()
     ctx.direction = 'ltr'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(APP_ICON_LETTER, margin + markSize / 2, baseline - markSize / 2 + 6 + markSize * 0.04)
 
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'

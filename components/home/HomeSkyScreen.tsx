@@ -157,7 +157,7 @@ export default function HomeSkyScreen({ displayName, children }: { displayName: 
         </div>
       </div>
 
-      <div className="home-cards relative mx-auto flex w-full max-w-lg flex-col gap-2.5 px-5">
+      <div className="home-cards relative mx-auto flex w-full max-w-lg flex-col gap-3.5 px-5">
         <TodayCard state={state} clock={clock} timeZone={place.timeZone} />
         {children}
       </div>
