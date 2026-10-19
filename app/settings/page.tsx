@@ -9,6 +9,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Clapperboard,
   Download,
   FileText,
   Globe,
@@ -52,6 +53,7 @@ import {
   downloadOfflineTranslations,
 } from '@/lib/offline-translations'
 import { addFeedbackMessage } from '@/lib/admin'
+import { saveMixClips, useMixClips } from '@/lib/qari-video-options'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@/lib/i18n'
 
@@ -59,7 +61,7 @@ type SheetName = 'mushaf' | 'reading-mode' | 'translation' | 'feedback' | 'langu
 
 /* Each dot depicts a theme, so its colour is fixed rather than a token. */
 const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
-  { mode: 'light', label: 'Light', swatch: '#fffdf8' },
+  { mode: 'light', label: 'Light', swatch: '#f5f7f6' },
   { mode: 'dark', label: 'Dark', swatch: '#161d1a' },
   { mode: 'black', label: 'Black', swatch: '#000000' },
 ]
@@ -146,6 +148,7 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
+  const mixClips = useMixClips()
   const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
   // Which translators are saved for offline reading, by edition id.
   const [translationCached, setTranslationCached] = useState<Record<string, boolean>>({})
@@ -291,7 +294,7 @@ export default function SettingsPage() {
   return (
     <main
       dir={isRtl(language) ? 'rtl' : 'ltr'}
-      className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]"
+      className="cool-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]"
     >
       <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
         <header className="flex items-center gap-3">
@@ -405,7 +408,22 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <QariModelSection />
+        <QariModelSection>
+          <div className="home-card overflow-hidden rounded-2xl">
+            <label className="set-row cursor-pointer">
+              <RowIcon icon={Clapperboard} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.9375rem] font-medium">{t('Mix similar clips')}</span>
+                <span className="block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
+                  {mixClips
+                    ? t('Videos cut to a new clip like the chosen one as each ayah starts.')
+                    : t('Videos keep the clip that was chosen, the whole way through.')}
+                </span>
+              </span>
+              <Switch checked={mixClips} onChange={saveMixClips} label={t('Mix similar clips')} />
+            </label>
+          </div>
+        </QariModelSection>
 
         {/* Language */}
         <SectionLabel>{t('App language')}</SectionLabel>

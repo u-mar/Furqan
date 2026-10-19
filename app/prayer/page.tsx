@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudSun,
-  MapPin,
   Moon,
   MoonStar,
   Settings2,
@@ -16,7 +15,7 @@ import {
   Volume2,
   type LucideIcon,
 } from 'lucide-react'
-import PlaceSheet from '@/components/prayer/PlaceSheet'
+import LocationOffNote from '@/components/prayer/LocationOffNote'
 import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import Switch from '@/components/qari/Switch'
@@ -56,7 +55,7 @@ const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
 const RING_R = 40
 const RING_LENGTH = 2 * Math.PI * RING_R
 
-type Sheet = 'place' | 'method' | null
+type Sheet = 'method' | null
 
 /**
  * Just the day's prayer times — reached from its own tile on Home, and from
@@ -73,7 +72,7 @@ export default function PrayerPage() {
   const [sheet, setSheet] = useState<Sheet>(null)
   const [hasAdhan, setHasAdhan] = useState(false)
 
-  useAutoLocate(ready, place)
+  const location = useAutoLocate(ready, place)
 
   useEffect(() => {
     void adhanAvailable().then(setHasAdhan)
@@ -87,7 +86,6 @@ export default function PrayerPage() {
   const currentIndex = current ? PRAYER_ORDER.indexOf(current) : -1
   const tz = place.timeZone
   const show = (d: Date) => formatTime(d, language, tz)
-  const placeLabel = place.name ? place.name : t('Your location')
   const waited = prayerWaitProgress(place, settings, times, current, next, now)
   const minutesLeft = minutesUntil(next.at, now)
   const timeLeft =
@@ -133,21 +131,9 @@ export default function PrayerPage() {
             </h1>
             <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">{formatHijri(now)}</p>
           </div>
-          <button type="button" onClick={() => setSheet('place')} className="prayer-pill home-press ed-focus" aria-label={t('Your location')}>
-            <MapPin className="h-4 w-4 shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2} />
-            <span className="truncate">{placeLabel}</span>
-          </button>
         </header>
 
-        {place.source === 'default' ? (
-          <button
-            type="button"
-            onClick={() => setSheet('place')}
-            className="ed-focus mx-1 mt-3 block w-full text-left text-[0.8125rem] text-[var(--home-muted)] underline decoration-[var(--home-rule-strong)] underline-offset-2"
-          >
-            {t('Using Mogadishu. Tap to use your own location.')}
-          </button>
-        ) : null}
+        <LocationOffNote status={location.status} place={place} onRetry={location.retry} />
 
         {hasAdhan ? (
           <div className="home-card mt-4 overflow-hidden rounded-2xl">
@@ -285,8 +271,6 @@ export default function PrayerPage() {
           </p>
         ) : null}
       </div>
-
-      <PlaceSheet open={sheet === 'place'} place={place} onClose={() => setSheet(null)} />
 
       {/* Method */}
       <SettingsSheet

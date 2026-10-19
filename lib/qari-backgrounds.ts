@@ -7,6 +7,7 @@
  */
 
 import { RETIRED_SHARE_BACKGROUNDS, SHARE_BACKGROUNDS, SHARE_BACKGROUND_GROUPS, type ShareBackground } from '@/lib/share-backgrounds'
+import { NO_HD_CLIPS } from '@/lib/qari-hd-clips'
 
 export interface VideoBackground {
   id: string
@@ -20,6 +21,11 @@ export interface VideoBackground {
   group: string
   /** A moving clip, hosted on Cloudinary — takes priority over `url` when set. */
   videoUrl?: string | null
+  /**
+   * The same clip in full HD (1080 x 1920) on our own media host, played instead
+   * where the phone can take it (see clipSource). Null for the few with no sharp original.
+   */
+  videoUrlHd?: string | null
 }
 
 /** What the picker strip shows before "More": black, a few moving clips, and the best of the photos. */
@@ -86,6 +92,9 @@ export const VIDEO_BACKGROUND_GROUPS = [
 ]
 
 const MOTION_CLOUD_BASE = 'https://res.cloudinary.com/r2ule9za/video/upload/nadir/share-bg-video'
+
+/** Where the full-HD clips are kept: the app's R2 bucket, at media.qurannaba.com/clips/<id>.mp4. */
+const MEDIA_BASE = (process.env.NEXT_PUBLIC_MEDIA_URL || 'https://media.qurannaba.com').replace(/\/$/, '')
 
 type SceneryGroup = (typeof SCENERY_GROUPS)[number]
 type EditGroup = (typeof EDIT_GROUPS)[number]
@@ -482,6 +491,7 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
   // A small crop of that frame for the pickers — the full one is 1920px wide.
   thumb: `${MOTION_CLOUD_BASE.replace('/video/upload/', '/video/upload/w_240,h_300,c_fill,q_auto/')}/${id}.jpg`,
   videoUrl: `${MOTION_CLOUD_BASE}/${id}.mp4`,
+  videoUrlHd: NO_HD_CLIPS.has(id) ? null : `${MEDIA_BASE}/clips/${id}.mp4`,
   group,
 }))
 
@@ -501,8 +511,19 @@ export const VIDEO_BACKGROUNDS: VideoBackground[] = [
   ...SHARE_BACKGROUNDS.map(photoBackground),
 ]
 
+/**
+ * The clip to play: the full-HD copy, unless the phone is a weak one or saving
+ * data (html.lite, set in app/layout.tsx), which keep the lighter 720p clip.
+ * A player that cannot load the HD copy falls back to `videoUrl` itself.
+ */
+export function clipSource(background: VideoBackground): string | null {
+  const lite = typeof document !== 'undefined' && document.documentElement.classList.contains('lite')
+  return (!lite && background.videoUrlHd) || background.videoUrl || null
+}
+
+/** A verse-card picture as a recitation's background: its full-screen copy where it has one. */
 function photoBackground(b: ShareBackground): VideoBackground {
-  return { id: `photo-${b.id}`, label: b.label, url: b.src, thumb: b.thumb, group: b.group }
+  return { id: `photo-${b.id}`, label: b.label, url: b.tall ?? b.src, thumb: b.thumb, group: b.group }
 }
 
 /** Photos no longer offered, still drawn for the recitations already posted on them. */

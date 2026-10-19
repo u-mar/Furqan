@@ -2,14 +2,14 @@
  * Naba's logo: the word نبأ in square Kufic. The baseline, the alif and the
  * teeth of the ba and the noon are a soft white; the noon's dot above, the
  * ba's dot below and the alif's hamza (a squared "c") are gold, on a
- * near-black square with a little green in it.
+ * plain black square.
  *
  * The blocks are drawn on a 200-unit square with the word centred in it, so
  * the app icons, the sign-in screen, the splash and the share images all
  * scale the same shapes.
  */
 
-export const LOGO_GROUND = '#0b1512'
+export const LOGO_GROUND = '#000000'
 export const LOGO_INK = '#f1f3ef'
 export const LOGO_GOLD = '#e0bc74'
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CheckCircle2, Download, Trash2 } from 'lucide-react'
 import {
   QARI_ASR_MODEL_URL,
@@ -15,9 +15,10 @@ import { tr, useT } from '@/lib/i18n'
 
 /**
  * Settings → Qari: the speech model that marks which ayat a recitation holds,
- * on the phone, saved from a one-time download.
+ * on the phone, saved from a one-time download. `children` are the section's
+ * other cards, shown above it.
  */
-export default function QariModelSection() {
+export default function QariModelSection({ children }: { children?: ReactNode }) {
   const t = useT()
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -55,7 +56,8 @@ export default function QariModelSection() {
   return (
     <>
       <h2 className="home-label mx-1 mb-2 mt-[22px]">{t('Qari')}</h2>
-      <div className="home-card overflow-hidden rounded-2xl">
+      {children}
+      <div className={cn('home-card overflow-hidden rounded-2xl', children ? 'mt-3' : null)}>
         <div className="flex items-center justify-between gap-3 px-3.5 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <span

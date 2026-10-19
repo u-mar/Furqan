@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, type CSSProperties, type ReactNode } from 'react'
-import { useNow, usePrayerState } from '@/hooks/usePrayer'
+import { useAutoLocate, useNow, usePrayerState } from '@/hooks/usePrayer'
 import { formatHijri, toHijri } from '@/lib/hijri'
 import {
   ARC_BOX,
@@ -115,6 +115,8 @@ function useFitToScreen() {
  */
 export default function HomeSkyScreen({ displayName, children }: { displayName: string; children: ReactNode }) {
   const { place, settings, ready } = usePrayerState()
+  // Home shows the day's prayers, so it finds where the phone is by itself too.
+  useAutoLocate(ready, place)
   const clock = useNow(10_000)
   const state = useMemo(
     () => (ready && clock ? homeSkyState(place, settings, clock) : null),

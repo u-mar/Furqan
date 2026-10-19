@@ -45,9 +45,12 @@ type Progress = (fraction: number) => void
 
 const SAMPLE_RATE = 44100
 
-/** Vertical HD. 720p encodes several times faster than 1080p on a phone and TikTok takes it as is. */
-const W = 720
-const H = 1280
+/**
+ * The frame, vertical: 720 x 1280 or 1080 x 1920 as the person chooses (see VIDEO_QUALITIES).
+ * Set by setFrameSize before each video, with everything laid out from it.
+ */
+let W = 720
+let H = 1280
 /** The cinema's frame rate: the look of the edits it is shared beside, and a fifth fewer frames to make than 30. */
 const FPS = 24
 
@@ -150,71 +153,59 @@ export {
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
 
-export interface VideoOptions {
-  /** One of VIDEO_BACKGROUNDS' ids. */
-  backgroundId: string
-  /** Cut to other clips of the same kind as each ayah starts, rather than the chosen clip alone. */
-  mix: boolean
-}
+import { DEFAULT_VIDEO_OPTIONS, VIDEO_QUALITIES, type VideoOptions } from '@/lib/qari-video-options'
 
-export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
-  backgroundId: 'black',
-  mix: true,
-}
-
-/**
- * Raised when what the options mean changes. Choices saved before mixing became
- * the default were saved with every video made, not chosen, so they are not kept.
- */
-const VIDEO_OPTIONS_VERSION = 2
+export {
+  DEFAULT_VIDEO_OPTIONS,
+  loadVideoOptions,
+  saveMixClips,
+  saveVideoOptions,
+  saveVideoQuality,
+  VIDEO_QUALITIES,
+  VIDEO_QUALITY_ORDER,
+  videoSizeMb,
+  type VideoOptions,
+  type VideoQuality,
+} from '@/lib/qari-video-options'
 
 /** Whether this background has others of its kind to mix in. */
 export function canMixBackground(backgroundId: string): boolean {
   return backgroundReel(findVideoBackground(backgroundId)).length > 1
 }
 
-const VIDEO_OPTIONS_KEY = 'muyassar_qari_video_options'
-
-/** The choices from the last video made, so sharing again starts where you left off. */
-export function loadVideoOptions(): VideoOptions {
-  try {
-    const raw = localStorage.getItem(VIDEO_OPTIONS_KEY)
-    if (!raw) return DEFAULT_VIDEO_OPTIONS
-    const saved = JSON.parse(raw) as Partial<VideoOptions> & { v?: number }
-    return {
-      backgroundId: findVideoBackground(String(saved.backgroundId)).id,
-      mix: saved.v === VIDEO_OPTIONS_VERSION ? saved.mix !== false : DEFAULT_VIDEO_OPTIONS.mix,
-    }
-  } catch {
-    return DEFAULT_VIDEO_OPTIONS
-  }
-}
-
-export function saveVideoOptions(options: VideoOptions): void {
-  try {
-    localStorage.setItem(VIDEO_OPTIONS_KEY, JSON.stringify({ ...options, v: VIDEO_OPTIONS_VERSION }))
-  } catch {
-    // Remembering is a nicety.
-  }
-}
-
 /** The swipe view is laid out for a 375-point-wide phone; the video is that, scaled up. */
-const S = W / 375
+let S = W / 375
 
 const IVORY = '#f3ead6'
 const GOLD = '#d9b86a'
 
 /** Where the ayah sits: in the middle of the frame, as in the swipe view. */
-const CAPTION_CENTER_Y = Math.round(H * 0.5)
-const CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
-const CAPTION_WIDTH = W - Math.round(28 * S) * 2
+let CAPTION_CENTER_Y = Math.round(H * 0.5)
+let CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
+let CAPTION_WIDTH = W - Math.round(28 * S) * 2
 
 /** The ayah card is 1080 wide; its brand, scaled by this, reads the same here. */
-const CARD = W / 1080
+let CARD = W / 1080
 const BRAND_MUTED = 'rgba(255, 255, 255, 0.72)'
-const FOOTER_LEFT = Math.round(64 * CARD)
-const FOOTER_HEIGHT = Math.round(110 * CARD)
-const FOOTER_BOTTOM = H - Math.round(48 * CARD)
+let FOOTER_LEFT = Math.round(64 * CARD)
+let FOOTER_HEIGHT = Math.round(110 * CARD)
+let FOOTER_BOTTOM = H - Math.round(48 * CARD)
+
+/** Sets the frame's width (its height follows, 9:16) and everything laid out from it. */
+function setFrameSize(width: number): void {
+  W = width
+  H = Math.round((width * 16) / 9)
+  S = W / 375
+  CAPTION_CENTER_Y = Math.round(H * 0.5)
+  CAPTION_MAX_HEIGHT = Math.round(H * 0.56)
+  CAPTION_WIDTH = W - Math.round(28 * S) * 2
+  CARD = W / 1080
+  FOOTER_LEFT = Math.round(64 * CARD)
+  FOOTER_HEIGHT = Math.round(110 * CARD)
+  FOOTER_BOTTOM = H - Math.round(48 * CARD)
+  LINE_MAX = Math.round(27 * S)
+  LINE_MIN = Math.round(18 * S)
+}
 
 /** A phrase drawn twice, every word lit and every word faint, and where each word is. */
 interface CaptionArt {
@@ -326,8 +317,8 @@ function fitBlock(
 }
 
 /** The phrase's type, as in the swipe view: as large as this, and only as small as that before it takes two lines. */
-const LINE_MAX = Math.round(27 * S)
-const LINE_MIN = Math.round(18 * S)
+let LINE_MAX = Math.round(27 * S)
+let LINE_MIN = Math.round(18 * S)
 
 function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
@@ -619,7 +610,7 @@ function drawFooter(r: Recitation, serif: string, sans: string): HTMLCanvasEleme
   }
 
   // Drawn as the ayah card draws it (lib/verse-image.ts), at this frame's size:
-  // the icon on its near-black tile, then "Naba App" in the card's soft white.
+  // the icon on its black tile, then "Naba App" in the card's soft white.
   const mark = Math.round(46 * CARD)
   const top = Math.round(4 * CARD)
   ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
@@ -677,9 +668,17 @@ function clipAtVideoSize(url: string): string {
  * frame's size, looped under a recitation longer than the clip. Decoded
  * straight through, which is many times faster than seeking to each frame.
  */
-async function openClip(mb: Mediabunny, url: string, frames: number): Promise<AsyncGenerator<CanvasImageSource | null> | null> {
+async function openClip(
+  mb: Mediabunny,
+  url: string,
+  frames: number,
+  hd?: string | null
+): Promise<AsyncGenerator<CanvasImageSource | null> | null> {
+  // A full-HD video is made from the full-HD clip where there is one; if it will not open
+  // (no copy yet, or the media host not allowing this site), the 720p one serves.
   // Ours are cut to the video's size already; a resized copy would only mean waiting for Cloudinary to make it.
-  for (const src of [url, clipAtVideoSize(url)]) {
+  const sources = [...(hd && W > 720 ? [hd] : []), url, clipAtVideoSize(url)]
+  for (const src of sources) {
     try {
       const input = new mb.Input({ source: new mb.UrlSource(src), formats: mb.ALL_FORMATS })
       const track = await input.getPrimaryVideoTrack()
@@ -744,10 +743,10 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
     if (!frames) {
       const shot = shots[k]
       const length = shot.to - shot.from
-      const first = shots[0].clip.videoUrl
-      frames = (shot.clip.videoUrl ? openClip(mb, shot.clip.videoUrl, length) : Promise.resolve(null)).then(
+      const first = shots[0].clip
+      frames = (shot.clip.videoUrl ? openClip(mb, shot.clip.videoUrl, length, shot.clip.videoUrlHd) : Promise.resolve(null)).then(
         // A clip that will not load gives way to the first one again rather than a frozen frame.
-        (opened) => opened ?? (k > 0 && first ? openClip(mb, first, length) : null)
+        (opened) => opened ?? (k > 0 && first.videoUrl ? openClip(mb, first.videoUrl, length, first.videoUrlHd) : null)
       )
       opened.set(k, frames)
     }
@@ -961,6 +960,11 @@ export async function makeRecitationVideo(
   const captionsReady = startCaptions(r)
   captionsReady.catch(() => {})
   const [mb, dry] = await Promise.all([import('mediabunny'), decodeRecitationAudio(r, signal)])
+  // The quality the person chose; a phone that cannot make full HD makes 720p instead.
+  const quality = VIDEO_QUALITIES[options.quality] ?? VIDEO_QUALITIES.high
+  let width = quality.width
+  if (width > 720 && !(await mb.canEncodeVideo('avc', { width, height: Math.round((width * 16) / 9) }))) width = 720
+  setFrameSize(width)
   const [canVideo, canAac] = await Promise.all([
     mb.canEncodeVideo('avc', { width: W, height: H }),
     mb.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: SAMPLE_RATE }),
@@ -989,11 +993,11 @@ export async function makeRecitationVideo(
     target: new mb.BufferTarget(),
   })
   // A set bitrate rather than a quality level: a phone's hardware encoder can take "high" to mean
-  // 25+ Mbps, a hundred megabytes for half a minute. 2.5 Mbps is about what TikTok and Instagram
-  // keep 720p at once they re-encode it, and keeps a two-minute recitation near 40 MB to send.
+  // 25+ Mbps, a hundred megabytes for half a minute. The person picks how much (VIDEO_QUALITIES);
+  // full HD kept at 720p's rate would only be blurrier, so the rate goes with the size.
   const video = new mb.CanvasSource(canvas, {
     codec: 'avc',
-    quality: new mb.Quality({ bitrate: 2_500_000, bitrateMode: 'constant' }),
+    quality: new mb.Quality({ bitrate: width === quality.width ? quality.bitrate : VIDEO_QUALITIES.standard.bitrate, bitrateMode: 'constant' }),
     keyFrameInterval: 2,
   })
   output.addVideoTrack(video, { frameRate: FPS })

@@ -38,13 +38,14 @@ import {
 import { findSheikh } from '@/lib/sheikhs'
 import {
   backgroundReel,
+  clipSource,
   recitationBackground,
   VIDEO_BACKGROUND_GROUPS,
   VIDEO_BACKGROUNDS,
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
 import { shotAt, shotStarts } from '@/lib/qari-shots'
-import { loadVideoOptions } from '@/lib/qari-share-media'
+import { useMixClips } from '@/lib/qari-video-options'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { askToSignIn } from '@/lib/account-prompt'
 import { cn } from '@/lib/cn'
@@ -309,9 +310,9 @@ function AyahStage({
  * a clip that is ready to play instead of one that has only started downloading.
  */
 function Backdrop({ recitation, playing, position }: { recitation: Recitation; playing: boolean; position: number }) {
-  // Cutting between clips of the kind is the reciter's video setting too (on unless turned off).
-  const [mixScenes, setMixScenes] = useState(true)
-  useEffect(() => setMixScenes(loadVideoOptions().mix), [])
+  // Just the chosen clip, unless the person turned on cutting to clips like it
+  // (Settings, or the share sheet); the same choice as for the videos they share.
+  const mixScenes = useMixClips()
   const background = recitationBackground(recitation)
   const reel = useMemo(() => (mixScenes ? backgroundReel(background) : [background]), [background, mixScenes])
   const starts = useMemo(
@@ -342,6 +343,8 @@ function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: num
   const current = reel[shot % reel.length]
   const next = reel[(shot + 1) % reel.length]
   const videos = useRef(new Map<string, HTMLVideoElement>())
+  // Clips whose full-HD copy would not load play their 720p one instead.
+  const [hdFailed, setHdFailed] = useState<ReadonlySet<string>>(() => new Set())
   // On a weak phone (lite mode, see app/layout.tsx) the next scene is not
   // downloaded ahead while this one plays; its picture stands in until it starts.
   const preloadNext = typeof document !== 'undefined' && document.documentElement.classList.contains('lite') ? 'metadata' : 'auto'
@@ -374,7 +377,10 @@ function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: num
               if (element) videos.current.set(clip.id, element)
               else videos.current.delete(clip.id)
             }}
-            src={clip.videoUrl ?? undefined}
+            src={(hdFailed.has(clip.id) ? clip.videoUrl : clipSource(clip)) ?? undefined}
+            onError={() => {
+              if (!hdFailed.has(clip.id) && clipSource(clip) !== clip.videoUrl) setHdFailed((prev) => new Set(prev).add(clip.id))
+            }}
             poster={clip.url ?? undefined}
             muted
             loop

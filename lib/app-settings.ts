@@ -164,7 +164,7 @@ export function applyThemeToDocument(theme: ThemeMode): void {
   }
 
   const themeColor =
-    theme === 'black' ? '#000000' : theme === 'dark' ? '#080b18' : '#f4f2fb'
+    theme === 'black' ? '#000000' : theme === 'dark' ? '#080b18' : '#fafafa'
   let meta = document.querySelector('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')

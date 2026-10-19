@@ -146,6 +146,9 @@ function ReadPageContent() {
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const somaliAutoRef = useRef(false)
   const playSomaliVoiceRef = useRef<(verseKey: string) => Promise<boolean>>(async () => false)
+  /** Previous from a page's first ayah: the page before is opening, to play its ayah just before `before`. */
+  const playBeforeOnPageRef = useRef<{ mode: ReadAudioMode; before: string; page: number } | null>(null)
+  const startAudioRef = useRef<(mode: ReadAudioMode, fromVerseKey: string | null) => Promise<void>>(async () => {})
   const autoContinuePlaybackRef = useRef<'recitation' | 'somali' | 'both' | null>(null)
   const resumeRecitationOnPageRef = useRef(false)
   const currentPageRef = useRef(1)
@@ -672,6 +675,8 @@ function ReadPageContent() {
     await playSomaliVoice(verseKey)
   }
 
+  startAudioRef.current = startAudio
+
   const handlePlayToggle = () => {
     const selectedKey = ayahMenu?.verseKey ?? null
     if (selectedKey && selectedKey !== nowPlayingKey) {
@@ -732,8 +737,20 @@ function ReadPageContent() {
       void startAudio(sessionMode, target.verse_key)
       return
     }
-    // Back past the first ayah just restarts it; forward past the last carries on to the next page.
-    if (delta < 0 || currentPageRef.current >= TOTAL_MUSHAF_PAGES) {
+    // Back past a page's first ayah turns back a page and plays its last ayah; forward past the
+    // last carries on to the next page. At either end of the mushaf it just restarts this one.
+    if (delta < 0) {
+      if (currentPageRef.current <= 1) {
+        void startAudio(sessionMode, verseKey)
+        return
+      }
+      stopAllAudio()
+      const page = currentPageRef.current - 1
+      playBeforeOnPageRef.current = { mode: sessionMode, before: verseKey, page }
+      void navigatePageRef.current(page)
+      return
+    }
+    if (currentPageRef.current >= TOTAL_MUSHAF_PAGES) {
       void startAudio(sessionMode, verseKey)
       return
     }
@@ -770,6 +787,26 @@ function ReadPageContent() {
     setBothVerseKey(null)
     stopSomaliVoice()
   }, [currentPage, stopSomaliVoice])
+
+  // Previous from a page's first ayah: once the page before is open, play its last ayah before the
+  // one that was playing. Until then the old page's ayat are still here, and none of them comes first.
+  useEffect(() => {
+    const pending = playBeforeOnPageRef.current
+    if (!pending || pageVerses.length === 0) return
+    if (currentPageRef.current !== pending.page) {
+      if (currentPageRef.current !== pending.page + 1) playBeforeOnPageRef.current = null
+      return
+    }
+    const order = (key: string) => {
+      const [surah, ayah] = key.split(':').map(Number)
+      return surah * 1000 + ayah
+    }
+    const before = order(pending.before)
+    const target = [...pageVerses].reverse().find((v) => order(v.verse_key) < before)
+    if (!target) return
+    playBeforeOnPageRef.current = null
+    void startAudioRef.current(pending.mode, target.verse_key)
+  }, [pageVerses])
 
   useEffect(() => {
     const mode = autoContinuePlaybackRef.current

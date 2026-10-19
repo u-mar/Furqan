@@ -529,4 +529,21 @@ export const QARI: Dict = {
     so: 'Kaliya muuqaalka aad dooratay, ilaa dhammaadka.',
     ar: 'المقطع الذي اخترته فقط، من البداية إلى النهاية.',
   },
+  'Video quality': { so: 'Tayada muuqaalka', ar: 'جودة الفيديو' },
+  Standard: { so: 'Caadi', ar: 'عادية' },
+  High: { so: 'Sare', ar: 'عالية' },
+  Best: { so: 'Ugu fiican', ar: 'الأفضل' },
+  '{resolution} · {size} MB': { so: '{resolution} · {size} MB', ar: '{resolution} · {size} م.ب' },
+  'Sizes are approximate. Sharper videos take a little longer to make.': {
+    so: 'Cabbirradu waa qiyaas. Muuqaalka ka cad wuxuu qaataa waqti yar oo dheeraad ah.',
+    ar: 'الأحجام تقريبية. الفيديو الأوضح يستغرق وقتًا أطول قليلًا لإعداده.',
+  },
+  'Videos cut to a new clip like the chosen one as each ayah starts.': {
+    so: 'Muuqaalladu waxay u gudbaan muuqaal cusub oo la mid ah kii la doortay markasta oo aayad bilaabanto.',
+    ar: 'تنتقل المقاطع إلى مقطع جديد يشبه المختار مع بداية كل آية.',
+  },
+  'Videos keep the clip that was chosen, the whole way through.': {
+    so: 'Muuqaalladu waxay hayaan muuqaalka la doortay, ilaa dhammaadka.',
+    ar: 'تبقى المقاطع على المقطع المختار من البداية إلى النهاية.',
+  },
 }

@@ -170,7 +170,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Location.</strong> Used only to calculate prayer times and the qibla direction, on your
-          device. Your location is not sent to us. You can enter a city instead.
+          device. Your location is not sent to us. If you do not allow it, Mogadishu is used instead.
         </li>
         <li>
           <strong>Notifications.</strong> Used only for the notifications you turn on, such as the adhan,

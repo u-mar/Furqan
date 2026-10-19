@@ -10,16 +10,13 @@ const listeners = new Set<() => void>()
 
 function read(): QariView {
   try {
-    return localStorage.getItem(KEY) === 'swipe' ? 'swipe' : 'list'
+    return localStorage.getItem(KEY) === 'list' ? 'list' : 'swipe'
   } catch {
-    return 'list'
+    return 'swipe'
   }
 }
 
-/**
- * The chosen view, remembered on the phone. The list is the default: with few
- * recitations a swipe feed ends after a handful of swipes.
- */
+/** The chosen view, remembered on the phone. Video, full-screen swipe, until the list is picked. */
 export function useQariView(): [QariView, (view: QariView) => void] {
   const view = useSyncExternalStore(
     (listener) => {
@@ -27,7 +24,7 @@ export function useQariView(): [QariView, (view: QariView) => void] {
       return () => listeners.delete(listener)
     },
     read,
-    () => 'list' as const
+    () => 'swipe' as const
   )
   const setView = useCallback((next: QariView) => {
     try {

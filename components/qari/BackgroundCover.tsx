@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
-import type { VideoBackground } from '@/lib/qari-backgrounds'
+import { clipSource, type VideoBackground } from '@/lib/qari-backgrounds'
 
 /**
  * A recitation's background filling its box: the picture, the clip itself for
@@ -27,7 +27,10 @@ export default function BackgroundCover({
   className?: string
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const clip = moving && background.videoUrl ? background.videoUrl : null
+  // The full-HD copy where the phone can take it; the 720p one if it will not load.
+  const [hdFailedFor, setHdFailedFor] = useState<string | null>(null)
+  const preferred = clipSource(background)
+  const clip = !moving || !background.videoUrl ? null : hdFailedFor === background.id ? background.videoUrl : preferred
 
   useEffect(() => {
     const video = videoRef.current
@@ -58,6 +61,9 @@ export default function BackgroundCover({
           loop
           playsInline
           preload="auto"
+          onError={() => {
+            if (clip && clip !== background.videoUrl) setHdFailedFor(background.id)
+          }}
           className={media}
         />
       ) : (

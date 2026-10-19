@@ -10,7 +10,7 @@ import {
 } from '@/lib/app-logo'
 
 /**
- * A PNG of the app icon: نبأ in square Kufic on its near-black square.
+ * A PNG of the app icon: نبأ in square Kufic on its black square.
  * `scale` sizes the word on the square (1 = as designed), `radius` rounds the
  * square's corners, and `badge` draws the word alone in white on transparent:
  * the shape Android tints for the notification badge in the status bar.

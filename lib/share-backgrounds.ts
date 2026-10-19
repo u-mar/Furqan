@@ -4,7 +4,9 @@
  * Most ship with the app in /public/share-bg (Unsplash licence, 1080x1350),
  * each with a small copy in /public/share-bg/thumb for the pickers: drop the two
  * files in and add a `bg` line below. The rest live on Cloudinary under
- * nadir/share-bg/: upload one there and add a `cloudBg` line.
+ * nadir/share-bg/: upload one there and add a `cloudBg` line. A picture uploaded
+ * anywhere else on Cloudinary (straight into the Media Library, say) shows up
+ * once it has a `cloudPic` line with its public id.
  */
 
 export interface ShareBackground {
@@ -14,12 +16,19 @@ export interface ShareBackground {
   src: string
   /** A small copy for the pickers. */
   thumb: string
+  /**
+   * A full-screen 9:16 copy (1080 x 1920) for the Qari swipe view and its videos, where the
+   * card's 4:5 cut would be stretched to fill a phone. Only pictures kept on Cloudinary have one.
+   */
+  tall?: string
   group: ShareBackgroundGroup
   /** Reference-line colour on the verse card, picked to sit with this photo rather than one gold for all. */
   accent: string
 }
 
 export type ShareBackgroundGroup =
+  | 'Aesthetic'
+  | 'Medina streets'
   | 'Makkah & Madinah'
   | 'Mosques'
   | 'Night drives'
@@ -54,8 +63,10 @@ export type ShareBackgroundGroup =
 
 /** The order the gallery lists them in (groups with nothing left to show are skipped by the pickers). */
 export const SHARE_BACKGROUND_GROUPS: ShareBackgroundGroup[] = [
+  'Aesthetic',
   'Makkah & Madinah',
   'Mosques',
+  'Medina streets',
   'Sacred',
   'Prayer',
   'Winter sunsets',
@@ -101,12 +112,97 @@ function cloudBg(id: string, label: string, group: ShareBackgroundGroup, accent:
     label,
     src: `${CLOUD_IMAGES}/c_fill,w_1080,h_1350,g_auto,q_auto,f_jpg/nadir/share-bg/${id}`,
     thumb: `${CLOUD_IMAGES}/c_fill,w_240,h_300,g_auto,q_auto,f_jpg/nadir/share-bg/${id}`,
+    tall: `${CLOUD_IMAGES}/c_fill,w_1080,h_1920,g_auto,q_auto:good,f_jpg/nadir/share-bg/${id}`,
+    group,
+    accent,
+  }
+}
+
+/**
+ * A picture uploaded anywhere on Cloudinary under its own public id (outside
+ * nadir/share-bg/), cut the same way. `id` is the app's own name for it.
+ */
+function cloudPic(publicId: string, id: string, label: string, group: ShareBackgroundGroup, accent: string): ShareBackground {
+  return {
+    id,
+    label,
+    src: `${CLOUD_IMAGES}/c_fill,w_1080,h_1350,g_auto,q_auto,f_jpg/${publicId}`,
+    thumb: `${CLOUD_IMAGES}/c_fill,w_240,h_300,g_auto,q_auto,f_jpg/${publicId}`,
+    tall: `${CLOUD_IMAGES}/c_fill,w_1080,h_1920,g_auto,q_auto:good,f_jpg/${publicId}`,
     group,
     accent,
   }
 }
 
 export const SHARE_BACKGROUNDS: ShareBackground[] = [
+  // Aesthetic: soft, film-like and often blurred, with calm room for the ayah, in the
+  // spirit of the Madinah night street (Unsplash, on Cloudinary)
+  cloudBg('aes-minaret-blue-night', 'Minaret, blue night', 'Aesthetic', '#f0dbc5'),
+  cloudBg('aes-minaret-pale-sky', 'Minaret, pale sky', 'Aesthetic', '#f0eed4'),
+  cloudBg('aes-madinah-lamps', 'Madinah lamps', 'Aesthetic', '#f0e7cb'),
+  cloudBg('aes-green-minaret', 'Green-lit minaret', 'Aesthetic', '#f0eab6'),
+  cloudBg('aes-arch-and-minaret', 'Arch & minaret', 'Aesthetic', '#e9f0d2'),
+  cloudBg('aes-umbrella-sunset', 'Umbrella sunset', 'Aesthetic', '#f0d0a3'),
+  cloudBg('aes-kaaba-through-arch', 'Kaaba through the arch', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-tower-at-dusk', 'Tower at dusk', 'Aesthetic', '#f0dfcd'),
+  cloudBg('aes-pilgrims-in-white', 'Pilgrims in white', 'Aesthetic', '#f0e0a3'),
+  cloudBg('aes-green-clock', 'Green clock', 'Aesthetic', '#c7f0a3'),
+  cloudBg('aes-kaaba-corner-sky', 'Kaaba corner & sky', 'Aesthetic', '#cadef0'),
+  cloudBg('aes-mosque-pink-dusk', 'Mosque, pink dusk', 'Aesthetic', '#f0c9c0'),
+  cloudBg('aes-moon-over-mosque', 'Moon over the mosque', 'Aesthetic', '#cfbbf0'),
+  cloudBg('aes-minaret-in-the-gap', 'Minaret in the gap', 'Aesthetic', '#c0dbf0'),
+  cloudBg('aes-galata-bridge', 'Galata bridge', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-koutoubia', 'Koutoubia', 'Aesthetic', '#f0d8bf'),
+  cloudBg('aes-madrasa-arch', 'Madrasa arch', 'Aesthetic', '#f0dccb'),
+  cloudBg('aes-ramadan-lantern', 'Ramadan lantern', 'Aesthetic', '#f0bea3'),
+  cloudBg('aes-old-street-minaret', 'Old street minaret', 'Aesthetic', '#f0c6a4'),
+  cloudBg('aes-cairo-minarets', 'Cairo minarets', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-lamp-and-minaret', 'Lamp & minaret', 'Aesthetic', '#f0cea3'),
+  cloudBg('aes-hagia-sophia', 'Hagia Sophia', 'Aesthetic', '#f0dfcd'),
+  cloudBg('aes-pink-wall-door', 'Pink wall', 'Aesthetic', '#f0c3af'),
+  cloudBg('aes-arched-corridor', 'Arched corridor', 'Aesthetic', '#f0eed1'),
+  cloudBg('aes-blurred-road', 'Blurred road', 'Aesthetic', '#f0e3c5'),
+  cloudBg('aes-passing-lights', 'Passing lights', 'Aesthetic', '#f0d8cb'),
+  cloudBg('aes-blue-dusk-blur', 'Blue dusk', 'Aesthetic', '#a3c1f0'),
+  cloudBg('aes-park-lamps', 'Park lamps', 'Aesthetic', '#edf0a3'),
+  cloudBg('aes-bokeh-alley', 'Bokeh alley', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-soft-street', 'Soft street', 'Aesthetic', '#d1e5f0'),
+  cloudBg('aes-pink-blur', 'Pink blur', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-blue-bokeh', 'Blue bokeh', 'Aesthetic', '#e6d8f0'),
+  cloudBg('aes-city-in-motion', 'City in motion', 'Aesthetic', '#f0d7a3'),
+  cloudBg('aes-blue-medina-night', 'Blue medina at night', 'Aesthetic', '#a3d2f0'),
+  cloudBg('aes-terracotta-alley', 'Terracotta alley', 'Aesthetic', '#f0cda3'),
+  cloudBg('aes-lantern-wall', 'Lantern wall', 'Aesthetic', '#f0c8a3'),
+  cloudBg('aes-yellow-lamp', 'Yellow lamp', 'Aesthetic', '#f0dca3'),
+  cloudBg('aes-crescent-street', 'Crescent over the street', 'Aesthetic', '#f0cca3'),
+  cloudBg('aes-fog-lamps', 'Fog lamps', 'Aesthetic', '#f0eac4'),
+  cloudBg('aes-amber-fog', 'Amber fog', 'Aesthetic', '#f0c8a3'),
+  cloudBg('aes-into-the-light', 'Into the light', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-blue-streetlight', 'Blue streetlight', 'Aesthetic', '#a3d2f0'),
+  cloudBg('aes-looking-up', 'Looking up', 'Aesthetic', '#a3c4f0'),
+  cloudBg('aes-warm-rain', 'Warm rain', 'Aesthetic', '#f0cca3'),
+  cloudBg('aes-night-rain', 'Night rain', 'Aesthetic', '#a8f0ea'),
+  cloudBg('aes-bare-trees-dusk', 'Bare trees at dusk', 'Aesthetic', '#f0e3d9'),
+  cloudBg('aes-golden-grass', 'Golden grass', 'Aesthetic', '#dbdbdb'),
+  cloudBg('aes-window-view', 'Window view', 'Aesthetic', '#f0e5cf'),
+  cloudBg('aes-pastel-shore', 'Pastel shore', 'Aesthetic', '#f0c2ac'),
+  cloudBg('aes-pink-clouds', 'Pink clouds', 'Aesthetic', '#f0bea3'),
+
+  // Medina streets: uploaded straight to Cloudinary (Pexels)
+  cloudPic('pexels-adildahmani-10727384', 'medina-white-alley', 'White alley', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-aemyr-sahli-154798633-38559874', 'medina-white-street', 'White street', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-bxsra-37740757', 'medina-sunny-arcade', 'Sunny arcade', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-ceutth-20454259-15781052', 'medina-walking-home', 'Walking home', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-iramezatil-739231740-20634398', 'medina-palm-avenue', 'Palm avenue', 'Medina streets', '#ccdbf0'),
+  cloudPic('pexels-jazz-kaundal-615171890-38738885', 'medina-blue-steps', 'Blue steps', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-jean-marc-bonnel-387362531-19056100', 'medina-lantern-street', 'Lantern street', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-joe-click-3684821-28275959', 'medina-old-facade', 'Old facade', 'Medina streets', '#f0dfcf'),
+  cloudPic('pexels-miguel-cuenca-67882473-36782884', 'medina-covered-souk', 'Covered souk', 'Medina streets', '#f0c8a3'),
+  cloudPic('pexels-oussama-zidane-156926735-10869708', 'medina-pink-street', 'Pink street', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-ramonkaphotography-38112554', 'medina-golden-alley', 'Golden alley', 'Medina streets', '#f0e0b7'),
+  cloudPic('pexels-tobias-waibl-3833365-29596133', 'medina-white-courtyard', 'White courtyard', 'Medina streets', '#dbdbdb'),
+  cloudPic('pexels-usman-umar-340351639-36201582', 'medina-two-brothers', 'Two brothers', 'Medina streets', '#f0dbb8'),
+
   // Makkah & Madinah
   bg('haram-arch-sunset', 'Haram at sunset', 'Makkah & Madinah', '#ffd39a'),
   bg('kaaba-door', 'Kaaba door', 'Makkah & Madinah', '#f3d489'),
@@ -367,6 +463,9 @@ export const RETIRED_SHARE_BACKGROUNDS: ShareBackground[] = [
 
 /** The few shown in the picker's strip before "More". */
 export const FEATURED_SHARE_BACKGROUND_IDS = [
+  'aes-madinah-lamps',
+  'aes-soft-street',
+  'madinah-night',
   'haram-arch-sunset',
   'kaaba-door',
   'green-dome',

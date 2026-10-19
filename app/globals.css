@@ -334,21 +334,29 @@ html.dark .ayah-sheet-arabic {
   -webkit-text-fill-color: transparent;
 }
 
-/* Immersive read screen — a clean near-white page with black script (day) /
-   soft warm night. Flat in both: no paper texture, no shading at the edges. */
+/* While reading, the page behind the reader is the same white, so the app's
+   linen never shows at the edges, under the bars or when the page bounces. */
+html:not(.dark):has(.mushaf-reader-immersive) {
+  --app-bg: #fafafa;
+}
+
+/* Immersive read screen — a clean neutral white page with black script (day) /
+   soft warm night. Flat in both: no paper texture, no shading at the edges.
+   The day white has no warm tint at all: on a phone with a warmer screen mode
+   even a hint of warmth reads as cream. */
 .mushaf-reader-immersive {
   /* Near-white and near-black, for a crisp script: the small vowel marks and
      dots stay sharp even outdoors and on duller screens. Not pure black: the
      mushaf's strokes are bolder than most Quran fonts, and in pure black a full
      page reads heavy. */
-  --mushaf-read-bg: #f9f8f7;
+  --mushaf-read-bg: #fafafa;
   --mushaf-read-text: #262626;
   --mushaf-read-meta: #77736c;
   --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
   --mushaf-read-badge-text: #4f4c47;
   --mushaf-read-card-bg: #ffffff;
   --mushaf-read-card-border: rgba(0, 0, 0, 0.1);
-  --mushaf-read-chrome-bg: rgba(249, 248, 247, 0.94);
+  --mushaf-read-chrome-bg: rgba(250, 250, 250, 0.94);
   --mushaf-read-chrome-border: rgba(0, 0, 0, 0.08);
   --mushaf-read-accent: #0d6b63;
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
@@ -1848,14 +1856,14 @@ html.dark .auth-screen {
   position: relative;
 }
 
-/* The app's icon on the welcome screen: نبأ in square Kufic on its near-black square */
+/* The app's icon on the welcome screen: نبأ in square Kufic on its black square */
 .auth-mark {
   display: flex;
   width: 4.5rem;
   height: 4.5rem;
   overflow: hidden;
   border-radius: 1.0625rem;
-  background: #0b1512;
+  background: #000000;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 18px 40px -18px rgba(5, 20, 16, 0.6);
 }
 
@@ -3999,20 +4007,6 @@ html.dark .prayer-hero__ring-track {
   opacity: 0.5;
 }
 
-.prayer-pill {
-  display: inline-flex;
-  max-width: 46%;
-  align-items: center;
-  gap: 0.375rem;
-  border-radius: 999px;
-  background: var(--home-card-bg);
-  box-shadow: var(--home-lift-sm);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--home-heading);
-}
-
 /* ======================================================================
    Bottom tab bar — Read, Home, Qari, Listen. Each tab carries its own small
    flat-gradient picture (public/icons/*.png), so the active state is a lift
@@ -4146,9 +4140,9 @@ html.qari-swipe-open .bottom-nav__label--active {
 
 /* ---------------- Opening splash (components/SplashScreen.tsx) ---------------- */
 
-/* The icon's own near-black, so the phone's launch screen hands over without a seam. */
+/* Plain black, the same as the phone's own launch screen, so it hands over without a seam. */
 .app-splash {
-  background: #0b1512;
+  background: #000000;
   color: #f3ead6;
 }
 
@@ -4159,7 +4153,7 @@ html.splash-seen .app-splash {
 
 .app-splash__ayah {
   overflow: visible;
-  color: #ffffff;
+  color: #f3ead6;
   animation: app-splash-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
@@ -4563,13 +4557,10 @@ html:not(.dark) .home-skyline__windows {
   opacity: var(--hv-windows);
 }
 
-/* Today's five prayers */
-/* Straight on the page, no card around it, a little ground between it and
-   the skyline so the mosque stands on something. */
+/* Today's five prayers, a little ground between their card and the skyline
+   so the mosque stands on something (the card itself: further down). */
 .home-today {
   margin-top: 0.875rem;
-  border-radius: 1.25rem;
-  padding: 0.25rem 0 0;
   color: var(--hv-normal-color);
 }
 
@@ -4702,33 +4693,64 @@ html:not(.dark) .home-skyline__windows {
   box-shadow: 0 0 8px color-mix(in srgb, var(--home-sage) 90%, transparent);
 }
 
-/* On Home and in a halaqa, in light, the tab bar is the same soft white as the cards. */
-html:not(.dark):has(.hv-theme) .bottom-nav {
+/* Settings and Listen in light: the same cool, soft neutrals as Home instead
+   of warm paper. Set on the whole page rather than on the screen, so the
+   sheets they open (which sit outside the screen) match too. */
+html:not(.dark):has(.cool-page) {
+  --app-bg: #e8ecea;
+  --app-surface: #f5f7f6;
+  --app-border: rgba(28, 38, 33, 0.1);
+  --app-text: #1b201e;
+  --app-muted: #56605b;
+  --home-glow: radial-gradient(70% 38% at 50% -6%, rgba(14, 95, 85, 0.06), transparent 70%);
+  --home-card-bg: #f5f7f6;
+  --home-card-border: rgba(28, 38, 33, 0.07);
+  --home-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 12px 28px -20px rgba(20, 40, 32, 0.22);
+  --home-lift: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(20, 40, 32, 0.05),
+    0 12px 28px -20px rgba(20, 40, 32, 0.22);
+  --home-lift-sm: 0 1px 2px rgba(20, 40, 32, 0.06), 0 4px 12px -6px rgba(20, 40, 32, 0.14);
+  --home-track: #dde3e0;
+  --home-location-bg: #eef1ef;
+  --home-heading: #1b201e;
+  --home-muted: #56605b;
+  --home-sage: #0e5f55;
+  --home-sage-deep: #0e5f55;
+  --home-sage-dark: #0e3a35;
+  --home-sage-soft: rgba(14, 95, 85, 0.1);
+  --home-sage-gradient: linear-gradient(160deg, #0e3a35 0%, #0e5f55 100%);
+  --home-ink: #1b201e;
+  --home-ink-fg: #f1f5f2;
+  --home-rule: rgba(28, 38, 33, 0.1);
+  --home-rule-strong: rgba(28, 38, 33, 0.2);
+}
+
+html:not(.dark):has(.cool-page) .qari-switch__knob {
+  background: #ffffff;
+}
+
+/* On Home, in a halaqa, in Settings and in Listen, in light, the tab bar is
+   the same soft white as the cards. */
+html:not(.dark):has(:is(.hv-theme, .cool-page)) .bottom-nav {
   background: rgba(245, 247, 246, 0.97);
   border-top-color: rgba(28, 38, 33, 0.08);
   box-shadow: 0 -12px 28px -20px rgba(20, 40, 32, 0.22);
 }
 
-html:not(.dark):has(.hv-theme) .bottom-nav__item {
+html:not(.dark):has(:is(.hv-theme, .cool-page)) .bottom-nav__item {
   color: #66706b;
 }
 
-html:not(.dark):has(.hv-theme) .bottom-nav__label--active {
+html:not(.dark):has(:is(.hv-theme, .cool-page)) .bottom-nav__label--active {
   color: #1b201e;
 }
 
-html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
+html:not(.dark):has(:is(.hv-theme, .cool-page)) .bottom-nav__dot--active {
   background: #0e5f55;
   box-shadow: 0 0 8px rgba(14, 95, 85, 0.45);
 }
 
 /* The weekly verse on the new Home: larger script, and the translation in
    the same light italic serif the Qari videos use. */
-/* Continue reading: no card, a slim row between two clear lines. */
-.home-continue {
-  border-block: 1px solid color-mix(in srgb, var(--hv-text) 16%, transparent);
-}
-
 .home-continue__track {
   background: color-mix(in srgb, var(--hv-text) 15%, transparent);
 }
@@ -4752,25 +4774,6 @@ html:not(.dark):has(.hv-theme) .bottom-nav__dot--active {
   background: var(--hv-surface);
   box-shadow: var(--hv-shadow);
   color: var(--pc-ink);
-}
-
-.home-verse-card__label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4375rem;
-  color: var(--pc-faint);
-  font-size: 0.59375rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.home-verse-card__gem {
-  width: 3px;
-  height: 3px;
-  transform: rotate(45deg);
-  background: var(--pc-gold);
 }
 
 .home-verse-card__foot {
@@ -5147,17 +5150,12 @@ html.lite .home-sky::after {
 
 
 /* ======================================================================
-   Home in light mode, as the design has it: the prayer times, the three
-   shortcuts and Continue reading sit on linen cards, and the verse has its
-   heading above the card. Kept compact, so the page barely scrolls. The dark
-   themes keep these open on the page.
+   Home as the design has it, in every theme: the prayer times, the three
+   shortcuts and Continue reading sit on cards, and the verse has its heading
+   above its card. Each theme only changes the cards' colours (the --hv-*
+   tokens). Kept compact, so the page barely scrolls.
    ====================================================================== */
-html.dark .hv-light-only,
-html:not(.dark) .hv-dark-only {
-  display: none !important;
-}
-
-html:not(.dark) .home-today {
+.home-today {
   padding: 0.75rem 0.625rem 0.6875rem;
   border: 1px solid var(--hv-pc-border);
   border-radius: 1.375rem;
@@ -5165,11 +5163,11 @@ html:not(.dark) .home-today {
   box-shadow: var(--hv-pc-shadow);
 }
 
-html:not(.dark) .home-v2[data-tight='2'] .home-today {
+.home-v2[data-tight='2'] .home-today {
   padding-top: 0.5rem;
 }
 
-html:not(.dark) .home-tile {
+.home-tile {
   padding: 0.625rem 0.375rem 0.5rem;
   border: 1px solid var(--hv-border);
   border-radius: 1.375rem;
@@ -5177,11 +5175,11 @@ html:not(.dark) .home-tile {
   box-shadow: var(--hv-shadow);
 }
 
-html:not(.dark) .home-tiles-row {
+.home-tiles-row {
   margin-block: 0;
 }
 
-html:not(.dark) .home-continue {
+.home-continue {
   padding-inline: 0.75rem;
   border: 1px solid var(--hv-border);
   border-radius: 1.375rem;
@@ -5189,7 +5187,7 @@ html:not(.dark) .home-continue {
   box-shadow: var(--hv-shadow);
 }
 
-html:not(.dark) .home-continue__icon {
+.home-continue__icon {
   border-radius: 0.875rem;
 }
 
@@ -5204,7 +5202,7 @@ html:not(.dark) .home-continue__icon {
   color: var(--hv-text3);
 }
 
-html:not(.dark) .home-verse-card {
+.home-verse-card {
   margin-top: 0;
   padding: 0.875rem 1.25rem 0.5rem;
   border-radius: 1.375rem;

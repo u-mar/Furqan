@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { ChevronLeft, MapPin } from 'lucide-react'
-import PlaceSheet from '@/components/prayer/PlaceSheet'
+import { ChevronLeft } from 'lucide-react'
+import LocationOffNote from '@/components/prayer/LocationOffNote'
 import QiblaCompass from '@/components/prayer/QiblaCompass'
 import { useAutoLocate, usePrayerState } from '@/hooks/usePrayer'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
@@ -17,11 +16,7 @@ import { useT } from '@/lib/i18n'
 export default function QiblaPage() {
   const t = useT()
   const { place, ready } = usePrayerState()
-  const [placeSheetOpen, setPlaceSheetOpen] = useState(false)
-
-  useAutoLocate(ready, place)
-
-  const placeLabel = place.name ? place.name : t('Your location')
+  const location = useAutoLocate(ready, place)
 
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
@@ -36,33 +31,14 @@ export default function QiblaPage() {
           <h1 className="home-serif min-w-0 flex-1 truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
             {t('Qibla')}
           </h1>
-          <button
-            type="button"
-            onClick={() => setPlaceSheetOpen(true)}
-            className="prayer-pill home-press ed-focus"
-            aria-label={t('Your location')}
-          >
-            <MapPin className="h-4 w-4 shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2} />
-            <span className="truncate">{placeLabel}</span>
-          </button>
         </header>
 
-        {ready && place.source === 'default' ? (
-          <button
-            type="button"
-            onClick={() => setPlaceSheetOpen(true)}
-            className="ed-focus mx-1 mt-3 block w-full text-left text-[0.8125rem] text-[var(--home-muted)] underline decoration-[var(--home-rule-strong)] underline-offset-2"
-          >
-            {t('Using Mogadishu. Tap to use your own location.')}
-          </button>
-        ) : null}
+        <LocationOffNote status={location.status} place={place} onRetry={location.retry} />
 
         <div className="mt-4">
           <QiblaCompass place={place} />
         </div>
       </div>
-
-      <PlaceSheet open={placeSheetOpen} place={place} onClose={() => setPlaceSheetOpen(false)} />
     </main>
   )
 }

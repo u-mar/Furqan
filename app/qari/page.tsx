@@ -56,9 +56,10 @@ function QariHomeContent() {
 
   const [search, setSearch] = useState(urlQuery)
   const [query, setQuery] = useState(urlQuery)
-  const [sort, setSort] = useState<Sort>('recent')
-  const [searchOpen, setSearchOpen] = useState(urlQuery.length > 0)
   const [view, setView] = useQariView()
+  // The full-screen view opens on "For You" (most loved); the list on the latest.
+  const [sort, setSort] = useState<Sort>(() => (view === 'swipe' ? 'top' : 'recent'))
+  const [searchOpen, setSearchOpen] = useState(urlQuery.length > 0)
   // A recitation opened full screen from a card, over the list. Closing it returns to the list.
   const [overlay, setOverlay] = useState<{ items: Recitation[]; startId: string } | null>(null)
   // Only a tap lets the browser start sound, so the swipe view plays at once only when one opened it.

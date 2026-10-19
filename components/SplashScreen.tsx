@@ -11,12 +11,13 @@ const SHOW_MS = 1500
 const FADE_MS = 550
 
 /**
- * A brief cover shown once per app open, over the manifest's own background
- * (the icon's near-black) — the OS-generated PWA splash can only show the icon, so this is
+ * A brief cover shown once per app open, over the manifest's own plain black
+ * background — the OS-generated PWA splash can only show the icon, so this is
  * what carries the verse: أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ (13:28).
  *
  * The ayah is the mushaf's own script saved as outlines, so it is there on the
- * very first frame instead of waiting on a font. A tap skips it.
+ * very first frame instead of waiting on a font. Just the ayah, small and in
+ * warm ivory, alone in the middle. A tap skips it.
  */
 export default function SplashScreen() {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
@@ -59,7 +60,7 @@ export default function SplashScreen() {
       }}
     >
       <div className="flex w-full flex-1 items-center justify-center">
-        <svg viewBox={SPLASH_AYAH_VIEWBOX} className="app-splash__ayah w-[min(76vw,330px)]" role="presentation">
+        <svg viewBox={SPLASH_AYAH_VIEWBOX} className="app-splash__ayah w-[min(52vw,200px)]" role="presentation">
           <path d={SPLASH_AYAH_PATH} fill="currentColor" />
         </svg>
       </div>

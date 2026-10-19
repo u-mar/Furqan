@@ -155,7 +155,7 @@ export default function ListenScreen() {
   const listening = Boolean(listen.surah)
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
+    <main className="cool-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
         style={{

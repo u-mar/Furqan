@@ -62,29 +62,87 @@ export function useAdhanPlaying(): boolean {
 }
 
 /**
- * Finds the phone's position by itself, quietly. The first time, this is what
- * brings up the phone's own "allow location?" question; if that was refused
- * it is not asked again on every visit. Afterwards the position is kept up
- * to date, so prayer times and the qibla follow the person when they travel.
- * Shared by the Prayer and Qibla screens so both stay in step.
+ * Whether the phone hands over its position: 'granted', 'denied' (it will not
+ * ask again; only its settings can turn location back on) or 'prompt'. Null
+ * where the browser cannot say, as on older iPhones.
  */
-export function useAutoLocate(ready: boolean, place: Place): void {
+async function locationPermission(): Promise<PermissionState | null> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return null
+    return (await navigator.permissions.query({ name: 'geolocation' })).state
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Where the position stands: still being found, found ('on'), refused but
+ * the phone can still ask ('off'), or blocked in the phone's settings.
+ */
+export type LocateStatus = 'locating' | 'on' | 'off' | 'blocked'
+
+/**
+ * Finds the phone's position by itself; there is no place to pick. The first
+ * time, this is what brings up the phone's own "allow location?" question. If
+ * that was refused it is not asked again on every visit, but allowing it later
+ * in the phone's settings is picked up on the next visit. Afterwards the
+ * position is kept up to date, so prayer times and the qibla follow the
+ * person when they travel. Shared by Home, Prayer and Qibla so all three stay
+ * in step. `retry` asks again, from a tap.
+ */
+export function useAutoLocate(ready: boolean, place: Place): { status: LocateStatus; retry: () => void } {
+  const [status, setStatus] = useState<LocateStatus>('locating')
+
   useEffect(() => {
     if (!ready) return
-    if (place.source === 'device') {
-      void locateDevice()
-        .then((fresh) => {
-          if (distanceKm(fresh, place) > 3) savePlace(fresh)
-        })
-        .catch(() => {})
-      return
+    let alive = true
+    const finish = (next: LocateStatus) => {
+      if (alive) setStatus(next)
     }
-    if (locationDenied()) return
-    void locateDevice()
-      .then((fresh) => savePlace(fresh))
-      .catch((err) => {
-        if (err instanceof Error && err.message === 'denied') setLocationDenied(true)
-      })
+    // A position found before still stands while a fresh one cannot be had.
+    const fallback = (blocked: boolean): LocateStatus => (place.source === 'device' ? 'on' : blocked ? 'blocked' : 'off')
+
+    void (async () => {
+      const permission = await locationPermission()
+      if (permission === 'denied') {
+        setLocationDenied(true)
+        finish(fallback(true))
+        return
+      }
+      if (permission !== 'granted' && place.source !== 'device' && locationDenied()) {
+        finish(fallback(false))
+        return
+      }
+      try {
+        const fresh = await locateDevice()
+        if (place.source !== 'device' || distanceKm(fresh, place) > 3) savePlace(fresh)
+        finish('on')
+      } catch (err) {
+        const denied = err instanceof Error && err.message === 'denied'
+        if (denied) setLocationDenied(true)
+        finish(fallback(denied && (await locationPermission()) === 'denied'))
+      }
+    })()
+
+    return () => {
+      alive = false
+    }
     // Only when the screen opens, and again if the saved place changes kind.
   }, [ready, place.source])
+
+  const retry = () => {
+    setStatus('locating')
+    void locateDevice()
+      .then((fresh) => {
+        savePlace(fresh)
+        setStatus('on')
+      })
+      .catch(async (err) => {
+        const denied = err instanceof Error && err.message === 'denied'
+        if (denied) setLocationDenied(true)
+        setStatus(denied && (await locationPermission()) === 'denied' ? 'blocked' : 'off')
+      })
+  }
+
+  return { status, retry }
 }

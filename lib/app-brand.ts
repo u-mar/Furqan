@@ -1,7 +1,5 @@
 /** App display name and brand constants. The logo itself is in lib/app-logo.ts. */
 
-import { LOGO_GROUND } from '@/lib/app-logo'
-
 /**
  * Naba (نبأ), "news": the Quran is "the great news" (an-naba' al-ʿaẓīm, 78:2).
  * Older internal names (storage keys, the Cloudinary folder, the speech
@@ -10,8 +8,8 @@ import { LOGO_GROUND } from '@/lib/app-logo'
  */
 export const APP_NAME = 'Naba'
 
-/** The icon's own near-black, so the launch screen and the icon are one colour. */
-export const APP_ICON_THEME_COLOR = LOGO_GROUND
+/** Plain black behind the phone's launch screen and the opening ayah. */
+export const APP_ICON_THEME_COLOR = '#000000'
 
 /**
  * Where people can reach you about their data. Shown on the privacy policy,
@@ -21,7 +19,7 @@ export const APP_ICON_THEME_COLOR = LOGO_GROUND
 export const SUPPORT_EMAIL = 'support@qurannaba.com'
 
 /** Shown on the privacy policy. Update whenever the policy text changes. */
-export const PRIVACY_UPDATED = '12 October 2026'
+export const PRIVACY_UPDATED = '19 October 2026'
 
 /** Shown on the terms of service. Update whenever the terms text changes. */
 export const TERMS_UPDATED = '1 October 2026'

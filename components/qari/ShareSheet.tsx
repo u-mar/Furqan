@@ -16,12 +16,17 @@ import {
   makeRecitationVideo,
   recitationLink,
   saveMedia,
+  saveMixClips,
   saveVideoOptions,
+  saveVideoQuality,
   shareMedia,
   ShareCancelled,
   FEATURED_VIDEO_BACKGROUND_IDS,
   VIDEO_BACKGROUND_GROUPS,
   VIDEO_BACKGROUNDS,
+  VIDEO_QUALITIES,
+  VIDEO_QUALITY_ORDER,
+  videoSizeMb,
   type ShareKind,
   type ShareMedia,
   type VideoOptions,
@@ -310,7 +315,10 @@ ${url}`)
           </div>
         ) : null}
         {stage.name === 'choose' && videoView && !isAyahCard && videoPossible ? (
-          <MixClipsRow options={videoOptions} onChange={setVideoOptions} />
+          <>
+            <QualityRow options={videoOptions} onChange={setVideoOptions} seconds={recitation.durationSec} />
+            <MixClipsRow options={videoOptions} onChange={setVideoOptions} />
+          </>
         ) : null}
 
         {stage.name === 'choose' && !videoView && !isAyahCard ? (
@@ -346,6 +354,7 @@ ${url}`)
         {stage.name === 'customize' ? (
           <CustomizeVideo
             options={videoOptions}
+            seconds={recitation.durationSec}
             onChange={setVideoOptions}
             onBack={() => setStage({ name: 'choose' })}
             onMake={() => void make('video')}
@@ -481,11 +490,13 @@ function ShareOption({
 
 function CustomizeVideo({
   options,
+  seconds,
   onChange,
   onBack,
   onMake,
 }: {
   options: VideoOptions
+  seconds: number
   onChange: (options: VideoOptions) => void
   onBack: () => void
   onMake: () => void
@@ -548,6 +559,7 @@ function CustomizeVideo({
         onSelect={(id) => onChange({ ...options, backgroundId: id })}
         onClose={() => setGalleryOpen(false)}
       />
+      <QualityRow options={options} onChange={onChange} seconds={seconds} />
       <MixClipsRow options={options} onChange={onChange} />
 
       <div className="mt-4 flex gap-2">
@@ -641,6 +653,54 @@ function ReadyView({
 }
 
 /**
+ * How sharp the video is made, each choice with about how large it comes out
+ * for this recitation. Kept for the next video too.
+ */
+function QualityRow({
+  options,
+  onChange,
+  seconds,
+}: {
+  options: VideoOptions
+  onChange: (options: VideoOptions) => void
+  seconds: number
+}) {
+  const t = useT()
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--home-muted)]">{t('Video quality')}</p>
+      <div className="ed-seg mt-2 grid-cols-3" role="radiogroup" aria-label={t('Video quality')}>
+        {VIDEO_QUALITY_ORDER.map((id) => {
+          const q = VIDEO_QUALITIES[id]
+          const on = options.quality === id
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-pressed={on}
+              onClick={() => {
+                tapFeedback()
+                saveVideoQuality(id)
+                onChange({ ...options, quality: id })
+              }}
+              className="ed-seg__item ed-focus flex min-h-[52px] flex-col items-center justify-center gap-0.5 px-1 text-center leading-tight"
+            >
+              <span className="text-[0.8125rem] font-semibold">{t(q.label)}</span>
+              <span className="whitespace-nowrap text-[0.6875rem] font-medium tabular-nums opacity-75">
+                {t('{resolution} · {size} MB', { resolution: q.resolution, size: videoSizeMb(id, seconds) })}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-1.5 text-xs leading-snug text-[var(--home-muted)]">{t('Sizes are approximate. Sharper videos take a little longer to make.')}</p>
+    </div>
+  )
+}
+
+/**
  * Just the chosen clip, or the clips like it as well: the video then cuts to
  * another of the same kind as each ayah starts. Only offered for a clip that
  * has others of its kind.
@@ -658,7 +718,15 @@ function MixClipsRow({ options, onChange }: { options: VideoOptions; onChange: (
             : t('Just the clip you chose, the whole way through.')}
         </span>
       </span>
-      <Switch checked={options.mix} onChange={(mix) => onChange({ ...options, mix })} label={t('Mix similar clips')} />
+      <Switch
+        checked={options.mix}
+        onChange={(mix) => {
+          // A preference, not just for this video: the swipe view follows it too.
+          saveMixClips(mix)
+          onChange({ ...options, mix })
+        }}
+        label={t('Mix similar clips')}
+      />
     </label>
   )
 }
