@@ -340,6 +340,10 @@ html:not(.dark):has(.mushaf-reader-immersive) {
   --app-bg: #fafafa;
 }
 
+html.dark:not(.black):has(.mushaf-reader-immersive) {
+  --app-bg: #141618;
+}
+
 /* Immersive read screen — a clean neutral white page with black script (day) /
    soft warm night. Flat in both: no paper texture, no shading at the edges.
    The day white has no warm tint at all: on a phone with a warmer screen mode
@@ -447,36 +451,37 @@ html.dark.black {
 }
 
 html.dark .mushaf-reader-immersive {
-  /* Night paper — warm charcoal with parchment-toned ink. */
-  --mushaf-read-bg: #191815;
-  --mushaf-read-text: #ebe4d6;
-  --mushaf-read-meta: #938b7e;
-  --mushaf-read-badge-bg: #262420;
-  --mushaf-read-badge-text: #a8a194;
-  --mushaf-read-card-bg: rgba(255, 252, 245, 0.05);
-  --mushaf-read-card-border: rgba(255, 250, 240, 0.09);
-  --mushaf-read-chrome-bg: #1f1d1a;
-  --mushaf-read-chrome-border: rgba(255, 250, 240, 0.1);
+  /* Night page — a neutral charcoal with soft off-white ink. No warm tint:
+     brown-black and cream ink read as yellow on a phone. */
+  --mushaf-read-bg: #141618;
+  --mushaf-read-text: #e6e7e8;
+  --mushaf-read-meta: #8e9296;
+  --mushaf-read-badge-bg: #212427;
+  --mushaf-read-badge-text: #a3a7ab;
+  --mushaf-read-card-bg: rgba(255, 255, 255, 0.05);
+  --mushaf-read-card-border: rgba(255, 255, 255, 0.09);
+  --mushaf-read-chrome-bg: #1a1c1f;
+  --mushaf-read-chrome-border: rgba(255, 255, 255, 0.09);
   --mushaf-read-accent: #57c2a9;
   --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
   --mushaf-read-highlight-bg: rgba(87, 194, 169, 0.12);
   --mushaf-read-highlight-border: rgba(87, 194, 169, 0.32);
-  --mushaf-read-popup-bg: #221d15;
-  --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
+  --mushaf-read-popup-bg: #1d2023;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.12);
   --mushaf-popup-badge-bg: var(--mushaf-read-badge-bg);
   --mushaf-popup-meta: var(--mushaf-read-meta);
   --mushaf-turn-shadow: rgba(0, 0, 0, 0.45);
 }
 
 html.dark {
-  --mushaf-read-popup-bg: #221d15;
-  --mushaf-read-popup-border: rgba(255, 240, 214, 0.14);
-  --mushaf-read-popup-text: #e7ddc9;
+  --mushaf-read-popup-bg: #1d2023;
+  --mushaf-read-popup-border: rgba(255, 255, 255, 0.12);
+  --mushaf-read-popup-text: #e4e5e6;
   --mushaf-read-popup-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   --mushaf-read-accent: #57c2a9;
   --mushaf-read-accent-soft: rgba(87, 194, 169, 0.14);
-  --mushaf-popup-badge-bg: #262523;
-  --mushaf-popup-meta: #8d8880;
+  --mushaf-popup-badge-bg: #25282b;
+  --mushaf-popup-meta: #8c9094;
 }
 
 .mushaf-read-chrome-bar {

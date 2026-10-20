@@ -22,6 +22,8 @@ const idleState: PageRecitationState = {
 }
 
 const PRELOAD_AHEAD = 2
+/** How long a recording may take to start loading before Play gives up and says so. */
+const LOAD_TIMEOUT_MS = 20_000
 
 interface UsePageRecitationOptions {
   reciterId: string
@@ -284,12 +286,17 @@ export function usePageRecitation({
         } else {
           audio.src = chapter.url
           await new Promise<void>((resolve, reject) => {
+            // A connection that never answers would otherwise leave the button spinning for good.
+            const timer = window.setTimeout(() => onFail(), LOAD_TIMEOUT_MS)
             const onMeta = () => {
+              window.clearTimeout(timer)
               audio.removeEventListener('error', onFail)
               resolve()
             }
             const onFail = () => {
+              window.clearTimeout(timer)
               audio.removeEventListener('loadedmetadata', onMeta)
+              audio.removeEventListener('error', onFail)
               reject(new Error(tr('Audio preload failed')))
             }
             audio.addEventListener('loadedmetadata', onMeta, { once: true })
@@ -297,6 +304,11 @@ export function usePageRecitation({
           })
           if (session !== sessionRef.current) return true
           audio.currentTime = target
+        }
+        // Paused while the recording was loading: it stays paused, and Play carries on from here.
+        if (pausedRef.current) {
+          setState((s) => ({ ...s, playing: false, loading: false }))
+          return true
         }
         await audio.play()
         if (session !== sessionRef.current) return true
@@ -307,7 +319,15 @@ export function usePageRecitation({
         const reason = err instanceof DOMException ? err.name : ''
         // Paused before it began (picking another ayah pauses), or held back until the next tap:
         // nothing is wrong with the recording, so this reciter keeps being played from it.
-        if (reason === 'AbortError') return true
+        if (reason === 'AbortError') {
+          // Nothing is playing now. Unless a pause said so already, show Play so a tap starts it again.
+          if (audio.paused && !pausedRef.current) {
+            pausedRef.current = true
+            setIsPaused(true)
+            setState((s) => ({ ...s, playing: false, loading: false }))
+          }
+          return true
+        }
         if (reason === 'NotAllowedError') {
           setState((s) => ({ ...s, playing: false, loading: false }))
           return true
@@ -396,6 +416,10 @@ export function usePageRecitation({
         } else if (url.startsWith('blob:')) {
           objectUrlRef.current = url
         }
+        if (pausedRef.current) {
+          setState((s) => ({ ...s, playing: false, loading: false }))
+          return
+        }
         audio.src = url
         await audio.play()
         if (session !== sessionRef.current) return
@@ -419,8 +443,11 @@ export function usePageRecitation({
 
   const pause = useCallback(() => {
     const audio = audioRef.current
-    if (!audio?.src) return
-    audio.pause()
+    if (!audio) return
+    // Still on its way (the recording or its timings): nothing to hold yet, so the start is called
+    // off rather than ignored, and Play begins this ayah again.
+    if (!audio.getAttribute('src')) sessionRef.current += 1
+    else audio.pause()
     pausedRef.current = true
     setIsPaused(true)
     setState((s) => ({ ...s, playing: false, loading: false }))
@@ -445,10 +472,16 @@ export function usePageRecitation({
 
   const resume = useCallback(() => {
     const audio = audioRef.current
-    if (!audio?.src) {
+    if (!audio?.getAttribute('src')) {
       pausedRef.current = false
       setIsPaused(false)
-      start()
+      // Paused before it began: this ayah from its start, the same way (one ayah or the page).
+      if (versesRef.current[indexRef.current]) {
+        sessionRef.current += 1
+        void playIndex(indexRef.current, sessionRef.current)
+      } else {
+        start()
+      }
       return
     }
     pausedRef.current = false
@@ -462,9 +495,9 @@ export function usePageRecitation({
       highlightedVerseKey: verse?.verse_key ?? s.highlightedVerseKey,
     }))
     void audio.play().catch(() => {
-      setState((s) => ({ ...s, playing: false, error: tr('Playback failed') }))
+      setState((s) => ({ ...s, playing: false, loading: false, error: tr('Playback failed') }))
     })
-  }, [start])
+  }, [playIndex, start])
 
   const playVerse = useCallback(
     (verseKey: string, options?: { continueOnPage?: boolean }) => {

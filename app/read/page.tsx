@@ -689,7 +689,13 @@ function ReadPageContent() {
     }
     if (bothRef.current) {
       if (bothPhaseRef.current === 'arabic') resumeRecitation()
-      else void resumeSomaliVoice()
+      else {
+        // The Somali could not carry on (it never loaded, or was torn down): this ayah again.
+        const key = bothVerseKey
+        void resumeSomaliVoice().then((resumed) => {
+          if (!resumed && bothRef.current && key) playBothFrom(key)
+        })
+      }
       return
     }
     if (isPaused) {
@@ -770,6 +776,15 @@ function ReadPageContent() {
   useEffect(() => {
     if (recitation.error) toastError(recitation.error)
   }, [recitation.error])
+
+  // Arabic + Somali: an ayah whose Somali will not load or play does not stall the session —
+  // it says so and carries on with the next ayah's Arabic.
+  useEffect(() => {
+    if (!bothRef.current || bothPhaseRef.current !== 'somali' || !somaliVoiceState.error) return
+    setSomaliNotice(somaliVoiceState.error)
+    const key = bothVerseKey
+    if (key) advanceBothRef.current(key)
+  }, [somaliVoiceState.error, bothVerseKey])
 
   useEffect(() => {
     if (!somaliAutoPlaying || !somaliVoiceState.error) return
