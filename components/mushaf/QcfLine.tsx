@@ -8,9 +8,6 @@ import type { QcfPageLine, QcfPageSegment } from '@/lib/qcf-page'
 import type { QcfLineRevealState } from '@/lib/qcf-reveal'
 import { useT } from '@/lib/i18n'
 
-const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩'
-const arabicNumber = (n: string) => n.replace(/\d/g, (d) => ARABIC_DIGITS[Number(d)])
-
 export function QcfSegment({
   segment,
   index,
@@ -57,24 +54,7 @@ export function QcfSegment({
         onSelect(segment.verseKey)
       }}
     >
-      {segment.isEnd ? (
-        <>
-          {/* The mushaf's own ornament keeps its place in the line; in light mode it is
-              hidden and a plain marker (a soft green circle with the number) sits over it. */}
-          <span className="mushaf-qcf-end-glyph">{segment.text}</span>
-          <EndMark ayah={segment.verseKey.split(':')[1] ?? ''} />
-        </>
-      ) : (
-        segment.text
-      )}
-    </span>
-  )
-}
-
-function EndMark({ ayah }: { ayah: string }) {
-  return (
-    <span className={cn('mushaf-qcf-end-mark', ayah.length > 2 && 'mushaf-qcf-end-mark--long')} aria-hidden>
-      {arabicNumber(ayah)}
+      {segment.text}
     </span>
   )
 }

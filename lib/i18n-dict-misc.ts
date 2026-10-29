@@ -672,4 +672,8 @@ export const MISC: Dict = {
   'Golden alley': { so: 'Luuq dahab ah', ar: 'زقاق ذهبي' },
   'White courtyard': { so: 'Barxad cad', ar: 'فناء أبيض' },
   'Two brothers': { so: 'Laba walaal', ar: 'أخوان' },
+  'Quran on this phone': { so: 'Quraanka taleefankan', ar: 'القرآن على هذا الهاتف' },
+  'Saved. Every page opens at once, even offline.': { so: 'Waa la kaydiyay. Bog walba si degdeg ah ayuu u furmaa, xitaa adigoo aan internet haysan.', ar: 'تم الحفظ. تفتح كل صفحة فورًا، حتى دون اتصال.' },
+  'About 110 MB, once. Then every page opens at once, even offline.': { so: 'Qiyaastii 110 MB, hal mar. Kadib bog walba si degdeg ah ayuu u furmaa, xitaa adigoo aan internet haysan.', ar: 'حوالي 110 م.ب، مرة واحدة. ثم تفتح كل صفحة فورًا، حتى دون اتصال.' },
+  'Saving…': { so: 'Waa la kaydinayaa…', ar: 'جارٍ الحفظ…' },
 }

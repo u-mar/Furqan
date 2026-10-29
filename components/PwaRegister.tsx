@@ -44,8 +44,10 @@ export default function PwaRegister() {
 
         const regs = await navigator.serviceWorker.getRegistrations()
         await Promise.all(regs.map((reg) => reg.unregister()))
+        // Only the app's own screens and scripts: what people saved (the Quran, page fonts,
+        // translations, downloaded surahs) lives in caches of its own and must survive this.
         const keys = await caches.keys()
-        await Promise.all(keys.map((key) => caches.delete(key)))
+        await Promise.all(keys.filter((key) => key.startsWith('al-quran-')).map((key) => caches.delete(key)))
         reloadOnce()
       } catch {
         // keep normal registration flow if reset fails

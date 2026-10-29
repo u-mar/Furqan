@@ -16,14 +16,16 @@ const DENSE_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20)
 /** How far a pinch can shrink or enlarge the script, and where it is remembered. */
 const MIN_SCALE = 0.7
 const MAX_SCALE = 2.2
+/** The size before any pinch: a step up from the smallest (also the fallback in app/mushaf-qcf.css). */
+const DEFAULT_SCALE = 0.8
 const SCALE_KEY = 'mushaf_flow_scale'
 
 function readSavedScale(): number {
   try {
     const saved = parseFloat(localStorage.getItem(SCALE_KEY) ?? '')
-    return Number.isFinite(saved) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, saved)) : 1
+    return Number.isFinite(saved) ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, saved)) : DEFAULT_SCALE
   } catch {
-    return 1
+    return DEFAULT_SCALE
   }
 }
 
@@ -113,7 +115,7 @@ export default function ContinuousScrollView({
   const followingUntil = useRef(0)
   // While the reader is looking around, the voice does not pull the view back to its ayah.
   const readerScrolledAt = useRef(-Infinity)
-  const scaleRef = useRef(1)
+  const scaleRef = useRef(DEFAULT_SCALE)
   const scaleSaveRef = useRef<number | null>(null)
 
   /** The top of a mounted page in content coordinates: unaffected by scrolling, moved only by what is above it. */
@@ -463,7 +465,7 @@ export default function ContinuousScrollView({
   const topSpacerHeight = Math.max(0, firstLoaded - 1) * avgHeight.current
   const bottomSpacerHeight = Math.max(0, totalPages - lastLoaded) * avgHeight.current
   // Unzoomed estimates times the zoom, worked out by the browser: a pinch resizes them with the pages.
-  const zoomed = (px: number) => `calc(${Math.round(px)}px * var(--mushaf-flow-scale, 1))`
+  const zoomed = (px: number) => `calc(${Math.round(px)}px * var(--mushaf-flow-scale, ${DEFAULT_SCALE}))`
 
   return (
     <div ref={containerRef} className="h-full overflow-y-auto overscroll-contain [overflow-anchor:none] [touch-action:pan-y]">

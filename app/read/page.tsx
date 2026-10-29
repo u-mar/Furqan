@@ -678,7 +678,9 @@ function ReadPageContent() {
   startAudioRef.current = startAudio
 
   const handlePlayToggle = () => {
-    const selectedKey = ayahMenu?.verseKey ?? null
+    // The ayah with its menu open, or else, when nothing is playing or paused, the one opened from
+    // search, Contents or a bookmark — still marked after a tap closes its menu, so Play starts there.
+    const selectedKey = ayahMenu?.verseKey ?? (nowPlayingKey ? null : navSelectedVerseKey)
     if (selectedKey && selectedKey !== nowPlayingKey) {
       void startAudio(audioMode, selectedKey)
       return

@@ -66,15 +66,6 @@ export default function GallerySwipeView({
   const gestureRef = useRef<Gesture | null>(null)
   const [settling, setSettling] = useState(false)
 
-  // Toggled straight on the DOM (not state) so the fold shadow appears the
-  // instant a drag locks, without re-rendering the heavy mushaf pages.
-  const setTurning = useCallback((on: boolean) => {
-    const el = containerRef.current
-    if (!el) return
-    if (on) el.dataset.turning = ''
-    else delete el.dataset.turning
-  }, [])
-
   const setTransform = useCallback(
     (px: number, animated: boolean) => {
       const track = trackRef.current
@@ -92,8 +83,7 @@ export default function GallerySwipeView({
   useLayoutEffect(() => {
     setTransform(0, false)
     setSettling(false)
-    setTurning(false)
-  }, [pageKey, setTransform, setTurning])
+  }, [pageKey, setTransform])
 
   const onTouchStart = useCallback(
     (e: ReactTouchEvent<HTMLDivElement>) => {
@@ -127,10 +117,7 @@ export default function GallerySwipeView({
       if (!g.locked) {
         if (Math.abs(dMain) < DEAD_ZONE && Math.abs(dCross) < DEAD_ZONE) return
         g.locked = Math.abs(dMain) > Math.abs(dCross) ? 'main' : 'cross'
-        if (g.locked === 'main') {
-          setTurning(true)
-          onDragStart?.()
-        }
+        if (g.locked === 'main') onDragStart?.()
       }
       if (g.locked !== 'main') return
 
@@ -149,7 +136,7 @@ export default function GallerySwipeView({
       const effectiveMain = atStart || atEnd ? dMain * 0.3 : dMain
       setTransform(effectiveMain, false)
     },
-    [prev, next, onDragStart, setTransform, setTurning, vertical]
+    [prev, next, onDragStart, setTransform, vertical]
   )
 
   const finishGesture = useCallback(() => {
@@ -183,12 +170,9 @@ export default function GallerySwipeView({
       }, SETTLE_MS)
     } else {
       setTransform(0, true)
-      window.setTimeout(() => {
-        setSettling(false)
-        setTurning(false)
-      }, SETTLE_MS)
+      window.setTimeout(() => setSettling(false), SETTLE_MS)
     }
-  }, [next, prev, onCommitNext, onCommitPrev, setTransform, setTurning, vertical])
+  }, [next, prev, onCommitNext, onCommitPrev, setTransform, vertical])
 
   return (
     <div

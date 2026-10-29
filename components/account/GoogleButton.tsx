@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
+import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || ''
 const SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
@@ -32,6 +33,17 @@ declare global {
   }
 }
 
+interface NabaGoogle {
+  signIn: (options: { clientId: string }) => Promise<{ idToken: string }>
+}
+
+/**
+ * Whether this is the Play Store app with its own Google sign-in
+ * (android/…/NabaGooglePlugin.java): Google refuses its web sign-in inside an
+ * app, so there the phone's own account picker is used.
+ */
+const nativeGoogle = () => hasNativePlugin('NabaGoogle')
+
 let scriptPromise: Promise<GoogleOAuthApi | null> | null = null
 
 /** Google's sign-in library, loaded once, ahead of the tap: the popup must open inside the tap itself. */
@@ -56,8 +68,9 @@ export const googleSignInAvailable = Boolean(CLIENT_ID)
 
 /**
  * "Continue with Google", drawn to match the form around it. A tap opens
- * Google's own account picker; the token it hands back is checked with Google
- * by the server (lib/google-auth.ts) before anything is trusted.
+ * Google's own account picker (the phone's, in the Play Store app); the token
+ * it hands back is checked with Google by the server (lib/google-auth.ts)
+ * before anything is trusted.
  */
 export default function GoogleButton({
   onCredential,
@@ -83,7 +96,7 @@ export default function GoogleButton({
   }, [onCredential, onError])
 
   useEffect(() => {
-    if (!CLIENT_ID) return
+    if (!CLIENT_ID || nativeGoogle()) return
     let cancelled = false
     void loadGoogle().then((api) => {
       if (cancelled || !api) return
@@ -107,6 +120,17 @@ export default function GoogleButton({
   const start = () => {
     if (!CLIENT_ID) {
       onError?.(tr("Google sign-in isn't set up yet."))
+      return
+    }
+    if (nativeGoogle()) {
+      setWaiting(true)
+      void nativePlugin<NabaGoogle>('NabaGoogle')
+        .then(({ plugin }) => plugin.signIn({ clientId: CLIENT_ID }))
+        .then(({ idToken }) => latest.current.onCredential(idToken))
+        .catch((error: { code?: string }) => {
+          if (error?.code !== 'cancelled') latest.current.onError?.(tr('Google sign-in did not go through. Please try again.'))
+        })
+        .finally(() => setWaiting(false))
       return
     }
     if (!client.current) {

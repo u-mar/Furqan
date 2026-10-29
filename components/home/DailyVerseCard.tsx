@@ -1,12 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Bookmark, Check, Pause, Play, Share } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { fetchDailyVerseConfig, getLocalDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
+import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
+import { useQcfFont } from '@/hooks/useQcfFont'
+import { loadPageFont } from '@/lib/mushaf-fonts'
+import {
+  getVerseQcfGlyphWords,
+  pageHasQcfData,
+  qcfPageFontFamily,
+  qcfPageSampleGlyphs,
+  versePageNumber,
+} from '@/lib/qcf-page'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import {
   readWeeklyVerseCache as readCache,
@@ -34,15 +44,8 @@ const SERVER_BUDGET_MS = 800
 /** A copy confirmed longer ago than this may be last week's: wait for the server. */
 const CACHE_TRUST_MS = 24 * 60 * 60 * 1000
 
-/** How long to hold the verse back for its font before showing it in a fallback one. */
+/** How long to hold the script back for the mushaf font before using the plain one. */
 const FONT_WAIT_MS = 1500
-
-/**
- * The King Fahd Complex's Uthmanic Hafs font (KFGQPC), the script of the
- * printed Madani mushaf; loaded by an @font-face rule in globals.css. One font
- * for every verse, instead of a mushaf page font for each week's.
- */
-const HAFS_FONT = '1.3em "UthmanicHafs"'
 
 /**
  * The one verse this card needs.
@@ -94,7 +97,7 @@ export default function DailyVerseCard() {
   const [saved, setSaved] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [hafsReady, setHafsReady] = useState(false)
+  const [fontTimedOut, setFontTimedOut] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const verseKey = config?.verseKey ?? null
@@ -113,6 +116,16 @@ export default function DailyVerseCard() {
           ? prev
           : { verseKey: next.verseKey, surahName: next.surahName, confirmed }
       )
+    }
+
+    // The verse rarely changes, so its mushaf font can start loading now, while
+    // the server is still being asked, rather than after it answers.
+    const warm = readCache()
+    if (warm) {
+      const warmPage = versePageNumber(warm.verse)
+      if (warmPage > 0 && pageHasQcfData([warm.verse])) {
+        void loadPageFont(warmPage, qcfPageSampleGlyphs([warm.verse], warmPage))
+      }
     }
 
     const sync = async () => {
@@ -222,39 +235,30 @@ export default function DailyVerseCard() {
     }
   }, [verse, translationLanguage, translationEditionId])
 
-  /* The verse's font starts loading at once, while the server is still being
-     asked which verse it is. The card waits a moment for it rather than
-     flashing a different script first, and goes on without it if it is slow. */
-  useEffect(() => {
-    let done = false
-    const finish = () => {
-      if (done) return
-      done = true
-      setHafsReady(true)
-    }
-    if (typeof document === 'undefined' || !document.fonts) {
-      finish()
-      return
-    }
-    void document.fonts.load(HAFS_FONT).then(finish, finish)
-    const timer = window.setTimeout(finish, FONT_WAIT_MS)
-    return () => {
-      done = true
-      window.clearTimeout(timer)
-    }
-  }, [])
+  /* The verse is set in the same mushaf glyphs the reader uses, so the two
+     screens agree. It waits a moment for that font rather than flashing a
+     different script first, and falls back to plain text if it cannot load. */
+  const qcfPage = verse ? versePageNumber(verse) : 0
+  const hasQcf = verse !== null && qcfPage > 0 && pageHasQcfData([verse])
+  const qcfWords = useMemo(
+    () => (hasQcf && verse ? getVerseQcfGlyphWords(verse, qcfPage) : []),
+    [hasQcf, verse, qcfPage]
+  )
+  const qcfSample = useMemo(
+    () => (hasQcf && verse ? qcfPageSampleGlyphs([verse], qcfPage) : ''),
+    [hasQcf, verse, qcfPage]
+  )
+  const glyphsWanted = hasQcf && qcfWords.length > 0
+  const { ready: qcfReady, failed: qcfFailed } = useQcfFont(qcfPage, glyphsWanted, qcfSample)
+  const useGlyphs = glyphsWanted && qcfReady
+  const waitingForFont = glyphsWanted && !qcfReady && !qcfFailed && !fontTimedOut
 
-  /* The verse in the font's own text, its number last: the font draws the
-     ayah's ornament around the number by itself. */
-  const hafs = useMemo(() => {
-    const words = (verse?.words ?? [])
-      .filter((word) => word.char_type_name === 'word')
-      .map((word) => (word.text_qpc_hafs || word.text_uthmani || '').trim())
-      .filter(Boolean)
-    if (words.length === 0) return null
-    const end = (verse?.words?.find((word) => word.char_type_name === 'end')?.text_qpc_hafs ?? '').trim()
-    return { words, end }
-  }, [verse])
+  useEffect(() => {
+    if (!glyphsWanted || qcfReady) return
+    setFontTimedOut(false)
+    const timer = window.setTimeout(() => setFontTimedOut(true), FONT_WAIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [glyphsWanted, qcfReady, qcfPage])
 
   /* A different verse needs its own recitation. */
   useEffect(() => {
@@ -322,8 +326,13 @@ export default function DailyVerseCard() {
     setPlaying(true)
   }
 
+  const endWord = verse?.words?.find((word) => word.char_type_name === 'end')
   // The font is part of being ready, so the card appears once, whole.
-  const ready = config !== null && verse !== null && hafsReady
+  const ready = config !== null && verse !== null && !waitingForFont
+
+  // The ayah's closing mark stays on the line with its last word.
+  const leadingWords = qcfWords.slice(0, -2)
+  const closingWords = qcfWords.slice(-2)
 
   // As the design has it, in every theme: the heading above the card, the
   // surah and verse number at its top and a Listen button in its footer.
@@ -351,20 +360,41 @@ export default function DailyVerseCard() {
 
             {/* Up to three lines of each; the whole verse opens in the reader. */}
             <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
-              <p className="weekly-verse__hafs home-fade" dir="rtl" lang="ar">
-                {hafs ? (
-                  <>
-                    {hafs.words.slice(0, -1).join(' ')}{' '}
-                    {/* The last word and the ayah's number stay together on one line. */}
-                    <span className="weekly-verse__keep">
-                      {hafs.words[hafs.words.length - 1]}
-                      {hafs.end ? `\u00a0${hafs.end}` : ''}
-                    </span>
-                  </>
-                ) : (
-                  arabicText
-                )}
-              </p>
+              {useGlyphs ? (
+                // The glyph run carries its own ayah marker, so none is added.
+                <p
+                  className="weekly-verse__qcf home-fade"
+                  dir="rtl"
+                  lang="ar"
+                  style={{ fontFamily: qcfPageFontFamily(qcfPage) }}
+                >
+                  {/* A space between words, so a long verse can wrap onto the next line. */}
+                  {leadingWords.map((word, i) => (
+                    <Fragment key={i}>
+                      <span className="mushaf-translation-qcf-word">{word}</span>{' '}
+                    </Fragment>
+                  ))}
+                  <span className="weekly-verse__keep">
+                    {closingWords.map((word, i) => (
+                      <Fragment key={i}>
+                        {i ? ' ' : null}
+                        <span className="mushaf-translation-qcf-word">{word}</span>
+                      </Fragment>
+                    ))}
+                  </span>
+                </p>
+              ) : (
+                <p className="weekly-verse__arabic home-fade" dir="rtl" lang="ar">
+                  {arabicText}{' '}
+                  <AyahEndMark
+                    verseKey={config.verseKey}
+                    pageNumber={endWord?.v2_page || endWord?.page_number || page}
+                    codeV2={endWord?.code_v2}
+                    fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
+                    className="text-[var(--pc-gold)]"
+                  />
+                </p>
+              )}
 
               {translation === null ? (
                 <TranslationSkeleton />

@@ -31,6 +31,7 @@ import SettingsSheet from '@/components/settings/SettingsSheet'
 import QariAvatar from '@/components/qari/QariAvatar'
 import BlockedAccountsSheet from '@/components/qari/BlockedAccountsSheet'
 import QariModelSection from '@/components/settings/QariModelSection'
+import OfflineQuranRow from '@/components/settings/OfflineQuranRow'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
@@ -406,6 +407,8 @@ export default function SettingsPage() {
             <span className="set-row__value">{t(translationLanguageLabel(translationLanguage))}</span>
             <RowChevron />
           </button>
+          <Divider />
+          <OfflineQuranRow />
         </div>
 
         <QariModelSection>

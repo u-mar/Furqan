@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { PluginListenerHandle } from '@capacitor/core'
+import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
 
 /**
  * Speaking an ayah instead of typing it, via the browser's own speech
@@ -11,7 +13,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * calls `onResult`/`onInterim` here — everything downstream (the ayah search,
  * the live word-by-word reveal) is already decoupled from where the text
  * comes from.
+ *
+ * In the Play Store app, whose WebView has no speech recognition, the phone's
+ * own is used instead (android/…/NabaSpeechPlugin.java).
  */
+
+interface NabaSpeech {
+  start: (options: { lang: string }) => Promise<void>
+  stop: () => Promise<void>
+  /** "partial": the words so far, while speaking; "end": everything heard, once done. */
+  addListener: (event: 'partial' | 'end', listener: (data: { text: string }) => void) => Promise<PluginListenerHandle>
+}
 
 interface SpeechRecognitionResultAlternativeLike {
   transcript: string
@@ -60,18 +72,55 @@ export type VoiceInputState = 'idle' | 'listening' | 'unsupported'
 export function useArabicVoiceInput(onResult: (text: string) => void, onInterim?: (text: string) => void) {
   const [state, setState] = useState<VoiceInputState>('idle')
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const nativeStopRef = useRef<(() => void) | null>(null)
   const onResultRef = useRef(onResult)
   onResultRef.current = onResult
   const onInterimRef = useRef(onInterim)
   onInterimRef.current = onInterim
 
   useEffect(() => {
-    if (!getSpeechRecognitionCtor()) setState('unsupported')
+    if (!hasNativePlugin('NabaSpeech') && !getSpeechRecognitionCtor()) setState('unsupported')
   }, [])
 
-  useEffect(() => () => recognitionRef.current?.stop(), [])
+  useEffect(
+    () => () => {
+      recognitionRef.current?.stop()
+      nativeStopRef.current?.()
+    },
+    [],
+  )
+
+  const startNative = useCallback(async () => {
+    setState('listening')
+    const { plugin: speech } = await nativePlugin<NabaSpeech>('NabaSpeech')
+    const handles: PluginListenerHandle[] = []
+    const done = () => {
+      handles.forEach((handle) => void handle.remove())
+      nativeStopRef.current = null
+      setState('idle')
+    }
+    handles.push(await speech.addListener('partial', ({ text }) => onInterimRef.current?.(text)))
+    handles.push(
+      await speech.addListener('end', ({ text }) => {
+        done()
+        if (text) onResultRef.current(text)
+      }),
+    )
+    nativeStopRef.current = () => void speech.stop()
+    try {
+      await speech.start({ lang: 'ar-SA' })
+    } catch (error) {
+      done()
+      // A phone without any speech recognition: hide the mic, as on the web.
+      if ((error as { code?: string })?.code === 'unavailable') setState('unsupported')
+    }
+  }, [])
 
   const start = useCallback(() => {
+    if (hasNativePlugin('NabaSpeech')) {
+      void startNative()
+      return
+    }
     const Ctor = getSpeechRecognitionCtor()
     if (!Ctor) {
       setState('unsupported')
@@ -109,10 +158,11 @@ export function useArabicVoiceInput(onResult: (text: string) => void, onInterim?
     recognitionRef.current = recognition
     setState('listening')
     recognition.start()
-  }, [])
+  }, [startNative])
 
   const stop = useCallback(() => {
     recognitionRef.current?.stop()
+    nativeStopRef.current?.()
   }, [])
 
   return { state, start, stop }

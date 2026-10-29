@@ -7,7 +7,6 @@ import {
   getOfflineSave,
   getServerOfflineSave,
   hideOfflineSave,
-  isStandaloneDisplayMode,
   keepOfflineQuran,
   subscribeOfflineSave,
 } from '@/lib/offline-bootstrap'
@@ -17,19 +16,50 @@ import { forgetAsrModel } from '@/lib/asr/model-cache'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 
-/**
- * Off for now: the app no longer downloads the whole mushaf (or shows its
- * progress card) when it opens. A copy already on the phone is still kept.
- * Set back to true to turn the first-launch download on again.
- */
-const SAVE_QURAN_ON_OPEN = false
+const PLAY_STORE_APP_KEY = 'naba-play-store-app'
 
 /**
- * Puts the whole Quran on the phone without anyone asking: the text (about
- * 16 MB), the mushaf page fonts and the chosen translation. It starts once the
- * first screen has settled, since reading that much data briefly holds the page
- * still, and it leaves a metered connection alone until the app is installed or
- * on Wi‑Fi. A small card shows how far it has got, and can be put away.
+ * Whether this is the app installed from the Play Store, however it wraps the
+ * site: a Trusted Web Activity gives the first page an android-app:// referrer;
+ * Capacitor puts its bridge on the page; any app built on Android's WebView
+ * (Capacitor, Cordova, Median…) says "; wv)" in its user agent. Remembered,
+ * since a TWA's later pages do not see the referrer. Chrome itself, and a
+ * website added to the home screen, match none of these.
+ */
+function isPlayStoreApp(): boolean {
+  if (typeof window === 'undefined') return false
+  const capacitor = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+  const fromApp =
+    document.referrer.startsWith('android-app://') ||
+    Boolean(capacitor?.isNativePlatform?.()) ||
+    /; wv\)/.test(navigator.userAgent)
+  try {
+    if (fromApp) localStorage.setItem(PLAY_STORE_APP_KEY, '1')
+    return localStorage.getItem(PLAY_STORE_APP_KEY) === '1'
+  } catch {
+    return fromApp
+  }
+}
+
+/**
+ * Only the Play Store app saves the whole mushaf on its own, once, on Wi‑Fi.
+ * The website, in a browser tab or added to the home screen, never does, and
+ * neither does the app on mobile data or with data saver on: there it is
+ * saved from Settings, when the person chooses.
+ */
+function mayDownloadOnItsOwn(): boolean {
+  if (!isPlayStoreApp()) return false
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; type?: string } }).connection
+  return !connection?.saveData && connection?.type !== 'cellular'
+}
+
+/**
+ * Puts the whole Quran on the phone: the text (about 16 MB), the 604 mushaf
+ * page fonts (about 95 MB) and the chosen translation, so Read opens every
+ * page at once and works offline. On its own only in the Play Store app on
+ * Wi‑Fi (see mayDownloadOnItsOwn); otherwise from Settings. It starts once the
+ * first screen has settled, since reading that much data briefly holds the
+ * page still. A small card shows how far it has got, and can be put away.
  */
 export default function OfflineBootstrap() {
   // The speech model the Hifdh Test used is no longer part of the app; free the space where it was saved.
@@ -38,16 +68,9 @@ export default function OfflineBootstrap() {
   }, [])
 
   useEffect(() => {
-    if (!SAVE_QURAN_ON_OPEN) {
-      keepOfflineQuran()
-      return
-    }
     const saved = isOfflineReady() || getAppSettings().offlineDownloaded
-    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; type?: string } }).connection
-    const metered = Boolean(connection?.saveData) || connection?.type === 'cellular'
-    if (metered && !isStandaloneDisplayMode()) {
-      // Already saved: only make sure the phone keeps it (see lib/offline-bootstrap.ts).
-      if (saved) void bootstrapOfflineReader()
+    if (!saved && !mayDownloadOnItsOwn()) {
+      keepOfflineQuran()
       return
     }
 

@@ -9,6 +9,8 @@ import AccountPromptHost from '@/components/account/AccountPromptHost'
 import ToastHost from '@/components/feedback/ToastHost'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
+import NativeBars from '@/components/NativeBars'
+import NativeShare from '@/components/NativeShare'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
 import SplashScreen from '@/components/SplashScreen'
@@ -109,6 +111,8 @@ export default function RootLayout({
           <ViewportLock />
           <AdhanHost />
           <OfflineBootstrap />
+          <NativeBars />
+          <NativeShare />
           <AccountPromptHost />
           <ToastHost />
           <BottomNav />

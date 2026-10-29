@@ -131,8 +131,9 @@
 
 .mushaf-qcf-flow__text {
   margin: 0;
-  /* --mushaf-flow-scale is set by pinching the page (see ContinuousScrollView). */
-  font-size: calc(clamp(28px, 7.8vw, 42px) * var(--mushaf-flow-scale, 1));
+  /* --mushaf-flow-scale is set by pinching the page (see ContinuousScrollView);
+     before any pinch it is 0.8, a step up from the smallest. */
+  font-size: calc(clamp(28px, 7.8vw, 42px) * var(--mushaf-flow-scale, 0.8));
   line-height: 2.2;
   /* Justified, so both edges are straight and no gap is left down the left side;
      the last line of a paragraph stays where it falls. */
@@ -258,52 +259,6 @@ html.dark .mushaf-qcf-segment--selected {
    shaped width so the page's real line breaks and rhythm stay intact. */
 .mushaf-qcf-segment--hidden {
   visibility: hidden;
-}
-
-/* The ayah-number marker. Dark themes keep the mushaf's own gold ornament; in
-   light the ornament keeps its width in the line but is not painted, and a
-   plain marker sits over it: a soft green circle, a thin green ring and the
-   number, which reads at a glance on the white page. */
-.mushaf-qcf-end-mark {
-  display: none;
-}
-
-html:not(.dark) .mushaf-qcf-segment--end {
-  position: relative;
-}
-
-html:not(.dark) .mushaf-qcf-end-glyph {
-  visibility: hidden;
-}
-
-html:not(.dark) .mushaf-qcf-end-mark {
-  /* Sized from its own font size: the circle is 0.92em of the line's, the number 0.46em. */
-  --mark-size: 2em;
-  position: absolute;
-  top: 52%;
-  left: 50%;
-  display: flex;
-  width: var(--mark-size);
-  height: var(--mark-size);
-  align-items: center;
-  justify-content: center;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #dcefe5;
-  box-shadow: inset 0 0 0 1.25px rgba(14, 95, 85, 0.5);
-  color: #0b5a4f;
-  font-family: var(--font-amiri), 'Amiri', 'Noto Naskh Arabic', serif;
-  font-size: 0.46em;
-  font-weight: 700;
-  line-height: 1;
-  direction: rtl;
-  pointer-events: none;
-}
-
-/* Three digits: smaller type in the same circle. */
-html:not(.dark) .mushaf-qcf-end-mark--long {
-  --mark-size: 2.42em;
-  font-size: 0.38em;
 }
 
 /* Block global Quranic utility classes inside mushaf */
