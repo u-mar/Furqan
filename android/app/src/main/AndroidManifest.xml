@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -18,7 +18,29 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- qurannaba.com links tapped anywhere (a shared recitation, a halaqa invite, a password
+                 reset email) open in the app, on that page (MainActivity). Android checks the site's
+                 public/.well-known/assetlinks.json to trust this. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="qurannaba.com" />
+                <data android:path="/" />
+                <data android:pathPrefix="/qari" />
+                <data android:pathPrefix="/h/" />
+                <data android:pathPrefix="/halaqa" />
+                <data android:pathPrefix="/read" />
+                <data android:pathPrefix="/listen" />
+                <data android:pathPrefix="/prayer" />
+                <data android:pathPrefix="/reset-password" />
+            </intent-filter>
         </activity>
+
+        <!-- Notifications sent through Firebase: the Naba mark in the status bar, in gold. -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_naba" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/naba_gold" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -49,6 +71,12 @@
             <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
+
+    <!-- Added by libraries but never used: reminders do not need to the minute (and Google Play
+         restricts exact alarms), and Google sign-in here never asks for a fingerprint. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 
     <!-- None of these is needed to install the app: phones without them still get it from the Play Store. -->
     <uses-feature android:name="android.hardware.microphone" android:required="false" />

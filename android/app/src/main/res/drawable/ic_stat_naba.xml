@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Naba mark for the status bar: Android shows notification icons as a white silhouette.
+     Drawn from the logo's blocks (lib/app-logo.ts). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M15,102h120v14h-120zM15,32h14v84h-14zM68,74h14v42h-14zM121,74h14v42h-14zM121,46h14v14h-14zM68,130h14v14h-14zM15,6h15v5h-15zM15,6h5v16h-5zM15,17h15v5h-15z" />
+</vector>

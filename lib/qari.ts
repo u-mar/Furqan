@@ -408,18 +408,28 @@ export function getCachedRecitationAudio(id: string): Blob | null {
   return readyBlobs.get(id) ?? null
 }
 
+/** Recordings whose download is still under way. */
+const downloading = new Set<string>()
+
 export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
   let pending = audioBlobs.get(id)
   if (!pending) {
+    downloading.add(id)
     pending = fetch(recitationAudioUrl(id))
       .then((res) => (res.ok ? res.blob() : null))
       .catch(() => null)
+      .finally(() => downloading.delete(id))
     audioBlobs.set(id, pending)
   }
   void pending.then((blob) => {
     if (blob && blob.size > 0) readyBlobs.set(id, blob)
   })
   return pending
+}
+
+/** A download of this recording still under way: to wait for, rather than start the same file again beside it. */
+export function downloadingRecitationAudio(id: string): Promise<Blob | null> | null {
+  return downloading.has(id) ? (audioBlobs.get(id) ?? null) : null
 }
 
 

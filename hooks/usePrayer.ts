@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { subscribeAdhan, isAdhanPlaying } from '@/lib/adhan-audio'
 import {
   DEFAULT_PLACE,
@@ -130,7 +130,7 @@ export function useAutoLocate(ready: boolean, place: Place): { status: LocateSta
     // Only when the screen opens, and again if the saved place changes kind.
   }, [ready, place.source])
 
-  const retry = () => {
+  const retry = useCallback(() => {
     setStatus('locating')
     void locateDevice()
       .then((fresh) => {
@@ -142,7 +142,19 @@ export function useAutoLocate(ready: boolean, place: Place): { status: LocateSta
         if (denied) setLocationDenied(true)
         setStatus(denied && (await locationPermission()) === 'denied' ? 'blocked' : 'off')
       })
-  }
+  }, [])
+
+  // The Play Store app asks Android itself the first time it opens (android/…/MainActivity.java),
+  // and says so once the answer is yes: the position is found then, whatever this screen was told
+  // while the question was up.
+  useEffect(() => {
+    const allowed = () => {
+      setLocationDenied(false)
+      retry()
+    }
+    window.addEventListener('nabalocationallowed', allowed)
+    return () => window.removeEventListener('nabalocationallowed', allowed)
+  }, [retry])
 
   return { status, retry }
 }

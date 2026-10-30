@@ -265,6 +265,13 @@ function scrollAyahToContainerTop(
   container.scrollTo({ top: Math.max(0, target), behavior })
 }
 
+/** Scrolls down just far enough that `ayahEl` ends above the bar at the foot of the screen, if it does not already. */
+function revealAyahEnd(ayahEl: HTMLElement, container: HTMLElement, behavior: ScrollBehavior = 'smooth') {
+  const visibleBottom = container.getBoundingClientRect().top + container.clientHeight - BOTTOM_BAR_RESERVED_PX
+  const hidden = ayahEl.getBoundingClientRect().bottom - visibleBottom
+  if (hidden > 0) container.scrollTo({ top: container.scrollTop + hidden, behavior })
+}
+
 export default function MushafTranslationView({
   verses,
   page,
@@ -345,6 +352,11 @@ export default function MushafTranslationView({
     if (currentIndex < 0) return
 
     if (remainingAyahsFitInView(currentIndex, verseKeys, ayahRefs.current, container.clientHeight)) {
+      // The rest of the page fits from here, so this one need not go to the top; but all of it must
+      // show. Where the last scroll left the end of the page below the screen, bring it up (the
+      // ayah being recited stays in view: the rest fits).
+      const lastEl = ayahRefs.current.get(verseKeys[verseKeys.length - 1])
+      if (lastEl) revealAyahEnd(lastEl, container)
       return
     }
 

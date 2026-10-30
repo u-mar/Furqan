@@ -1,11 +1,18 @@
 'use client'
 
+import type { PushNotificationsPlugin } from '@capacitor/push-notifications'
 import { halaqaKey } from '@/lib/halaqa'
+import { tr } from '@/lib/i18n-core'
+import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
 
 /**
  * Turning on notifications for this phone. The person has to say yes (from a
  * tap: phones refuse to ask otherwise), the phone hands back an address for
  * the push service, and the server keeps it against their account.
+ *
+ * In the Play Store app, whose WebView has no web push, the address is the
+ * phone's Firebase token instead, sent as "fcm:<token>" (lib/fcm.ts delivers
+ * to those). Everything else is the same either way.
  */
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ''
@@ -39,6 +46,86 @@ const isInstalled = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   (navigator as Navigator & { standalone?: boolean }).standalone === true
 
+/* -------------------------------------------------- the Play Store app */
+
+const FCM_TOKEN_KEY = 'naba-fcm-token'
+
+/** A phone address in the shape the server takes, from a web push subscription or a Firebase token. */
+interface Address {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}
+
+const inApp = () => hasNativePlugin('NabaApp')
+
+let pushReady: Promise<boolean> | null = null
+
+/** Whether this copy of the app was built with Firebase (android/…/NabaAppPlugin.java): asking without it crashes. */
+function appPushReady(): Promise<boolean> {
+  pushReady ??= (async () => {
+    if (!hasNativePlugin('PushNotifications')) return false
+    const { plugin } = await nativePlugin<{ info: () => Promise<{ pushReady: boolean }> }>('NabaApp')
+    return (await plugin.info()).pushReady
+  })().catch(() => false)
+  return pushReady
+}
+
+/** Kept wrapped until used: an async function returning the plugin itself would never settle (lib/native-app.ts). */
+const appPush = () => nativePlugin<PushNotificationsPlugin>('PushNotifications')
+
+function savedToken(): string | null {
+  try {
+    return localStorage.getItem(FCM_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+async function appPushState(): Promise<PushState> {
+  if (!(await appPushReady())) return 'unsupported'
+  const { plugin: push } = await appPush()
+  const { receive } = await push.checkPermissions()
+  if (receive === 'denied') return 'blocked'
+  return receive === 'granted' && savedToken() ? 'on' : 'off'
+}
+
+/** This phone's Firebase address, asking permission first when `ask`. Null when there is none to be had. */
+async function appAddress(ask: boolean): Promise<Address | 'blocked' | null> {
+  const { plugin: push } = await appPush()
+  let { receive } = await push.checkPermissions()
+  if (receive !== 'granted' && ask) receive = (await push.requestPermissions()).receive
+  if (receive === 'denied') return 'blocked'
+  if (receive !== 'granted') return null
+  const token = await new Promise<string | null>((resolve) => {
+    const handles: Promise<{ remove: () => Promise<void> }>[] = []
+    const timer = window.setTimeout(() => finish(null), 15_000)
+    function finish(value: string | null) {
+      window.clearTimeout(timer)
+      handles.forEach((handle) => void handle.then((h) => h.remove()))
+      resolve(value)
+    }
+    handles.push(push.addListener('registration', ({ value }) => finish(value)))
+    handles.push(push.addListener('registrationError', () => finish(null)))
+    push.register().catch(() => finish(null))
+  })
+  if (!token) return null
+  localStorage.setItem(FCM_TOKEN_KEY, token)
+  return { endpoint: `fcm:${token}`, keys: { p256dh: '', auth: '' } }
+}
+
+/** Forgets this phone's Firebase address: on the server (`remove`), and Firebase's own. */
+async function appForget(remove: (endpoint: string) => Promise<unknown>): Promise<PushState> {
+  if (!(await appPushReady())) return 'unsupported'
+  const token = savedToken()
+  if (token) await remove(`fcm:${token}`).catch(() => {})
+  localStorage.removeItem(FCM_TOKEN_KEY)
+  const { plugin: push } = await appPush()
+  await push.unregister().catch(() => {})
+  return appPushState()
+}
+
+/* --------------------------------------------------------------- the web */
+
 async function registration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
   try {
@@ -50,6 +137,7 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
 
 export async function pushState(): Promise<PushState> {
   if (typeof window === 'undefined') return 'unsupported'
+  if (inApp()) return appPushState()
   if (!PUBLIC_KEY) return 'unconfigured'
   if (isIPhone() && !isInstalled()) return 'needs-install'
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported'
@@ -60,11 +148,11 @@ export async function pushState(): Promise<PushState> {
   return sub ? 'on' : 'off'
 }
 
-async function save(viewer: Viewer, subscription: PushSubscription): Promise<boolean> {
+async function save(viewer: Viewer, subscription: PushSubscription | Address): Promise<boolean> {
   const res = await fetch('/api/qari/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: viewer.username, userId: viewer.id, subscription: subscription.toJSON() }),
+    body: JSON.stringify({ username: viewer.username, userId: viewer.id, subscription: 'toJSON' in subscription ? subscription.toJSON() : subscription }),
   }).catch(() => null)
   return Boolean(res?.ok)
 }
@@ -73,6 +161,11 @@ async function save(viewer: Viewer, subscription: PushSubscription): Promise<boo
 export async function enablePush(viewer: Viewer): Promise<PushState> {
   const state = await pushState()
   if (state !== 'off') return state
+  if (inApp()) {
+    const address = await appAddress(true)
+    if (address === 'blocked' || !address) return address ?? 'off'
+    return (await save(viewer, address)) ? 'on' : 'off'
+  }
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off'
   const reg = await registration()
@@ -88,6 +181,15 @@ export async function enablePush(viewer: Viewer): Promise<PushState> {
 }
 
 export async function disablePush(viewer: Viewer): Promise<PushState> {
+  if (inApp()) {
+    return appForget((endpoint) =>
+      fetch('/api/qari/push', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: viewer.username, userId: viewer.id, endpoint }),
+      })
+    )
+  }
   const reg = await registration()
   const sub = await reg?.pushManager.getSubscription()
   if (sub) {
@@ -108,6 +210,11 @@ export async function disablePush(viewer: Viewer): Promise<PushState> {
  */
 export async function syncPush(viewer: Viewer): Promise<void> {
   if ((await pushState()) !== 'on') return
+  if (inApp()) {
+    const address = await appAddress(false)
+    if (address && address !== 'blocked') await save(viewer, address)
+    return
+  }
   const reg = await registration()
   const sub = await reg?.pushManager.getSubscription()
   if (sub) await save(viewer, sub)
@@ -115,11 +222,11 @@ export async function syncPush(viewer: Viewer): Promise<void> {
 
 /* --------------------------------------------------------- halaqa reminders */
 
-async function saveHalaqa(subscription: PushSubscription): Promise<boolean> {
+async function saveHalaqa(subscription: PushSubscription | Address): Promise<boolean> {
   const res = await fetch('/api/halaqa/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-halaqa-key': halaqaKey() },
-    body: JSON.stringify({ subscription: subscription.toJSON() }),
+    body: JSON.stringify({ subscription: 'toJSON' in subscription ? subscription.toJSON() : subscription }),
   }).catch(() => null)
   return Boolean(res?.ok)
 }
@@ -128,6 +235,11 @@ async function saveHalaqa(subscription: PushSubscription): Promise<boolean> {
 export async function enableHalaqaPush(): Promise<PushState> {
   const state = await pushState()
   if (state !== 'off') return state
+  if (inApp()) {
+    const address = await appAddress(true)
+    if (address === 'blocked' || !address) return address ?? 'off'
+    return (await saveHalaqa(address)) ? 'on' : 'off'
+  }
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off'
   const reg = await registration()
@@ -143,6 +255,15 @@ export async function enableHalaqaPush(): Promise<PushState> {
 }
 
 export async function disableHalaqaPush(): Promise<PushState> {
+  if (inApp()) {
+    return appForget((endpoint) =>
+      fetch('/api/halaqa/push', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'x-halaqa-key': halaqaKey() },
+        body: JSON.stringify({ endpoint }),
+      })
+    )
+  }
   const reg = await registration()
   const sub = await reg?.pushManager.getSubscription()
   if (sub) {
@@ -159,7 +280,36 @@ export async function disableHalaqaPush(): Promise<PushState> {
 /** Where notifications are already allowed, tell the server about this phone again — same as syncPush. */
 export async function syncHalaqaPush(): Promise<void> {
   if ((await pushState()) !== 'on') return
+  if (inApp()) {
+    const address = await appAddress(false)
+    if (address && address !== 'blocked') await saveHalaqa(address)
+    return
+  }
   const reg = await registration()
   const sub = await reg?.pushManager.getSubscription()
   if (sub) await saveHalaqa(sub)
+}
+
+/**
+ * In the Play Store app: makes the "Qari and halaqa" channel Firebase messages
+ * arrive in (lib/fcm.ts), and opens the page a tapped one points to. Returns
+ * a function that stops listening.
+ */
+export function listenForAppNotificationTaps(open: (url: string) => void): () => void {
+  let stopped = false
+  let handle: { remove: () => Promise<void> } | null = null
+  void (async () => {
+    if (!inApp() || !(await appPushReady()) || stopped) return
+    const { plugin: push } = await appPush()
+    await push.createChannel({ id: 'activity', name: tr('Qari and halaqa'), importance: 4 }).catch(() => {})
+    handle = await push.addListener('pushNotificationActionPerformed', ({ notification }) => {
+      const url = (notification.data as { url?: unknown } | undefined)?.url
+      if (typeof url === 'string') open(url)
+    })
+    if (stopped) void handle.remove()
+  })().catch(() => {})
+  return () => {
+    stopped = true
+    void handle?.remove()
+  }
 }

@@ -2,4 +2,6 @@
 <resources>
     <!-- The black of the app icon and the splash (lib/app-logo.ts → LOGO_GROUND). -->
     <color name="naba_ground">#000000</color>
+    <!-- The gold of the logo, for notifications. -->
+    <color name="naba_gold">#E0BC74</color>
 </resources>

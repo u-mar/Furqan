@@ -12,7 +12,13 @@
 
 import { APP_NAME } from '@/lib/app-brand'
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
-import { countPlay, getCachedRecitationAudio, recitationAudioUrl, type Recitation } from '@/lib/qari'
+import {
+  countPlay,
+  downloadingRecitationAudio,
+  getCachedRecitationAudio,
+  recitationAudioUrl,
+  type Recitation,
+} from '@/lib/qari'
 import { tr } from '@/lib/i18n-core'
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused'
@@ -48,6 +54,12 @@ let pauseTimer: number | null = null
 let objectUrl: string | null = null
 /** Plays are counted once per recitation per visit, not per tap. */
 const counted = new Set<string>()
+/** Bumped by every play, pause and stop, so a play still waiting for its download knows it was overtaken. */
+let playTicket = 0
+/** True while a recitation waits for a download already under way before it starts. */
+let awaiting = false
+/** The recitation the element holds; it can lag `snapshot.current` while one waits for its download. */
+let loadedId: string | null = null
 
 function emit(patch: Partial<PlayerSnapshot>) {
   snapshot = { ...snapshot, ...patch }
@@ -93,7 +105,8 @@ function ensureAudio(): HTMLAudioElement {
   el.addEventListener('playing', () => emit({ status: 'playing' }))
   el.addEventListener('waiting', () => emit({ status: 'loading' }))
   el.addEventListener('pause', () => {
-    if (snapshot.current && !el.ended) emit({ status: 'paused' })
+    // Pausing the last one while the next one's download finishes is not the next one pausing.
+    if (snapshot.current && !el.ended && !awaiting) emit({ status: 'paused' })
   })
   el.addEventListener('timeupdate', () => {
     emit({
@@ -171,27 +184,53 @@ export function playRecitation(
   if (options.viewerId !== undefined) viewerId = options.viewerId
 
   const switching = snapshot.current?.id !== r.id
+  const fresh = loadedId !== r.id
+  const ticket = ++playTicket
+  awaiting = false
   if (switching) {
-    // A copy already on the phone starts at once and can be sought anywhere; otherwise stream it.
-    if (objectUrl) URL.revokeObjectURL(objectUrl)
-    objectUrl = null
-    const cached = getCachedRecitationAudio(r.id)
-    if (cached) objectUrl = URL.createObjectURL(cached)
-    el.src = objectUrl ?? recitationAudioUrl(r.id)
-    // A new source can reset the speed to the default; the default is kept in step with it.
-    el.playbackRate = rate
     emit({ current: r, status: 'loading', position: 0, duration: r.durationSec })
   } else {
     emit({ status: 'loading' })
   }
   describeToLockScreen(r)
 
-  // Cancel a fade-out that was about to pause this, and let the voice in gently.
+  // Cancel a fade-out that was about to pause this.
   if (pauseTimer !== null) {
     window.clearTimeout(pauseTimer)
     pauseTimer = null
   }
-  fadeMaster(1, 0.035, switching || el.paused ? 0 : undefined)
+
+  // The feed downloads the next ones ahead of a swipe. When this one's download is already under
+  // way, finish it rather than start the same file again beside it: a second download only splits
+  // the connection, and starts from nothing on a server that is slow to answer the first time.
+  const downloading = fresh && !getCachedRecitationAudio(r.id) ? downloadingRecitationAudio(r.id) : null
+  if (downloading) {
+    awaiting = true
+    el.pause()
+    void downloading.then((blob) => {
+      if (ticket !== playTicket) return
+      awaiting = false
+      start(el, r, true, blob)
+    })
+    return
+  }
+  start(el, r, fresh, null)
+}
+
+/** Points the element at `r` when `fresh` (a copy on the phone if there is one, else the stream) and plays. */
+function start(el: HTMLAudioElement, r: Recitation, fresh: boolean, downloaded: Blob | null) {
+  if (fresh) {
+    // A copy already on the phone starts at once and can be sought anywhere; otherwise stream it.
+    const cached = downloaded && downloaded.size > 0 ? downloaded : getCachedRecitationAudio(r.id)
+    if (objectUrl) URL.revokeObjectURL(objectUrl)
+    objectUrl = cached ? URL.createObjectURL(cached) : null
+    el.src = objectUrl ?? recitationAudioUrl(r.id)
+    loadedId = r.id
+    // A new source can reset the speed to the default; the default is kept in step with it.
+    el.playbackRate = rate
+  }
+  // Let the voice in gently.
+  fadeMaster(1, 0.035, fresh || el.paused ? 0 : undefined)
 
   void el
     .play()
@@ -234,6 +273,13 @@ function fadeMaster(target: number, timeConstant: number, from?: number) {
 }
 
 export function pausePlayback(): void {
+  if (awaiting) {
+    // Paused before its download finished: it does not start when it does.
+    playTicket += 1
+    awaiting = false
+    emit({ status: 'paused' })
+    return
+  }
   const el = audio
   if (!el || el.paused) return
   if (!master || !context) {
@@ -296,6 +342,8 @@ export function skipToNextRecitation(): boolean {
 
 /** Silence Qari entirely, for when you leave it or start recording. */
 export function stopPlayback(): void {
+  playTicket += 1
+  awaiting = false
   if (pauseTimer !== null) window.clearTimeout(pauseTimer)
   pauseTimer = null
   if (audio) {
@@ -303,6 +351,7 @@ export function stopPlayback(): void {
     audio.removeAttribute('src')
     audio.load()
   }
+  loadedId = null
   fadeMaster(1, 0.01)
   if (objectUrl) URL.revokeObjectURL(objectUrl)
   objectUrl = null

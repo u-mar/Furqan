@@ -16,6 +16,10 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // The page fonts are already compressed; packing them again only slows the build.
+    androidResources {
+        noCompress += ['woff2']
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -47,6 +51,32 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// The mushaf inside the app (BundledQuran.java): the Quran text and the 604 page fonts from the
+// site's public/, and the English and Somali translations from native/quran/translations/
+// (native/make-translations.mjs), copied in on every build rather than kept a second time in git.
+// They are copied plainly, to a folder outside the project (~/.naba-build): Gradle's own copying
+// refuses files that a sync service such as OneDrive has turned into cloud placeholders ("not a
+// regular file"), as happened while the project lived in OneDrive.
+def bundledQuranDir = new File(System.getProperty('user.home'), '.naba-build/quran-assets')
+def copyBundledQuran = tasks.register('copyBundledQuran') {
+    doNotTrackState('The sources are OneDrive placeholders Gradle cannot snapshot')
+    doLast {
+        def site = new File(rootProject.projectDir, '..')
+        def out = new File(bundledQuranDir, 'quran')
+        def copy = { File from, File to ->
+            if (!from.exists()) throw new GradleException("Missing for the bundled mushaf: ${from}")
+            if (to.exists() && to.length() == from.length()) return
+            to.parentFile.mkdirs()
+            java.nio.file.Files.copy(from.toPath(), to.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+        copy(new File(site, 'public/quran-data.json'), new File(out, 'quran-data.json'))
+        (1..604).each { n -> copy(new File(site, "public/qcf/p${n}.woff2"), new File(out, "qcf/p${n}.woff2")) }
+        ['en.sahih', 'so.abduh'].each { id -> copy(new File(site, "native/quran/translations/${id}.json"), new File(out, "translations/${id}.json")) }
+    }
+}
+android.sourceSets.main.assets.srcDirs += bundledQuranDir
+preBuild.dependsOn copyBundledQuran
 
 try {
     def servicesJSON = file('google-services.json')

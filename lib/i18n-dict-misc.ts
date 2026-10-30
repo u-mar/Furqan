@@ -676,4 +676,12 @@ export const MISC: Dict = {
   'Saved. Every page opens at once, even offline.': { so: 'Waa la kaydiyay. Bog walba si degdeg ah ayuu u furmaa, xitaa adigoo aan internet haysan.', ar: 'تم الحفظ. تفتح كل صفحة فورًا، حتى دون اتصال.' },
   'About 110 MB, once. Then every page opens at once, even offline.': { so: 'Qiyaastii 110 MB, hal mar. Kadib bog walba si degdeg ah ayuu u furmaa, xitaa adigoo aan internet haysan.', ar: 'حوالي 110 م.ب، مرة واحدة. ثم تفتح كل صفحة فورًا، حتى دون اتصال.' },
   'Saving…': { so: 'Waa la kaydinayaa…', ar: 'جارٍ الحفظ…' },
+  'Reading reminders': { so: 'Xusuusinta akhriska', ar: 'تذكير بالقراءة' },
+  'Not now': { so: 'Hadda maya', ar: 'ليس الآن' },
+  'If a few days pass without reading, Naba reminds you. Never every day.': { so: 'Haddii dhowr maalmood ay kaa dhaafaan adigoon akhrin, Naba ayaa ku xusuusinaysa. Marna maalin kasta maaha.', ar: 'إذا مرّت أيام دون قراءة، يذكّرك نبأ. وليس كل يوم أبدًا.' },
+  "Notifications are off for Naba. Turn them on in your phone's settings.": { so: 'Ogeysiisyada Naba waa xiran yihiin. Ka shid dejinta taleefankaaga.', ar: 'الإشعارات متوقفة لتطبيق نبأ. فعّلها من إعدادات هاتفك.' },
+  'Time with the Quran': { so: 'Waqti Quraanka', ar: 'وقت مع القرآن' },
+  'Continue {surah}, page {page}.': { so: 'Sii wad {surah}, bogga {page}.', ar: 'تابع {surah}، صفحة {page}.' },
+  'Qari and halaqa': { so: 'Qari iyo xalqadda', ar: 'القارئ والحلقة' },
+  'Prayer times': { so: 'Waqtiyada salaadda', ar: 'مواقيت الصلاة' },
 }

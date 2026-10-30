@@ -3,16 +3,19 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Bell,
+  BellOff,
   ChevronLeft,
   ChevronRight,
   CloudSun,
+  Compass,
+  MapPin,
   Moon,
   MoonStar,
   Settings2,
   Sun,
   Sunrise,
   Sunset,
-  Volume2,
   type LucideIcon,
 } from 'lucide-react'
 import LocationOffNote from '@/components/prayer/LocationOffNote'
@@ -29,18 +32,19 @@ import {
   PRAYER_NAMES,
   PRAYER_ORDER,
   currentPrayer,
+  formatCountdown,
   formatTime,
   minutesUntil,
   nextPrayer,
   prayerTimesFor,
   prayerWaitProgress,
+  qiblaBearing,
   savePrayerSettings,
   type MethodId,
   type PrayerId,
 } from '@/lib/prayer'
-import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
-import { useLanguage, useT } from '@/lib/i18n'
+import { tr, useLanguage, useT } from '@/lib/i18n'
 
 /** Each prayer's icon — plain outline, one colour, not a small illustration. */
 const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
@@ -52,15 +56,31 @@ const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
   isha: MoonStar,
 }
 
-const RING_R = 40
-const RING_LENGTH = 2 * Math.PI * RING_R
+/** Shown beside the name in the app's other languages; in Arabic the name already is this. */
+const PRAYER_NAMES_AR: Record<PrayerId, string> = {
+  fajr: 'الفجر',
+  sunrise: 'الشروق',
+  dhuhr: 'الظهر',
+  asr: 'العصر',
+  maghrib: 'المغرب',
+  isha: 'العشاء',
+}
+
+const DAY_MS = 24 * 3600 * 1000
+
+/** "Subax (Fajr)" → "Subax": the name alone, where the Arabic name stands beside it. */
+function prayerName(id: PrayerId): string {
+  return tr(PRAYER_NAMES[id]).replace(/\s*\(.*\)\s*$/, '')
+}
 
 type Sheet = 'method' | null
 
 /**
- * Just the day's prayer times — reached from its own tile on Home, and from
- * the next-prayer card above that tile. Qibla used to share this screen
- * behind a tab; now it is its own focused screen instead.
+ * The day's prayer times — reached from its own tile on Home, and from the
+ * next-prayer card above that tile. At the top, the prayer that comes next and
+ * how long until it; below it, the day, where each prayer's adhan is a bell to
+ * tap; then the qibla, and how the times are worked out. Plain cards in the
+ * app's own colours, so the times are what stands out.
  */
 export default function PrayerPage() {
   const t = useT()
@@ -81,30 +101,26 @@ export default function PrayerPage() {
   // The day's times only change when the day does, not every second.
   const dayKey = now.toDateString()
   const times = useMemo(() => prayerTimesFor(place, new Date(), settings), [place, settings, dayKey])
+  const lastNightIsha = useMemo(
+    () => prayerTimesFor(place, new Date(Date.now() - DAY_MS), settings).isha,
+    [place, settings, dayKey]
+  )
   const next = nextPrayer(place, settings, now)
   const current = currentPrayer(times, now)
-  const currentIndex = current ? PRAYER_ORDER.indexOf(current) : -1
   const tz = place.timeZone
   const show = (d: Date) => formatTime(d, language, tz)
-  const waited = prayerWaitProgress(place, settings, times, current, next, now)
   const minutesLeft = minutesUntil(next.at, now)
+  // Under an hour, the seconds count down too.
   const timeLeft =
     minutesLeft >= 60
       ? t('{h}h {m}m', { h: Math.floor(minutesLeft / 60), m: minutesLeft % 60 })
-      : t('{m}m', { m: minutesLeft })
+      : formatCountdown(next.at.getTime() - now.getTime())
 
   if (!mounted) {
     return (
       <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
         <div className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]">
-          <header className="flex items-center gap-3">
-            <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>
-              <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
-            </Link>
-            <h1 className="home-serif text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-              {t('Prayer')}
-            </h1>
-          </header>
+          <PrayerHeader title={t('Prayer times')} />
         </div>
       </main>
     )
@@ -112,127 +128,163 @@ export default function PrayerPage() {
 
   const setAdhanFor = (id: PrayerId, on: boolean) => {
     if (id === 'sunrise') return
-    savePrayerSettings({ adhanFor: { ...settings.adhanFor, [id]: on } })
+    tapFeedback()
+    if (on && !settings.adhan) savePrayerSettings({ adhan: true, adhanFor: { ...settings.adhanFor, [id]: true } })
+    else savePrayerSettings({ adhanFor: { ...settings.adhanFor, [id]: on } })
   }
 
+  // The wait for the next prayer, from the one before it (last night's Isha, before Fajr).
+  const waited = prayerWaitProgress(place, settings, times, current, next, now)
+  const since = current ? { id: current, at: times[current] } : { id: 'isha' as PrayerId, at: lastNightIsha }
+  const placeName = place.name || (place.source === 'device' ? t('Your location') : 'Mogadishu')
+  const gregorian = new Intl.DateTimeFormat(language === 'ar' ? 'ar' : language === 'so' ? 'so' : 'en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(now)
+  const qibla = Math.round(qiblaBearing(place))
+
   return (
-    <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
+    <main className="prayer-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
-        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem)` }}
       >
-        <header className="flex items-center gap-3">
-          <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <h1 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-              {t('Prayer')}
-            </h1>
-            <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">{formatHijri(now)}</p>
-          </div>
-        </header>
+        <PrayerHeader title={t('Prayer times')} subtitle={`${gregorian} · ${formatHijri(now)}`} />
 
         <LocationOffNote status={location.status} place={place} onRetry={location.retry} />
 
-        {hasAdhan ? (
-          <div className="home-card mt-4 overflow-hidden rounded-2xl">
-            <div className="set-row">
-              <span className="set-row__icon" aria-hidden>
-                <Volume2 className="h-[17px] w-[17px]" strokeWidth={1.9} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-medium">{t('Turn on adhan')}</span>
-                <span className="block text-[0.78125rem] text-[var(--home-muted)]">
-                  {t('Plays at each prayer while the app is open.')}
-                </span>
-              </span>
-              <Switch checked={settings.adhan} onChange={(on) => savePrayerSettings({ adhan: on })} label={t('Turn on adhan')} />
-            </div>
-          </div>
-        ) : null}
-
         {/* What comes next */}
-        <section className="prayer-hero mt-3.5 flex items-center gap-4 px-5 py-6" aria-live="polite">
-          <div className="min-w-0 flex-1">
-            <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] opacity-65">{t('Next prayer')}</p>
-            <p className="home-serif mt-1.5 truncate text-[2.1875rem] font-semibold leading-none tracking-[-0.02em]">
-              {t(PRAYER_NAMES[next.id])}
-            </p>
-            <p className="mt-2 text-[1.0625rem] font-medium tabular-nums opacity-80">
-              {t('Time: {time}', { time: show(next.at) })}
-            </p>
+        <section className="pt-next mt-4" aria-labelledby="pt-next">
+          <div className="flex items-center justify-between gap-3">
+            <p className="pt-next__kicker">{t('Next prayer')}</p>
+            <span className="pt-next__place">
+              <MapPin className="h-3 w-3 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span className="truncate">{placeName}</span>
+            </span>
           </div>
-          <div className="relative h-[6rem] w-[6rem] shrink-0">
-            <svg viewBox="0 0 96 96" className="h-full w-full -rotate-90" aria-hidden>
-              <defs>
-                <linearGradient id="prayer-ring" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#c9d92e" />
-                  <stop offset="1" stopColor="#1fb56a" />
-                </linearGradient>
-              </defs>
-              <circle cx="48" cy="48" r={RING_R} fill="none" strokeWidth="9" className="prayer-hero__ring-track" />
-              <circle
-                cx="48"
-                cy="48"
-                r={RING_R}
-                fill="none"
-                strokeWidth="9"
-                strokeLinecap="round"
-                strokeDasharray={RING_LENGTH}
-                strokeDashoffset={RING_LENGTH * (1 - waited)}
-                className="prayer-hero__ring-bar"
-              />
-            </svg>
-            <span className="absolute inset-0 flex flex-col items-center justify-center text-center leading-tight">
-              <span className="text-[0.9375rem] font-bold tabular-nums">{timeLeft}</span>
-              <span className="text-[0.6875rem] opacity-65">{t('left')}</span>
+
+          <div className="mt-2.5 flex items-end justify-between gap-3">
+            <h2 id="pt-next" className="pt-next__name">
+              {prayerName(next.id)}
+            </h2>
+            {language !== 'ar' ? (
+              <span className="pt-next__arabic" lang="ar" dir="rtl">
+                {PRAYER_NAMES_AR[next.id]}
+              </span>
+            ) : null}
+          </div>
+
+          <p className="pt-next__meta">
+            <span>{show(next.at)}</span>
+            <span className="pt-next__left">{t('in {time}', { time: timeLeft })}</span>
+          </p>
+
+          <div
+            className="pt-next__track"
+            role="progressbar"
+            aria-label={t('Next prayer')}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(waited * 100)}
+          >
+            <span style={{ width: `${(waited * 100).toFixed(2)}%` }} />
+          </div>
+          <div className="pt-next__ends">
+            <span>
+              {prayerName(since.id)} · {show(since.at)}
+            </span>
+            <span>
+              {prayerName(next.id)} · {show(next.at)}
             </span>
           </div>
         </section>
 
         {/* The day */}
-        <div className="home-card mt-3.5 overflow-hidden rounded-2xl">
-          {PRAYER_ORDER.map((id, i) => {
-            const active = current === id
-            const past = currentIndex >= 0 && i < currentIndex
-            const withAdhan = ADHAN_PRAYERS.includes(id) && hasAdhan
-            const PrayerIcon = PRAYER_ICONS[id]
-            return (
-              <div key={id}>
-                {i > 0 ? <div className="set-row__divider" aria-hidden /> : null}
-                <div className={cn('prayer-row', active && 'prayer-row--now', past && 'prayer-row--past')}>
-                  <span className="prayer-chip" aria-hidden>
-                    <PrayerIcon className="h-[19px] w-[19px]" strokeWidth={1.8} />
+        <section className="pt-day mt-4" aria-labelledby="pt-today">
+          <div className="pt-day__head">
+            <h2 id="pt-today" className="pt-day__label">
+              {t('Today')}
+            </h2>
+            {hasAdhan ? (
+              <label className="pt-day__adhan">
+                <span>{t('Adhan')}</span>
+                <Switch checked={settings.adhan} onChange={(on) => savePrayerSettings({ adhan: on })} label={t('Turn on adhan')} />
+              </label>
+            ) : null}
+          </div>
+          <ol className="pt-day__list">
+            {PRAYER_ORDER.map((id, i) => {
+              const state =
+                current === id ? 'now' : next.id === id && next.at.toDateString() === now.toDateString() ? 'next' : current && i < PRAYER_ORDER.indexOf(current) ? 'past' : 'later'
+              const PrayerIcon = PRAYER_ICONS[id]
+              const bell = ADHAN_PRAYERS.includes(id) && hasAdhan
+              const ringing = bell && settings.adhan && settings.adhanFor[id as Exclude<PrayerId, 'sunrise'>]
+              return (
+                <li key={id} className="pt-row" data-state={state}>
+                  <span className="pt-row__icon" aria-hidden>
+                    <PrayerIcon className="h-[18px] w-[18px]" strokeWidth={1.9} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-                      {t(PRAYER_NAMES[id])}
-                      {active ? (
-                        <span className="rounded-full bg-[var(--home-sage)] px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[var(--home-ink-fg)]">
-                          {t('Now')}
-                        </span>
-                      ) : null}
+                    <span className="pt-row__name">
+                      <span className="truncate">{prayerName(id)}</span>
+                      {state === 'now' ? <span className="pt-row__tag">{t('Now')}</span> : null}
                     </span>
-                    <span className="block text-[0.8125rem] tabular-nums text-[var(--home-muted)]">{show(times[id])}</span>
+                    {state === 'next' ? (
+                      <span className="pt-row__sub">{t('in {time}', { time: timeLeft })}</span>
+                    ) : language !== 'ar' ? (
+                      <span className="pt-row__sub pt-row__sub--ar" lang="ar" dir="rtl">
+                        {PRAYER_NAMES_AR[id]}
+                      </span>
+                    ) : null}
                   </span>
-                  {withAdhan ? (
-                    <Switch
-                      checked={settings.adhan && settings.adhanFor[id as Exclude<PrayerId, 'sunrise'>]}
-                      onChange={(on) => {
-                        if (on && !settings.adhan) savePrayerSettings({ adhan: true })
-                        setAdhanFor(id, on)
-                      }}
-                      label={t('Adhan for {prayer}', { prayer: t(PRAYER_NAMES[id]) })}
-                    />
+                  <span className="pt-row__time">{show(times[id])}</span>
+                  {bell ? (
+                    <button
+                      type="button"
+                      className="pt-bell ed-focus"
+                      aria-pressed={ringing}
+                      aria-label={t('Adhan for {prayer}', { prayer: prayerName(id) })}
+                      onClick={() => setAdhanFor(id, !ringing)}
+                    >
+                      {ringing ? (
+                        <Bell className="h-[17px] w-[17px]" strokeWidth={2} />
+                      ) : (
+                        <BellOff className="h-[17px] w-[17px]" strokeWidth={1.8} />
+                      )}
+                    </button>
+                  ) : hasAdhan ? (
+                    <span className="pt-bell pt-bell--none" aria-hidden />
                   ) : null}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+        {hasAdhan ? (
+          <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">
+            {t('Plays at each prayer while the app is open.')}
+          </p>
+        ) : (
+          <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">{t('Adhan sound is coming soon.')}</p>
+        )}
 
-        <h2 className="home-label mx-1 mb-2 mt-[22px]">{t('How it is worked out')}</h2>
+        {/* Qibla */}
+        <Link href="/prayer/qibla" className="pt-qibla ed-focus mt-4">
+          <span className="pt-qibla__dial" aria-hidden>
+            <Compass className="h-[22px] w-[22px]" strokeWidth={1.7} style={{ transform: `rotate(${qibla - 45}deg)` }} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Qibla')}</span>
+            <span className="block text-[0.8125rem] text-[var(--home-muted)]">
+              {t('The Kaaba is {degrees}° from north', { degrees: qibla })}
+            </span>
+          </span>
+          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)] rtl:rotate-180" strokeWidth={2} aria-hidden />
+        </Link>
+
+        {/* How the times are worked out */}
+        <h2 className="home-label mx-1 mb-2 mt-6">{t('How it is worked out')}</h2>
         <div className="home-card overflow-hidden rounded-2xl">
           <button type="button" className="set-row" onClick={() => setSheet('method')}>
             <span className="set-row__icon" aria-hidden>
@@ -240,7 +292,7 @@ export default function PrayerPage() {
             </span>
             <span className="set-row__label">{t('Method')}</span>
             <span className="set-row__value">{METHODS.find((m) => m.id === settings.method)?.label}</span>
-            <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+            <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)] rtl:rotate-180" strokeWidth={2} />
           </button>
           <div className="set-row__divider" aria-hidden />
           <div className="px-3.5 py-3">
@@ -265,11 +317,6 @@ export default function PrayerPage() {
             </div>
           </div>
         </div>
-        {!hasAdhan ? (
-          <p className="mx-1 mt-4 text-center text-xs text-[var(--home-muted)]">
-            {t('Adhan sound is coming soon.')}
-          </p>
-        ) : null}
       </div>
 
       {/* Method */}
@@ -303,5 +350,22 @@ export default function PrayerPage() {
         </div>
       </SettingsSheet>
     </main>
+  )
+}
+
+function PrayerHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const t = useT()
+  return (
+    <header className="flex items-center gap-3">
+      <Link href="/" className="home-round ed-focus shrink-0" aria-label={t('Back')}>
+        <ChevronLeft className="h-5 w-5 rtl:rotate-180" strokeWidth={1.9} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <h1 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
+          {title}
+        </h1>
+        {subtitle ? <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">{subtitle}</p> : null}
+      </div>
+    </header>
   )
 }

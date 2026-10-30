@@ -28,3 +28,17 @@ export async function nativePlugin<T>(name: string): Promise<{ plugin: T }> {
   if (!registered.has(name)) registered.set(name, registerPlugin<T>(name))
   return { plugin: registered.get(name) as T }
 }
+
+/**
+ * Whether this is the Play Store app with the mushaf inside it: the Quran
+ * text, the 604 page fonts and the translations in BUNDLED_TRANSLATIONS,
+ * answered from the app's own files (android/…/BundledQuran.java), online or
+ * not. Such an app says so in its user agent ("NabaQuran"), so this is known
+ * at once, before anything has loaded.
+ */
+export function hasBundledQuran(): boolean {
+  return typeof navigator !== 'undefined' && /\bNabaQuran\//.test(navigator.userAgent)
+}
+
+/** The translations the app carries, read from /bundled/translations/<id>.json. */
+export const BUNDLED_TRANSLATIONS: readonly string[] = ['en.sahih', 'so.abduh']

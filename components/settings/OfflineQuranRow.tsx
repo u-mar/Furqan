@@ -9,13 +9,14 @@ import {
   subscribeOfflineSave,
 } from '@/lib/offline-bootstrap'
 import { isOfflineReady } from '@/lib/local-quran-store'
+import { hasBundledQuran } from '@/lib/native-app'
 import { getAppSettings } from '@/lib/app-settings'
 import { useT } from '@/lib/i18n'
 
 /**
  * Settings -> Reading: the whole mushaf saved on the phone, so every page of Read
- * opens at once and works offline. The Play Store app does this on its own on
- * Wi‑Fi; here anyone can start it, on any connection.
+ * opens at once and works offline. The Play Store app has it inside already,
+ * so there this only says so; on the website it is saved from here.
  */
 export default function OfflineQuranRow() {
   const t = useT()
@@ -23,7 +24,7 @@ export default function OfflineQuranRow() {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    const check = () => setSaved(isOfflineReady() || Boolean(getAppSettings().offlineDownloaded))
+    const check = () => setSaved(hasBundledQuran() || isOfflineReady() || Boolean(getAppSettings().offlineDownloaded))
     check()
     window.addEventListener('offline-bootstrap-complete', check)
     return () => window.removeEventListener('offline-bootstrap-complete', check)

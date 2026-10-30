@@ -5,6 +5,7 @@ import ContinueReadingCard from '@/components/home/ContinueReadingCard'
 import DailyVerseCard from '@/components/home/DailyVerseCard'
 import HomeSkyScreen from '@/components/home/HomeSkyScreen'
 import PrayerQiblaTiles from '@/components/home/PrayerQiblaTiles'
+import ReadingRemindersCard from '@/components/home/ReadingRemindersCard'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getSignedInUser } from '@/lib/auth'
 import { useT } from '@/lib/i18n'
@@ -31,6 +32,7 @@ export default function Home() {
       {/* The last block the first screen must show; the verse may be a short scroll below. */}
       <div className="reveal" style={{ animationDelay: '120ms' }} data-fit-end>
         <ContinueReadingCard />
+        <ReadingRemindersCard />
       </div>
 
       <div className="reveal" style={{ animationDelay: '160ms' }}>

@@ -15,8 +15,9 @@ const config: CapacitorConfig = {
   // Only the screen shown when the site can't be reached on the very first launch.
   webDir: 'native/www',
   backgroundColor: '#000000',
-  // Lets the site tell the app from a browser (see components/OfflineBootstrap.tsx).
-  appendUserAgent: 'NabaAndroid',
+  // Lets the site tell the app from a browser (see components/OfflineBootstrap.tsx), and that this
+  // app carries the mushaf inside it (NabaQuran: android/…/BundledQuran.java, lib/native-app.ts).
+  appendUserAgent: 'NabaAndroid NabaQuran/1',
   server: {
     url: 'https://qurannaba.com',
     errorPath: 'offline.html',
@@ -25,6 +26,10 @@ const config: CapacitorConfig = {
     // The page sits between the status bar and the navigation bar (it has no
     // viewport-fit=cover); components/NativeBars.tsx paints them to match it.
     SystemBars: { insetsHandling: 'native' },
+    // Reading reminders, scheduled on the phone: the Naba mark in the status bar, in gold.
+    LocalNotifications: { smallIcon: 'ic_stat_naba', iconColor: '#E0BC74' },
+    // Notifications from Firebase that arrive while the app is open still show.
+    PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
   },
 }
 

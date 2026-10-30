@@ -17,6 +17,8 @@
     "@anthropic-ai/sdk": "^0.133.0",
     "@capacitor/android": "^8.6.0",
     "@capacitor/core": "^8.6.0",
+    "@capacitor/local-notifications": "^8.3.0",
+    "@capacitor/push-notifications": "^8.1.2",
     "@mediabunny/mp3-encoder": "^1.56.2",
     "@prisma/client": "^6.19.3",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",

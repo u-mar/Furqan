@@ -213,4 +213,7 @@ export const READ: Dict = {
   'Share part of the ayah': { so: 'La wadaag qayb ka mid ah aayadda', ar: 'شارك جزءًا من الآية' },
   'Tap the first word, then the last': { so: 'Taabo ereyga ugu horreeya, kadibna kan ugu dambeeya', ar: 'اضغط على الكلمة الأولى، ثم الأخيرة' },
   'Word by word: the full meaning was not found': { so: 'Erey-erey: macnaha buuxa lama helin', ar: 'كلمة بكلمة: لم يُعثر على المعنى الكامل' },
+  'Back 5 seconds': { so: '5 ilbiriqsi dib', ar: 'رجوع 5 ثوانٍ' },
+  'Forward 5 seconds': { so: '5 ilbiriqsi hore', ar: 'تقديم 5 ثوانٍ' },
+  'Position in the ayah': { so: 'Meesha aayadda', ar: 'الموضع في الآية' },
 }

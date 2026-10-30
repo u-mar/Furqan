@@ -609,9 +609,10 @@ html.dark .mushaf-read-dock {
   position: relative;
   display: flex;
   min-height: 51px;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 10px 8px 16px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px 6px 16px;
   border-bottom: 1px solid var(--mushaf-read-chrome-border);
 }
 
@@ -651,18 +652,96 @@ html.dark .mushaf-read-dock {
   background: var(--mushaf-read-accent-soft);
 }
 
-.mushaf-read-dock__progress {
-  position: absolute;
-  inset: auto 0 -1px 0;
-  height: 2px;
-  background: transparent;
+/* The player in "Now playing": five seconds back, where the voice is in the ayah (a bar to drag,
+   with the time and the ayah's length), five seconds on. */
+.mushaf-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 -2px 0 -8px;
 }
-
-.mushaf-read-dock__progress > span {
-  display: block;
-  height: 100%;
+.mushaf-player__skip {
+  position: relative;
+  display: flex;
+  height: 38px;
+  width: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--mushaf-read-text);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.mushaf-player__skip:active {
+  background: var(--mushaf-read-accent-soft);
+  transform: scale(0.94);
+}
+.mushaf-player__skip-n {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1px;
+  font-size: 8.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.mushaf-player__time {
+  flex-shrink: 0;
+  min-width: 2.25rem;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--mushaf-read-meta);
+}
+.mushaf-player__bar {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  --played: 0%;
+}
+.mushaf-player__bar:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.mushaf-player__bar::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--mushaf-read-accent) var(--played), var(--mushaf-read-chrome-border) var(--played));
+}
+.mushaf-player__bar::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--mushaf-read-accent) var(--played), var(--mushaf-read-chrome-border) var(--played));
+}
+.mushaf-player__bar::-webkit-slider-thumb {
+  height: 13px;
+  width: 13px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 999px;
   background: var(--mushaf-read-accent);
-  transition: width 0.35s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.mushaf-player__bar::-moz-range-thumb {
+  height: 13px;
+  width: 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--mushaf-read-accent);
+}
+/* In Arabic the bar runs from the right, as the page does. */
+[dir='rtl'] .mushaf-player__bar::-webkit-slider-runnable-track {
+  background: linear-gradient(to left, var(--mushaf-read-accent) var(--played), var(--mushaf-read-chrome-border) var(--played));
 }
 
 .mushaf-read-dock__divider {
@@ -3927,61 +4006,279 @@ html.dark .qari-avatar--2 {
    Prayer
    ====================================================================== */
 
-/* The card for what comes next: one calm tone, not a rainbow. */
-.prayer-hero {
-  position: relative;
-  overflow: hidden;
+/* What comes next: a plain card like the rest, the name large, a thin bar for
+   the wait since the prayer before it. */
+.pt-next {
   border-radius: 1.375rem;
-  background: var(--home-sage-gradient);
-  color: #eaf5ee;
-  box-shadow: var(--home-lift);
+  padding: 1.125rem 1.25rem 1rem;
+  background: var(--home-card-bg);
+  border: 1px solid var(--home-card-border);
+  box-shadow: var(--home-card-shadow);
 }
-html.dark .prayer-hero {
-  background: var(--home-sage-gradient);
-  color: #eaf5ee;
+.pt-next__kicker {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--home-muted);
 }
-.prayer-hero__ring-track {
-  stroke: rgba(234, 245, 238, 0.16);
+.pt-next__place {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 55%;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--home-muted);
 }
-html.dark .prayer-hero__ring-track {
-  stroke: rgba(234, 245, 238, 0.16);
+.pt-next__name {
+  min-width: 0;
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
+  font-size: 2.625rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--home-heading);
 }
-.prayer-hero__ring-bar {
-  stroke: url(#prayer-ring);
-  transition: stroke-dashoffset 0.9s ease;
+.pt-next__arabic {
+  flex-shrink: 0;
+  font-family: var(--font-amiri), serif;
+  font-size: 1.75rem;
+  line-height: 1.15;
+  color: var(--home-muted);
+}
+.pt-next__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+  margin-top: 0.625rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-heading);
+}
+.pt-next__left {
+  color: var(--home-sage-deep);
+}
+html.dark .pt-next__left {
+  color: var(--home-sage);
+}
+.pt-next__track {
+  height: 4px;
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--home-track);
+}
+.pt-next__track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--home-sage-deep);
+  transition: width 0.9s ease;
+}
+html.dark .pt-next__track > span {
+  background: var(--home-sage);
+}
+.pt-next__ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-muted);
 }
 
-/* A rounded chip, one restrained colour for every prayer — the accent
-   border on .prayer-row--now is what marks the current one, not a
-   different hue per row. */
-.prayer-chip {
+/* The day: one card, a row per prayer; the one in progress lifted, those
+   already gone quieter. */
+.pt-day {
+  border-radius: 1.375rem;
+  padding: 0.375rem;
+  background: var(--home-card-bg);
+  border: 1px solid var(--home-card-border);
+  box-shadow: var(--home-card-shadow);
+}
+.pt-day__head {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+}
+.pt-day__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--home-muted);
+}
+.pt-day__adhan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--home-heading);
+}
+.pt-day__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pt-row {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  padding: 0.5rem 0.375rem 0.5rem 0.625rem;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+.pt-row__icon {
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--home-track);
+  color: var(--home-sage-deep);
+}
+html.dark .pt-row__icon {
+  color: var(--home-sage);
+}
+.pt-row__name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--home-heading);
+}
+.pt-row__sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.78125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-muted);
+}
+/* The Arabic name sits under the name, on the same side. */
+.pt-row__sub--ar {
+  font-family: var(--font-amiri), serif;
+  font-size: 0.9375rem;
+  line-height: 1.2;
+  text-align: left;
+}
+.pt-row__time {
+  flex-shrink: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--home-heading);
+}
+.pt-row__tag {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--home-sage-deep);
+}
+html.dark .pt-row__tag {
+  color: var(--home-ink-fg);
+  background: var(--home-sage);
+}
+.pt-row[data-state='now'] {
+  background: color-mix(in srgb, var(--home-sage) 13%, transparent);
+}
+.pt-row[data-state='now'] .pt-row__icon {
+  color: #fff;
+  background: var(--home-sage-deep);
+}
+html.dark .pt-row[data-state='now'] .pt-row__icon {
+  color: var(--home-ink-fg);
+  background: var(--home-sage);
+}
+.pt-row[data-state='next'] .pt-row__sub {
+  font-weight: 600;
+  color: var(--home-sage-deep);
+}
+html.dark .pt-row[data-state='next'] .pt-row__sub {
+  color: var(--home-sage);
+}
+.pt-row[data-state='past'] {
+  opacity: 0.45;
+}
+
+/* Each prayer's adhan, as a bell: rung, or silent. */
+.pt-bell {
   display: flex;
   width: 2.375rem;
   height: 2.375rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 0.75rem;
-  background: var(--home-track);
+  border-radius: 999px;
+  color: var(--home-muted);
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.pt-bell:active {
+  transform: scale(0.92);
+}
+.pt-bell[aria-pressed='true'] {
   color: var(--home-sage-deep);
+  background: color-mix(in srgb, var(--home-sage) 16%, transparent);
+}
+html.dark .pt-bell[aria-pressed='true'] {
+  color: var(--home-sage);
+}
+.pt-bell--none {
+  visibility: hidden;
 }
 
-.prayer-row {
+/* The way to the qibla screen, its compass needle already turned to it. */
+.pt-qibla {
   display: flex;
-  min-height: 3.75rem;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.875rem 0.5rem calc(0.875rem - 3px);
-  border-left: 3px solid transparent;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  gap: 0.875rem;
+  border-radius: 1.375rem;
+  padding: 0.875rem 1rem;
+  background: var(--home-card-bg);
+  border: 1px solid var(--home-card-border);
+  box-shadow: var(--home-card-shadow);
+  transition: transform 0.12s ease;
 }
-.prayer-row--now {
-  border-left-color: var(--home-sage-deep);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--home-sage) 14%, transparent), transparent);
+.pt-qibla:active {
+  transform: scale(0.99);
 }
-/* Already happened today — still here for the record, just quieter. */
-.prayer-row--past {
-  opacity: 0.5;
+.pt-qibla__dial {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--home-sage-deep);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--home-sage) 22%, transparent), var(--home-track));
+  box-shadow: inset 0 0 0 1px var(--home-rule);
+}
+html.dark .pt-qibla__dial {
+  color: var(--home-sage);
 }
 
 /* ======================================================================

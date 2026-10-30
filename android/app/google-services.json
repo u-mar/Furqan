@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "334938651366",
+    "project_id": "naba-be97e",
+    "storage_bucket": "naba-be97e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334938651366:android:b6beab9aac209e767f9927",
+        "android_client_info": {
+          "package_name": "com.qurannaba.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEHBHpJy89Vrul0VEGyoXTyR-B6i9Hiz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

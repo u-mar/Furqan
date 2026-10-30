@@ -10,6 +10,8 @@ import ToastHost from '@/components/feedback/ToastHost'
 import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import NativeBars from '@/components/NativeBars'
+import { SITE_URL, openGraphFor } from '@/lib/share-preview'
+import NativeNotifications from '@/components/NativeNotifications'
 import NativeShare from '@/components/NativeShare'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
@@ -66,8 +68,14 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  // Link previews need absolute addresses; every page's picture and link are made from this.
+  metadataBase: new URL(SITE_URL),
   title: APP_NAME,
   description: `Read the Quran, listen, and read together in a halaqa with ${APP_NAME}`,
+  ...openGraphFor({
+    title: APP_NAME,
+    description: `Read the Quran, listen, and read together in a halaqa with ${APP_NAME}`,
+  }),
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -113,6 +121,7 @@ export default function RootLayout({
           <OfflineBootstrap />
           <NativeBars />
           <NativeShare />
+          <NativeNotifications />
           <AccountPromptHost />
           <ToastHost />
           <BottomNav />

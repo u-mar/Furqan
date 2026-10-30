@@ -14,6 +14,8 @@ import {
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
+  RotateCcw,
+  RotateCw,
   ArrowLeftRight,
   ArrowUpDown,
   ChevronDown,
@@ -99,6 +101,12 @@ async function readSavedQuranIfOffline(): Promise<void> {
   if (isOfflineReady() || navigator.onLine) return
   const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
   await ensureOfflineHydrated().catch(() => {})
+}
+
+/** Seconds as m:ss, for the player in "Now playing". */
+function formatClock(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds))
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
 }
 
 type ReadAudioMode = 'arabic' | 'somali' | 'both'
@@ -331,8 +339,18 @@ function ReadPageContent() {
     void navigatePageRef.current(page + 1, { autoContinue: true })
   }, [])
 
-  const { state: recitation, stop: stopRecitation, pause: pauseRecitation, resume: resumeRecitation, start: startRecitation, playVerse, isActive, isPaused } =
-    usePageRecitation({
+  const {
+    state: recitation,
+    stop: stopRecitation,
+    pause: pauseRecitation,
+    resume: resumeRecitation,
+    start: startRecitation,
+    playVerse,
+    isActive,
+    isPaused,
+    position: recitationPosition,
+    seekTo: seekRecitation,
+  } = usePageRecitation({
       reciterId,
       verses: pageVerses,
       onPageFinished: handleRecitationPageComplete,
@@ -389,6 +407,8 @@ function ReadPageContent() {
     pause: pauseSomaliVoice,
     resume: resumeSomaliVoice,
     stop: stopSomaliVoice,
+    position: somaliPosition,
+    seekTo: seekSomali,
     isActive: isSomaliVoiceActive,
   } = useSomaliVoicePlayback({ onSegmentEnd: handleSomaliSegmentEnd })
 
@@ -734,6 +754,45 @@ function ReadPageContent() {
     if (!nowPlayingKey) return
     if (audioPlaying) void startAudio(next, nowPlayingKey)
     else stopAllAudio()
+  }
+
+  // The player in "Now playing" works on whichever voice has the ayah now: the Arabic while it is
+  // playing or paused, otherwise the Somali.
+  const playerPosition = () => (isActive || isPaused ? recitationPosition() : somaliPosition())
+  const playerSeekTo = (at: number) => (isActive || isPaused ? seekRecitation(at) : seekSomali(at))
+  const playerPositionRef = useRef(playerPosition)
+  playerPositionRef.current = playerPosition
+  const [clip, setClip] = useState<{ at: number; length: number } | null>(null)
+  useEffect(() => {
+    if (!nowPlayingKey) {
+      setClip(null)
+      return
+    }
+    const read = () =>
+      setClip((prev) => {
+        const next = playerPositionRef.current()
+        if (!next) return prev && !nowPlayingKey ? null : prev
+        return prev && Math.abs(prev.at - next.at) < 0.05 && prev.length === next.length ? prev : next
+      })
+    read()
+    const id = window.setInterval(read, 250)
+    return () => window.clearInterval(id)
+  }, [nowPlayingKey])
+
+  /** Five seconds back or on. Back from the very start of an ayah goes to the one before; on past its end, to the next. */
+  const skipSeconds = (delta: number) => {
+    const now = playerPosition()
+    if (!now) return
+    const target = now.at + delta
+    if (target < 0) {
+      if (now.at > 1.5) playerSeekTo(0)
+      else skipAyah(-1)
+    } else if (target >= now.length - 0.25) {
+      skipAyah(1)
+    } else {
+      playerSeekTo(target)
+    }
+    setClip(playerPosition())
   }
 
   const skipAyah = (delta: 1 | -1) => {
@@ -1406,31 +1465,62 @@ function ReadPageContent() {
         <div className="mushaf-read-dock">
           {nowPlaying ? (
             <div className="mushaf-read-dock__now">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="mushaf-dock-select__caption">
-                  {audioPlaying ? t('Now playing') : pickedOther ? t('Selected') : t('Paused')} ·{' '}
-                  {t(AUDIO_MODE_LABELS[sessionMode])}
-                </span>
-                <span className="mushaf-read-dock__now-title">
-                  <span className="truncate">{nowPlaying.surahName}</span>
-                  <span className="mushaf-read-dock__now-ayah">
-                    {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
-                    {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
+              <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="mushaf-dock-select__caption">
+                    {audioPlaying ? t('Now playing') : pickedOther ? t('Selected') : t('Paused')} ·{' '}
+                    {t(AUDIO_MODE_LABELS[sessionMode])}
                   </span>
-                </span>
+                  <span className="mushaf-read-dock__now-title">
+                    <span className="truncate">{nowPlaying.surahName}</span>
+                    <span className="mushaf-read-dock__now-ayah">
+                      {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
+                      {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={stopAllAudio}
+                  className="mushaf-read-dock__stop"
+                  aria-label={t('Stop')}
+                >
+                  <X className="h-4 w-4" strokeWidth={2.4} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={stopAllAudio}
-                className="mushaf-read-dock__stop"
-                aria-label={t('Stop')}
-              >
-                <X className="h-4 w-4" strokeWidth={2.4} />
-              </button>
-              {nowPlaying.total ? (
-                <span className="mushaf-read-dock__progress" aria-hidden>
-                  <span style={{ width: `${Math.min(100, (nowPlaying.ayah / nowPlaying.total) * 100)}%` }} />
-                </span>
+
+              {nowPlayingKey && !pickedOther ? (
+                <div className="mushaf-player">
+                  <button type="button" className="mushaf-player__skip" onClick={() => skipSeconds(-5)} aria-label={t('Back 5 seconds')}>
+                    <RotateCcw className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    <span className="mushaf-player__skip-n" aria-hidden>
+                      5
+                    </span>
+                  </button>
+                  <span className="mushaf-player__time">{formatClock(clip?.at ?? 0)}</span>
+                  <input
+                    type="range"
+                    className="mushaf-player__bar"
+                    min={0}
+                    max={clip?.length || 1}
+                    step={0.1}
+                    value={clip?.at ?? 0}
+                    disabled={!clip}
+                    onChange={(e) => {
+                      playerSeekTo(Number(e.target.value))
+                      setClip(playerPosition())
+                    }}
+                    aria-label={t('Position in the ayah')}
+                    style={{ '--played': `${clip ? Math.min(100, (clip.at / clip.length) * 100) : 0}%` } as React.CSSProperties}
+                  />
+                  <span className="mushaf-player__time">{formatClock(clip?.length ?? 0)}</span>
+                  <button type="button" className="mushaf-player__skip" onClick={() => skipSeconds(5)} aria-label={t('Forward 5 seconds')}>
+                    <RotateCw className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    <span className="mushaf-player__skip-n" aria-hidden>
+                      5
+                    </span>
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : (

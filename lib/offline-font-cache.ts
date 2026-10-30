@@ -5,6 +5,7 @@ import {
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
 import { tr } from '@/lib/i18n-core'
+import { hasBundledQuran } from '@/lib/native-app'
 
 /** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
 export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
@@ -63,6 +64,8 @@ function isOfflineBrowser(): boolean {
 
 export async function resolveQcfFontUrl(page: number): Promise<string> {
   if (page < 1 || page > TOTAL_MUSHAF_FONT_PAGES) return qcfCdnFontUrl(page)
+  // The Play Store app has every page's font inside it.
+  if (hasBundledQuran()) return qcfLocalFontUrl(page)
 
   if (areOfflineFontsCached() || isOfflineBrowser() || (await qcfFontInCache(page))) {
     return qcfLocalFontUrl(page)
@@ -73,6 +76,7 @@ export async function resolveQcfFontUrl(page: number): Promise<string> {
 
 /** URLs to try in order: local/SW paths when offline or fonts were downloaded, then CDN when online. */
 export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]> {
+  if (hasBundledQuran() && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) return [qcfLocalFontUrl(page)]
   const cdn = qcfCdnFontUrl(page)
   const local = qcfLocalFontUrl(page)
   const legacy = qcfLegacyLocalFontUrl(page)

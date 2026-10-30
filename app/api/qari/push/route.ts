@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
   const endpoint = body.subscription?.endpoint
   const p256dh = body.subscription?.keys?.p256dh
   const auth = body.subscription?.keys?.auth
-  if (!endpoint || !p256dh || !auth || !/^https:\/\//.test(endpoint)) {
+  // A browser's push address, or the Play Store app's Firebase one ("fcm:<token>", lib/push-client.ts).
+  const app = /^fcm:[\w:-]{20,4096}$/.test(endpoint ?? '')
+  if (!endpoint || (!app && (!p256dh || !auth || !/^https:\/\//.test(endpoint)))) {
     return NextResponse.json({ error: 'That is not a notification address.' }, { status: 400 })
   }
 
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
     // One row per phone: signing in as someone else on the same phone moves it.
     await prisma.pushSubscription.deleteMany({ where: { endpoint } })
     await prisma.pushSubscription.create({
-      data: { username, endpoint, p256dh, auth, userAgent: (request.headers.get('user-agent') ?? '').slice(0, 200) },
+      data: { username, endpoint, p256dh: p256dh ?? '', auth: auth ?? '', userAgent: (request.headers.get('user-agent') ?? '').slice(0, 200) },
     })
     return NextResponse.json({ ok: true })
   } catch (err) {

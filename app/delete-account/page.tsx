@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 const SECTIONS = [
   { id: 'in-app', label: 'Delete it in the app' },
   { id: 'by-email', label: 'Ask us to delete it' },
+  { id: 'some-data', label: 'Delete some data, keep your account' },
   { id: 'what', label: 'What is deleted' },
   { id: 'kept', label: 'What is not affected' },
 ]
@@ -47,6 +48,35 @@ export default function DeleteAccountPage() {
         <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Delete my account')}`}>{SUPPORT_EMAIL}</a>{' '}
         with the subject &ldquo;Delete my account&rdquo; and your username. We may ask you to confirm
         the account is yours, and will delete it within 30 days.
+      </p>
+
+      <h2 id="some-data">Delete some data, keep your account</h2>
+      <ul>
+        <li>
+          <strong>A recitation or ayah card:</strong> tap <strong>&middot;&middot;&middot;</strong> on it, then{' '}
+          <strong>Delete recitation</strong>. It is removed with its audio or picture.
+        </li>
+        <li>
+          <strong>Your profile picture:</strong> on your profile, tap <strong>Edit profile</strong>, then{' '}
+          <strong>Remove photo</strong>.
+        </li>
+        <li>
+          <strong>Likes and follows:</strong> tap the heart again to remove a like, or unfollow someone from
+          their profile.
+        </li>
+        <li>
+          <strong>A halaqa:</strong> open its settings and tap <strong>Leave halaqa</strong> to remove your
+          name and reading days from it.
+        </li>
+        <li>
+          <strong>Notifications:</strong> turn them off in Settings, and the address used to send them is
+          deleted.
+        </li>
+      </ul>
+      <p>
+        For anything else, such as feedback you sent or your usage information, email{' '}
+        <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Delete some of my data')}`}>{SUPPORT_EMAIL}</a>{' '}
+        with your username and what you want deleted. We will delete it within 30 days.
       </p>
 
       <h2 id="what">What is deleted</h2>

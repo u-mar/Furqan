@@ -735,7 +735,39 @@ export function usePageRecitation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId])
 
+  /**
+   * Where the voice is in the ayah being recited, in seconds, and how long that ayah is: in a
+   * whole-surah recording, its stretch of it; otherwise its own file. Null while nothing is loaded.
+   */
+  const position = useCallback((): { at: number; length: number } | null => {
+    const audio = audioRef.current
+    if (!audio || !audio.currentSrc) return null
+    const chapter = timedRef.current
+    if (chapter) {
+      const ayah = chapter.byKey.get(versesRef.current[indexRef.current]?.verse_key ?? '')
+      if (!ayah) return null
+      const length = (ayah.to - ayah.from) / 1000
+      return { at: Math.min(length, Math.max(0, audio.currentTime - ayah.from / 1000)), length }
+    }
+    const length = audio.duration
+    if (!Number.isFinite(length) || length <= 0) return null
+    return { at: audio.currentTime, length }
+  }, [])
+
+  /** Moves to `at` seconds into the ayah being recited (kept inside it), playing or paused. */
+  const seekTo = useCallback(
+    (at: number) => {
+      const audio = audioRef.current
+      const now = position()
+      if (!audio || !now) return
+      const within = Math.min(Math.max(0, at), Math.max(0, now.length - 0.05))
+      const ayah = timedRef.current?.byKey.get(versesRef.current[indexRef.current]?.verse_key ?? '')
+      audio.currentTime = (ayah ? ayah.from / 1000 : 0) + within
+    },
+    [position]
+  )
+
   const isActive = state.playing || state.loading
 
-  return { state, stop, pause, resume, start, playVerse, isActive, isPaused }
+  return { state, stop, pause, resume, start, playVerse, isActive, isPaused, position, seekTo }
 }

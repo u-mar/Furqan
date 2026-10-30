@@ -284,6 +284,33 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     }
   }, [])
 
+  /** Where the Somali is in its ayah, in seconds, and how long that ayah is. Null while none is loaded. */
+  const position = useCallback((): { at: number; length: number } | null => {
+    const audio = audioRef.current
+    const segment = segmentRef.current
+    if (!audio || !segment) return null
+    if (segment.wholeFile) {
+      const length = audio.duration
+      return Number.isFinite(length) && length > 0 ? { at: audio.currentTime, length } : null
+    }
+    const length = segment.end - segment.start
+    if (!(length > 0)) return null
+    return { at: Math.min(length, Math.max(0, audio.currentTime - segment.start)), length }
+  }, [])
+
+  /** Moves to `at` seconds into the Somali of this ayah (kept inside it), playing or paused. */
+  const seekTo = useCallback(
+    (at: number) => {
+      const audio = audioRef.current
+      const segment = segmentRef.current
+      const now = position()
+      if (!audio || !segment || !now) return
+      const within = Math.min(Math.max(0, at), Math.max(0, now.length - 0.05))
+      audio.currentTime = (segment.wholeFile ? 0 : segment.start) + within
+    },
+    [position]
+  )
+
   return {
     state,
     playVerse,
@@ -291,6 +318,8 @@ export function useSomaliVoicePlayback(options: UseSomaliVoicePlaybackOptions = 
     pause,
     resume,
     stop,
+    position,
+    seekTo,
     isActive: state.playing || state.loading,
   }
 }

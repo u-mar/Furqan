@@ -140,9 +140,14 @@ export default function PrivacyPage() {
       <h3>3.6 Notifications</h3>
       <p>
         If you allow notifications, your browser gives us a delivery address for your device and the
-        keys that encrypt what is sent to it, together with a description of the browser. We use these
-        only to send the notifications you turned on, and delete them when they stop working or you
-        turn notifications off.
+        keys that encrypt what is sent to it, together with a description of the browser. In the
+        Android app, the delivery address is instead a token from Google&rsquo;s Firebase Cloud
+        Messaging. We use these only to send the notifications you turned on, and delete them when they
+        stop working or you turn notifications off.
+      </p>
+      <p>
+        Reading reminders in the Android app are scheduled on your phone itself. We are not told when,
+        or what, you read.
       </p>
 
       <h3>3.7 Feedback</h3>
@@ -234,6 +239,10 @@ export default function PrivacyPage() {
         <li>
           <strong>Google</strong> &mdash; if you choose &ldquo;Continue with Google&rdquo;, Google confirms
           who you are and tells us your account identifier and email address.
+        </li>
+        <li>
+          <strong>Google Firebase Cloud Messaging</strong> &mdash; delivers notifications to the Android
+          app. It receives your device&rsquo;s notification token and the text of each notification.
         </li>
         <li>
           <strong>Anthropic, Groq and Hugging Face</strong> &mdash; when you share part of an ayah, the

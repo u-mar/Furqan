@@ -9,7 +9,6 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  Clapperboard,
   Download,
   FileText,
   Globe,
@@ -30,8 +29,8 @@ import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import QariAvatar from '@/components/qari/QariAvatar'
 import BlockedAccountsSheet from '@/components/qari/BlockedAccountsSheet'
-import QariModelSection from '@/components/settings/QariModelSection'
 import OfflineQuranRow from '@/components/settings/OfflineQuranRow'
+import ReadingRemindersRow from '@/components/settings/ReadingRemindersRow'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
@@ -54,7 +53,6 @@ import {
   downloadOfflineTranslations,
 } from '@/lib/offline-translations'
 import { addFeedbackMessage } from '@/lib/admin'
-import { saveMixClips, useMixClips } from '@/lib/qari-video-options'
 import { resolveSettingsReturnHref } from '@/lib/settings-return'
 import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@/lib/i18n'
 
@@ -149,7 +147,6 @@ export default function SettingsPage() {
     DEFAULT_TRANSLATION_EDITION.en
   )
   const [verseWallpapers, setVerseWallpapers] = useState(false)
-  const mixClips = useMixClips()
   const [readingMode, setReadingMode] = useState<ReadingMode>('horizontal')
   // Which translators are saved for offline reading, by edition id.
   const [translationCached, setTranslationCached] = useState<Record<string, boolean>>({})
@@ -409,24 +406,8 @@ export default function SettingsPage() {
           </button>
           <Divider />
           <OfflineQuranRow />
+          <ReadingRemindersRow divider />
         </div>
-
-        <QariModelSection>
-          <div className="home-card overflow-hidden rounded-2xl">
-            <label className="set-row cursor-pointer">
-              <RowIcon icon={Clapperboard} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.9375rem] font-medium">{t('Mix similar clips')}</span>
-                <span className="block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
-                  {mixClips
-                    ? t('Videos cut to a new clip like the chosen one as each ayah starts.')
-                    : t('Videos keep the clip that was chosen, the whole way through.')}
-                </span>
-              </span>
-              <Switch checked={mixClips} onChange={saveMixClips} label={t('Mix similar clips')} />
-            </label>
-          </div>
-        </QariModelSection>
 
         {/* Language */}
         <SectionLabel>{t('App language')}</SectionLabel>

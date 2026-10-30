@@ -1,6 +1,7 @@
 import { TOTAL_MUSHAF_PAGES } from '@/lib/mushaf'
 import { getTranslationOption, languageForEdition } from '@/lib/translations'
 import { tr } from '@/lib/i18n-core'
+import { BUNDLED_TRANSLATIONS, hasBundledQuran } from '@/lib/native-app'
 
 export interface TranslationRow {
   verse_key: string
@@ -47,9 +48,34 @@ function migrateLegacyTranslationFlag(): void {
   }
 }
 
+/** Whether this translator is inside the Play Store app (lib/native-app.ts): there is nothing to save. */
+function isBundled(editionId: string): boolean {
+  return hasBundledQuran() && BUNDLED_TRANSLATIONS.includes(editionId)
+}
+
+const bundled = new Map<string, Promise<Record<string, TranslationRow[]> | null>>()
+
+/** A translator the app carries, every page of it (about 1 MB), read once from the app's own copy. */
+function bundledPages(editionId: string): Promise<Record<string, TranslationRow[]> | null> {
+  let pages = bundled.get(editionId)
+  if (!pages) {
+    pages = fetch(`/bundled/translations/${editionId}.json`)
+      .then((res) => (res.ok ? (res.json() as Promise<Record<string, TranslationRow[]>>) : null))
+      .catch(() => null)
+      .then((data) => {
+        // Not there after all: let the next page try again.
+        if (!data) bundled.delete(editionId)
+        return data
+      })
+    bundled.set(editionId, pages)
+  }
+  return pages
+}
+
 /** Whether this translator is saved on the phone for offline reading. */
 export function areTranslationsCached(editionId: string): boolean {
   if (typeof window === 'undefined') return false
+  if (isBundled(editionId)) return true
   migrateLegacyTranslationFlag()
   try {
     if (localStorage.getItem(flagKey(editionId)) === '1') return true
@@ -69,7 +95,12 @@ export function clearTranslationsCachedFlag(editionId: string): void {
 }
 
 export async function getOfflineTranslations(page: number, editionId: string): Promise<TranslationRow[] | null> {
-  if (typeof caches === 'undefined' || page < 1) return null
+  if (page < 1) return null
+  if (isBundled(editionId)) {
+    const rows = (await bundledPages(editionId))?.[page]
+    if (rows?.length) return rows
+  }
+  if (typeof caches === 'undefined') return null
   try {
     const cache = await caches.open(CACHE_NAME)
     const legacy = legacyCacheKey(editionId, page)

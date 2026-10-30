@@ -1,6 +1,7 @@
 import type { Chapter, Verse, VerseWord } from '@/types'
 import { cacheAllMushafFonts, clearOfflineFontsCachedFlag, verifyMushafFontsCached } from '@/lib/offline-font-cache'
 import { tr } from '@/lib/i18n-core'
+import { hasBundledQuran } from '@/lib/native-app'
 
 interface QuranDataFile {
   bundleVersion?: number
@@ -158,7 +159,8 @@ async function loadQuranBundleResponse(allowNetwork: boolean): Promise<Response>
     const cached = (await cache.match(QURAN_DATA_URL)) ?? (await caches.match(QURAN_DATA_URL))
     if (cached) return cached
   }
-  if (!allowNetwork) throw new Error(tr('Offline Quran file missing'))
+  // The Play Store app answers this from its own copy, with or without a connection.
+  if (!allowNetwork && !hasBundledQuran()) throw new Error(tr('Offline Quran file missing'))
 
   const response = await fetch(QURAN_DATA_URL, { cache: 'force-cache' })
   if (!response.ok) throw new Error(tr('Offline Quran file missing'))

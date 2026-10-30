@@ -1,6 +1,7 @@
 import webpush from 'web-push'
 import { prisma } from '@/lib/prisma'
 import { SUPPORT_EMAIL } from '@/lib/app-brand'
+import { canSendFcm, sendFcm } from '@/lib/fcm'
 
 /**
  * Sending a notification to a phone that has the app closed, through the web's
@@ -12,6 +13,9 @@ import { SUPPORT_EMAIL } from '@/lib/app-brand'
  * Keys: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT
  * (a mailto: address people can reach you on). Without them nothing is sent
  * and nothing breaks.
+ *
+ * The Play Store app has no web push: its addresses are "fcm:<token>", sent
+ * through Firebase instead (lib/fcm.ts), each kind only once its keys are set.
  */
 
 let ready: boolean | null = null
@@ -44,10 +48,25 @@ interface Subscribed {
   auth: string
 }
 
+/** Whether anything can be sent at all: web push, Firebase, or both. */
+function anyReady(): boolean {
+  return configure() || canSendFcm()
+}
+
 /** Sends to a batch of phones, forgetting any that answer "gone". Never throws. */
 async function deliver(subscriptions: Subscribed[], message: PushMessage, forget: (endpoint: string) => Promise<unknown>): Promise<void> {
   await Promise.all(
     subscriptions.map(async (s) => {
+      if (s.endpoint.startsWith('fcm:')) {
+        if (!canSendFcm()) return
+        try {
+          if ((await sendFcm(s.endpoint.slice(4), message)) === 'gone') await forget(s.endpoint).catch(() => {})
+        } catch (err) {
+          console.error('[push] app send failed:', err)
+        }
+        return
+      }
+      if (!configure()) return
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -72,7 +91,7 @@ async function deliver(subscriptions: Subscribed[], message: PushMessage, forget
  * app or turned notifications off answers 404 or 410, and is forgotten.
  */
 export async function sendPush(username: string, message: PushMessage): Promise<void> {
-  if (!configure()) return
+  if (!anyReady()) return
   try {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { username: username.toLowerCase() } })
     await deliver(subscriptions, message, (endpoint) => prisma.pushSubscription.deleteMany({ where: { endpoint } }))
@@ -88,7 +107,7 @@ export async function sendPush(username: string, message: PushMessage): Promise<
  * no account.
  */
 export async function sendHalaqaPush(memberKeys: string[], message: PushMessage): Promise<void> {
-  if (!configure() || !memberKeys.length) return
+  if (!anyReady() || !memberKeys.length) return
   try {
     const subscriptions = await prisma.halaqaPushSubscription.findMany({ where: { memberKey: { in: memberKeys } } })
     await deliver(subscriptions, message, (endpoint) => prisma.halaqaPushSubscription.deleteMany({ where: { endpoint } }))
