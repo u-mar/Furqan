@@ -37,13 +37,13 @@ export default function DeleteAccountPage() {
       <ol>
         <li>Open {APP_NAME} and go to <strong>Settings</strong>.</li>
         <li>Tap <strong>Delete account</strong>.</li>
-        <li>Enter your PIN to confirm.</li>
+        <li>Confirm with your password or your Google account (or, for older accounts, your PIN).</li>
       </ol>
       <p>Your account is deleted straight away.</p>
 
       <h2 id="by-email">Ask us to delete it</h2>
       <p>
-        If you can&rsquo;t open the app or have forgotten your PIN, email{' '}
+        If you can&rsquo;t open the app or can&rsquo;t sign in, email{' '}
         <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Delete my account')}`}>{SUPPORT_EMAIL}</a>{' '}
         with the subject &ldquo;Delete my account&rdquo; and your username. We may ask you to confirm
         the account is yours, and will delete it within 30 days.
@@ -51,7 +51,7 @@ export default function DeleteAccountPage() {
 
       <h2 id="what">What is deleted</h2>
       <ul>
-        <li>Your account: username, display name and PIN</li>
+        <li>Your account: username, display name, email address and password (or PIN), and its link to Google</li>
         <li>Every recitation and ayah card you posted, with its audio or picture</li>
         <li>Your profile picture</li>
         <li>Your likes, the people you follow and who follows you, the people you blocked, and your notifications</li>

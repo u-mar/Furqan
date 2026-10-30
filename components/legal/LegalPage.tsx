@@ -10,8 +10,9 @@ export interface LegalSection {
 /**
  * Shared chrome for the legal pages (Privacy Policy, Terms of Service), so
  * they read as one consistent document rather than two one-off pages: the
- * same header, an at-a-glance summary, a jump list to every section, and a
- * link across to the other one.
+ * same header, an at-a-glance summary, a contents list to every section, and
+ * a link across to the other one. Set small and plain, the way a professional
+ * policy reads (the legal-* styles in app/globals.css).
  */
 export default function LegalPage({
   title,
@@ -24,7 +25,7 @@ export default function LegalPage({
   title: string
   /** e.g. "16 September 2026". */
   updated: string
-  /** The "in short" card at the top — a handful of plain-English bullets. */
+  /** The summary at the top — a handful of plain-English bullets. */
   summary: React.ReactNode
   /** Must match an `id` on an `<h2>` in `children`, in reading order. */
   sections: LegalSection[]
@@ -33,50 +34,52 @@ export default function LegalPage({
 }) {
   return (
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
-      <div className="mx-auto max-w-2xl px-5 pb-20 pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-2xl px-5 pb-16 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/"
             aria-label="Back"
-            className="ed-focus flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
+            className="ed-focus flex h-10 w-10 items-center justify-center rounded-full border border-[var(--home-rule-strong)] text-[var(--home-heading)] transition-colors hover:bg-[var(--home-track)]"
           >
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
+            <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
           </Link>
           <Link
             href={crossLink.href}
-            className="ed-focus rounded-full px-3.5 py-2 text-[13px] font-semibold text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--home-track)] dark:text-[var(--home-sage)]"
+            className="ed-focus rounded-full px-3 py-2 text-[13px] font-semibold text-[var(--home-sage-deep)] transition-colors hover:bg-[var(--home-track)] dark:text-[var(--home-sage)]"
           >
             {crossLink.label}
           </Link>
         </div>
 
-        <p className="ed-label mt-8">{APP_NAME}</p>
-        <h1 className="home-serif mt-2 text-[2.25rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
-          {title}
-        </h1>
-        <p className="mt-2 text-sm text-[var(--home-muted)]">Last updated {updated}</p>
+        <header className="mt-7">
+          <p className="legal-head__brand">{APP_NAME}</p>
+          <h1 className="legal-head__title">{title}</h1>
+          <p className="legal-head__meta">Last updated {updated}</p>
+        </header>
 
-        <div className="legal-summary mt-6">
-          <p className="legal-summary__label">In short</p>
+        <section aria-label="Summary" className="legal-summary mt-6">
+          <p className="legal-label">Summary</p>
           {summary}
-        </div>
+        </section>
 
-        <nav aria-label={`${title} — sections`} className="legal-toc mt-6">
+        <nav aria-label={`${title} — contents`} className="legal-toc mt-7">
+          <p className="legal-label">Contents</p>
           <ol>
             {sections.map((section, i) => (
               <li key={section.id}>
                 <a href={`#${section.id}`}>
-                  <span className="legal-toc__num">{i + 1}</span>
-                  {section.label}
+                  <span className="legal-toc__num">{i + 1}.</span>
+                  {/* Numbered here, so a label's own "3. " is not repeated. */}
+                  {section.label.replace(/^\d+\.\s*/, '')}
                 </a>
               </li>
             ))}
           </ol>
         </nav>
 
-        <div className="privacy-prose mt-8">{children}</div>
+        <div className="legal-prose mt-8">{children}</div>
 
-        <p className="mt-10 border-t border-[var(--home-rule)] pt-6 text-sm text-[var(--home-muted)]">
+        <p className="mt-10 border-t border-[var(--home-rule)] pt-5 text-[13px] text-[var(--home-muted)]">
           Read the{' '}
           <Link href={crossLink.href} className="font-semibold text-[var(--home-sage-deep)] dark:text-[var(--home-sage)]">
             {crossLink.label}

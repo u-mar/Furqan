@@ -69,10 +69,12 @@ export default function TermsPage() {
 
       <h2 id="accounts">3. Your account</h2>
       <p>
-        An account consists of a username, a display name and a PIN; no email address or phone number is
-        required. You agree to choose a username that does not impersonate anyone or mislead others, to
-        keep your PIN confidential, and to accept responsibility for activity on your account. If you
-        believe someone else has access to your account, contact us promptly.
+        An account is optional. It consists of a username, a display name and the way you sign in: your
+        email address and a password, or your Google account (accounts made earlier may still use a PIN).
+        No phone number is required. You agree to choose a username that does not impersonate anyone or
+        mislead others, to keep your password or PIN confidential, and to accept responsibility for
+        activity on your account. If you believe someone else has access to your account, contact us
+        promptly.
       </p>
 
       <h2 id="quran-content">4. Quran text, translations and recitations</h2>

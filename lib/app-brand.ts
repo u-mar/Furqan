@@ -22,4 +22,4 @@ export const SUPPORT_EMAIL = 'support@qurannaba.com'
 export const PRIVACY_UPDATED = '19 October 2026'
 
 /** Shown on the terms of service. Update whenever the terms text changes. */
-export const TERMS_UPDATED = '1 October 2026'
+export const TERMS_UPDATED = '30 October 2026'

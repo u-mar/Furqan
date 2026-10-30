@@ -1575,98 +1575,63 @@ html.dark .mushaf-reader {
   transform: rotate(180deg);
 }
 
-/* --- Long-form reading pages (privacy policy) --- */
+/* --- Legal pages (Privacy Policy, Terms of Service, account deletion): set like
+   a professional policy document — small, even type, thin rules between
+   sections, and nothing decorative competing with the text. --- */
 
-.privacy-prose {
-  font-size: 0.97rem;
-  line-height: 1.7;
-  color: var(--home-heading);
-}
-
-.privacy-prose > * + * {
-  margin-top: 0.9rem;
-}
-
-.privacy-prose h2 {
-  margin-top: 2.2rem;
-  /* Clears the top of the viewport when a table-of-contents link jumps here. */
-  scroll-margin-top: 1.25rem;
-  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-.privacy-prose h3 {
-  margin-top: 1.5rem;
-  font-size: 1.02rem;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.privacy-prose ul {
-  padding-left: 1.2rem;
-  list-style: disc;
-}
-
-.privacy-prose ol {
-  padding-left: 1.3rem;
-  list-style: decimal;
-}
-
-.privacy-prose ol li + li {
-  margin-top: 0.45rem;
-}
-
-.privacy-prose li + li {
-  margin-top: 0.45rem;
-}
-
-.privacy-prose li::marker {
-  color: var(--home-muted);
-}
-
-.privacy-prose a {
-  color: var(--home-sage-deep);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-/* --- Legal pages (Privacy Policy, Terms of Service): a quick summary card
-   and a jump-to-section list, the way a policy on a real app reads. --- */
-
-.legal-summary {
-  border-radius: 1.15rem;
-  background: var(--home-sage-soft);
-  padding: 1.1rem 1.25rem 1.2rem;
-}
-
-.legal-summary__label {
+.legal-head__brand,
+.legal-label {
   font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.legal-head__brand {
   color: var(--home-sage-deep);
 }
 
-html.dark .legal-summary__label {
+html.dark .legal-head__brand {
   color: var(--home-sage);
 }
 
+.legal-label {
+  color: var(--home-muted);
+}
+
+.legal-head__title {
+  margin-top: 0.4rem;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--home-heading);
+}
+
+.legal-head__meta {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--home-muted);
+}
+
+.legal-summary {
+  border: 1px solid var(--home-rule);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem 1rem;
+}
+
 .legal-summary ul {
-  margin-top: 0.7rem;
+  margin-top: 0.6rem;
   padding-left: 0;
   list-style: none;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .legal-summary li {
   position: relative;
-  padding-left: 1.35rem;
-  font-size: 0.92rem;
+  padding-left: 1rem;
+  font-size: 0.8125rem;
   line-height: 1.55;
   color: var(--home-heading);
 }
@@ -1674,10 +1639,10 @@ html.dark .legal-summary__label {
 .legal-summary li::before {
   content: '';
   position: absolute;
-  left: 0.1rem;
-  top: 0.55em;
-  width: 5px;
-  height: 5px;
+  left: 0.15rem;
+  top: 0.62em;
+  width: 4px;
+  height: 4px;
   border-radius: 999px;
   background: var(--home-sage-deep);
 }
@@ -1686,50 +1651,110 @@ html.dark .legal-summary li::before {
   background: var(--home-sage);
 }
 
-.legal-toc {
-  border-radius: 1.15rem;
-  box-shadow: var(--home-lift-sm, var(--home-card-shadow));
-  background: var(--home-card-bg);
-  padding: 0.4rem;
+.legal-toc ol {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--home-rule);
 }
 
-.legal-toc ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
+.legal-toc li {
+  border-bottom: 1px solid var(--home-rule);
 }
 
 .legal-toc a {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 0.75rem;
-  border-radius: 0.85rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--home-heading);
   text-decoration: none;
-  transition: background-color 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .legal-toc a:hover {
-  background: var(--home-track);
+  color: var(--home-sage-deep);
 }
 
 .legal-toc__num {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 999px;
-  background: var(--home-track);
+  min-width: 1.4rem;
   color: var(--home-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.legal-prose {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--home-heading) 86%, transparent);
+}
+
+.legal-prose > * + * {
+  margin-top: 0.75rem;
+}
+
+.legal-prose h2 {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--home-rule);
+  /* Clears the top of the viewport when a contents link jumps here. */
+  scroll-margin-top: 1rem;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+  color: var(--home-heading);
+}
+
+/* The contents list above already ends on a rule. */
+.legal-prose > h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.legal-prose h3 {
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--home-heading);
+}
+
+.legal-prose strong {
+  font-weight: 600;
+  color: var(--home-heading);
+}
+
+.legal-prose ul {
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.legal-prose ol {
+  padding-left: 1.2rem;
+  list-style: decimal;
+}
+
+.legal-prose li + li {
+  margin-top: 0.3rem;
+}
+
+.legal-prose li::marker {
+  color: var(--home-muted);
+}
+
+.legal-prose a {
+  color: var(--home-sage-deep);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 2px;
+}
+
+html.dark .legal-prose a {
+  color: var(--home-sage);
 }
 
 /* --- Sign up and sign in --- */
