@@ -22,7 +22,9 @@ const listeners = new Set<() => void>()
  * sounds with no connection at all. (In the installed app it can also ship
  * inside the app as public/audio/adhan.mp3, and then there is nothing to fetch.)
  */
-const ADHAN_CACHE = 'muyassar-adhan-v1'
+const ADHAN_CACHE = 'muyassar-adhan-v2'
+/** Where an earlier recording was kept: let go of, so the phone does not hold on to it. */
+const OLD_ADHAN_CACHES = ['muyassar-adhan-v1']
 
 function setPlaying(next: boolean) {
   if (playing === next) return
@@ -77,6 +79,7 @@ export function adhanAvailable(): Promise<boolean> {
 export async function keepAdhanOffline(): Promise<boolean> {
   if (typeof caches === 'undefined' || typeof window === 'undefined') return false
   try {
+    await Promise.all(OLD_ADHAN_CACHES.map((name) => caches.delete(name)))
     const cache = await caches.open(ADHAN_CACHE)
     if (await cache.match(ADHAN_URL)) return true
     const res = await fetch(ADHAN_URL, { cache: 'no-store' })

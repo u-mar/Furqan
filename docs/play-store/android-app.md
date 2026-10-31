@@ -86,6 +86,8 @@ In the app, the Prayer screen's adhan sounds even when Naba is closed:
 - Tapping the notification opens the Prayer screen. Tapping it, swiping it away
   or pressing Stop ends the sound.
 - It follows the phone's notification volume, silent mode and Do Not Disturb.
+- The website plays the same opening takbir (`public/audio/adhan.mp3`), only
+  while it is open.
 
 On Android 14 and newer, the adhan only sounds on the minute once the person
 allows "Alarms & reminders" (`SCHEDULE_EXACT_ALARM`); the Prayer screen offers
