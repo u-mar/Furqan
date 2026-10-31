@@ -117,7 +117,7 @@ in the code; they only have to exist.
 | --- | --- | --- |
 | Debug key on the build PC (test APKs) | `04:58:EB:31:58:F0:A9:C0:AB:45:AC:33:F8:1B:69:B9:F3:1A:86:5D` | `677280780992-1gjart45vjb6769putv05fhlejq3p8qn` |
 | Upload key (signs the AAB) | `CD:1C:7C:59:2D:55:07:0F:87:57:5B:21:C1:BA:F3:BC:DE:69:90:59` | to add |
-| Play App Signing key (Play Console → App integrity) | `57:7B:5E:56:ED:81:7D:42:FE:A8:BB:1C:5E:99:48:82:A4:21:E9:AD` | to add |
+| Play App Signing key (Play Console → App integrity) | `57:7B:5E:56:ED:81:7D:42:FE:A8:BB:1C:5E:99:48:82:A4:21:E9:AD` | `677280780992-8icumnne5k63ttf2eq8cmu6lbdr5v9qq` ("naba android play") |
 
 Get a key's SHA-1 with `keytool -list -v -keystore <file> -alias <alias>`
 (keytool is in Android Studio's `jbr/bin`).
