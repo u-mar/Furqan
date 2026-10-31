@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// The upload key: Play Console checks every upload against it (Play then signs the app people get
+// with its own key). It lives outside the project, with its passwords, in ~/.naba-keys, never in
+// git. Back that folder up: without it, a new upload key has to be requested from Google.
+def uploadKeyFile = new File(System.getProperty('user.home'), '.naba-keys/upload-key.properties')
+def uploadKey = new Properties()
+if (uploadKeyFile.exists()) uploadKeyFile.withInputStream { uploadKey.load(it) }
+
 android {
     namespace = "com.qurannaba.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +14,8 @@ android {
         applicationId "com.qurannaba.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -20,8 +27,19 @@ android {
     androidResources {
         noCompress += ['woff2']
     }
+    signingConfigs {
+        release {
+            if (uploadKeyFile.exists()) {
+                storeFile new File(uploadKeyFile.parentFile, uploadKey['storeFile'])
+                storePassword uploadKey['storePassword']
+                keyAlias uploadKey['keyAlias']
+                keyPassword uploadKey['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadKeyFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

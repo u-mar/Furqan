@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NabaSpeechPlugin.class);
         registerPlugin(NabaSharePlugin.class);
         registerPlugin(NabaAppPlugin.class);
+        registerPlugin(NabaAdhanPlugin.class);
         super.onCreate(savedInstanceState);
         serveBundledQuran();
         askOnFirstOpen();

@@ -42,6 +42,16 @@
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_naba" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/naba_gold" />
 
+        <!-- The adhan with the app closed (Adhan.java): prayer-time alarms, Stop, and setting them again
+             after a restart, an update, or "Alarms & reminders" being allowed. -->
+        <receiver android:name=".AdhanReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -64,6 +74,10 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- The light tap felt when turning a page. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The adhan on the minute with the app closed ("Alarms & reminders"; Android 14+ asks the person,
+         from the Prayer screen), and its alarms set again after the phone restarts. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Voice search uses the phone's speech recognition; Android 11+ only lets the app see it when asked for here. -->
     <queries>
@@ -72,9 +86,7 @@
         </intent>
     </queries>
 
-    <!-- Added by libraries but never used: reminders do not need to the minute (and Google Play
-         restricts exact alarms), and Google sign-in here never asks for a fingerprint. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <!-- Added by libraries but never used: Google sign-in here never asks for a fingerprint. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 

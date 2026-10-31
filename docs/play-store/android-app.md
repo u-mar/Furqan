@@ -70,6 +70,34 @@ the first release (Play Console → Test and release → App integrity).
   3 and 7 days after the last time someone read, at their usual hour, never
   daily. Turned on from Home (asked once) or Settings.
 
+## The adhan with the app closed
+
+In the app, the Prayer screen's adhan sounds even when Naba is closed:
+
+- `lib/native-adhan.ts` works out the next 60 days of adhan times on the phone,
+  in the app's language. It hands them to `NabaAdhanPlugin.java` every time the
+  app opens and whenever the place, method or bells change.
+- `Adhan.java` keeps them and asks Android to wake the app at the next one.
+  `AdhanReceiver` then posts a notification, and that notification's sound is
+  the adhan:
+  - every prayer except Fajr: `res/raw/adhan.mp3` (Mansour al-Zahrani, 2:11)
+  - Fajr: `adhan_fajr.mp3`, only the opening takbir, because this recording is
+    not the Fajr adhan
+- Tapping the notification opens the Prayer screen. Tapping it, swiping it away
+  or pressing Stop ends the sound.
+- It follows the phone's notification volume, silent mode and Do Not Disturb.
+
+On Android 14 and newer, the adhan only sounds on the minute once the person
+allows "Alarms & reminders" (`SCHEDULE_EXACT_ALARM`); the Prayer screen offers
+this with an **Allow** link. Without it, Android may run late, and an adhan more
+than 10 minutes late is skipped. Google Play has no declaration form for
+`SCHEDULE_EXACT_ALARM` (the form is for `USE_EXACT_ALARM`, which the app doesn't
+use).
+
+To change a recording, replace the file and raise the channel ids in
+`Adhan.java` (`adhan-1`, `adhan-fajr-1`). Android keeps a channel's sound once
+the channel exists. A real Fajr adhan goes in `adhan_fajr.mp3` the same way.
+
 ## Google sign-in in the app
 
 Google refuses its web sign-in inside an app, so in the app "Continue with
@@ -86,8 +114,8 @@ in the code; they only have to exist.
 | Key | SHA-1 | Android client |
 | --- | --- | --- |
 | Debug key on the build PC (test APKs) | `04:58:EB:31:58:F0:A9:C0:AB:45:AC:33:F8:1B:69:B9:F3:1A:86:5D` | `677280780992-1gjart45vjb6769putv05fhlejq3p8qn` |
-| Upload key (signs the AAB) | to add at the first release | to add |
-| Play App Signing key (Play Console → App integrity) | to add at the first release | to add |
+| Upload key (signs the AAB) | `CD:1C:7C:59:2D:55:07:0F:87:57:5B:21:C1:BA:F3:BC:DE:69:90:59` | to add |
+| Play App Signing key (Play Console → App integrity) | `57:7B:5E:56:ED:81:7D:42:FE:A8:BB:1C:5E:99:48:82:A4:21:E9:AD` | to add |
 
 Get a key's SHA-1 with `keytool -list -v -keystore <file> -alias <alias>`
 (keytool is in Android Studio's `jbr/bin`).
@@ -111,7 +139,16 @@ Or open the `android/` folder in Android Studio and press Run.
 
 ## Release for the Play Store (AAB)
 
-Android Studio → Build → Generate Signed App Bundle, with an upload key you make
-there once and keep safe (the file and its password: losing them means asking
-Google to reset it). Raise `versionCode` / `versionName` in
-`android/app/build.gradle` for every upload.
+```bash
+cd android
+JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew bundleRelease
+```
+
+The bundle is `android/app/build/outputs/bundle/release/app-release.aab`, signed
+with the upload key in `C:\Users\hp\.naba-keys` (`naba-upload.jks`, with its
+passwords in `upload-key.properties`, read by `android/app/build.gradle`). That
+folder is never in git: keep a backup of it somewhere safe. Raise `versionCode`
+(and `versionName`) in `android/app/build.gradle` for every upload.
+
+Upload key fingerprints: SHA-1 `CD:1C:7C:59:2D:55:07:0F:87:57:5B:21:C1:BA:F3:BC:DE:69:90:59`,
+SHA-256 `FA:B0:51:8F:C0:4E:19:FD:CE:FB:16:8A:84:1F:A1:B9:6A:D2:1E:1C:2C:F5:32:84:F6:E9:45:82:69:0F:7B:04`.

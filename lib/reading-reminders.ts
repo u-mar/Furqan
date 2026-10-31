@@ -92,6 +92,10 @@ async function schedule(): Promise<void> {
         title: tr('Time with the Quran'),
         body: surah ? tr('Continue {surah}, page {page}.', { surah, page }) : tr('Continue reading'),
         channelId: CHANNEL,
+        // A reminder may come a few minutes either way. Asking for an exact one makes the plugin open
+        // Android's "Alarms & reminders" settings on every schedule where that is not allowed; only
+        // the adhan asks for it, from the Prayer screen (lib/native-adhan.ts).
+        isExactNotification: false,
         // Never in the next hour: opening the app is not the moment to be reminded.
         schedule: { at: at.getTime() < soonest ? dayAfter(Date.now(), 1) : at },
         extra: { url: `/read?page=${page}` },

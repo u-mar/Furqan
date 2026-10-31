@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { subscribeAdhan, isAdhanPlaying } from '@/lib/adhan-audio'
+import { nativeAdhanStatus, type AdhanStatus } from '@/lib/native-adhan'
 import {
   DEFAULT_PLACE,
   DEFAULT_PRAYER_SETTINGS,
@@ -59,6 +60,28 @@ export function useNow(intervalMs = 1000): Date | null {
 
 export function useAdhanPlaying(): boolean {
   return useSyncExternalStore(subscribeAdhan, isAdhanPlaying, () => false)
+}
+
+/**
+ * In the Play Store app, what Android allows the adhan (lib/native-adhan.ts):
+ * asked again on coming back to the app, as from its settings. Null on the
+ * website, and until known.
+ */
+export function useNativeAdhanStatus(): AdhanStatus | null {
+  const [status, setStatus] = useState<AdhanStatus | null>(null)
+  useEffect(() => {
+    const check = () => {
+      if (document.visibilityState === 'visible') void nativeAdhanStatus().then(setStatus).catch(() => {})
+    }
+    check()
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener(PRAYER_CHANGED_EVENT, check)
+    return () => {
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener(PRAYER_CHANGED_EVENT, check)
+    }
+  }, [])
+  return status
 }
 
 /**

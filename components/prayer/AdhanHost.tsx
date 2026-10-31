@@ -4,26 +4,41 @@ import { useEffect, useRef } from 'react'
 import { Square, Volume2 } from 'lucide-react'
 import { useAdhanPlaying, usePrayerState } from '@/hooks/usePrayer'
 import { adhanAvailable, keepAdhanOffline, playAdhan, stopAdhan } from '@/lib/adhan-audio'
+import { pause as pauseListen } from '@/lib/listen-player'
+import { listenForNativeAdhan, nativeAdhanSupported, scheduleNativeAdhan } from '@/lib/native-adhan'
 import { ADHAN_PRAYERS, nextPrayer, type PrayerId } from '@/lib/prayer'
-import { useT } from '@/lib/i18n'
+import { useLanguage, useT } from '@/lib/i18n'
 
 /** How late a prayer may be and still sound: a phone that slept through it should not wake up to it later. */
 const GRACE_MS = 90_000
 
 /**
- * Sounds the adhan when a prayer begins, from any screen, while the app is open.
- * A closed app cannot sound it: that needs the installed app's own scheduled
- * notifications. Also shows a small stop button while it plays.
+ * Sounds the adhan when a prayer begins, from any screen, while the site is
+ * open, and shows a small stop button while it plays. In the Play Store app the
+ * app itself sounds it instead, open or closed: this hands it the coming prayer
+ * times whenever they or the choices change (lib/native-adhan.ts).
  */
 export default function AdhanHost() {
   const t = useT()
   const { place, settings, ready } = usePrayerState()
   const playing = useAdhanPlaying()
   const fired = useRef<string>('')
+  const language = useLanguage()
+
+  // In the app: the coming adhans go to Android, in the app's language. A moment's
+  // wait, so tapping through several bells sends one list.
+  useEffect(() => {
+    if (!ready || !nativeAdhanSupported()) return
+    const timer = window.setTimeout(() => void scheduleNativeAdhan(place, settings).catch(() => {}), 500)
+    return () => window.clearTimeout(timer)
+  }, [ready, place, settings, language])
+
+  // The app's adhan has begun while it is open: a recitation gives way to it, as on the website.
+  useEffect(() => listenForNativeAdhan(() => pauseListen()), [])
 
   // Keep the recording on the phone while there is a connection, so the adhan needs none.
   useEffect(() => {
-    if (!ready || !settings.adhan) return
+    if (!ready || !settings.adhan || nativeAdhanSupported()) return
     const keep = () => void keepAdhanOffline()
     keep()
     window.addEventListener('online', keep)
@@ -31,7 +46,7 @@ export default function AdhanHost() {
   }, [ready, settings.adhan])
 
   useEffect(() => {
-    if (!ready || !settings.adhan) return
+    if (!ready || !settings.adhan || nativeAdhanSupported()) return
     let cancelled = false
     // When the next prayer is, worked out once: the sums for a day's times are
     // not done again every few seconds on every screen, only once it arrives.

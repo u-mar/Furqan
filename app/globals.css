@@ -4250,6 +4250,14 @@ html.dark .pt-bell[aria-pressed='true'] {
   visibility: hidden;
 }
 
+/* "Allow" after the note under the day, where Android holds the adhan back. */
+.pt-note-action {
+  font-weight: 700;
+  color: var(--home-heading);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* The way to the qibla screen, its compass needle already turned to it. */
 .pt-qibla {
   display: flex;

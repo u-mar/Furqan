@@ -22,8 +22,9 @@ import LocationOffNote from '@/components/prayer/LocationOffNote'
 import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import Switch from '@/components/qari/Switch'
-import { useAutoLocate, useNow, usePrayerState } from '@/hooks/usePrayer'
+import { useAutoLocate, useNativeAdhanStatus, useNow, usePrayerState } from '@/hooks/usePrayer'
 import { adhanAvailable } from '@/lib/adhan-audio'
+import { nativeAdhanSupported, openAdhanSettings } from '@/lib/native-adhan'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { formatHijri } from '@/lib/hijri'
 import {
@@ -91,11 +92,14 @@ export default function PrayerPage() {
   const now = clock ?? new Date(0)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [hasAdhan, setHasAdhan] = useState(false)
+  const appAdhan = useNativeAdhanStatus()
 
   const location = useAutoLocate(ready, place)
 
   useEffect(() => {
-    void adhanAvailable().then(setHasAdhan)
+    // The app carries its own recording.
+    if (nativeAdhanSupported()) setHasAdhan(true)
+    else void adhanAvailable().then(setHasAdhan)
   }, [])
 
   // The day's times only change when the day does, not every second.
@@ -261,9 +265,23 @@ export default function PrayerPage() {
             })}
           </ol>
         </section>
-        {hasAdhan ? (
+        {appAdhan && settings.adhan && !appAdhan.notifications ? (
           <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">
-            {t('Plays at each prayer while the app is open.')}
+            {t('Notifications are off for Naba, so the adhan cannot sound.')}{' '}
+            <button type="button" className="pt-note-action" onClick={() => void openAdhanSettings('notifications')}>
+              {t('Turn on')}
+            </button>
+          </p>
+        ) : appAdhan && settings.adhan && !appAdhan.exact ? (
+          <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">
+            {t('For the adhan right on time, allow Naba to set alarms.')}{' '}
+            <button type="button" className="pt-note-action" onClick={() => void openAdhanSettings('alarms')}>
+              {t('Allow')}
+            </button>
+          </p>
+        ) : hasAdhan ? (
+          <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">
+            {appAdhan ? t('Sounds at each prayer, even when the app is closed.') : t('Plays at each prayer while the app is open.')}
           </p>
         ) : (
           <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">{t('Adhan sound is coming soon.')}</p>
