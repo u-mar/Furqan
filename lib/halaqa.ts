@@ -2,6 +2,7 @@
 
 import { APP_NAME } from '@/lib/app-brand'
 import { tr } from '@/lib/i18n-core'
+import { JUZ_START_PAGES } from '@/lib/mushaf'
 
 const KEY_STORAGE = 'muyassar_halaqa_key'
 const MEMBER_FLAG = 'muyassar_halaqa_member'
@@ -394,12 +395,7 @@ export function whatsAppLink(text: string): string {
 
 /* ------------------------------------------------------------------ juz */
 
-/** The first page of each juz in the 604-page Madinah mushaf the reader uses. */
-const JUZ_START_PAGES = [
-  1, 22, 42, 62, 82, 102, 121, 142, 162, 182, 201, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422,
-  442, 462, 482, 502, 522, 542, 562, 582,
-]
-
+/** The pages a juz spans in the 604-page Madinah mushaf the reader uses. */
 export function juzPages(juz: number): { start: number; end: number } {
   const start = JUZ_START_PAGES[juz - 1] ?? 1
   const end = juz >= 30 ? 604 : (JUZ_START_PAGES[juz] ?? 605) - 1

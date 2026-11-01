@@ -2,6 +2,7 @@ import webpush from 'web-push'
 import { prisma } from '@/lib/prisma'
 import { SUPPORT_EMAIL } from '@/lib/app-brand'
 import { canSendFcm, sendFcm } from '@/lib/fcm'
+import { isAppLanguage, type AppLanguage } from '@/lib/i18n-core'
 
 /**
  * Sending a notification to a phone that has the app closed, through the web's
@@ -104,13 +105,27 @@ export async function sendPush(username: string, message: PushMessage): Promise<
  * Tell the given halaqa members — everyone found is sent to, so callers should
  * already have filtered out whoever should not hear about this. Same rules as
  * sendPush, keyed by `memberKey` instead of a username since halaqa people have
- * no account.
+ * no account. Given a function, each phone gets the message in the language it
+ * uses Naba in.
  */
-export async function sendHalaqaPush(memberKeys: string[], message: PushMessage): Promise<void> {
+export async function sendHalaqaPush(
+  memberKeys: string[],
+  message: PushMessage | ((language: AppLanguage) => PushMessage)
+): Promise<void> {
   if (!anyReady() || !memberKeys.length) return
   try {
     const subscriptions = await prisma.halaqaPushSubscription.findMany({ where: { memberKey: { in: memberKeys } } })
-    await deliver(subscriptions, message, (endpoint) => prisma.halaqaPushSubscription.deleteMany({ where: { endpoint } }))
+    const forget = (endpoint: string) => prisma.halaqaPushSubscription.deleteMany({ where: { endpoint } })
+    if (typeof message !== 'function') {
+      await deliver(subscriptions, message, forget)
+      return
+    }
+    const byLanguage = new Map<AppLanguage, typeof subscriptions>()
+    for (const s of subscriptions) {
+      const language = isAppLanguage(s.language) ? s.language : 'en'
+      byLanguage.set(language, [...(byLanguage.get(language) ?? []), s])
+    }
+    await Promise.all([...byLanguage].map(([language, group]) => deliver(group, message(language), forget)))
   } catch (err) {
     console.error('[push] halaqa failed:', err)
   }

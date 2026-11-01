@@ -1,8 +1,8 @@
 'use client'
 
 import type { PushNotificationsPlugin } from '@capacitor/push-notifications'
-import { halaqaKey } from '@/lib/halaqa'
-import { tr } from '@/lib/i18n-core'
+import { halaqaKey, isHalaqaMember } from '@/lib/halaqa'
+import { currentLanguage, tr } from '@/lib/i18n-core'
 import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
 
 /**
@@ -222,18 +222,65 @@ export async function syncPush(viewer: Viewer): Promise<void> {
 
 /* --------------------------------------------------------- halaqa reminders */
 
+/** Kept with the address: the language reminders reach this phone in. */
 async function saveHalaqa(subscription: PushSubscription | Address): Promise<boolean> {
   const res = await fetch('/api/halaqa/push', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-halaqa-key': halaqaKey() },
-    body: JSON.stringify({ subscription: 'toJSON' in subscription ? subscription.toJSON() : subscription }),
+    body: JSON.stringify({
+      subscription: 'toJSON' in subscription ? subscription.toJSON() : subscription,
+      language: currentLanguage(),
+    }),
   }).catch(() => null)
   return Boolean(res?.ok)
 }
 
+const HALAQA_CHOICE_KEY = 'naba-halaqa-reminders'
+
+/** Remembers a halaqa member turning reminders off (or back on), so they are not turned on for them again. */
+function setHalaqaChoice(on: boolean): void {
+  try {
+    localStorage.setItem(HALAQA_CHOICE_KEY, on ? 'on' : 'off')
+  } catch {
+    // Only a memory of the choice.
+  }
+}
+
+function turnedHalaqaOff(): boolean {
+  try {
+    return localStorage.getItem(HALAQA_CHOICE_KEY) === 'off'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * On opening the app or a halaqa. In the Play Store app, a halaqa member hears
+ * the reminders the others send without turning them on, wherever the phone
+ * already allows Naba's notifications (asked when the app first opens): this
+ * never asks. On the website they stay a choice. Either way the server hears
+ * this phone's address and language again. Turned off, they stay off.
+ */
+export async function keepHalaqaPushOn(): Promise<void> {
+  if (typeof window === 'undefined' || !isHalaqaMember() || turnedHalaqaOff()) return
+  if (inApp()) {
+    if (!(await appPushReady())) return
+    const address = await appAddress(false)
+    if (address && address !== 'blocked') await saveHalaqa(address)
+    return
+  }
+  await syncHalaqaPush()
+}
+
 /** Same flow as enablePush, for the reminders other halaqa members send — no account needed. */
 export async function enableHalaqaPush(): Promise<PushState> {
+  setHalaqaChoice(true)
   const state = await pushState()
+  // Already allowed (for Qari, say): this halaqa only needs telling.
+  if (state === 'on') {
+    await syncHalaqaPush()
+    return state
+  }
   if (state !== 'off') return state
   if (inApp()) {
     const address = await appAddress(true)
@@ -255,6 +302,7 @@ export async function enableHalaqaPush(): Promise<PushState> {
 }
 
 export async function disableHalaqaPush(): Promise<PushState> {
+  setHalaqaChoice(false)
   if (inApp()) {
     return appForget((endpoint) =>
       fetch('/api/halaqa/push', {

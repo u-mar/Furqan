@@ -1464,35 +1464,17 @@ function ReadPageContent() {
 
         <div className="mushaf-read-dock">
           {nowPlaying ? (
+            // One row: the ayah, the player, and stop.
             <div className="mushaf-read-dock__now">
-              <div className="flex items-center gap-2.5">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="mushaf-dock-select__caption">
-                    {audioPlaying ? t('Now playing') : pickedOther ? t('Selected') : t('Paused')} ·{' '}
-                    {t(AUDIO_MODE_LABELS[sessionMode])}
-                  </span>
-                  <span className="mushaf-read-dock__now-title">
-                    <span className="truncate">{nowPlaying.surahName}</span>
-                    <span className="mushaf-read-dock__now-ayah">
-                      {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
-                      {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
-                    </span>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={stopAllAudio}
-                  className="mushaf-read-dock__stop"
-                  aria-label={t('Stop')}
-                >
-                  <X className="h-4 w-4" strokeWidth={2.4} />
-                </button>
-              </div>
+              <span className="mushaf-read-dock__now-ayah">
+                {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
+                {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
+              </span>
 
               {nowPlayingKey && !pickedOther ? (
                 <div className="mushaf-player">
                   <button type="button" className="mushaf-player__skip" onClick={() => skipSeconds(-5)} aria-label={t('Back 5 seconds')}>
-                    <RotateCcw className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    <RotateCcw className="h-5 w-5" strokeWidth={1.8} />
                     <span className="mushaf-player__skip-n" aria-hidden>
                       5
                     </span>
@@ -1515,13 +1497,19 @@ function ReadPageContent() {
                   />
                   <span className="mushaf-player__time">{formatClock(clip?.length ?? 0)}</span>
                   <button type="button" className="mushaf-player__skip" onClick={() => skipSeconds(5)} aria-label={t('Forward 5 seconds')}>
-                    <RotateCw className="h-[22px] w-[22px]" strokeWidth={1.8} />
+                    <RotateCw className="h-5 w-5" strokeWidth={1.8} />
                     <span className="mushaf-player__skip-n" aria-hidden>
                       5
                     </span>
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                <span className="flex-1" aria-hidden />
+              )}
+
+              <button type="button" onClick={stopAllAudio} className="mushaf-read-dock__stop" aria-label={t('Stop')}>
+                <X className="h-4 w-4" strokeWidth={2.4} />
+              </button>
             </div>
           ) : (
             <div className="mushaf-read-dock__selectors">

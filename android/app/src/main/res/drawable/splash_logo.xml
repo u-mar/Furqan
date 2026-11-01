@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch screen's logo (styles.xml, windowSplashScreenAnimatedIcon), on black.
+     Drawn from the logo's blocks (lib/app-logo.ts), so it stays sharp at any size. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <group
+        android:translateX="74.000"
+        android:translateY="74.000"
+        android:scaleX="0.70000"
+        android:scaleY="0.70000">
+        <path android:fillColor="#F1F3EF" android:pathData="M41.5,127 h117.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-117.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,57 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v81.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-81.0 a1.5,1.5 0 0 1 1.5,-1.5 z M94.5,99 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v39.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-39.0 a1.5,1.5 0 0 1 1.5,-1.5 z M147.5,99 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v39.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-39.0 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+        <path android:fillColor="#E0BC74" android:pathData="M147.5,71 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M94.5,155 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,31 h12.0 a1.5,1.5 0 0 1 1.5,1.5 v2.0 a1.5,1.5 0 0 1 -1.5,1.5 h-12.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-2.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,31 h2.0 a1.5,1.5 0 0 1 1.5,1.5 v13.0 a1.5,1.5 0 0 1 -1.5,1.5 h-2.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-13.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,42 h12.0 a1.5,1.5 0 0 1 1.5,1.5 v2.0 a1.5,1.5 0 0 1 -1.5,1.5 h-12.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-2.0 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    </group>
+</vector>

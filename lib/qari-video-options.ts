@@ -59,6 +59,13 @@ const VIDEO_OPTIONS_VERSION = 3
 const VIDEO_OPTIONS_KEY = 'muyassar_qari_video_options'
 const CHANGED_EVENT = 'qari-video-options-changed'
 
+/**
+ * Whether cutting between similar clips is offered at all. Off for now: every
+ * video keeps the one clip chosen, the whole way through. Setting this back to
+ * true brings the Share sheet's switch back, and the saved choices with it.
+ */
+export const MIX_CLIPS_OFFERED = false
+
 /** The choices from the last video made, so sharing again starts where you left off. */
 export function loadVideoOptions(): VideoOptions {
   try {
@@ -67,7 +74,7 @@ export function loadVideoOptions(): VideoOptions {
     const saved = JSON.parse(raw) as Partial<VideoOptions> & { v?: number }
     return {
       backgroundId: findVideoBackground(String(saved.backgroundId)).id,
-      mix: saved.v === VIDEO_OPTIONS_VERSION && saved.mix === true,
+      mix: MIX_CLIPS_OFFERED && saved.v === VIDEO_OPTIONS_VERSION && saved.mix === true,
       quality: isVideoQuality(saved.quality) ? saved.quality : DEFAULT_VIDEO_OPTIONS.quality,
     }
   } catch {

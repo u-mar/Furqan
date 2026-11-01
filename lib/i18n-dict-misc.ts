@@ -688,6 +688,12 @@ export const MISC: Dict = {
   "Notifications are off for Naba. Turn them on in your phone's settings.": { so: 'Ogeysiisyada Naba waa xiran yihiin. Ka shid dejinta taleefankaaga.', ar: 'الإشعارات متوقفة لتطبيق نبأ. فعّلها من إعدادات هاتفك.' },
   'Time with the Quran': { so: 'Waqti Quraanka', ar: 'وقت مع القرآن' },
   'Continue {surah}, page {page}.': { so: 'Sii wad {surah}, bogga {page}.', ar: 'تابع {surah}، صفحة {page}.' },
+  'A gentle reminder after 3 days without reading, and once more after a week. Never daily.': { so: 'Xusuusin degan marka 3 maalmood ay kaa dhaafaan adigoon akhrin, iyo mar kale toddobaad kadib. Marna maalin kasta maaha.', ar: 'تذكير لطيف بعد 3 أيام بلا قراءة، ومرة أخرى بعد أسبوع. وليس يوميًا أبدًا.' },
+  'Pick up where you left off: {surah}, page {page}.': { so: 'Ka sii wad meeshii aad joogtay: {surah}, bogga {page}.', ar: 'تابع من حيث توقفت: {surah}، صفحة {page}.' },
+  'Pick up where you left off.': { so: 'Ka sii wad meeshii aad joogtay.', ar: 'تابع من حيث توقفت.' },
+  'A few ayat today?': { so: 'Dhowr aayadood maanta?', ar: 'آيات قليلة اليوم؟' },
+  'It has been a week. {surah}, page {page} is where you stopped.': { so: 'Toddobaad ayaa ka soo wareegay. {surah}, bogga {page} ayaad ku joogsatay.', ar: 'مرّ أسبوع. توقفت عند {surah}، صفحة {page}.' },
+  'It has been a week since you last read.': { so: 'Toddobaad ayaa ka soo wareegay markii ugu dambeysay ee aad akhriday.', ar: 'مرّ أسبوع منذ آخر قراءة لك.' },
   'Qari and halaqa': { so: 'Qari iyo xalqadda', ar: 'القارئ والحلقة' },
   'Prayer times': { so: 'Waqtiyada salaadda', ar: 'مواقيت الصلاة' },
 }

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import LogoMark from '@/components/brand/LogoMark'
 import { APP_NAME } from '@/lib/app-brand'
 import { cn } from '@/lib/cn'
-import { SPLASH_AYAH_PATH, SPLASH_AYAH_VIEWBOX } from '@/components/splash-ayah-paths'
 
 const SHOWN_KEY = 'nadir-splash-shown'
 const SHOW_MS = 1500
@@ -12,12 +11,8 @@ const FADE_MS = 550
 
 /**
  * A brief cover shown once per app open, over the manifest's own plain black
- * background — the OS-generated PWA splash can only show the icon, so this is
- * what carries the verse: أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ (13:28).
- *
- * The ayah is the mushaf's own script saved as outlines, so it is there on the
- * very first frame instead of waiting on a font. Just the ayah, in white,
- * alone in the middle. A tap skips it.
+ * background: the logo in the middle, just where the phone's launch screen
+ * leaves it, with the name fading in under it. A tap skips it.
  */
 export default function SplashScreen() {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
@@ -50,25 +45,13 @@ export default function SplashScreen() {
       aria-hidden
       onClick={() => setPhase('fading')}
       className={cn(
-        'app-splash fixed inset-0 z-[300] flex flex-col items-center px-6 transition-opacity ease-out',
+        'app-splash fixed inset-0 z-[300] transition-opacity ease-out',
         phase === 'fading' ? 'pointer-events-none opacity-0' : 'opacity-100'
       )}
-      style={{
-        transitionDuration: `${FADE_MS}ms`,
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'max(2.25rem, env(safe-area-inset-bottom) + 1.25rem)',
-      }}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
     >
-      <div className="flex w-full flex-1 items-center justify-center">
-        <svg viewBox={SPLASH_AYAH_VIEWBOX} className="app-splash__ayah w-[min(70vw,280px)]" role="presentation">
-          <path d={SPLASH_AYAH_PATH} fill="currentColor" />
-        </svg>
-      </div>
-
-      <div className="flex flex-col items-center gap-3">
-        <LogoMark className="app-splash__mark" scale={1.4} />
-        <span className="app-splash__name">{APP_NAME}</span>
-      </div>
+      <LogoMark className="app-splash__mark" />
+      <span className="app-splash__name">{APP_NAME}</span>
     </div>
   )
 }

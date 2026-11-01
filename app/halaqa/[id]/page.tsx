@@ -36,7 +36,7 @@ import {
   type HalaqaDetail,
   type HalaqaMemberView,
 } from '@/lib/halaqa'
-import { disableHalaqaPush, enableHalaqaPush, pushState, syncHalaqaPush, type PushState } from '@/lib/push-client'
+import { disableHalaqaPush, enableHalaqaPush, keepHalaqaPushOn, pushState, type PushState } from '@/lib/push-client'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 
@@ -195,11 +195,12 @@ function NotifyBanner() {
   const [push, setPush] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // In the app a member hears the reminders without turning them on (keepHalaqaPushOn); then the switch shows how things stand.
   useEffect(() => {
-    void pushState().then((state) => {
-      setPush(state)
-      if (state === 'on') void syncHalaqaPush()
-    })
+    void keepHalaqaPushOn()
+      .catch(() => {})
+      .then(() => pushState())
+      .then(setPush)
   }, [])
 
   if (!push || push === 'unconfigured') return null
@@ -309,13 +310,7 @@ function ShareCheckIn({ open, detail, onClose }: { open: boolean; detail: Halaqa
     try {
       const { remindedCount } = await remindHalaqa(detail.halaqa.id)
       successFeedback()
-      toastSuccess(
-        remindedCount === 1
-          ? tr('Reminder sent to 1 person')
-          : remindedCount > 1
-            ? tr('Reminder sent to {count} people', { count: remindedCount })
-            : tr('Everyone has already read today')
-      )
+      toastSuccess(remindedCount > 0 ? tr('Reminder sent') : tr('Everyone has already read today'))
       onClose()
     } catch (err) {
       errorFeedback()

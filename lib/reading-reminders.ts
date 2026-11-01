@@ -1,7 +1,7 @@
 'use client'
 
 import type { LocalNotificationsPlugin } from '@capacitor/local-notifications'
-import { tr } from '@/lib/i18n-core'
+import { currentLanguage, tr } from '@/lib/i18n-core'
 import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
 import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
 
@@ -11,6 +11,9 @@ import { hasNativePlugin, nativePlugin } from '@/lib/native-app'
  * at the hour they usually read. Reading again moves both on. Everything is
  * scheduled on the phone itself (the LocalNotifications plugin): nothing about
  * someone's reading leaves it, and it works offline.
+ *
+ * Nothing asks about them: they are on wherever the phone allows Naba's
+ * notifications (asked when the app first opens), until turned off in Settings.
  */
 
 const CHOICE_KEY = 'naba-reading-reminders'
@@ -46,21 +49,53 @@ function lastReadAt(): number | null {
   }
 }
 
-/** Whether this person has read in the app at all: the reminder card only asks someone who has. */
-export function hasReadBefore(): boolean {
-  return lastReadAt() !== null
-}
-
 /** Kept wrapped until used: an async function returning the plugin itself would never settle (lib/native-app.ts). */
 const notifications = () => nativePlugin<LocalNotificationsPlugin>('LocalNotifications')
+
+/**
+ * Whether reminders are on: turned on in Settings, or never touched and the
+ * phone allows Naba's notifications. Turned off in Settings, they stay off.
+ */
+export async function remindersOn(): Promise<boolean> {
+  if (!remindersSupported()) return false
+  const choice = reminderChoice()
+  if (choice !== null) return choice === 'on'
+  try {
+    const { plugin: local } = await notifications()
+    return (await local.checkPermissions()).display === 'granted'
+  } catch {
+    return false
+  }
+}
+
+/** The two reminders' words: after three days, and after a week. */
+function reminderText(index: number, place: { page: number; surah: string | null }): { title: string; body: string } {
+  const { page, surah } = place
+  if (index === 0) {
+    return {
+      title: tr('Time with the Quran'),
+      body: surah ? tr('Pick up where you left off: {surah}, page {page}.', { surah, page }) : tr('Pick up where you left off.'),
+    }
+  }
+  return {
+    title: tr('A few ayat today?'),
+    body: surah
+      ? tr('It has been a week. {surah}, page {page} is where you stopped.', { surah, page })
+      : tr('It has been a week since you last read.'),
+  }
+}
 
 /** Where to pick up from, for the reminder's words: the surah at the top of the last page read. */
 async function place(): Promise<{ page: number; surah: string | null }> {
   const page = Math.min(604, Math.max(1, Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1))
   try {
     const res = await fetch('/quran-chapters.json', { cache: 'force-cache' })
-    const { chapters } = (await res.json()) as { chapters: { name_simple: string; pages: [number, number] }[] }
-    return { page, surah: chapters.find((c) => c.pages[0] <= page && page <= c.pages[1])?.name_simple ?? null }
+    const { chapters } = (await res.json()) as {
+      chapters: { name_simple: string; name_arabic: string; pages: [number, number] }[]
+    }
+    const chapter = chapters.find((c) => c.pages[0] <= page && page <= c.pages[1])
+    // In Arabic, the surah's own name.
+    return { page, surah: chapter ? (currentLanguage() === 'ar' ? chapter.name_arabic : chapter.name_simple) : null }
   } catch {
     return { page, surah: null }
   }
@@ -89,8 +124,7 @@ async function schedule(): Promise<void> {
       const at = dayAfter(from, days)
       return {
         id: IDS[i],
-        title: tr('Time with the Quran'),
-        body: surah ? tr('Continue {surah}, page {page}.', { surah, page }) : tr('Continue reading'),
+        ...reminderText(i, { page, surah }),
         channelId: CHANNEL,
         // A reminder may come a few minutes either way. Asking for an exact one makes the plugin open
         // Android's "Alarms & reminders" settings on every schedule where that is not allowed; only
@@ -131,12 +165,16 @@ export function noteReading(): void {
   } catch {
     return
   }
-  if (remindersSupported() && reminderChoice() === 'on') void schedule().catch(() => {})
+  void remindersOn()
+    .then((on) => (on ? schedule() : undefined))
+    .catch(() => {})
 }
 
 /** On opening the app: puts the reminders back if they are on (after a phone restart or an update). */
 export function keepRemindersScheduled(): void {
-  if (remindersSupported() && reminderChoice() === 'on') void schedule().catch(() => {})
+  void remindersOn()
+    .then((on) => (on ? schedule() : undefined))
+    .catch(() => {})
 }
 
 /** Opens the page a tapped reminder points to (where they left off). Returns a function that stops listening. */

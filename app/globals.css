@@ -605,32 +605,22 @@ html.dark .mushaf-read-dock {
   border-bottom: 1px solid var(--mushaf-read-chrome-border);
 }
 
+/* What is playing, in one row: the ayah, the player, and stop. */
 .mushaf-read-dock__now {
   position: relative;
   display: flex;
-  min-height: 51px;
-  flex-direction: column;
-  justify-content: center;
+  min-height: 44px;
+  align-items: center;
   gap: 4px;
-  padding: 6px 10px 6px 16px;
+  padding: 3px 6px 3px 14px;
   border-bottom: 1px solid var(--mushaf-read-chrome-border);
-}
-
-.mushaf-read-dock__now-title {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--mushaf-read-text);
 }
 
 .mushaf-read-dock__now-ayah {
   flex-shrink: 0;
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   color: var(--mushaf-read-accent);
 }
@@ -656,15 +646,16 @@ html.dark .mushaf-read-dock {
    with the time and the ayah's length), five seconds on. */
 .mushaf-player {
   display: flex;
+  min-width: 0;
+  flex: 1;
   align-items: center;
-  gap: 6px;
-  margin: 0 -2px 0 -8px;
+  gap: 2px;
 }
 .mushaf-player__skip {
   position: relative;
   display: flex;
-  height: 38px;
-  width: 38px;
+  height: 34px;
+  width: 34px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -684,15 +675,15 @@ html.dark .mushaf-read-dock {
   align-items: center;
   justify-content: center;
   padding-top: 1px;
-  font-size: 8.5px;
+  font-size: 7.5px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .mushaf-player__time {
   flex-shrink: 0;
-  min-width: 2.25rem;
+  min-width: 2rem;
   text-align: center;
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--mushaf-read-meta);
@@ -2705,6 +2696,39 @@ label.set-row:active {
   color: var(--home-sage-deep);
 }
 
+/* Settings › Appearance: the three themes as one switch, the chosen one lifted out of its track. */
+.set-theme {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--home-heading) 7%, transparent);
+}
+
+.set-theme__option {
+  display: flex;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  color: var(--home-muted);
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.set-theme__option[aria-checked='true'] {
+  color: var(--home-heading);
+  background: color-mix(in srgb, var(--home-heading) 14%, transparent);
+}
+
+html:not(.dark) .set-theme__option[aria-checked='true'] {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(28, 38, 33, 0.06), 0 1px 3px rgba(20, 40, 32, 0.1);
+}
+
 .set-row__icon--neutral {
   background: color-mix(in srgb, var(--home-heading) 6%, transparent);
   color: var(--home-heading);
@@ -4433,38 +4457,31 @@ html.splash-seen .app-splash {
   display: none;
 }
 
-.app-splash__ayah {
-  overflow: visible;
-  color: #ffffff;
-  animation: app-splash-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
+/* The logo exactly where, and as large as, the phone's own launch screen leaves it
+   (android/app/src/main/res/drawable/splash_logo.xml: 140 of 200 units), so the one
+   hands over to the other without a jump. Only the name moves, fading in beneath. */
 .app-splash__mark {
-  width: 2rem;
-  height: 2rem;
-  animation: app-splash-fade 0.8s ease-out 0.3s both;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 140px;
+  transform: translate(-50%, -50%);
 }
 
 .app-splash__name {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(50% + 64px);
+  text-align: center;
   font-family: var(--font-home-serif), Fraunces, Georgia, serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.3em;
-  padding-inline-start: 0.3em;
+  letter-spacing: 0.32em;
+  padding-inline-start: 0.32em;
   text-transform: uppercase;
   color: rgba(243, 234, 214, 0.55);
-  animation: app-splash-fade 0.8s ease-out 0.3s both;
-}
-
-@keyframes app-splash-rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  animation: app-splash-fade 0.8s ease-out 0.15s both;
 }
 
 @keyframes app-splash-fade {
@@ -4477,8 +4494,6 @@ html.splash-seen .app-splash {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-splash__ayah,
-  .app-splash__mark,
   .app-splash__name {
     animation: none;
   }
@@ -4619,6 +4634,13 @@ html:not(.dark) .hv-theme {
   --hv-teal-wash: radial-gradient(circle at 50% 30%, rgba(14, 95, 85, 0.14), rgba(14, 95, 85, 0.04));
   --hv-teal-line: rgba(14, 95, 85, 0.18);
   --hv-track: rgba(28, 38, 33, 0.1);
+}
+
+/* Home, in light: a soft green page, its skyline a shade deeper (a halaqa
+   keeps the pale ground). */
+html:not(.dark) .hv-theme.home-v2 {
+  --hv-ground: #d3e3db;
+  --hv-skyline: #bdd3c9;
 }
 
 /* The sky itself: down to the skyline's foot in the dark themes, and on

@@ -70,8 +70,8 @@ const TEXT_SHADOW = '0 2px 16px rgba(0, 0, 0, 0.65)'
 const TRANSLATION_SHADOW = '0 1px 8px rgba(0, 0, 0, 0.55)'
 
 /** The phrase's type: as large as this, and only as small as that before it may take two lines. */
-const LINE_MAX_PX = 27
-const LINE_MIN_PX = 18
+const LINE_MAX_PX = 22
+const LINE_MIN_PX = 16
 
 /** How faint a word is before the reciter reaches it. */
 const UNSAID_OPACITY = 0.38
@@ -268,14 +268,14 @@ function AyahStage({
                       fontFamily: 'var(--font-amiri), Amiri, serif',
                       fontWeight: 400,
                       textShadow: TRANSLATION_SHADOW,
-                      fontSize: mode === 'translation' ? 22 : 17,
+                      fontSize: mode === 'translation' ? 18 : 14,
                     }
                   : {
                       fontFamily: "var(--font-edit), 'Cormorant Garamond', Georgia, serif",
                       fontStyle: 'italic',
                       fontWeight: 500,
                       textShadow: TRANSLATION_SHADOW,
-                      fontSize: mode === 'translation' ? 23 : 18,
+                      fontSize: mode === 'translation' ? 19 : 15,
                     }
               }
             >

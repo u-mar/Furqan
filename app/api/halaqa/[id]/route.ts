@@ -21,6 +21,7 @@ import {
   trustedToday,
 } from '@/lib/halaqa-server'
 import { sendHalaqaPush } from '@/lib/push'
+import { translate } from '@/lib/i18n-core'
 
 export const runtime = 'nodejs'
 
@@ -311,12 +312,13 @@ export async function POST(request: NextRequest, context: Context) {
           : []
         const readSet = new Set(already.map((row) => row.memberKey))
         const remindKeys = keys.filter((key) => !readSet.has(key))
-        await sendHalaqaPush(remindKeys, {
-          title: `${me.name} sent a reminder`,
-          body: `Have you read today in ${halaqa.name}?`,
+        // In the language each phone uses Naba in.
+        await sendHalaqaPush(remindKeys, (language) => ({
+          title: translate(language, '{name} sent a reminder', { name: me.name }),
+          body: translate(language, 'Have you read today in {halaqa}?', { halaqa: halaqa.name }),
           url: `/halaqa/${halaqa.id}`,
           tag: `halaqa-remind-${halaqa.id}`,
-        })
+        }))
         return NextResponse.json({ ok: true, remindedCount: remindKeys.length })
       }
 

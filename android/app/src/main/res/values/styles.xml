@@ -22,6 +22,8 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
         <item name="windowSplashScreenBackground">@color/naba_ground</item>
+        <!-- Its own sharp logo: left to itself, Android blows the launcher icon's small picture up. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

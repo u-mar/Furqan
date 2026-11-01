@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { memberKeyFrom } from '@/lib/halaqa-server'
+import { isAppLanguage } from '@/lib/i18n-core'
 
 export const runtime = 'nodejs'
 
 interface Body {
   subscription?: { endpoint?: string; keys?: { p256dh?: string; auth?: string } }
   endpoint?: string
+  /** The language the phone uses Naba in, so reminders reach it in that language. */
+  language?: string
 }
 
 /** POST /api/halaqa/push — this phone wants reminders for whichever halaqas it is in. */
@@ -28,7 +31,14 @@ export async function POST(request: NextRequest) {
     // One row per phone: a phone used across accounts/halaqas moves it.
     await prisma.halaqaPushSubscription.deleteMany({ where: { endpoint } })
     await prisma.halaqaPushSubscription.create({
-      data: { memberKey, endpoint, p256dh: p256dh ?? '', auth: auth ?? '', userAgent: (request.headers.get('user-agent') ?? '').slice(0, 200) },
+      data: {
+        memberKey,
+        endpoint,
+        p256dh: p256dh ?? '',
+        auth: auth ?? '',
+        userAgent: (request.headers.get('user-agent') ?? '').slice(0, 200),
+        language: isAppLanguage(body.language) ? body.language : 'en',
+      },
     })
     return NextResponse.json({ ok: true })
   } catch (err) {

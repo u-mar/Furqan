@@ -29,7 +29,6 @@ import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import QariAvatar from '@/components/qari/QariAvatar'
 import BlockedAccountsSheet from '@/components/qari/BlockedAccountsSheet'
-import OfflineQuranRow from '@/components/settings/OfflineQuranRow'
 import ReadingRemindersRow from '@/components/settings/ReadingRemindersRow'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
@@ -327,7 +326,7 @@ export default function SettingsPage() {
             onClick={() => setAccountOpen(true)}
             className="home-card home-press ed-focus mt-[18px] flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left"
           >
-            <span className="ed-ink flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
               <UserRound className="h-[22px] w-[22px]" strokeWidth={1.9} />
             </span>
             <span className="min-w-0 flex-1">
@@ -342,7 +341,7 @@ export default function SettingsPage() {
 
         {/* Appearance */}
         <SectionLabel>{t('Appearance')}</SectionLabel>
-        <div className="home-card grid grid-cols-3 gap-1.5 rounded-2xl p-1.5" role="radiogroup" aria-label={t('Appearance')}>
+        <div className="set-theme" role="radiogroup" aria-label={t('Appearance')}>
           {THEMES.map(({ mode, label, swatch }) => {
             const selected = theme === mode
             return (
@@ -352,10 +351,7 @@ export default function SettingsPage() {
                 role="radio"
                 aria-checked={selected}
                 onClick={() => saveTheme(mode)}
-                className={cn(
-                  'ed-focus flex h-11 items-center justify-center gap-2 rounded-[11px] text-[0.84375rem] font-semibold transition-colors',
-                  selected ? 'ed-ink' : 'text-[var(--home-heading)] hover:bg-[var(--home-track)]'
-                )}
+                className="set-theme__option ed-focus"
               >
                 <span
                   className="h-3.5 w-3.5 shrink-0 rounded-full"
@@ -404,8 +400,6 @@ export default function SettingsPage() {
             <span className="set-row__value">{t(translationLanguageLabel(translationLanguage))}</span>
             <RowChevron />
           </button>
-          <Divider />
-          <OfflineQuranRow />
           <ReadingRemindersRow divider />
         </div>
 

@@ -15,6 +15,30 @@ import { alignQcfBaselines } from '@/lib/qcf-baseline'
 import type { Verse } from '@/types'
 import { useT } from '@/lib/i18n'
 
+/** However narrow the phone, the script goes no smaller than this. */
+const MIN_SCRIPT_PX = 11
+
+/**
+ * How much the widest line on the page has to shrink to fit (1 when every
+ * line already fits): its column is the page's width, less the line's own
+ * inset, times the page-width setting's share (--mushaf-line-fit, Full or
+ * Spaced).
+ */
+function narrowestFit(grid: HTMLElement, inners: HTMLElement[]): number {
+  const fitVar = parseFloat(getComputedStyle(grid).getPropertyValue('--mushaf-line-fit'))
+  const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
+  let ratio = 1
+  for (const inner of inners) {
+    const lineEl = inner.closest<HTMLElement>('.mushaf-qcf-line')
+    const lineCs = lineEl ? getComputedStyle(lineEl) : null
+    const inset = lineCs ? (parseFloat(lineCs.paddingLeft) || 0) + (parseFloat(lineCs.paddingRight) || 0) : 0
+    const available = (grid.clientWidth - inset) * fitFactor
+    const needed = inner.scrollWidth
+    if (available > 0 && needed > available) ratio = Math.min(ratio, available / needed)
+  }
+  return ratio
+}
+
 /**
  * Every content line on a page has to land on the same final font size.
  * Each line's QCF glyphs need different widths to say the same thing (an
@@ -34,40 +58,39 @@ function useFitQcfPageLines(
     const grid = container?.querySelector<HTMLElement>('.mushaf-fit-grid')
     if (!grid) return
 
+    const glyphs = () =>
+      Array.from(grid.querySelectorAll<HTMLElement>('.mushaf-qcf-line__scale .mushaf-qcf-line__glyphs'))
+
     const fit = () => {
-      const inners = Array.from(
-        grid.querySelectorAll<HTMLElement>('.mushaf-qcf-line__scale .mushaf-qcf-line__glyphs')
-      )
+      const inners = glyphs()
       if (inners.length === 0) return
 
       // A previous shrink would otherwise be measured as "already fits".
       for (const inner of inners) inner.style.fontSize = ''
 
-      const fitVar = parseFloat(getComputedStyle(grid).getPropertyValue('--mushaf-line-fit'))
-      const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
-
-      let minRatio = 1
       let basePx = 0
       for (const inner of inners) {
-        if (!basePx) {
-          const px = parseFloat(getComputedStyle(inner).fontSize)
-          if (Number.isFinite(px) && px > 0) basePx = px
+        const px = parseFloat(getComputedStyle(inner).fontSize)
+        if (Number.isFinite(px) && px > 0) {
+          basePx = px
+          break
         }
-        const lineEl = inner.closest<HTMLElement>('.mushaf-qcf-line')
-        const lineCs = lineEl ? getComputedStyle(lineEl) : null
-        const inset = lineCs
-          ? (parseFloat(lineCs.paddingLeft) || 0) + (parseFloat(lineCs.paddingRight) || 0)
-          : 0
-        const available = (grid.clientWidth - inset) * fitFactor
-        const needed = inner.scrollWidth
-        if (available <= 0 || needed <= available) continue
-        const ratio = (available / needed) * 0.995
-        if (ratio < minRatio) minRatio = ratio
       }
+      if (!basePx) return
 
-      if (minRatio < 1 && basePx > 0) {
-        const size = `${Math.max(14, basePx * minRatio)}px`
-        for (const inner of inners) inner.style.fontSize = size
+      // Shrink every line by the widest one's need, then measure again: the
+      // phone can still make the text bigger than the size asked for (Android
+      // applies its own font-size setting inside the app), and a line left too
+      // wide has its letters cut at the screen's edge. Each pass scales the
+      // size actually set by what the lines then measure, so it settles in one
+      // or two passes whatever the phone does.
+      let size = basePx
+      for (let pass = 0; pass < 4; pass++) {
+        const ratio = narrowestFit(grid, inners)
+        if (ratio >= 1) break
+        size = Math.max(MIN_SCRIPT_PX, size * ratio * 0.995)
+        for (const inner of inners) inner.style.fontSize = `${size}px`
+        if (size === MIN_SCRIPT_PX) break
       }
 
       // Each page font puts its letters at its own height; even them out (see lib/qcf-baseline.ts).
@@ -106,6 +129,13 @@ function useFitQcfPageLines(
     })
     observer.observe(grid)
 
+    // The text can also grow after it was fitted, when the phone applies its
+    // own text size late: a line that then runs past its column fits again.
+    const lines = new ResizeObserver(() => {
+      if (frame === 0 && narrowestFit(grid, glyphs()) < 0.999) refit()
+    })
+    for (const inner of glyphs()) lines.observe(inner)
+
     // Glyph widths change once the page's QCF font swaps in, so the first
     // measurement can under-report and skip the shrink. Re-fit when it arrives.
     const family = fontFamily.replace(/["']/g, '').trim()
@@ -122,6 +152,7 @@ function useFitQcfPageLines(
       cancelled = true
       cancelAnimationFrame(frame)
       observer.disconnect()
+      lines.disconnect()
       fonts?.removeEventListener?.('loadingdone', onFontsLoaded)
     }
     // A family swap keeps the same layout but changes every glyph width, so it has to trigger a re-fit too.

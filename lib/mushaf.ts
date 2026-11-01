@@ -1,6 +1,9 @@
 export const TOTAL_MUSHAF_PAGES = 604
 
-/** Juz boundaries: where each juz begins (surah:ayah). */
+/**
+ * Juz boundaries: where each juz begins (surah:ayah), as in the bundled Quran
+ * data's juz numbers (public/quran-data.json).
+ */
 export const JUZ_STARTS: { surah: number; ayah: number }[] = [
   { surah: 1, ayah: 1 },
   { surah: 2, ayah: 142 },
@@ -16,7 +19,6 @@ export const JUZ_STARTS: { surah: number; ayah: number }[] = [
   { surah: 11, ayah: 6 },
   { surah: 12, ayah: 53 },
   { surah: 15, ayah: 1 },
-  { surah: 16, ayah: 1 },
   { surah: 17, ayah: 1 },
   { surah: 18, ayah: 75 },
   { surah: 21, ayah: 1 },
@@ -24,14 +26,21 @@ export const JUZ_STARTS: { surah: number; ayah: number }[] = [
   { surah: 25, ayah: 21 },
   { surah: 27, ayah: 56 },
   { surah: 29, ayah: 46 },
-  { surah: 31, ayah: 22 },
   { surah: 33, ayah: 31 },
-  { surah: 36, ayah: 1 },
+  { surah: 36, ayah: 28 },
   { surah: 39, ayah: 32 },
   { surah: 41, ayah: 47 },
   { surah: 46, ayah: 1 },
   { surah: 51, ayah: 31 },
   { surah: 58, ayah: 1 },
+  { surah: 67, ayah: 1 },
+  { surah: 78, ayah: 1 },
+]
+
+/** The page each juz begins on in the 604-page Madinah mushaf (the same data). */
+export const JUZ_START_PAGES: readonly number[] = [
+  1, 22, 42, 62, 82, 102, 121, 142, 162, 182, 201, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422,
+  442, 462, 482, 502, 522, 542, 562, 582,
 ]
 
 /** Medinan surah ids (1-indexed). */

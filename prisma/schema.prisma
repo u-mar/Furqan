@@ -321,6 +321,8 @@ model HalaqaPushSubscription {
   p256dh    String
   auth      String
   userAgent String?
+  /// The language the phone uses Naba in ('en', 'so', 'ar'), for the reminder's words. Missing on older rows: English.
+  language  String?
   createdAt DateTime @default(now())
 
   @@index([memberKey])

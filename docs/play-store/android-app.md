@@ -68,7 +68,8 @@ the first release (Play Console → Test and release → App integrity).
   tells the site whether this build has Firebase; asking without it crashes).
 - **Reading reminders** are scheduled on the phone (`lib/reading-reminders.ts`):
   3 and 7 days after the last time someone read, at their usual hour, never
-  daily. Turned on from Home (asked once) or Settings.
+  daily. On wherever the phone allows Naba's notifications (asked when the app
+  first opens); nothing asks about them on Home. Turned off in Settings.
 
 ## The adhan with the app closed
 

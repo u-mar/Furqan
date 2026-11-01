@@ -23,9 +23,9 @@ export const NIGHT_SKY: Sky & { ground: string } = {
   moonGlow: 'rgba(150, 178, 255, 0.28)',
 }
 
-/** Light's sky: a soft mint above, easing into the page's cool pale ground (no cream). */
+/** Light's sky: a little deeper green above, easing into Home's soft green ground (globals.css). */
 export const DAY_SKY: Sky = {
-  colors: ['#d8e6df', '#e1e9e4', '#e6ebe8'],
+  colors: ['#c6dbd1', '#cddfd6', '#d1e2da'],
   sunGlow: 'rgba(255, 240, 196, 0.45)',
   moonGlow: 'rgba(140, 150, 140, 0.22)',
 }
