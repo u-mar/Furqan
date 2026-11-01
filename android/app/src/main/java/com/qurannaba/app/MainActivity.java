@@ -34,8 +34,19 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NabaAppPlugin.class);
         registerPlugin(NabaAdhanPlugin.class);
         super.onCreate(savedInstanceState);
+        keepTextAtItsSize();
         serveBundledQuran();
         askOnFirstOpen();
+    }
+
+    /**
+     * The same Naba whatever the phone's font size. The site sets its own sizes and fits each mushaf
+     * line to the screen; left to itself the WebView would follow the phone's font-size setting, and
+     * a larger setting would make the mushaf's lines run off the page.
+     */
+    private void keepTextAtItsSize() {
+        Bridge bridge = getBridge();
+        if (bridge != null) bridge.getWebView().getSettings().setTextZoom(100);
     }
 
     /**
