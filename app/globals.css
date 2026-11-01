@@ -4636,13 +4636,6 @@ html:not(.dark) .hv-theme {
   --hv-track: rgba(28, 38, 33, 0.1);
 }
 
-/* Home, in light: a soft green page, its skyline a shade deeper (a halaqa
-   keeps the pale ground). */
-html:not(.dark) .hv-theme.home-v2 {
-  --hv-ground: #d3e3db;
-  --hv-skyline: #bdd3c9;
-}
-
 /* The sky itself: down to the skyline's foot in the dark themes, and on
    into the sand in light. A faint gold star lattice and a little grain sit
    on it so it is never a flat fill. */
