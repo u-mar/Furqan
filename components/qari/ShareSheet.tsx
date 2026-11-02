@@ -2,7 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight, Download, Film, LayoutGrid, Link2, Music2, RotateCcw, Share2, X } from 'lucide-react'
+import {
+  Ban,
+  ChevronRight,
+  Download,
+  Film,
+  Flag,
+  Globe,
+  Image as ImageIcon,
+  LayoutGrid,
+  Link2,
+  Lock,
+  MessageCircle,
+  Music2,
+  RotateCcw,
+  Send,
+  Share2,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { shareVerseBlob } from '@/lib/verse-image'
 import { prefetchRecitationAudio, type Recitation } from '@/lib/qari'
 import {
@@ -36,6 +54,7 @@ import Switch from '@/components/qari/Switch'
 import { successFeedback, tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 type Stage =
   | { name: 'choose' }
@@ -44,13 +63,30 @@ type Stage =
   | { name: 'ready'; media: ShareMedia }
   | { name: 'error'; kind: ShareKind; message: string }
 
+/** What else the full-screen view's ⋯ sheet offers, under the ways to share. */
+export interface MoreActions {
+  isOwner: boolean
+  isPrivate: boolean
+  onTogglePrivacy?: () => void
+  onChangeBackground?: () => void
+  onDelete: () => void
+  onReport: () => void
+  blockUsername?: string
+  onBlock?: () => void
+}
+
 interface ShareSheetProps {
   recitation: Recitation
   open: boolean
   onClose: () => void
   onNotice?: (message: string) => void
-  /** The full-screen video view: just "share the link" or "download the video". */
+  /**
+   * The full-screen video view's ⋯ sheet: where to share it in one row (WhatsApp,
+   * Telegram, the link, the phone's own list), and what else can be done with it in
+   * the next (save the video, and `actions`: report, block, or the owner's own).
+   */
   videoView?: boolean
+  actions?: MoreActions
 }
 
 /**
@@ -60,9 +96,12 @@ interface ShareSheetProps {
  * Making the file and sharing it are two taps on purpose — a phone only opens
  * its share sheet inside a fresh tap, and making a video takes a few seconds.
  */
-export default function ShareSheet({ recitation, open, onClose, onNotice, videoView = false }: ShareSheetProps) {
+export default function ShareSheet({ recitation, open, onClose, onNotice, videoView = false, actions }: ShareSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [stage, setStage] = useState<Stage>({ name: 'choose' })
+  // Blocking and deleting ask for a second tap.
+  const [confirming, setConfirming] = useState<'block' | 'delete' | null>(null)
   const [videoOptions, setVideoOptions] = useState<VideoOptions>(DEFAULT_VIDEO_OPTIONS)
   const abortRef = useRef<AbortController | null>(null)
   const videoPossible = useMemo(() => (open ? canMakeVideo() : true), [open])
@@ -71,11 +110,12 @@ export default function ShareSheet({ recitation, open, onClose, onNotice, videoV
   useEffect(() => {
     if (!open) return
     setStage({ name: 'choose' })
+    setConfirming(null)
     // A recitation posted on a background is shared on it too.
     const saved = loadVideoOptions()
     setVideoOptions(recitation.background ? { ...saved, backgroundId: recitation.background } : saved)
     // Start the download now; by the time an option is picked it is usually here.
-    if (recitation.kind !== 'ayah') void prefetchRecitationAudio(recitation.id)
+    if (recitation.kind !== 'ayah') void prefetchRecitationAudio(recitation)
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
@@ -244,6 +284,9 @@ ${url}`)
   if (!open || typeof document === 'undefined') return null
 
   const isAyahCard = recitation.kind === 'ayah'
+  const shareTitle = `${recitation.userName} — ${recitation.title}`
+  const shareUrl = recitationLink(recitation)
+  const pickTarget = videoView && stage.name === 'choose'
 
   // Rendered on the page itself: a card that animates in has its own layer,
   // and a sheet left inside it would sit under the cards that follow.
@@ -267,20 +310,32 @@ ${url}`)
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--home-rule-strong)] sm:hidden" aria-hidden />
 
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 id="qari-share-title" className="home-serif text-[1.3125rem] font-semibold leading-tight text-[var(--home-heading)]">
+        <div className={cn('flex justify-between gap-3', pickTarget ? 'items-center' : 'items-start')}>
+          {/* "Share to" sits small in the middle, as share sheets put it; a spacer the close button's width keeps it there. */}
+          {pickTarget ? <span className="h-10 w-10 shrink-0" aria-hidden /> : null}
+          <div className={cn('min-w-0', pickTarget && 'flex-1 text-center')}>
+            <h2
+              id="qari-share-title"
+              className={cn(
+                'font-semibold leading-tight text-[var(--home-heading)]',
+                pickTarget ? 'text-[0.9375rem]' : 'home-serif text-[1.3125rem]'
+              )}
+            >
               {stage.name === 'ready'
                 ? stage.media.kind === 'video'
                   ? t('Your video is ready')
                   : t('Your audio is ready')
-                : isAyahCard
-                  ? t('Share ayah card')
-                  : t('Share recitation')}
+                : pickTarget
+                  ? t('Share to')
+                  : isAyahCard
+                    ? t('Share ayah card')
+                    : t('Share recitation')}
             </h2>
-            <p className="mt-0.5 truncate text-[0.82rem] text-[var(--home-muted)]">
-              {recitation.title} · {recitation.userName}
-            </p>
+            {pickTarget ? null : (
+              <p className="mt-0.5 truncate text-[0.82rem] text-[var(--home-muted)]">
+                {recitation.title} · {recitation.userName}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -292,7 +347,94 @@ ${url}`)
           </button>
         </div>
 
-        {stage.name === 'choose' && isAyahCard ? (
+        {pickTarget ? (
+          <>
+            {/* Where to: the apps people share to most, the link, and the phone's own list. */}
+            <div className="qari-more-row mt-4">
+              <MoreTarget
+                href={`https://wa.me/?text=${encodeURIComponent(`${shareTitle}\n${shareUrl}`)}`}
+                tone="#25d366"
+                icon={MessageCircle}
+                label="WhatsApp"
+              />
+              <MoreTarget
+                href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`}
+                tone="#229ed9"
+                icon={Send}
+                label="Telegram"
+              />
+              <MoreTarget icon={Link2} label={t('Copy link')} onClick={() => void handleCopy()} />
+              {canNativeShare ? (
+                <MoreTarget icon={Share2} label={t('More')} onClick={() => void (isAyahCard ? shareCard() : handleShareLink())} />
+              ) : null}
+            </div>
+            <div className="my-4 h-px bg-white/10" aria-hidden />
+            {/* What else: keep it, and the rest of what used to sit behind the ⋯ menu. */}
+            <div className="qari-more-row pb-1">
+              {isAyahCard ? (
+                <MoreTarget icon={Download} label={t('Save picture')} onClick={() => void saveCard()} />
+              ) : (
+                <MoreTarget icon={Download} label={t('Save video')} disabled={!videoPossible} onClick={() => void make('video')} />
+              )}
+              {actions?.isOwner && actions.onChangeBackground ? (
+                <MoreTarget
+                  icon={ImageIcon}
+                  label={t('Background')}
+                  onClick={() => {
+                    close()
+                    actions.onChangeBackground?.()
+                  }}
+                />
+              ) : null}
+              {actions?.isOwner && actions.onTogglePrivacy ? (
+                <MoreTarget
+                  icon={actions.isPrivate ? Globe : Lock}
+                  label={actions.isPrivate ? t('Make public') : t('Make private')}
+                  onClick={() => {
+                    close()
+                    actions.onTogglePrivacy?.()
+                  }}
+                />
+              ) : null}
+              {actions?.isOwner ? (
+                <MoreTarget
+                  danger
+                  icon={Trash2}
+                  label={confirming === 'delete' ? t('Tap again to delete') : t('Delete')}
+                  onClick={() => {
+                    if (confirming !== 'delete') return setConfirming('delete')
+                    close()
+                    actions.onDelete()
+                  }}
+                />
+              ) : null}
+              {actions && !actions.isOwner ? (
+                <MoreTarget
+                  icon={Flag}
+                  label={t('Report')}
+                  onClick={() => {
+                    close()
+                    actions.onReport()
+                  }}
+                />
+              ) : null}
+              {actions && !actions.isOwner && actions.onBlock && actions.blockUsername ? (
+                <MoreTarget
+                  danger
+                  icon={Ban}
+                  label={confirming === 'block' ? t('Tap again to block') : t('Block')}
+                  onClick={() => {
+                    if (confirming !== 'block') return setConfirming('block')
+                    close()
+                    actions.onBlock?.()
+                  }}
+                />
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        {stage.name === 'choose' && isAyahCard && !videoView ? (
           <div className="mt-5 flex items-start justify-center gap-7 pb-2">
             {canNativeShare ? <ShareIconAction icon={Share2} label={t('Share picture')} onClick={() => void shareCard()} /> : null}
             <ShareIconAction icon={Download} label={t('Save picture')} onClick={() => void saveCard()} />
@@ -300,20 +442,6 @@ ${url}`)
           </div>
         ) : null}
 
-        {stage.name === 'choose' && videoView && !isAyahCard ? (
-          <div className="mt-5 flex items-start justify-center gap-7 pb-2">
-            <ShareIconAction
-              icon={Download}
-              label={t('Save video')}
-              disabled={!videoPossible}
-              onClick={() => void make('video')}
-            />
-            <ShareIconAction icon={Link2} label={t('Copy link')} onClick={() => void handleCopy()} />
-            {canNativeShare ? (
-              <ShareIconAction icon={Share2} label={t('Share to…')} onClick={() => void handleShareLink()} />
-            ) : null}
-          </div>
-        ) : null}
         {stage.name === 'choose' && videoView && !isAyahCard && videoPossible ? (
           <>
             <QualityRow options={videoOptions} onChange={setVideoOptions} seconds={recitation.durationSec} />
@@ -435,6 +563,52 @@ ${url}`)
 }
 
 /** A round icon with its name underneath — the way TikTok lays out its share sheet. */
+/**
+ * One round button in the ⋯ sheet's rows, its name under it: a place to share to
+ * (`href`, in that app's colour) or something to do. `danger` for blocking and deleting.
+ */
+function MoreTarget({
+  icon: Icon,
+  label,
+  tone,
+  href,
+  danger,
+  disabled,
+  onClick,
+}: {
+  icon: typeof Film
+  label: string
+  tone?: string
+  href?: string
+  danger?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}) {
+  const circle = (
+    <span
+      className={cn('qari-more-target__circle', danger && 'qari-more-target__circle--danger')}
+      style={tone ? { background: tone, color: '#ffffff' } : undefined}
+    >
+      <Icon className="h-[22px] w-[22px]" strokeWidth={1.9} />
+    </span>
+  )
+  const name = <span className={cn('qari-more-target__label', danger && 'text-rose-400')}>{label}</span>
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="qari-more-target qari-press ed-focus" onClick={() => tapFeedback()}>
+        {circle}
+        {name}
+      </a>
+    )
+  }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className="qari-more-target qari-press ed-focus disabled:opacity-40">
+      {circle}
+      {name}
+    </button>
+  )
+}
+
 function ShareIconAction({
   icon: Icon,
   label,

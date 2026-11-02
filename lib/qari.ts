@@ -20,6 +20,8 @@ export interface Recitation {
   verseKey: string | null
   /** An ayah card's picture. null for recitations. */
   imageUrl: string | null
+  /** Where its recording is fetched from: straight from R2, or through the app for an older one. */
+  audioUrl?: string
   userName: string
   userUsername: string
   /** What the reciter called this recording. */
@@ -411,11 +413,12 @@ export function getCachedRecitationAudio(id: string): Blob | null {
 /** Recordings whose download is still under way. */
 const downloading = new Set<string>()
 
-export function prefetchRecitationAudio(id: string): Promise<Blob | null> {
+export function prefetchRecitationAudio(recitation: Pick<Recitation, 'id' | 'audioUrl'>): Promise<Blob | null> {
+  const id = recitation.id
   let pending = audioBlobs.get(id)
   if (!pending) {
     downloading.add(id)
-    pending = fetch(recitationAudioUrl(id))
+    pending = fetch(recitation.audioUrl ?? recitationAudioUrl(id))
       .then((res) => (res.ok ? res.blob() : null))
       .catch(() => null)
       .finally(() => downloading.delete(id))

@@ -73,7 +73,7 @@ function fileStem(r: Pick<Recitation, 'title' | 'userName'>): string {
 
 /** The recording as recorded, decoded. */
 async function decodeRecitationAudio(r: Recitation, signal?: AbortSignal): Promise<AudioBuffer> {
-  const blob = await prefetchRecitationAudio(r.id)
+  const blob = await prefetchRecitationAudio(r)
   if (!blob || blob.size === 0) throw new Error(tr('Could not download that recitation.'))
   throwIfCancelled(signal)
   // An offline context decodes without ever asking for the speaker.
@@ -203,8 +203,8 @@ function setFrameSize(width: number): void {
   FOOTER_LEFT = Math.round(64 * CARD)
   FOOTER_HEIGHT = Math.round(110 * CARD)
   FOOTER_BOTTOM = H - Math.round(48 * CARD)
-  LINE_MAX = Math.round(22 * S)
-  LINE_MIN = Math.round(16 * S)
+  LINE_MAX = Math.round(18 * S)
+  LINE_MIN = Math.round(14 * S)
 }
 
 /** A phrase drawn twice, every word lit and every word faint, and where each word is. */
@@ -317,8 +317,8 @@ function fitBlock(
 }
 
 /** The phrase's type, as in the swipe view: as large as this, and only as small as that before it takes two lines. */
-let LINE_MAX = Math.round(22 * S)
-let LINE_MIN = Math.round(16 * S)
+let LINE_MAX = Math.round(18 * S)
+let LINE_MIN = Math.round(14 * S)
 
 function withShadow(ctx: CanvasRenderingContext2D) {
   ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
@@ -362,7 +362,7 @@ function drawCaption(opts: {
   const translationText = opts.mode === 'ayah' ? null : opts.translation
   // On its own the translation is the text to read, so it is set larger. The italic serif's
   // letters are small for their size, so it is set a little larger than Amiri.
-  const translationSize = opts.mode === 'translation' ? (opts.translationRtl ? 18 : 19) : opts.translationRtl ? 14 : 15
+  const translationSize = opts.mode === 'translation' ? (opts.translationRtl ? 15 : 16) : opts.translationRtl ? 12 : 13
   const [, measure] = makeCanvas(10, 10)
   // On one line, as large as fits; a phrase too long even at the smallest size takes more.
   let size = LINE_MAX

@@ -1466,9 +1466,10 @@ function ReadPageContent() {
           {nowPlaying ? (
             // One row: the ayah, the player, and stop.
             <div className="mushaf-read-dock__now">
-              <span className="mushaf-read-dock__now-ayah">
-                {t('Ayah {ayah}', { ayah: nowPlaying.ayah })}
-                {nowPlaying.total ? ` / ${nowPlaying.total}` : ''}
+              {/* Just the numbers, so the bar has the room. */}
+              <span className="mushaf-read-dock__now-ayah" aria-label={t('Ayah {ayah}', { ayah: nowPlaying.ayah })}>
+                {nowPlaying.ayah}
+                {nowPlaying.total ? `/${nowPlaying.total}` : ''}
               </span>
 
               {nowPlayingKey && !pickedOther ? (

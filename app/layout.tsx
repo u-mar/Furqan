@@ -11,6 +11,7 @@ import ListenPlaybackGuard from '@/components/ListenPlaybackGuard'
 import OfflineBootstrap from '@/components/OfflineBootstrap'
 import NativeBars from '@/components/NativeBars'
 import { SITE_URL, openGraphFor } from '@/lib/share-preview'
+import NativeBack from '@/components/NativeBack'
 import NativeNotifications from '@/components/NativeNotifications'
 import NativeShare from '@/components/NativeShare'
 import PwaRegister from '@/components/PwaRegister'
@@ -122,6 +123,7 @@ export default function RootLayout({
           <NativeBars />
           <NativeShare />
           <NativeNotifications />
+          <NativeBack />
           <AccountPromptHost />
           <ToastHost />
           <BottomNav />

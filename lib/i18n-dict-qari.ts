@@ -546,4 +546,6 @@ export const QARI: Dict = {
     so: 'Muuqaalladu waxay hayaan muuqaalka la doortay, ilaa dhammaadka.',
     ar: 'تبقى المقاطع على المقطع المختار من البداية إلى النهاية.',
   },
+  'Share to': { so: 'U wadaag', ar: 'مشاركة إلى' },
+  Block: { so: 'Xannib', ar: 'حظر' },
 }

@@ -12,6 +12,7 @@ import android.webkit.ServiceWorkerController;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.Bridge;
@@ -37,6 +38,38 @@ public class MainActivity extends BridgeActivity {
         keepTextAtItsSize();
         serveBundledQuran();
         askOnFirstOpen();
+        handleBackButton();
+    }
+
+    /**
+     * The phone's back button never closes Naba from inside it: the page decides
+     * (components/NativeBack.tsx). An open sheet closes, any other screen goes to Home, and on
+     * Home the app is left (kept in the background, as other apps are). A page that cannot say,
+     * like the no-internet one, goes back in its own history, or leaves.
+     */
+    private void handleBackButton() {
+        getOnBackPressedDispatcher().addCallback(
+            this,
+            new OnBackPressedCallback(true) {
+                @Override
+                public void handleOnBackPressed() {
+                    Bridge bridge = getBridge();
+                    if (bridge == null) {
+                        moveTaskToBack(true);
+                        return;
+                    }
+                    WebView webView = bridge.getWebView();
+                    webView.evaluateJavascript("window.nabaBack ? window.nabaBack() : ''", (answer) -> {
+                        if ("\"handled\"".equals(answer)) return;
+                        if (!"\"leave\"".equals(answer) && webView.canGoBack()) {
+                            webView.goBack();
+                            return;
+                        }
+                        moveTaskToBack(true);
+                    });
+                }
+            }
+        );
     }
 
     /**

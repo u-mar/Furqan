@@ -52,7 +52,7 @@ export default function TranslationLanguagePicker({
       </button>
       {open && (
         <ul
-          className="mushaf-dock-menu absolute bottom-full right-2 z-50 mb-2 max-h-[min(50vh,22rem)] w-52 overflow-y-auto overscroll-contain rounded-2xl py-1.5"
+          className="mushaf-dock-menu absolute bottom-full end-2 z-50 mb-2 max-h-[min(50vh,22rem)] w-52 overflow-y-auto overscroll-contain rounded-2xl py-1.5"
           role="listbox"
           aria-label={t('Translation language')}
         >

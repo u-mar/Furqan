@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface SettingsSheetProps {
   open: boolean
@@ -19,6 +20,7 @@ interface SettingsSheetProps {
  */
 export default function SettingsSheet({ open, title, description, onClose, children }: SettingsSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   // Held in a ref so an inline onClose does not re-run the effect every render.
   const closeRef = useRef(onClose)
   useEffect(() => {

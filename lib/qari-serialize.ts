@@ -1,5 +1,6 @@
 import type { Recitation as RecitationRecord } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { r2AudioUrl } from '@/lib/qari-storage'
 
 /** Which of these recitations the viewer has hearted, in one query. */
 export async function likedIdsFor(viewerId: string | null | undefined, ids: string[]): Promise<Set<string>> {
@@ -19,6 +20,8 @@ export function toClientRecitation(r: RecitationRecord, liked: boolean) {
     verseKey: r.verseKey ?? null,
     // Its picture through the app's own route, which hides it with the post.
     imageUrl: r.imageId ? `/api/qari/image/${r.id}` : null,
+    // A recording in R2 is fetched straight from there; one still in GridFS through the app.
+    audioUrl: (r.audioId && r2AudioUrl(r.audioId)) || `/api/qari/audio/${r.id}`,
     userName: r.userName,
     userUsername: r.userUsername,
     title: r.title || 'Recitation',

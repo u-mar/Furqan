@@ -11,6 +11,7 @@ import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { availableQiraat, getQiraat, RECITERS, type QiraatId, type Reciter } from '@/lib/reciters'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface ReciterPickerSheetProps {
   open: boolean
@@ -99,6 +100,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect }: ReciterPickerSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [query, setQuery] = useState('')
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
   const [mode, setMode] = useState<ListMode>('all')

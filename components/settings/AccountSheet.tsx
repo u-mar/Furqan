@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import AuthFlow from '@/components/account/AuthFlow'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface AccountSheetProps {
   open: boolean
@@ -18,6 +19,7 @@ interface AccountSheetProps {
  */
 export default function AccountSheet({ open, onClose, onSuccess, reason }: AccountSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   // The page underneath should not scroll while this covers it.
   useEffect(() => {
     if (!open) return

@@ -6,6 +6,7 @@ import { clearSignedInUser, deleteLocalUser, loginLocalUser, type AppUser } from
 import { cn } from '@/lib/cn'
 import GoogleButton from '@/components/account/GoogleButton'
 import { tr, useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface DeleteAccountSheetProps {
   open: boolean
@@ -24,6 +25,7 @@ interface DeleteAccountSheetProps {
  */
 export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: DeleteAccountSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [pin, setPin] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)

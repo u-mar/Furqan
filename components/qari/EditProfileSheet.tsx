@@ -6,6 +6,7 @@ import QariAvatar, { removeAvatar, uploadAvatar } from '@/components/qari/QariAv
 import { renameQari } from '@/lib/qari'
 import { renameLocalUser, setSignedInUser, type AppUser } from '@/lib/auth'
 import { tr, useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface EditProfileSheetProps {
   open: boolean
@@ -33,6 +34,7 @@ export default function EditProfileSheet({
   onNotice,
 }: EditProfileSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [name, setName] = useState(viewer.name)
   const [saving, setSaving] = useState(false)
   const [busyPhoto, setBusyPhoto] = useState(false)

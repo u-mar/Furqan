@@ -26,6 +26,7 @@ import { FEATURED_SHARE_BACKGROUND_IDS, SHARE_BACKGROUND_GROUPS } from '@/lib/sh
 import { getWordTranslations } from '@/lib/word-translations'
 import { toast } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 export interface ShareVerseTarget {
   verseKey: string
@@ -104,6 +105,7 @@ export default function ShareVerseSheet({
   onClose,
 }: ShareVerseSheetProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [mounted, setMounted] = useState(false)
   const [backgroundId, setBackgroundId] = useState(DEFAULT_BACKGROUND_ID)
   const [galleryOpen, setGalleryOpen] = useState(false)

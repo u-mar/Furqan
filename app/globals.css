@@ -611,8 +611,8 @@ html.dark .mushaf-read-dock {
   display: flex;
   min-height: 44px;
   align-items: center;
-  gap: 4px;
-  padding: 3px 6px 3px 14px;
+  gap: 2px;
+  padding: 3px 4px 3px 14px;
   border-bottom: 1px solid var(--mushaf-read-chrome-border);
 }
 
@@ -681,7 +681,7 @@ html.dark .mushaf-read-dock {
 }
 .mushaf-player__time {
   flex-shrink: 0;
-  min-width: 2rem;
+  padding-inline: 3px;
   text-align: center;
   font-size: 10.5px;
   font-weight: 600;
@@ -807,7 +807,7 @@ html.dark .mushaf-dock-menu {
   justify-content: space-between;
   gap: 12px;
   padding: 11px 16px;
-  text-align: left;
+  text-align: start;
   font-size: 14px;
   transition: background-color 0.12s ease;
 }
@@ -5524,3 +5524,50 @@ html.lite .home-sky::after {
   border-radius: 1.375rem;
 }
 
+
+/* Qari's ⋯ sheet (components/qari/ShareSheet.tsx, full-screen view): rows of round buttons with
+   their names under them, a row scrolling sideways when it holds more than fit. */
+.qari-more-row {
+  display: flex;
+  gap: 4px;
+  margin-inline: -8px;
+  padding-inline: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.qari-more-row::-webkit-scrollbar {
+  display: none;
+}
+.qari-more-target {
+  display: flex;
+  width: 4.5rem;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  border-radius: 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+.qari-more-target__circle {
+  display: flex;
+  height: 52px;
+  width: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #f5f5f4;
+}
+.qari-more-target__circle--danger {
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
+}
+.qari-more-target__label {
+  max-width: 100%;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.86);
+}

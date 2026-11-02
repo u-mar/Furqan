@@ -19,6 +19,7 @@ import {
 import { getQiraat, getReciterById } from '@/lib/reciters'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 const CLOSE_MS = 260
 /** Stops above the bottom tab bar, which Listen always shows, rather than covering it. */
@@ -55,6 +56,7 @@ export default function NowPlayingSheet({
       onClose()
     }, CLOSE_MS)
   }, [onClose])
+  useCloseOnBack(open, dismiss)
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), [])
 

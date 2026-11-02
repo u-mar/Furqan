@@ -9,6 +9,7 @@ import { searchAyahs, type AyahSearchResult } from '@/lib/search-ayahs'
 import { filterChapters } from '@/lib/search-chapters'
 import type { Chapter, Verse } from '@/types'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 interface SurahSearchModalProps {
   open: boolean
@@ -30,6 +31,7 @@ export default function SurahSearchModal({
   onSelectAyah,
 }: SurahSearchModalProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [query, setQuery] = useState('')
   const [verses, setVerses] = useState<Verse[] | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)

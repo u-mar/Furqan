@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronUp, FastForward, Headphones, Loader2, Lock, Play, Plus, Share2 } from 'lucide-react'
+import { ChevronUp, FastForward, Headphones, Loader2, Lock, MoreHorizontal, Play, Plus } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import QariAvatar from '@/components/qari/QariAvatar'
 import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
-import RowMenu from '@/components/qari/RowMenu'
+import { useStartRecording } from '@/components/qari/QariRecordFab'
 import ShareSheet from '@/components/qari/ShareSheet'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
@@ -70,8 +70,8 @@ const TEXT_SHADOW = '0 2px 16px rgba(0, 0, 0, 0.65)'
 const TRANSLATION_SHADOW = '0 1px 8px rgba(0, 0, 0, 0.55)'
 
 /** The phrase's type: as large as this, and only as small as that before it may take two lines. */
-const LINE_MAX_PX = 22
-const LINE_MIN_PX = 16
+const LINE_MAX_PX = 18
+const LINE_MIN_PX = 14
 
 /** How faint a word is before the reciter reaches it. */
 const UNSAID_OPACITY = 0.38
@@ -268,14 +268,14 @@ function AyahStage({
                       fontFamily: 'var(--font-amiri), Amiri, serif',
                       fontWeight: 400,
                       textShadow: TRANSLATION_SHADOW,
-                      fontSize: mode === 'translation' ? 18 : 14,
+                      fontSize: mode === 'translation' ? 15 : 12,
                     }
                   : {
                       fontFamily: "var(--font-edit), 'Cormorant Garamond', Georgia, serif",
                       fontStyle: 'italic',
                       fontWeight: 500,
                       textShadow: TRANSLATION_SHADOW,
-                      fontSize: mode === 'translation' ? 19 : 15,
+                      fontSize: mode === 'translation' ? 16 : 13,
                     }
               }
             >
@@ -592,6 +592,7 @@ const Slide = memo(function Slide({
   const sheikh = findSheikh(recitation.imitating)
   const firstTag = recitation.hashtags[0]
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
+  const startRecording = useStartRecording()
 
   /* Follow, from the reciter's picture — only asked for once this is the slide on screen. */
   const [following, setFollowingState] = useState<boolean | null>(null)
@@ -799,29 +800,29 @@ const Slide = memo(function Slide({
               <LikeButton recitation={recitation} viewerId={viewerId} onNotice={onNotice} />
             </div>
             {hasTimeline && !isAyahCard ? <TextModeButton onNotice={onNotice} /> : null}
+            {/* A new recitation of your own, from right here (asks to sign in first when needed). */}
+            <Link
+              href="/qari/record"
+              onClick={startRecording}
+              aria-label={t('Record')}
+              className="qari-press ed-focus flex h-12 w-12 items-center justify-center"
+            >
+              <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-2 border-white text-white">
+                <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
+              </span>
+            </Link>
+            {/* Everything else, sharing included, in one sheet (the ShareSheet below). */}
             <button
               type="button"
               onClick={() => {
                 tapFeedback()
                 setShareOpen(true)
               }}
-              aria-label={t('Share')}
-              className="qari-press ed-focus flex h-12 w-12 flex-col items-center justify-center gap-0.5 rounded-full text-[12px] font-medium text-white"
+              aria-label={t('More')}
+              className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full text-white"
             >
-              <Share2 className="h-[28px] w-[28px]" strokeWidth={1.9} />
+              <MoreHorizontal className="h-8 w-8" strokeWidth={2.2} />
             </button>
-            <div className="[&>div>button:first-child]:h-11 [&>div>button:first-child]:w-11 [&>div>button:first-child]:text-white [&>div>button:first-child>svg]:h-7 [&>div>button:first-child>svg]:w-7">
-              <RowMenu
-                isOwner={isOwner}
-                isPrivate={isPrivate}
-                onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
-                onChangeBackground={isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
-                onReport={handleReportTap}
-                onDelete={() => void handleDelete()}
-                blockUsername={recitation.userUsername}
-                onBlock={() => void handleBlock()}
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -835,7 +836,23 @@ const Slide = memo(function Slide({
         />
       )}
 
-      <ShareSheet recitation={shown} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} videoView />
+      <ShareSheet
+        recitation={shown}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        onNotice={onNotice}
+        videoView
+        actions={{
+          isOwner,
+          isPrivate,
+          onTogglePrivacy: isOwner ? () => void handleTogglePrivacy() : undefined,
+          onChangeBackground: isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined,
+          onDelete: () => void handleDelete(),
+          onReport: handleReportTap,
+          blockUsername: recitation.userUsername,
+          onBlock: () => void handleBlock(),
+        }}
+      />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
       {isOwner && !isAyahCard ? (
         <BackgroundGallery
@@ -1008,7 +1025,7 @@ export default function SwipeFeed({
   useEffect(() => {
     // Download the ones a swipe will land on next, so they start the instant they settle.
     for (const near of [items[clampedActive], items[clampedActive + 1], items[clampedActive + 2], items[clampedActive - 1]]) {
-      if (near && near.kind !== 'ayah') void prefetchRecitationAudio(near.id)
+      if (near && near.kind !== 'ayah') void prefetchRecitationAudio(near)
     }
     // Once per length of the list, so a failed request is not retried in a loop.
     if (hasMore && !loadingMore && items.length > 0 && clampedActive >= items.length - 3 && askedAt.current !== items.length) {

@@ -45,7 +45,7 @@ export default function ReciterPicker({ reciterId, className }: ReciterPickerPro
       </button>
       {open && (
         <ul
-          className="mushaf-dock-menu absolute bottom-full left-2 z-50 mb-2 max-h-72 w-60 overflow-y-auto rounded-2xl py-1.5"
+          className="mushaf-dock-menu absolute bottom-full start-2 z-50 mb-2 max-h-72 w-60 overflow-y-auto rounded-2xl py-1.5"
           role="listbox"
           aria-label={t('Choose reciter')}
         >

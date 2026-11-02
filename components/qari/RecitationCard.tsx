@@ -142,7 +142,7 @@ function RecitationCard({
       )}
       style={{ animationDelay: `${Math.min(index, 10) * 35}ms` }}
       onPointerDown={() => {
-        if (!isAyahCard) void prefetchRecitationAudio(recitation.id)
+        if (!isAyahCard) void prefetchRecitationAudio(recitation)
       }}
       onClick={onCardClick}
     >

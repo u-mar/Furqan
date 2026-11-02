@@ -224,7 +224,7 @@ function start(el: HTMLAudioElement, r: Recitation, fresh: boolean, downloaded: 
     const cached = downloaded && downloaded.size > 0 ? downloaded : getCachedRecitationAudio(r.id)
     if (objectUrl) URL.revokeObjectURL(objectUrl)
     objectUrl = cached ? URL.createObjectURL(cached) : null
-    el.src = objectUrl ?? recitationAudioUrl(r.id)
+    el.src = objectUrl ?? r.audioUrl ?? recitationAudioUrl(r.id)
     loadedId = r.id
     // A new source can reset the speed to the default; the default is kept in step with it.
     el.playbackRate = rate

@@ -6,6 +6,7 @@ import { Check, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 export interface GalleryItem {
   id: string
@@ -31,6 +32,7 @@ interface BackgroundGalleryProps {
  */
 export default function BackgroundGallery({ open, items, groups, selectedId, onSelect, onClose }: BackgroundGalleryProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])

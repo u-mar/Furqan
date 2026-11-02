@@ -19,6 +19,7 @@ import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
 import { versePageNumber } from '@/lib/qcf-page'
 import type { Chapter, Verse } from '@/types'
 import { useT } from '@/lib/i18n'
+import { useCloseOnBack } from '@/lib/native-back'
 
 type TopTab = 'chapters' | 'quarters'
 type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
@@ -68,6 +69,7 @@ export default function ContentsDrawer({
   onGoToPage,
 }: ContentsDrawerProps) {
   const t = useT()
+  useCloseOnBack(open, onClose)
   const [topTab, setTopTab] = useState<TopTab>('chapters')
   const [bottomNav, setBottomNav] = useState<BottomNav>('chapters')
   const [meta, setMeta] = useState<ChapterMeta[]>([])
