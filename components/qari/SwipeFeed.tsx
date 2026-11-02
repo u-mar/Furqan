@@ -6,6 +6,7 @@ import { ChevronUp, FastForward, Headphones, Loader2, Lock, MoreHorizontal, Play
 import LikeButton from '@/components/qari/LikeButton'
 import QariAvatar from '@/components/qari/QariAvatar'
 import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
+import EditTitleSheet from '@/components/qari/EditTitleSheet'
 import { useStartRecording } from '@/components/qari/QariRecordFab'
 import ShareSheet from '@/components/qari/ShareSheet'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
@@ -319,6 +320,8 @@ function Backdrop({ recitation, playing, position }: { recitation: Recitation; p
     () => shotStarts((recitation.verseTimeline ?? []).map((entry) => entry.atSeconds), recitation.durationSec),
     [recitation.durationSec, recitation.verseTimeline]
   )
+  // Black is just black: no mist drifting over it, no shading.
+  if (!background.url && !background.videoUrl) return <div className="absolute inset-0 bg-black" aria-hidden />
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
       {reel.length > 1 ? (
@@ -448,6 +451,8 @@ interface SlideProps {
   onRemoved: (id: string) => void
   onUpdated?: (id: string, patch: Partial<Recitation>) => void
   onNotice: (message: string) => void
+  /** Switches Qari to its list of recitations to listen to, from the ⋯ sheet. */
+  onShowList?: () => void
 }
 
 /** How long a finger must stay down before it counts as a hold, and how fast a hold plays. */
@@ -531,19 +536,19 @@ function TextModeButton({ onNotice }: { onNotice: (message: string) => void }) {
         onNotice(tr(TEXT_MODE_NOTICE[cycleQariTextMode()]))
       }}
       aria-label={t('Show: {mode}', { mode: t(TEXT_MODE_NOTICE[mode]) })}
-      className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full text-white"
+      className="qari-press ed-focus flex h-11 w-11 items-center justify-center rounded-full text-white"
     >
       <span
         aria-hidden
-        className="flex h-[30px] min-w-[30px] items-center justify-center gap-[3px] rounded-[9px] border-[1.8px] border-current px-[5px] leading-none"
+        className="flex h-[27px] min-w-[27px] items-center justify-center gap-[3px] rounded-[8px] border-[1.8px] border-current px-[4px] leading-none"
       >
         {mode !== 'translation' ? (
-          <span className="text-[17px]" style={{ fontFamily: 'var(--font-amiri), Amiri, serif', transform: 'translateY(-1px)' }}>
+          <span className="text-[15px]" style={{ fontFamily: 'var(--font-amiri), Amiri, serif', transform: 'translateY(-1px)' }}>
             ع
           </span>
         ) : null}
         {mode === 'both' ? <span className="h-3.5 w-px bg-current opacity-60" /> : null}
-        {mode !== 'ayah' ? <span className="home-serif text-[14px] font-semibold">A</span> : null}
+        {mode !== 'ayah' ? <span className="home-serif text-[12.5px] font-semibold">A</span> : null}
       </span>
     </button>
   )
@@ -560,6 +565,7 @@ const Slide = memo(function Slide({
   onRemoved,
   onUpdated,
   onNotice,
+  onShowList,
 }: SlideProps) {
   const t = useT()
   const {
@@ -572,6 +578,9 @@ const Slide = memo(function Slide({
     setReportOpen,
     backgroundOpen,
     setBackgroundOpen,
+    titleOpen,
+    setTitleOpen,
+    handleRename,
     handleDelete,
     handleTogglePrivacy,
     handleChangeBackground,
@@ -752,7 +761,7 @@ const Slide = memo(function Slide({
             </p>
 
             {hasTimeline || isAyahCard ? (
-              <h2 className="mt-2 line-clamp-2 text-[15.5px] font-medium leading-snug text-white">{recitation.title}</h2>
+              <h2 className="mt-2 line-clamp-2 text-[15.5px] font-medium leading-snug text-white">{shown.title}</h2>
             ) : null}
 
             {recitation.caption ? (
@@ -776,14 +785,14 @@ const Slide = memo(function Slide({
           </div>
 
           {/* The column of actions down the right edge. */}
-          <div className="flex shrink-0 flex-col items-center gap-3 drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
+          <div className="flex shrink-0 flex-col items-center gap-2 drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
             <div className="relative mb-3">
               <Link
                 href={profileHref}
                 aria-label={t('{userName}’s profile', { userName: recitation.userName })}
                 className="qari-press ed-focus isolate block rounded-full bg-white p-[2px]"
               >
-                <QariAvatar username={recitation.userUsername} name={recitation.userName} size={46} />
+                <QariAvatar username={recitation.userUsername} name={recitation.userName} size={42} />
               </Link>
               {showFollow ? (
                 <button
@@ -796,7 +805,7 @@ const Slide = memo(function Slide({
                 </button>
               ) : null}
             </div>
-            <div className="[&>button]:h-auto [&>button]:flex-col [&>button]:gap-0.5 [&>button]:py-1 [&>button>svg]:h-8 [&>button>svg]:w-8 [&>button]:text-[12px] [&>button]:font-medium">
+            <div className="[&>button]:h-auto [&>button]:flex-col [&>button]:gap-0.5 [&>button]:py-1 [&>button>svg]:h-7 [&>button>svg]:w-7 [&>button]:text-[11.5px] [&>button]:font-medium">
               <LikeButton recitation={recitation} viewerId={viewerId} onNotice={onNotice} />
             </div>
             {hasTimeline && !isAyahCard ? <TextModeButton onNotice={onNotice} /> : null}
@@ -805,10 +814,10 @@ const Slide = memo(function Slide({
               href="/qari/record"
               onClick={startRecording}
               aria-label={t('Record')}
-              className="qari-press ed-focus flex h-12 w-12 items-center justify-center"
+              className="qari-press ed-focus flex h-11 w-11 items-center justify-center"
             >
-              <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border-2 border-white text-white">
-                <Plus className="h-[22px] w-[22px]" strokeWidth={2.4} />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-white">
+                <Plus className="h-[19px] w-[19px]" strokeWidth={2.4} />
               </span>
             </Link>
             {/* Everything else, sharing included, in one sheet (the ShareSheet below). */}
@@ -819,9 +828,9 @@ const Slide = memo(function Slide({
                 setShareOpen(true)
               }}
               aria-label={t('More')}
-              className="qari-press ed-focus flex h-12 w-12 items-center justify-center rounded-full text-white"
+              className="qari-press ed-focus flex h-11 w-11 items-center justify-center rounded-full text-white"
             >
-              <MoreHorizontal className="h-8 w-8" strokeWidth={2.2} />
+              <MoreHorizontal className="h-7 w-7" strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -845,14 +854,17 @@ const Slide = memo(function Slide({
         actions={{
           isOwner,
           isPrivate,
+          onEditTitle: isOwner ? () => setTitleOpen(true) : undefined,
           onTogglePrivacy: isOwner ? () => void handleTogglePrivacy() : undefined,
           onChangeBackground: isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined,
           onDelete: () => void handleDelete(),
           onReport: handleReportTap,
           blockUsername: recitation.userUsername,
           onBlock: () => void handleBlock(),
+          onShowList,
         }}
       />
+      {isOwner ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
       {isOwner && !isAyahCard ? (
         <BackgroundGallery
@@ -886,6 +898,7 @@ export default function SwipeFeed({
   onRemoved,
   onUpdated,
   onNotice,
+  onShowList,
   empty,
 }: {
   items: Recitation[]
@@ -902,6 +915,8 @@ export default function SwipeFeed({
   onRemoved: (id: string) => void
   onUpdated?: (id: string, patch: Partial<Recitation>) => void
   onNotice: (message: string) => void
+  /** Switches Qari to its list view, offered in each post's ⋯ sheet. */
+  onShowList?: () => void
   /** Shown in place of the slides when there is nothing to show. */
   empty?: React.ReactNode
 }) {
@@ -1091,6 +1106,7 @@ export default function SwipeFeed({
             onRemoved={onRemoved}
             onUpdated={onUpdated}
             onNotice={onNotice}
+            onShowList={onShowList}
           />
         </div>
       ))}

@@ -556,15 +556,13 @@ function drawTitleCard(title: string, serif: string): HTMLCanvasElement {
   return canvas
 }
 
-/** The swipe view's shade: darker at the top and bottom so the text there reads, and the soft black when there is no picture. */
+/** The swipe view's shade: darker at the top and bottom so the text there reads, and plain black when there is no picture. */
 function drawShade(hasPicture: boolean): HTMLCanvasElement {
   const [canvas, ctx] = makeCanvas()
   if (!hasPicture) {
-    const glow = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, H * 0.75)
-    glow.addColorStop(0, '#232323')
-    glow.addColorStop(1, '#060606')
-    ctx.fillStyle = glow
+    ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, W, H)
+    return canvas
   }
   const shade = ctx.createLinearGradient(0, 0, 0, H)
   shade.addColorStop(0, 'rgba(0, 0, 0, 0.6)')
@@ -994,11 +992,14 @@ export async function makeRecitationVideo(
   })
   // A set bitrate rather than a quality level: a phone's hardware encoder can take "high" to mean
   // 25+ Mbps, a hundred megabytes for half a minute. The person picks how much (VIDEO_QUALITIES);
-  // full HD kept at 720p's rate would only be blurrier, so the rate goes with the size.
+  // full HD kept at 720p's rate would only be blurrier, so the rate goes with the size. Varying,
+  // not held constant: a phone's encoder held to a constant rate spends it as evenly on a still
+  // frame as on a moving one, and dark night scenes came out blocky even in big files.
   const video = new mb.CanvasSource(canvas, {
     codec: 'avc',
-    quality: new mb.Quality({ bitrate: width === quality.width ? quality.bitrate : VIDEO_QUALITIES.standard.bitrate, bitrateMode: 'constant' }),
-    keyFrameInterval: 2,
+    quality: new mb.Quality({ bitrate: width === quality.width ? quality.bitrate : VIDEO_QUALITIES.standard.bitrate, bitrateMode: 'variable' }),
+    // A full picture every 4 seconds: often enough to seek, far fewer bits than every 2.
+    keyFrameInterval: 4,
   })
   output.addVideoTrack(video, { frameRate: FPS })
   const audio = new mb.AudioBufferSource({ codec: audioCodec, quality: mb.QUALITY_HIGH })

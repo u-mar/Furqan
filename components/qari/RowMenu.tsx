@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Ban, Ellipsis, Flag, Globe, ImageIcon, Lock, Trash2 } from 'lucide-react'
+import { Ban, Ellipsis, Flag, Globe, ImageIcon, Lock, Pencil, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 
 /** The quieter actions on a recitation: who can hear it, its background and delete for your own, report and block for anyone else's. */
 export default function RowMenu({
   isOwner,
   isPrivate,
+  onEditTitle,
   onTogglePrivacy,
   onChangeBackground,
   onReport,
@@ -18,6 +19,8 @@ export default function RowMenu({
   isOwner: boolean
   /** Only meaningful when `isOwner` — whether it's currently visible to everyone or only the reciter. */
   isPrivate?: boolean
+  /** The reciter renaming it. */
+  onEditTitle?: () => void
   onTogglePrivacy?: () => void
   /** Only for your own recitation, and not for a picture made on the Read screen. */
   onChangeBackground?: () => void
@@ -61,6 +64,19 @@ export default function RowMenu({
         <div className="qari-dropdown__menu bottom-[calc(100%+0.3rem)] right-0 w-[13.5rem] origin-bottom-right">
           {isOwner ? (
             <>
+              {onEditTitle ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    onEditTitle()
+                  }}
+                  className="qari-dropdown__item ed-focus"
+                >
+                  <Pencil className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} />
+                  {t('Edit title')}
+                </button>
+              ) : null}
               {onTogglePrivacy ? (
                 <button
                   type="button"

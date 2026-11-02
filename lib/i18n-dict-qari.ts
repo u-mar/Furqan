@@ -548,4 +548,7 @@ export const QARI: Dict = {
   },
   'Share to': { so: 'U wadaag', ar: 'مشاركة إلى' },
   Block: { so: 'Xannib', ar: 'حظر' },
+  'Edit title': { so: 'Wax ka beddel cinwaanka', ar: 'تعديل العنوان' },
+  'Title saved.': { so: 'Cinwaanka waa la kaydiyay.', ar: 'تم حفظ العنوان.' },
+  'Audio list': { so: 'Liiska codka', ar: 'قائمة الصوت' },
 }

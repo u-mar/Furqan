@@ -7,7 +7,7 @@ import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 
 export const runtime = 'nodejs'
 
-type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy' | 'setBackground'
+type Action = 'like' | 'unlike' | 'play' | 'report' | 'setPrivacy' | 'setBackground' | 'setTitle'
 
 /** Likes from one guest id per minute. Kept per server instance, which is enough to stop a script. */
 const GUEST_LIKES_PER_MINUTE = 30
@@ -26,7 +26,7 @@ function guestMayLike(guestId: string): boolean {
   return true
 }
 
-/** POST /api/qari/[id] — like, unlike, count a play, report, or (the reciter) change who hears it or what it is shown on. */
+/** POST /api/qari/[id] — like, unlike, count a play, report, or (the reciter) change who hears it, what it is shown on, or its title. */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params
 
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       reason?: string
       isPrivate?: boolean
       background?: string
+      title?: string
     }
     const action = body.action
     const userId = body.userId?.trim()
@@ -90,6 +91,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         select: { background: true },
       })
       return NextResponse.json({ background: updated.background })
+    }
+
+    if (action === 'setTitle') {
+      // Only the reciter renames their own recitation; as long as a title may be when posting.
+      if (recitation.userId !== userId) {
+        return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
+      }
+      const title = typeof body.title === 'string' ? body.title.trim().slice(0, 80) : ''
+      if (!title) return NextResponse.json({ error: 'Give your recitation a title.' }, { status: 400 })
+      const updated = await prisma.recitation.update({ where: { id }, data: { title }, select: { title: true } })
+      return NextResponse.json({ title: updated.title })
     }
 
     if (action === 'report') {

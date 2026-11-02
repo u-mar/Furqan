@@ -10,6 +10,7 @@ import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
 import RowMenu from '@/components/qari/RowMenu'
 import ShareSheet from '@/components/qari/ShareSheet'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
+import EditTitleSheet from '@/components/qari/EditTitleSheet'
 import Waveform from '@/components/qari/Waveform'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
 import { useRecitationActions } from '@/hooks/useRecitationActions'
@@ -69,6 +70,9 @@ function RecitationCard({
     setReportOpen,
     backgroundOpen,
     setBackgroundOpen,
+    titleOpen,
+    setTitleOpen,
+    handleRename,
     handleDelete,
     handleTogglePrivacy,
     handleChangeBackground,
@@ -115,7 +119,7 @@ function RecitationCard({
       {isPrivate ? (
         <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--home-muted)]" strokeWidth={2.4} aria-label={t('Only you')} />
       ) : null}
-      <span className="truncate">{recitation.title}</span>
+      <span className="truncate">{shown.title}</span>
     </h3>
   )
 
@@ -123,6 +127,7 @@ function RecitationCard({
     <RowMenu
       isOwner={isOwner}
       isPrivate={isPrivate}
+      onEditTitle={isOwner ? () => setTitleOpen(true) : undefined}
       onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
       onChangeBackground={isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
       onReport={handleReportTap}
@@ -266,6 +271,7 @@ function RecitationCard({
 
       <ShareSheet recitation={shown} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
+      {isOwner ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
       {isOwner && !isAyahCard ? (
         <BackgroundGallery
           open={backgroundOpen}

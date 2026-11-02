@@ -9,14 +9,15 @@ import {
   reportRecitation,
   setRecitationBackground,
   setRecitationPrivacy,
+  setRecitationTitle,
   type Recitation,
 } from '@/lib/qari'
 import { blockUser } from '@/lib/qari-blocks'
 
 /**
  * What can be done to one recitation besides playing it — delete, make
- * private, change its background, report, share — shared by the list card and
- * the swipe view so both behave the same.
+ * private, change its background or title, report, share — shared by the list
+ * card and the swipe view so both behave the same.
  */
 export function useRecitationActions({
   recitation,
@@ -38,6 +39,9 @@ export function useRecitationActions({
   const [reportOpen, setReportOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [backgroundOpen, setBackgroundOpen] = useState(false)
+  const [titleOpen, setTitleOpen] = useState(false)
+  // The title just typed, shown at once while it is saved.
+  const [optimisticTitle, setOptimisticTitle] = useState<string | null>(null)
   // Set only while a toggle is in flight, or if it failed and had to be put back.
   const [optimisticPrivate, setOptimisticPrivate] = useState<boolean | null>(null)
   // The background just picked, shown at once while it is saved.
@@ -46,13 +50,12 @@ export function useRecitationActions({
   const isOwner = Boolean(viewerId && viewerUsername && viewerUsername === recitation.userUsername)
   const isPrivate = optimisticPrivate ?? recitation.isPrivate
   /** The recitation as it should be drawn: with the background just picked, before every list has caught up. */
-  const shown = useMemo(
-    () =>
-      optimisticBackground && optimisticBackground !== recitation.background
-        ? { ...recitation, background: optimisticBackground }
-        : recitation,
-    [optimisticBackground, recitation]
-  )
+  const shown = useMemo(() => {
+    let drawn = recitation
+    if (optimisticBackground && optimisticBackground !== recitation.background) drawn = { ...drawn, background: optimisticBackground }
+    if (optimisticTitle && optimisticTitle !== recitation.title) drawn = { ...drawn, title: optimisticTitle }
+    return drawn
+  }, [optimisticBackground, optimisticTitle, recitation])
 
   const handleDelete = useCallback(async () => {
     if (!viewerId) return
@@ -97,6 +100,27 @@ export function useRecitationActions({
       }
     },
     [onNotice, onUpdated, optimisticBackground, recitation.id, shown.background, viewerId]
+  )
+
+  /** Renames it. Says whether the new title was kept, so the sheet knows to close. */
+  const handleRename = useCallback(
+    async (title: string): Promise<boolean> => {
+      if (!viewerId) return false
+      const before = optimisticTitle
+      setOptimisticTitle(title)
+      try {
+        const kept = await setRecitationTitle(recitation.id, viewerId, title)
+        setOptimisticTitle(kept)
+        onNotice?.(tr('Title saved.'))
+        onUpdated?.(recitation.id, { title: kept })
+        return true
+      } catch (err) {
+        setOptimisticTitle(before)
+        onNotice?.(err instanceof Error ? err.message : tr('Could not change that.'))
+        return false
+      }
+    },
+    [onNotice, onUpdated, optimisticTitle, recitation.id, viewerId]
   )
 
   const handleReportTap = useCallback(() => {
@@ -144,6 +168,9 @@ export function useRecitationActions({
     backgroundOpen,
     setBackgroundOpen,
     handleChangeBackground,
+    titleOpen,
+    setTitleOpen,
+    handleRename,
     removing,
     shareOpen,
     setShareOpen,

@@ -11,13 +11,18 @@ import { findVideoBackground } from '@/lib/qari-backgrounds'
 /** How sharp the video is made: the person chooses, trading time to make it and file size. */
 export type VideoQuality = 'standard' | 'high' | 'best'
 
+/**
+ * The average rate each is made at. The encoder varies it (lib/qari-share-media.ts): still
+ * moments take little and moving ones more, so these look far better than the same figure held
+ * constant, and a minute comes to roughly 17, 30 and 47 MB.
+ */
 export const VIDEO_QUALITIES: Record<VideoQuality, { width: number; bitrate: number; label: string; resolution: string }> = {
   /** 720p at about what TikTok and Instagram keep once they re-encode: quick to make, small to send. */
-  standard: { width: 720, bitrate: 2_500_000, label: 'Standard', resolution: '720p' },
+  standard: { width: 720, bitrate: 2_200_000, label: 'Standard', resolution: '720p' },
   /** Full HD: the script and the translation stay crisp on any phone. */
-  high: { width: 1080, bitrate: 6_000_000, label: 'High', resolution: '1080p' },
+  high: { width: 1080, bitrate: 4_000_000, label: 'High', resolution: '1080p' },
   /** Full HD with room to spare for the moving backgrounds' detail; the largest file. */
-  best: { width: 1080, bitrate: 10_000_000, label: 'Best', resolution: '1080p' },
+  best: { width: 1080, bitrate: 6_000_000, label: 'Best', resolution: '1080p' },
 }
 
 export const VIDEO_QUALITY_ORDER: VideoQuality[] = ['standard', 'high', 'best']

@@ -410,6 +410,7 @@ function QariHomeContent() {
             onRemoved={removeItem}
             onUpdated={onPrivacyChanged}
             onNotice={qariNotice}
+            onShowList={overlay ? undefined : switchView}
             empty={
               <>
                 <p className="home-serif text-[24px] font-medium tracking-[-0.01em] text-[var(--home-heading)]">
@@ -439,8 +440,9 @@ function QariHomeContent() {
                 {overlay ? closeOverlay : <span className="w-[5rem] shrink-0" aria-hidden />}
                 {overlay ? <span className="flex-1" /> : swipeTabs}
                 <div className="flex w-[5rem] shrink-0 items-center justify-end gap-2">
-                  {switchBtn}
                   {searchBtn}
+                  {/* Opened from a profile or a search there is a way back instead of the profile. */}
+                  {overlay ? null : profileBtn}
                 </div>
               </div>
               {searchBar}

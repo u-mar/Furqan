@@ -244,6 +244,18 @@ export async function setRecitationBackground(id: string, userId: string, backgr
   await post(id, { action: 'setBackground', userId, background })
 }
 
+/** Only the reciter may call this — renames their recitation. Returns the title as kept. */
+export async function setRecitationTitle(id: string, userId: string, title: string): Promise<string> {
+  const res = await fetch(`/api/qari/${id}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'setTitle', userId, title }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { title?: string; error?: string }
+  if (!res.ok || !data.title) throw new Error(data.error ? tr(data.error) : tr('Could not change that.'))
+  return data.title
+}
+
 export async function deleteRecitation(id: string, userId: string): Promise<void> {
   const res = await fetch(`/api/qari/${id}?userId=${encodeURIComponent(userId)}`, {
     method: 'DELETE',

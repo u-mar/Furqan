@@ -11,10 +11,12 @@ import {
   Globe,
   Image as ImageIcon,
   LayoutGrid,
+  LayoutList,
   Link2,
   Lock,
   MessageCircle,
   Music2,
+  Pencil,
   RotateCcw,
   Send,
   Share2,
@@ -67,12 +69,15 @@ type Stage =
 export interface MoreActions {
   isOwner: boolean
   isPrivate: boolean
+  onEditTitle?: () => void
   onTogglePrivacy?: () => void
   onChangeBackground?: () => void
   onDelete: () => void
   onReport: () => void
   blockUsername?: string
   onBlock?: () => void
+  /** Qari's list of recitations to listen to, instead of this full-screen view. */
+  onShowList?: () => void
 }
 
 interface ShareSheetProps {
@@ -376,6 +381,26 @@ ${url}`)
               ) : (
                 <MoreTarget icon={Download} label={t('Save video')} disabled={!videoPossible} onClick={() => void make('video')} />
               )}
+              {actions?.onShowList ? (
+                <MoreTarget
+                  icon={LayoutList}
+                  label={t('Audio list')}
+                  onClick={() => {
+                    close()
+                    actions.onShowList?.()
+                  }}
+                />
+              ) : null}
+              {actions?.isOwner && actions.onEditTitle ? (
+                <MoreTarget
+                  icon={Pencil}
+                  label={t('Edit title')}
+                  onClick={() => {
+                    close()
+                    actions.onEditTitle?.()
+                  }}
+                />
+              ) : null}
               {actions?.isOwner && actions.onChangeBackground ? (
                 <MoreTarget
                   icon={ImageIcon}
