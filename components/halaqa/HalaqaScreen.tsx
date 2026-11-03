@@ -13,7 +13,7 @@ export function HalaqaScreen({ children }: { children: ReactNode }) {
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
-        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem + var(--listen-dock, 0px))` }}
       >
         {children}
       </div>
@@ -31,7 +31,7 @@ export function HalaqaSkyScreen({ children }: { children: ReactNode }) {
       <div className="hq-sky" aria-hidden />
       <div
         className="relative mx-auto w-full max-w-lg px-5 pt-[max(0.875rem,calc(env(safe-area-inset-top)+0.5rem))]"
-        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem)` }}
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem + var(--listen-dock, 0px))` }}
       >
         {children}
       </div>

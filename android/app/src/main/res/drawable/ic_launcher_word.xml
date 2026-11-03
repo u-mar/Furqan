@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The home-screen icon's word (mipmap-anydpi-v26/ic_launcher.xml), drawn from the logo's blocks
+     (lib/app-logo.ts) so it is sharp at any size; placed as native/make-assets.py placed the picture
+     it replaces. Android also grows this icon into the app as it opens. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="22.359"
+        android:translateY="22.359"
+        android:scaleX="0.31641"
+        android:scaleY="0.31641">
+        <path android:fillColor="#F1F3EF" android:pathData="M41.5,127 h117.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-117.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,57 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v81.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-81.0 a1.5,1.5 0 0 1 1.5,-1.5 z M94.5,99 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v39.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-39.0 a1.5,1.5 0 0 1 1.5,-1.5 z M147.5,99 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v39.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-39.0 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+        <path android:fillColor="#E0BC74" android:pathData="M147.5,71 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M94.5,155 h11.0 a1.5,1.5 0 0 1 1.5,1.5 v11.0 a1.5,1.5 0 0 1 -1.5,1.5 h-11.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-11.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,31 h12.0 a1.5,1.5 0 0 1 1.5,1.5 v2.0 a1.5,1.5 0 0 1 -1.5,1.5 h-12.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-2.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,31 h2.0 a1.5,1.5 0 0 1 1.5,1.5 v13.0 a1.5,1.5 0 0 1 -1.5,1.5 h-2.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-13.0 a1.5,1.5 0 0 1 1.5,-1.5 z M41.5,42 h12.0 a1.5,1.5 0 0 1 1.5,1.5 v2.0 a1.5,1.5 0 0 1 -1.5,1.5 h-12.0 a1.5,1.5 0 0 1 -1.5,-1.5 v-2.0 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    </group>
+</vector>

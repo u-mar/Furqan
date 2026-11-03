@@ -143,7 +143,7 @@ export default function HomeSkyScreen({ displayName, children }: { displayName: 
   return (
     <main
       ref={mainRef}
-      className="hv-theme home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+0.625rem)] [overscroll-behavior-x:none] [touch-action:pan-y]"
+      className="hv-theme home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+0.625rem+var(--listen-dock,0px))] [overscroll-behavior-x:none] [touch-action:pan-y]"
       data-sky={state ? (moon ? 'moon' : 'sun') : undefined}
       style={vars}
     >
@@ -358,7 +358,7 @@ function TodayCard({ state, clock, timeZone }: { state: HomeSkyState | null; clo
     <Link href="/prayer" className="home-today home-press reveal ed-focus block" aria-label={`${dates.gregorian}, ${t('All times')}`}>
       <span className="flex items-center justify-between gap-3 px-1.5 pb-1.5">
         <span className="flex min-w-0 items-center gap-1.5 text-[0.71875rem] text-[var(--hv-pc-label)]">
-          <svg aria-hidden width="11" height="11" viewBox="0 0 24 24" className="shrink-0 fill-[var(--hv-accent-gold)]">
+          <svg aria-hidden width="11" height="11" viewBox="0 0 24 24" className="shrink-0 fill-[var(--hv-pc-moon)]">
             <path d="M15.5 3.2A9 9 0 1 0 20.8 15 7.2 7.2 0 0 1 15.5 3.2Z" />
           </svg>
           <span className="truncate">

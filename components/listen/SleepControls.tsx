@@ -45,36 +45,6 @@ export function SleepLeft({ prefix = '', fallback = '' }: { prefix?: string; fal
   return <>{left === null ? fallback : `${prefix}${formatMinutesLeft(left)}`}</>
 }
 
-/** The moon at the top of Listen: plain while off, the time left once on. */
-export function SleepButton({ onOpen }: { onOpen: () => void }) {
-  const t = useT()
-  const { sleep } = useListenState()
-  const open = () => {
-    tapFeedback()
-    onOpen()
-  }
-
-  if (!sleep) {
-    return (
-      <button type="button" onClick={open} className="home-round ed-focus" aria-label={t('Sleep mode')}>
-        <Moon className="h-[19px] w-[19px]" strokeWidth={1.9} />
-      </button>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={open}
-      aria-label={t('Sleep mode is on')}
-      className="fx-pop-in fx-press ed-focus flex h-[42px] shrink-0 items-center gap-[7px] rounded-full bg-[var(--home-card-bg)] pl-3 pr-3.5 text-[0.84375rem] font-semibold tabular-nums text-[var(--home-sage-deep)] shadow-[var(--home-lift-sm)]"
-    >
-      <Moon className="h-4 w-4 fill-current text-[var(--home-sage)]" strokeWidth={1.9} />
-      <SleepLeft fallback={t('On')} />
-    </button>
-  )
-}
-
 /** Switch sleep mode on or off, and choose when it stops. */
 export function SleepSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()

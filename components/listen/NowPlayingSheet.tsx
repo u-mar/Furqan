@@ -3,17 +3,14 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Moon } from 'lucide-react'
-import HeartButton from '@/components/listen/HeartButton'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { PlayPauseButton, SkipButton } from '@/components/listen/PlayerControls'
-import { SleepLeft, turnOffSleep, turnOnSleep } from '@/components/listen/SleepControls'
-import Switch from '@/components/qari/Switch'
+import { SleepLeft } from '@/components/listen/SleepControls'
 import { useListenProgress, useListenState } from '@/hooks/useListen'
 import { tapFeedback } from '@/lib/haptics'
 import {
   SKIP_SECONDS,
   formatClock,
-  lastSleepChoice,
   seekTo,
 } from '@/lib/listen-player'
 import { getQiraat, getReciterById } from '@/lib/reciters'
@@ -126,14 +123,25 @@ export default function NowPlayingSheet({
         onClick={dismiss}
         aria-hidden
       />
+      {/* Solid behind the see-through tab bar, so the list does not show under it. */}
+      <div
+        className="absolute inset-x-0 bg-[var(--app-bg)]"
+        style={{
+          top: '100%',
+          height: SHEET_BOTTOM,
+          opacity: closing ? 0 : 1,
+          transition: `opacity ${CLOSE_MS}ms ease`,
+        }}
+        aria-hidden
+      />
       <div
         className="listen-np absolute inset-0 overflow-y-auto overscroll-contain bg-[var(--app-bg)]"
         style={{
           transform: `translateY(${offset})`,
           transition: settle,
-          // The sheet stops above the tab bar rather than the screen edge, so its
-          // bottom corners stay rounded; dragging it down rounds the top too.
-          borderRadius: drag > 0 || closing ? '28px' : '0 0 28px 28px',
+          // Square where it meets the tab bar, so nothing shows through at its corners;
+          // dragging it down rounds the top.
+          borderRadius: drag > 0 || closing ? '28px 28px 0 0' : 0,
         }}
       >
         <div className="mx-auto flex min-h-full w-full max-w-lg flex-col px-4 pb-6 pt-[max(0.5rem,env(safe-area-inset-top))]">
@@ -150,7 +158,8 @@ export default function NowPlayingSheet({
                 <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
               </button>
               <span className="home-label">{t('Now playing')}</span>
-              <HeartButton reciter={reciter} size={42} iconSize={19} className="home-round" />
+              {/* Keeps the label centred against the close button. */}
+              <span className="h-[42px] w-[42px]" aria-hidden />
             </div>
 
             <div className="mt-6 flex justify-center">
@@ -189,8 +198,8 @@ export default function NowPlayingSheet({
             <SkipButton seconds={SKIP_SECONDS} size={58} raised />
           </div>
 
-          <div className="home-card mt-7 overflow-hidden rounded-2xl">
-            <SleepRow onOpen={onOpenSleep} />
+          <div className="mt-6 flex justify-center">
+            <SleepToggle onOpen={onOpenSleep} />
           </div>
         </div>
       </div>
@@ -289,34 +298,33 @@ function SeekBar() {
   )
 }
 
-function SleepRow({ onOpen }: { onOpen: () => void }) {
+/** A small moon with its name below; once on, the time left shows in its place. */
+function SleepToggle({ onOpen }: { onOpen: () => void }) {
   const t = useT()
   const { sleep } = useListenState()
   return (
-    <div className="set-row" style={{ paddingBlock: 9 }}>
-      <button
-        type="button"
-        onClick={() => {
-          tapFeedback()
-          onOpen()
-        }}
-        className="ed-focus flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left"
+    <button
+      type="button"
+      onClick={() => {
+        tapFeedback()
+        onOpen()
+      }}
+      className="ed-focus flex flex-col items-center gap-1 rounded-xl px-3 py-1"
+      aria-label={t('Sleep mode')}
+    >
+      <span
+        className={`flex h-10 w-10 items-center justify-center rounded-full ${
+          sleep ? 'bg-[var(--home-sage-deep)] text-[var(--app-bg)]' : 'home-round'
+        }`}
+        aria-hidden
       >
-        <span className="set-row__icon" aria-hidden>
-          <Moon className="h-[17px] w-[17px]" strokeWidth={1.9} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[0.9375rem] font-medium">{t('Sleep mode')}</span>
-          <span className="mt-px block text-[0.78125rem] tabular-nums text-[var(--home-muted)]">
-            {sleep ? <SleepLeft prefix={t('Stops in ')} fallback={t('Stops at the end of this surah')} /> : t('Off')}
-          </span>
-        </span>
-      </button>
-      <Switch
-        checked={Boolean(sleep)}
-        onChange={(on) => (on ? turnOnSleep(lastSleepChoice()) : turnOffSleep())}
-        label={t('Sleep mode')}
-      />
-    </div>
+        <Moon className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      </span>
+      <span
+        className={`text-[0.75rem] font-medium tabular-nums ${sleep ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-muted)]'}`}
+      >
+        {sleep ? <SleepLeft fallback={t('Sleep mode')} /> : t('Sleep mode')}
+      </span>
+    </button>
   )
 }

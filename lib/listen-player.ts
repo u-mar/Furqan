@@ -3,8 +3,17 @@
 import { APP_NAME } from '@/lib/app-brand'
 import { clearListenObjectUrl, getListenAudio, peekListenAudio, setListenObjectUrl } from '@/lib/listen-audio'
 import { getPlayableListenSurahAudioUrl, isSurahAudioDownloaded } from '@/lib/offline-audio'
+import {
+  claimLockScreen,
+  isNaturePlaying,
+  onNatureTick,
+  pauseNature,
+  setNatureFade,
+  stopNature,
+  yieldLockScreen,
+} from '@/lib/nature-sounds'
 import { getChapters } from '@/lib/quran'
-import { getReciterById } from '@/lib/reciters'
+import { getReciterById, hasSurah } from '@/lib/reciters'
 import type { Chapter } from '@/types'
 import { tr } from '@/lib/i18n-core'
 
@@ -244,8 +253,9 @@ export function seekBy(seconds: number): void {
   seekTo(el.currentTime + seconds)
 }
 
-/** Silence Listen entirely: no surah, no sleep timer, nothing on the lock screen. */
+/** Silence Listen entirely: no surah, no nature sounds, no sleep timer, nothing on the lock screen. */
 export function stopListening(): void {
+  stopNature()
   const el = peekListenAudio()
   // Nothing of Listen's is loaded: leave the lock screen to whoever is using it.
   if (!state.surah && !state.sleep && !el?.getAttribute('src')) return
@@ -256,6 +266,7 @@ export function stopListening(): void {
     restoreVolume(el)
   }
   stopSleepTicker()
+  setNatureFade(1)
   state = IDLE
   stateListeners.forEach((listener) => listener())
   setProgress(NO_PROGRESS)
@@ -284,8 +295,11 @@ async function neighbour(fromId: number, reciterId: string, step: 1 | -1): Promi
     return null
   }
   const online = typeof navigator === 'undefined' || navigator.onLine
+  const reciter = getReciterById(reciterId)
   for (let i = 1; i < 114; i++) {
     const id = ((((fromId - 1 + step * i) % 114) + 114) % 114) + 1
+    // A surah this reciter has not recorded is passed over.
+    if (reciter && !hasSurah(reciter, id)) continue
     if (!online && !isSurahAudioDownloaded(reciterId, id)) continue
     const chapter = chapters.find((c) => c.id === id)
     if (chapter) return chapter
@@ -314,7 +328,12 @@ async function onEnded(): Promise<void> {
       return
     }
   }
-  if (state.sleep) endSleep()
+  // "End of this surah" puts the nature sounds to sleep too; a timer with time left
+  // keeps running for them.
+  if (state.sleep?.choice === 'surah') {
+    endSleep()
+    pauseNature()
+  } else if (state.sleep && !isNaturePlaying()) endSleep()
   setState({ status: 'paused' })
   reportPlayback('paused')
 }
@@ -339,21 +358,31 @@ export function startSleep(choice: SleepChoice): void {
   }
   const el = peekListenAudio()
   if (el) restoreVolume(el)
+  setNatureFade(1)
   const endsAt = choice === 'surah' ? null : Date.now() + choice * 60_000
   setState({ sleep: { choice, endsAt } })
   stopSleepTicker()
-  // Timers are slowed on a locked phone, so playback's own updates check too.
-  if (endsAt !== null) sleepTicker = window.setInterval(checkSleep, 1000)
+  // Timers are slowed on a locked phone, so playback's own updates (the
+  // recitation's and the nature sounds') check too.
+  if (endsAt !== null) {
+    sleepTicker = window.setInterval(checkSleep, 1000)
+    stopNatureTick = onNatureTick(checkSleep)
+  }
 }
 
 export function endSleep(): void {
   stopSleepTicker()
   const el = peekListenAudio()
   if (el) restoreVolume(el)
+  setNatureFade(1)
   if (state.sleep) setState({ sleep: null })
 }
 
+let stopNatureTick: (() => void) | null = null
+
 function stopSleepTicker() {
+  stopNatureTick?.()
+  stopNatureTick = null
   if (sleepTicker === null) return
   window.clearInterval(sleepTicker)
   sleepTicker = null
@@ -365,16 +394,21 @@ function checkSleep(): void {
   const over = Date.now() - sleep.endsAt
   if (over < 0) return
   const el = peekListenAudio()
-  if (!el || el.paused || !state.surah) {
+  const recitation = el && !el.paused && state.surah ? el : null
+  const nature = isNaturePlaying()
+  if (!recitation && !nature) {
     endSleep()
     return
   }
-  if (over >= FADE_MS || !canFade(el)) {
-    el.pause()
+  if (over >= FADE_MS || (recitation && !canFade(recitation))) {
+    recitation?.pause()
+    pauseNature()
     endSleep()
     return
   }
-  el.volume = Math.max(0, 1 - over / FADE_MS)
+  const left = Math.max(0, 1 - over / FADE_MS)
+  if (recitation) recitation.volume = left
+  setNatureFade(left)
 }
 
 /** iPhones keep media volume for the hardware buttons, so there the recitation simply stops. */
@@ -452,6 +486,7 @@ function describe(surah: Chapter, reciterId: string) {
   } catch {
     // Lock-screen details are a nicety.
   }
+  yieldLockScreen()
   const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
     ['play', () => resume()],
     ['pause', () => pause()],
@@ -488,6 +523,8 @@ function clearLockScreen() {
       // Not offered here.
     }
   }
+  // Nature sounds still playing take the lock screen back.
+  claimLockScreen()
 }
 
 function reportPlayback(value: MediaSessionPlaybackState) {

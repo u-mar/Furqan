@@ -14,7 +14,7 @@ export default function HomeScreen({ children, className, withBottomNav }: HomeS
       className={cn(
         'home-screen relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden bg-[var(--app-bg)] text-[var(--app-text)]',
         withBottomNav
-          ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom)+1.25rem)]'
+          ? 'pb-[calc(4.25rem+env(safe-area-inset-bottom)+1.25rem+var(--listen-dock,0px))]'
           : 'pb-[max(2rem,env(safe-area-inset-bottom))]',
         '[touch-action:pan-y] [overscroll-behavior-x:none]',
         className

@@ -64,6 +64,8 @@ export interface Reciter {
   photoUrl?: string
   /** Well-known, mainstream reciter — shown under the "Top" filter. */
   top?: boolean
+  /** The surahs recorded in full, for a reciter who has not recorded them all; Listen offers only these. */
+  surahs?: readonly number[]
 }
 
 /**
@@ -415,6 +417,19 @@ export const RECITERS: Reciter[] = [
     qiraat: 'hafs',
     style: 'Murattal',
     accent: A.rose,
+  },
+  {
+    // Way2Quran has these surahs from him in full (and short passages of others, left out here).
+    id: 'abdul_rahman_musaad',
+    photoUrl: '/reciters/abdul-rahman-musaad.jpg',
+    name: 'Abdul Rahman Musaad',
+    source: 'mp3quran',
+    folder: 'https://media.way2quran.com/abdul-rahman-musaad/hafs-an-asim',
+    mp3quranBase: 'https://media.way2quran.com/abdul-rahman-musaad/hafs-an-asim',
+    qiraat: 'hafs',
+    style: 'Murattal',
+    accent: A.indigo,
+    surahs: [11, 15, 17, 25, 32, 49, 67, 73, 78, 87, 88, 93, 94, 95, 100, 101, 107, 112, 113, 114],
   },
   {
     id: 'hadi_toure',
@@ -1103,6 +1118,11 @@ export function hasOwnAyahFiles(reciter: Reciter): boolean {
 
 export function isSurahOnlyReciter(reciter: Reciter): boolean {
   return reciter.source === 'mp3quran' && timedSurahSource(reciter) === null
+}
+
+/** Whether this reciter has recorded this surah in full (all of them, unless `surahs` says otherwise). */
+export function hasSurah(reciter: Reciter, surah: number): boolean {
+  return !reciter.surahs || reciter.surahs.includes(surah)
 }
 
 /** Reciters that support ayah-by-ayah audio (Read highlighting). */

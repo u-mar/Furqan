@@ -14,14 +14,17 @@ import java.util.regex.Pattern;
  * The mushaf inside the app: the Quran text (/quran-data.json), the 604 page fonts
  * (/qcf/p{n}.woff2) and the English and Somali translations (/bundled/translations/<id>.json) are
  * answered from the app's own files instead of the internet, so Read works offline with nothing to
- * download. The files are copied in when the app is built (copyBundledQuran in app/build.gradle):
- * the text and fonts from the site's public/, the translations from native/quran/translations/.
+ * download. So are the reciters' and sheikhs' photos (/reciters/<name>.jpg), which then show at
+ * once, offline too. The files are copied in when the app is built (copyBundledQuran in
+ * app/build.gradle): the text, fonts and photos from the site's public/, the translations from
+ * native/quran/translations/.
  * The site knows they are here from "NabaQuran" in the user agent (capacitor.config.ts).
  */
 final class BundledQuran {
 
     private static final Pattern PAGE_FONT = Pattern.compile("^/qcf/p(\\d{1,3})\\.woff2$");
     private static final Pattern TRANSLATION = Pattern.compile("^/bundled/translations/(en\\.sahih|so\\.abduh)\\.json$");
+    private static final Pattern PHOTO = Pattern.compile("^/reciters/([a-z0-9_-]+)\\.(jpg|jpeg|jfif)$");
 
     private final AssetManager assets;
 
@@ -43,6 +46,9 @@ final class BundledQuran {
         }
         Matcher translation = TRANSLATION.matcher(path);
         if (translation.matches()) return open("quran/translations/" + translation.group(1) + ".json", "application/json", "utf-8");
+        // A photo this build does not have (one added to the site since) still comes from the site.
+        Matcher photo = PHOTO.matcher(path);
+        if (photo.matches()) return open("quran/reciters/" + photo.group(1) + "." + photo.group(2), "image/jpeg", null);
         return null;
     }
 

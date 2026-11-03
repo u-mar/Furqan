@@ -10,7 +10,8 @@ import NowPlayingSheet from '@/components/listen/NowPlayingSheet'
 import { Equalizer } from '@/components/listen/PlayerControls'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import ReciterPickerSheet from '@/components/listen/ReciterPickerSheet'
-import { SleepButton, SleepSheet } from '@/components/listen/SleepControls'
+import { NatureButton, NatureDock, NatureSheet } from '@/components/listen/NatureControls'
+import { SleepSheet } from '@/components/listen/SleepControls'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { useHydrated } from '@/hooks/useHydrated'
 import { useDownloadsVersion, useListenState } from '@/hooks/useListen'
@@ -28,7 +29,7 @@ import {
   type ListenStatus,
 } from '@/lib/listen-player'
 import { getChapters } from '@/lib/quran'
-import { getQiraat, getReciterById, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
+import { getQiraat, getReciterById, hasSurah, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
 import { filterChapters } from '@/lib/search-chapters'
 import { toast, toastError, toastSuccess } from '@/lib/toast'
 import type { Chapter } from '@/types'
@@ -53,6 +54,7 @@ export default function ListenScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [playerOpen, setPlayerOpen] = useState(false)
   const [sleepOpen, setSleepOpen] = useState(false)
+  const [natureOpen, setNatureOpen] = useState(false)
 
   // Rows are memoised; they reach the current reciter through this.
   const reciterId = useRef(reciter.id)
@@ -113,9 +115,10 @@ export default function ListenScreen() {
   }, [chapters, reciter.id, downloadsVersion])
 
   const visible = useMemo(() => {
-    const matches = filterChapters(chapters, query)
+    // Only the surahs this reciter has recorded.
+    const matches = filterChapters(chapters, query).filter((chapter) => hasSurah(reciter, chapter.id))
     return filter === 'downloaded' ? matches.filter((chapter) => downloaded.has(chapter.id)) : matches
-  }, [chapters, query, filter, downloaded])
+  }, [chapters, query, filter, downloaded, reciter])
 
   const favorites = useMemo(
     () => favoriteIds.map((id) => RECITERS.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => Boolean(r)),
@@ -162,7 +165,7 @@ export default function ListenScreen() {
           // Listen always shows the bottom tab bar; the mini player, when playing, docks just above it.
           paddingBottom: listening
             ? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + 5.5rem + env(safe-area-inset-bottom))`
-            : `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)`,
+            : `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem + var(--listen-dock, 0px))`,
         }}
       >
         <header className="flex items-center gap-3">
@@ -171,7 +174,7 @@ export default function ListenScreen() {
           </Link>
           <h1 className="home-serif min-w-0 flex-1 truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
             {t('Listen')}</h1>
-          <SleepButton onOpen={() => setSleepOpen(true)} />
+          <NatureButton onOpen={() => setNatureOpen(true)} />
         </header>
 
         {offline ? (
@@ -348,10 +351,20 @@ export default function ListenScreen() {
       </div>
 
       <MiniPlayer onOpen={() => setPlayerOpen(true)} />
+      {/* With a surah playing its player is the one shown; Nature mode stays on the moon at the top. */}
+      {listening ? null : <NatureDock onOpen={() => setNatureOpen(true)} />}
       <NowPlayingSheet
         open={playerOpen}
         onClose={() => setPlayerOpen(false)}
         onOpenSleep={() => setSleepOpen(true)}
+      />
+      <NatureSheet
+        open={natureOpen}
+        onClose={() => setNatureOpen(false)}
+        onOpenSleep={() => {
+          setNatureOpen(false)
+          setSleepOpen(true)
+        }}
       />
       <SleepSheet open={sleepOpen} onClose={() => setSleepOpen(false)} />
       <ReciterPickerSheet

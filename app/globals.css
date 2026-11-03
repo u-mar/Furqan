@@ -3064,6 +3064,92 @@ html.dark .set-row--danger {
    Listen: the surah list, the player along the bottom and Now playing.
    ====================================================================== */
 
+/* Nature mode's sounds: a round icon with its name below, filled while chosen. */
+.nature-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border-radius: 12px;
+  padding-block: 2px;
+}
+
+.nature-tile__dot {
+  position: relative;
+  display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--home-heading) 7%, transparent);
+  color: var(--home-heading);
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.nature-tile:active .nature-tile__dot {
+  transform: scale(0.94);
+}
+
+.nature-tile[aria-pressed='true'] .nature-tile__dot {
+  background: var(--home-sage-deep);
+  color: var(--app-bg);
+}
+
+/* The sound's icon in the player along the bottom. */
+.nature-dock__icon {
+  position: relative;
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--home-sage-deep);
+  color: var(--app-bg);
+}
+
+.nature-dock__icon .nature-tile__live {
+  border-radius: 15px;
+}
+
+/* A slow ring around a sound that is playing. */
+.nature-tile__live {
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 1.5px solid var(--home-sage);
+  opacity: 0.5;
+  animation: nature-live 2.4s ease-in-out infinite;
+}
+
+@keyframes nature-live {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.15;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.6;
+  }
+}
+
+.nature-tile__label {
+  max-width: 100%;
+  font-size: 0.71875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--home-muted);
+}
+
+.nature-tile[aria-pressed='true'] .nature-tile__label {
+  color: var(--home-heading);
+}
+
 /* The bars beside the surah that is playing; they rest while paused. */
 .listen-eq {
   display: flex;
@@ -4529,8 +4615,8 @@ html.splash-seen .app-splash {
   --hv-pill-border: rgba(224, 188, 116, 0.38);
   --hv-skyline: var(--hv-ground);
   --hv-skyline-mask: none;
-  --hv-now-dot: #ffe9b8;
-  --hv-now-shadow: 0 0 0 4px rgba(224, 188, 116, 0.2), 0 0 14px rgba(255, 214, 138, 0.75);
+  --hv-now-dot: #e8f6f1;
+  --hv-now-shadow: 0 0 0 4px rgba(92, 196, 171, 0.2), 0 0 12px rgba(92, 196, 171, 0.55);
   /* Today's prayers */
   --hv-pc-bg: rgba(9, 22, 24, 0.58);
   --hv-pc-border: rgba(255, 255, 255, 0.1);
@@ -4538,16 +4624,17 @@ html.splash-seen .app-splash {
   --hv-pc-label: rgba(245, 239, 227, 0.6);
   --hv-pc-link: #5cc4ab;
   --hv-pc-track: rgba(255, 255, 255, 0.1);
-  --hv-on-color: #f4dba4;
-  --hv-on-bg: linear-gradient(180deg, rgba(224, 188, 116, 0.24), rgba(224, 188, 116, 0.06));
-  --hv-on-border: rgba(224, 188, 116, 0.5);
-  --hv-on-icon: #e0bc74;
+  --hv-pc-moon: #5cc4ab;
+  --hv-on-color: #e8f6f1;
+  --hv-on-bg: linear-gradient(180deg, rgba(92, 196, 171, 0.2), rgba(92, 196, 171, 0.05));
+  --hv-on-border: rgba(92, 196, 171, 0.45);
+  --hv-on-icon: #5cc4ab;
   --hv-past-color: rgba(245, 239, 227, 0.5);
   --hv-past-icon: rgba(245, 239, 227, 0.4);
   --hv-normal-color: #f5efe3;
   --hv-normal-icon: rgba(245, 239, 227, 0.82);
-  --hv-rail-from: rgba(224, 188, 116, 0.2);
-  --hv-rail-to: #e0bc74;
+  --hv-rail-from: rgba(92, 196, 171, 0.2);
+  --hv-rail-to: #5cc4ab;
   /* The cards below */
   --hv-surface: rgba(255, 255, 255, 0.045);
   --hv-border: rgba(255, 255, 255, 0.08);
@@ -4609,6 +4696,7 @@ html:not(.dark) .hv-theme {
   --hv-pc-label: #66706b;
   --hv-pc-link: #0e5f55;
   --hv-pc-track: rgba(28, 38, 33, 0.1);
+  --hv-pc-moon: #9a7633;
   --hv-on-color: #eef3ef;
   --hv-on-bg: #0e3a35;
   --hv-on-border: transparent;
@@ -4664,6 +4752,11 @@ html:not(.dark) .home-sky {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56'%3E%3Cg fill='none' stroke='%23e0bc74' stroke-width='0.7' stroke-opacity='0.1'%3E%3Cpolygon points='16,16 40,16 40,40 16,40'/%3E%3Cpolygon points='28,11 45,28 28,45 11,28'/%3E%3Cpath d='M28 0V11M28 45V56M0 28H11M45 28H56'/%3E%3Ccircle cx='28' cy='28' r='4'/%3E%3C/g%3E%3C/svg%3E");
   -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.2) 40%, transparent 70%);
+}
+
+/* No lattice over the night sky: only the light theme keeps it. */
+html.dark .home-sky::before {
+  display: none;
 }
 
 .home-sky::after {

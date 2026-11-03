@@ -91,6 +91,10 @@ def copyBundledQuran = tasks.register('copyBundledQuran') {
         copy(new File(site, 'public/quran-data.json'), new File(out, 'quran-data.json'))
         (1..604).each { n -> copy(new File(site, "public/qcf/p${n}.woff2"), new File(out, "qcf/p${n}.woff2")) }
         ['en.sahih', 'so.abduh'].each { id -> copy(new File(site, "native/quran/translations/${id}.json"), new File(out, "translations/${id}.json")) }
+        // The reciters' and sheikhs' photos (under 1 MB in all), so they show at once and offline.
+        new File(site, 'public/reciters').listFiles().findAll { it.name ==~ /[a-z0-9_-]+\.(jpg|jpeg|jfif)/ }.each { photo ->
+            copy(photo, new File(out, "reciters/${photo.name}"))
+        }
     }
 }
 android.sourceSets.main.assets.srcDirs += bundledQuranDir
