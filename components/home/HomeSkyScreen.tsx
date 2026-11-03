@@ -143,7 +143,7 @@ export default function HomeSkyScreen({ displayName, children }: { displayName: 
   return (
     <main
       ref={mainRef}
-      className="hv-theme home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+0.625rem+var(--listen-dock,0px))] [overscroll-behavior-x:none] [touch-action:pan-y]"
+      className="hv-theme home-v2 relative flex min-h-[100dvh] w-full flex-col overflow-x-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom)+0.625rem)] [overscroll-behavior-x:none] [touch-action:pan-y]"
       data-sky={state ? (moon ? 'moon' : 'sun') : undefined}
       style={vars}
     >

@@ -22,7 +22,7 @@ export default function QiblaPage() {
     <main className="min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
-        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem + var(--listen-dock, 0px))` }}
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem)` }}
       >
         <header className="flex items-center gap-3">
           <Link href="/" className="home-round ed-focus" aria-label={t('Back')}>

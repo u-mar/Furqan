@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useSyncExternalStore } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
 import {
   Bird,
   ChevronRight,
@@ -25,7 +24,7 @@ import {
 import { SleepLeft } from '@/components/listen/SleepControls'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useListenState } from '@/hooks/useListen'
-import { BOTTOM_NAV_HEIGHT_REM, showBottomNavFor } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import {
   NATURE_SOUNDS,
@@ -217,8 +216,8 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
 const DOCK_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
 
 /**
- * A player for the nature sounds once they have started, so they can be paused
- * or stopped from wherever you are. Tapping it opens Nature mode.
+ * Listen's player for the nature sounds once they have started, so they can be
+ * paused or stopped. Tapping it opens Nature mode.
  */
 export function NatureDock({ onOpen }: { onOpen: () => void }) {
   const t = useT()
@@ -226,7 +225,7 @@ export function NatureDock({ onOpen }: { onOpen: () => void }) {
   const { sleep } = useListenState()
   const showing = live && sounds.length > 0
 
-  // Screens leave room for it, and messages sit above it.
+  // Listen leaves room for it, and messages sit above it.
   useEffect(() => {
     if (!showing) return
     const root = document.documentElement.style
@@ -295,15 +294,4 @@ export function NatureDock({ onOpen }: { onOpen: () => void }) {
       </div>
     </div>
   )
-}
-
-/**
- * The same player on the other screens with the tab bar (Listen shows its own).
- * Not on Hifdh, whose record button sits in that spot.
- */
-export function NatureDockElsewhere() {
-  const pathname = usePathname()
-  const router = useRouter()
-  if (!pathname || pathname === '/listen' || pathname.startsWith('/hifdh') || !showBottomNavFor(pathname)) return null
-  return <NatureDock onOpen={() => router.push('/listen')} />
 }

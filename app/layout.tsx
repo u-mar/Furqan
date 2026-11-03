@@ -3,7 +3,6 @@ import { Amiri, Cormorant_Garamond, Fraunces, Plus_Jakarta_Sans } from 'next/fon
 import AppShell from '@/components/AppShell'
 import AdminRuntime from '@/components/admin/AdminRuntime'
 import BottomNav from '@/components/nav/BottomNav'
-import { NatureDockElsewhere } from '@/components/listen/NatureControls'
 import AdhanHost from '@/components/prayer/AdhanHost'
 import ViewportLock from '@/components/ViewportLock'
 import AccountPromptHost from '@/components/account/AccountPromptHost'
@@ -127,7 +126,6 @@ export default function RootLayout({
           <NativeBack />
           <AccountPromptHost />
           <ToastHost />
-          <NatureDockElsewhere />
           <BottomNav />
           <SplashScreen />
         </SettingsProvider>

@@ -166,6 +166,8 @@ function unload(el: HTMLAudioElement) {
 
 /** Start a surah, optionally from a point in it (switching narration keeps your place). */
 export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0): Promise<void> {
+  // A surah is listened to on its own: the nature sounds stop.
+  stopNature()
   const el = element()
   const mine = ++session
   switching = true
@@ -219,6 +221,7 @@ export function resume(): void {
     void playSurah(surah, reciterId, progress.position < progress.duration - 1 ? progress.position : 0)
     return
   }
+  stopNature()
   restoreVolume(el)
   if (state.error) setState({ error: null })
   el.play().catch((err: unknown) => {

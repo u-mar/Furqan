@@ -153,13 +153,15 @@ export default function NowPlayingSheet({
             onPointerCancel={release}
           >
             <div className="mx-auto mb-3 mt-1.5 h-1 w-10 rounded-full bg-[var(--home-rule-strong)]" aria-hidden />
-            <div className="flex items-center justify-between">
-              <button type="button" onClick={dismiss} className="home-round ed-focus" aria-label={t('Close Now playing')}>
+            {/* Three columns, so the label stays centred however wide the sleep button grows. */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center">
+              <button type="button" onClick={dismiss} className="home-round ed-focus justify-self-start" aria-label={t('Close Now playing')}>
                 <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
               </button>
               <span className="home-label">{t('Now playing')}</span>
-              {/* Keeps the label centred against the close button. */}
-              <span className="h-[42px] w-[42px]" aria-hidden />
+              <span className="justify-self-end">
+                <SleepTopButton onOpen={onOpenSleep} />
+              </span>
             </div>
 
             <div className="mt-6 flex justify-center">
@@ -198,9 +200,6 @@ export default function NowPlayingSheet({
             <SkipButton seconds={SKIP_SECONDS} size={58} raised />
           </div>
 
-          <div className="mt-6 flex justify-center">
-            <SleepToggle onOpen={onOpenSleep} />
-          </div>
         </div>
       </div>
     </div>,
@@ -298,33 +297,32 @@ function SeekBar() {
   )
 }
 
-/** A small moon with its name below; once on, the time left shows in its place. */
-function SleepToggle({ onOpen }: { onOpen: () => void }) {
+/** The moon at the top right: plain while off, the time left once on. */
+function SleepTopButton({ onOpen }: { onOpen: () => void }) {
   const t = useT()
   const { sleep } = useListenState()
+  const open = () => {
+    tapFeedback()
+    onOpen()
+  }
+
+  if (!sleep) {
+    return (
+      <button type="button" onClick={open} className="home-round ed-focus" aria-label={t('Sleep mode')}>
+        <Moon className="h-[19px] w-[19px]" strokeWidth={1.9} />
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
-      onClick={() => {
-        tapFeedback()
-        onOpen()
-      }}
-      className="ed-focus flex flex-col items-center gap-1 rounded-xl px-3 py-1"
-      aria-label={t('Sleep mode')}
+      onClick={open}
+      aria-label={t('Sleep mode is on')}
+      className="fx-pop-in fx-press ed-focus flex h-[42px] shrink-0 items-center gap-[7px] rounded-full bg-[var(--home-card-bg)] pl-3 pr-3.5 text-[0.84375rem] font-semibold tabular-nums text-[var(--home-sage-deep)] shadow-[var(--home-lift-sm)]"
     >
-      <span
-        className={`flex h-10 w-10 items-center justify-center rounded-full ${
-          sleep ? 'bg-[var(--home-sage-deep)] text-[var(--app-bg)]' : 'home-round'
-        }`}
-        aria-hidden
-      >
-        <Moon className="h-[18px] w-[18px]" strokeWidth={1.9} />
-      </span>
-      <span
-        className={`text-[0.75rem] font-medium tabular-nums ${sleep ? 'text-[var(--home-sage-deep)]' : 'text-[var(--home-muted)]'}`}
-      >
-        {sleep ? <SleepLeft fallback={t('Sleep mode')} /> : t('Sleep mode')}
-      </span>
+      <Moon className="h-4 w-4 fill-current text-[var(--home-sage)]" strokeWidth={1.9} />
+      <SleepLeft fallback={t('On')} />
     </button>
   )
 }

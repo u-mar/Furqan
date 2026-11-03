@@ -8,24 +8,28 @@ export const MAX_FAVORITE_RECITERS = 5
 const DEFAULT_FAVORITE_RECITER_IDS = [
   'ajmi',
   'soufi',
-  'idris_abkar',
+  'abdul_rahman_musaad',
   'nourin_siddig',
   'hassan_al_wajdi',
 ]
 
 /**
- * Defaults that were later replaced, as [old, new]. Someone who saved their
- * favorites while the old default was in the list gets the new one once, in
- * the same place, instead of keeping a reciter the app no longer suggests.
+ * Defaults that were later replaced, as [old, new, the mark that it was done].
+ * Someone who saved their favorites while the old default was in the list gets
+ * the new one once, in the same place, instead of keeping a reciter the app no
+ * longer suggests. Each has its own mark, so a later swap still reaches people
+ * who had the earlier one, and a reciter put back by hand is never swapped again.
  */
-const REPLACED_DEFAULTS: Array<[string, string]> = [['hazaa_balushi', 'hassan_al_wajdi']]
-const REPLACED_KEY = 'muyassar_favorite_reciters_replaced_v1'
+const REPLACED_DEFAULTS: Array<[string, string, string]> = [
+  ['hazaa_balushi', 'hassan_al_wajdi', 'muyassar_favorite_reciters_replaced_v1'],
+  ['idris_abkar', 'abdul_rahman_musaad', 'muyassar_favorite_reciters_replaced_v2'],
+]
 
 function applyReplacedDefaults(ids: string[]): string[] {
-  if (localStorage.getItem(REPLACED_KEY)) return ids
-  localStorage.setItem(REPLACED_KEY, '1')
   let next = ids
-  for (const [from, to] of REPLACED_DEFAULTS) {
+  for (const [from, to, mark] of REPLACED_DEFAULTS) {
+    if (localStorage.getItem(mark)) continue
+    localStorage.setItem(mark, '1')
     if (!next.includes(from)) continue
     next = next.includes(to) ? next.filter((id) => id !== from) : next.map((id) => (id === from ? to : id))
   }

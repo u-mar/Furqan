@@ -152,7 +152,7 @@ export default function PrayerPage() {
     <main className="prayer-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
       <div
         className="mx-auto w-full max-w-lg px-4 pt-[max(1rem,env(safe-area-inset-top))]"
-        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem + var(--listen-dock, 0px))` }}
+        style={{ paddingBottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.5rem)` }}
       >
         <PrayerHeader title={t('Prayer times')} subtitle={`${gregorian} · ${formatHijri(now)}`} />
 
