@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import { tr } from '@/lib/i18n-core'
@@ -48,6 +49,9 @@ export function useRecitationActions({
   const [optimisticBackground, setOptimisticBackground] = useState<string | null>(null)
 
   const isOwner = Boolean(viewerId && viewerUsername && viewerUsername === recitation.userUsername)
+  const isAdmin = useIsAdmin()
+  /** May rename it, change its background and delete it: its reciter, or the admin. */
+  const canManage = isOwner || isAdmin
   const isPrivate = optimisticPrivate ?? recitation.isPrivate
   /** The recitation as it should be drawn: with the background just picked, before every list has caught up. */
   const shown = useMemo(() => {
@@ -58,17 +62,17 @@ export function useRecitationActions({
   }, [optimisticBackground, optimisticTitle, recitation])
 
   const handleDelete = useCallback(async () => {
-    if (!viewerId) return
+    if (!viewerId && !isAdmin) return
     setRemoving(true)
     try {
-      await deleteRecitation(recitation.id, viewerId)
+      await deleteRecitation(recitation.id, viewerId ?? '')
       onRemoved?.(recitation.id)
       onNotice?.(tr('Recitation deleted.'))
     } catch {
       setRemoving(false)
       onNotice?.(tr('Could not delete that recitation.'))
     }
-  }, [onNotice, onRemoved, recitation.id, viewerId])
+  }, [isAdmin, onNotice, onRemoved, recitation.id, viewerId])
 
   const handleTogglePrivacy = useCallback(async () => {
     if (!viewerId) return
@@ -87,11 +91,11 @@ export function useRecitationActions({
 
   const handleChangeBackground = useCallback(
     async (background: string) => {
-      if (!viewerId || background === shown.background) return
+      if ((!viewerId && !isAdmin) || background === shown.background) return
       const before = optimisticBackground
       setOptimisticBackground(background)
       try {
-        await setRecitationBackground(recitation.id, viewerId, background)
+        await setRecitationBackground(recitation.id, viewerId ?? '', background)
         onNotice?.(tr('Background changed.'))
         onUpdated?.(recitation.id, { background })
       } catch {
@@ -99,17 +103,17 @@ export function useRecitationActions({
         onNotice?.(tr('Could not change that.'))
       }
     },
-    [onNotice, onUpdated, optimisticBackground, recitation.id, shown.background, viewerId]
+    [isAdmin, onNotice, onUpdated, optimisticBackground, recitation.id, shown.background, viewerId]
   )
 
   /** Renames it. Says whether the new title was kept, so the sheet knows to close. */
   const handleRename = useCallback(
     async (title: string): Promise<boolean> => {
-      if (!viewerId) return false
+      if (!viewerId && !isAdmin) return false
       const before = optimisticTitle
       setOptimisticTitle(title)
       try {
-        const kept = await setRecitationTitle(recitation.id, viewerId, title)
+        const kept = await setRecitationTitle(recitation.id, viewerId ?? '', title)
         setOptimisticTitle(kept)
         onNotice?.(tr('Title saved.'))
         onUpdated?.(recitation.id, { title: kept })
@@ -120,7 +124,7 @@ export function useRecitationActions({
         return false
       }
     },
-    [onNotice, onUpdated, optimisticTitle, recitation.id, viewerId]
+    [isAdmin, onNotice, onUpdated, optimisticTitle, recitation.id, viewerId]
   )
 
   const handleReportTap = useCallback(() => {
@@ -162,6 +166,7 @@ export function useRecitationActions({
 
   return {
     isOwner,
+    canManage,
     shown,
     handleBlock,
     isPrivate,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Moon } from 'lucide-react'
+import { NatureChip } from '@/components/listen/NatureControls'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { PlayPauseButton, SkipButton } from '@/components/listen/PlayerControls'
 import { SleepLeft } from '@/components/listen/SleepControls'
@@ -30,10 +31,12 @@ export default function NowPlayingSheet({
   open,
   onClose,
   onOpenSleep,
+  onOpenNature,
 }: {
   open: boolean
   onClose: () => void
   onOpenSleep: () => void
+  onOpenNature: () => void
 }) {
   const t = useT()
   const { surah, reciterId, status, error } = useListenState()
@@ -153,12 +156,12 @@ export default function NowPlayingSheet({
             onPointerCancel={release}
           >
             <div className="mx-auto mb-3 mt-1.5 h-1 w-10 rounded-full bg-[var(--home-rule-strong)]" aria-hidden />
-            {/* Three columns, so the label stays centred however wide the sleep button grows. */}
+            {/* Three columns, so Nature mode stays centred however wide the sleep button grows. */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-center">
               <button type="button" onClick={dismiss} className="home-round ed-focus justify-self-start" aria-label={t('Close Now playing')}>
                 <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
               </button>
-              <span className="home-label">{t('Now playing')}</span>
+              <NatureChip onOpen={onOpenNature} />
               <span className="justify-self-end">
                 <SleepTopButton onOpen={onOpenSleep} />
               </span>

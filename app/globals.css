@@ -2697,6 +2697,7 @@ html[lang='ar'] .home-date {
 
 .home-ayah-translation--week {
   text-align: left;
+  text-wrap: pretty;
   font-size: 0.96875rem;
 }
 

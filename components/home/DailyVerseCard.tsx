@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Bookmark, Check, Pause, Play, Share } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { fetchDailyVerseConfig, getLocalDailyVerseConfig } from '@/lib/admin'
@@ -68,6 +68,40 @@ async function loadDailyVerse(verseKey: string): Promise<Verse> {
   return getVerseByKey(verseKey)
 }
 
+/** The ayah's largest size, and the smallest it may shrink to before it wraps onto a second line instead. */
+const AYAH_MAX_PX = 27
+const AYAH_MIN_PX = 17
+
+/**
+ * Sizes the ayah to sit on one line across the phone's width: as large as
+ * AYAH_MAX_PX, smaller for a longer ayah. One so long that it would have to go
+ * below AYAH_MIN_PX wraps at that size instead. Refits when the width changes.
+ */
+function useOneLineAyah(ref: RefObject<HTMLElement | null>, key: string) {
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      el.style.whiteSpace = 'nowrap'
+      el.style.fontSize = `${AYAH_MAX_PX}px`
+      const natural = el.scrollWidth
+      const room = el.clientWidth
+      if (!natural || !room) return
+      const size = Math.min(AYAH_MAX_PX, Math.floor(((AYAH_MAX_PX * room) / natural) * 0.98 * 10) / 10)
+      if (size >= AYAH_MIN_PX) {
+        el.style.fontSize = `${size}px`
+      } else {
+        el.style.fontSize = `${AYAH_MIN_PX}px`
+        el.style.whiteSpace = ''
+      }
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref, key])
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
@@ -99,6 +133,7 @@ export default function DailyVerseCard() {
   const [copied, setCopied] = useState(false)
   const [fontTimedOut, setFontTimedOut] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const ayahRef = useRef<HTMLParagraphElement>(null)
 
   const verseKey = config?.verseKey ?? null
 
@@ -329,6 +364,7 @@ export default function DailyVerseCard() {
   const endWord = verse?.words?.find((word) => word.char_type_name === 'end')
   // The font is part of being ready, so the card appears once, whole.
   const ready = config !== null && verse !== null && !waitingForFont
+  useOneLineAyah(ayahRef, `${ready}:${verseKey}:${useGlyphs}`)
 
   // The ayah's closing mark stays on the line with its last word.
   const leadingWords = qcfWords.slice(0, -2)
@@ -351,8 +387,9 @@ export default function DailyVerseCard() {
       ) : (
         <div className="home-fade">
           <Link href={`/read?page=${page}`} className="ed-focus block rounded-lg">
-            <span className="home-date block truncate">
-              {t('Ayah of the week')} · {surahLabel} {config.verseKey}
+            {/* "Surah" left off, so the line fits a narrow phone; it may wrap rather than be cut. */}
+            <span className="home-date block">
+              {t('Ayah of the week')} · {surahLabel.replace(/^surah\s+/i, '')} {config.verseKey}
             </span>
           </Link>
 
@@ -360,7 +397,7 @@ export default function DailyVerseCard() {
           <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
             {useGlyphs ? (
               // The glyph run carries its own ayah marker, so none is added.
-              <p className="home-ayah home-ayah--week home-fade" dir="rtl" lang="ar" style={{ fontFamily: qcfPageFontFamily(qcfPage) }}>
+              <p ref={ayahRef} className="home-ayah home-ayah--week home-fade" dir="rtl" lang="ar" style={{ fontFamily: qcfPageFontFamily(qcfPage) }}>
                 {/* A space between words, so a long verse can wrap onto the next line. */}
                 {leadingWords.map((word, i) => (
                   <Fragment key={i}>
@@ -377,7 +414,7 @@ export default function DailyVerseCard() {
                 </span>
               </p>
             ) : (
-              <p className="home-ayah home-ayah--week home-ayah--plain home-fade" dir="rtl" lang="ar">
+              <p ref={ayahRef} className="home-ayah home-ayah--week home-ayah--plain home-fade" dir="rtl" lang="ar">
                 {arabicText}{' '}
                 <AyahEndMark
                   verseKey={config.verseKey}

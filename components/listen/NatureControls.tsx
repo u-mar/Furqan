@@ -8,6 +8,7 @@ import {
   CloudRain,
   Flame,
   House,
+  Leaf,
   Moon,
   MoonStar,
   Mountain,
@@ -107,6 +108,34 @@ export function NatureButton({ onOpen }: { onOpen: () => void }) {
   return (
     <button type="button" onClick={open} className="home-round ed-focus" aria-label={t('Nature mode')}>
       <Moon className="h-[19px] w-[19px]" strokeWidth={1.9} />
+    </button>
+  )
+}
+
+/**
+ * Nature mode in the middle of Now playing's header: a leaf and its name while
+ * quiet, the sound playing (and how many more) once one is on.
+ */
+export function NatureChip({ onOpen }: { onOpen: () => void }) {
+  const t = useT()
+  const { sounds, playing } = useNature()
+  const live = playing && sounds.length > 0
+  const latest = sounds[sounds.length - 1]
+  const Icon = live && latest ? ICONS[latest] : Leaf
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        tapFeedback()
+        onOpen()
+      }}
+      aria-label={live ? t('Nature mode is on') : t('Nature mode')}
+      className="fx-press ed-focus flex h-[42px] min-w-0 max-w-[11rem] items-center gap-2 rounded-full bg-[var(--home-card-bg)] px-3.5 text-[0.84375rem] font-semibold shadow-[var(--home-lift-sm)]"
+    >
+      <Icon className={`h-4 w-4 shrink-0 ${live ? 'text-[var(--home-sage)]' : 'text-[var(--home-heading)]'}`} strokeWidth={2} aria-hidden />
+      <span className={`truncate ${live ? 'text-[var(--home-sage-dark)]' : 'text-[var(--home-heading)]'}`}>
+        {live && latest ? `${natureName(latest)}${sounds.length > 1 ? ` +${sounds.length - 1}` : ''}` : t('Nature mode')}
+      </span>
     </button>
   )
 }

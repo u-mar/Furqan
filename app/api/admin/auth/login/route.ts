@@ -9,7 +9,7 @@ import {
 export async function POST(req: Request) {
   if (!adminCredentialsConfigured()) {
     return NextResponse.json(
-      { error: 'Admin login is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in .env.local.' },
+      { error: 'Admin login is not configured. Set ADMIN_EMAIL and ADMIN_PASSWORD.' },
       { status: 503 }
     )
   }
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const password = body.password ?? ''
 
   if (!verifyAdminCredentials(username, password)) {
-    return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 })
+    return NextResponse.json({ error: 'Wrong email or password.' }, { status: 401 })
   }
 
   const res = NextResponse.json({ ok: true })

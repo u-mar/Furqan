@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Lock, Shield } from 'lucide-react'
+import { forgetAdminCheck } from '@/hooks/useIsAdmin'
 import { loginAdmin } from '@/lib/admin-api'
 import { APP_NAME } from '@/lib/app-brand'
 
@@ -22,6 +23,8 @@ export default function AdminLogin({ onSuccess, configured }: AdminLoginProps) {
     setLoading(true)
     try {
       await loginAdmin(username, password)
+      // Qari asks again, so the admin's options show on every recitation.
+      forgetAdminCheck()
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
@@ -49,16 +52,18 @@ export default function AdminLogin({ onSuccess, configured }: AdminLoginProps) {
 
         {!configured ? (
           <p className="mb-4 rounded-xl bg-amber-500/15 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
-            Set <code className="text-xs">ADMIN_USERNAME</code> and{' '}
-            <code className="text-xs">ADMIN_PASSWORD</code> in <code className="text-xs">.env.local</code>{' '}
-            and restart the dev server.
+            Set <code className="text-xs">ADMIN_EMAIL</code> and{' '}
+            <code className="text-xs">ADMIN_PASSWORD</code> (in Vercel, or <code className="text-xs">.env.local</code> here)
+            and restart.
           </p>
         ) : null}
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Username</span>
+            <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Email</span>
             <input
+              type="email"
+              inputMode="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"

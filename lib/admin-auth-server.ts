@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -11,15 +11,27 @@ function sessionSecret(): string {
   return secret
 }
 
-export function adminCredentialsConfigured(): boolean {
-  return Boolean(process.env.ADMIN_USERNAME?.trim() && process.env.ADMIN_PASSWORD?.trim())
+/** The admin's email: ADMIN_EMAIL, or the older ADMIN_USERNAME. Compared without regard to case. */
+function adminEmail(): string {
+  return (process.env.ADMIN_EMAIL?.trim() || process.env.ADMIN_USERNAME?.trim() || '').toLowerCase()
 }
 
-export function verifyAdminCredentials(username: string, password: string): boolean {
-  const expectedUser = process.env.ADMIN_USERNAME?.trim() ?? ''
+export function adminCredentialsConfigured(): boolean {
+  return Boolean(adminEmail() && process.env.ADMIN_PASSWORD?.trim())
+}
+
+/** Same length digests, compared in constant time, so the password cannot be guessed from timing. */
+function sameSecret(a: string, b: string): boolean {
+  return timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest())
+}
+
+export function verifyAdminCredentials(email: string, password: string): boolean {
+  const expectedEmail = adminEmail()
   const expectedPass = process.env.ADMIN_PASSWORD?.trim() ?? ''
-  if (!expectedUser || !expectedPass) return false
-  return username === expectedUser && password === expectedPass
+  if (!expectedEmail || !expectedPass) return false
+  const emailOk = sameSecret(email.trim().toLowerCase(), expectedEmail)
+  const passOk = sameSecret(password, expectedPass)
+  return emailOk && passOk
 }
 
 export function createAdminSessionToken(): string {

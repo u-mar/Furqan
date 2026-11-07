@@ -570,6 +570,7 @@ const Slide = memo(function Slide({
   const t = useT()
   const {
     isOwner,
+    canManage,
     shown,
     isPrivate,
     shareOpen,
@@ -852,11 +853,11 @@ const Slide = memo(function Slide({
         onNotice={onNotice}
         videoView
         actions={{
-          isOwner,
+          isOwner: canManage,
           isPrivate,
-          onEditTitle: isOwner ? () => setTitleOpen(true) : undefined,
+          onEditTitle: canManage ? () => setTitleOpen(true) : undefined,
           onTogglePrivacy: isOwner ? () => void handleTogglePrivacy() : undefined,
-          onChangeBackground: isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined,
+          onChangeBackground: canManage && !isAyahCard ? () => setBackgroundOpen(true) : undefined,
           onDelete: () => void handleDelete(),
           onReport: handleReportTap,
           blockUsername: recitation.userUsername,
@@ -864,9 +865,9 @@ const Slide = memo(function Slide({
           onShowList,
         }}
       />
-      {isOwner ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
+      {canManage ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
-      {isOwner && !isAyahCard ? (
+      {canManage && !isAyahCard ? (
         <BackgroundGallery
           open={backgroundOpen}
           items={VIDEO_BACKGROUNDS}

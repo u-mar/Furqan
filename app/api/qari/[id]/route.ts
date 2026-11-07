@@ -1,3 +1,4 @@
+import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from '@/lib/admin-auth-server'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { removeAudio, removeImage } from '@/lib/qari-storage'
@@ -61,7 +62,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ playCount: updated.playCount, counted: true })
     }
 
-    if (!userId) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
+    // Signed in at /admin: may rename any recitation or change what it is shown on.
+    const admin = verifyAdminSessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
+    const adminMay = admin && (action === 'setBackground' || action === 'setTitle')
+
+    if (!userId && !adminMay) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
 
     if (action === 'setPrivacy') {
       // Only the reciter decides who can hear their own recording.
@@ -77,9 +82,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     if (action === 'setBackground') {
-      // Only the reciter picks what their recitation is shown on. A picture made on the
-      // Read screen is its own background.
-      if (recitation.userId !== userId) {
+      // Only the reciter (or the admin) picks what their recitation is shown on. A picture
+      // made on the Read screen is its own background.
+      if (recitation.userId !== userId && !adminMay) {
         return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
       }
       if (recitation.kind === 'ayah' || !isVideoBackgroundId(body.background)) {
@@ -94,8 +99,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     if (action === 'setTitle') {
-      // Only the reciter renames their own recitation; as long as a title may be when posting.
-      if (recitation.userId !== userId) {
+      // Only the reciter (or the admin) renames it; as long as a title may be when posting.
+      if (recitation.userId !== userId && !adminMay) {
         return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
       }
       const title = typeof body.title === 'string' ? body.title.trim().slice(0, 80) : ''
@@ -103,6 +108,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       const updated = await prisma.recitation.update({ where: { id }, data: { title }, select: { title: true } })
       return NextResponse.json({ title: updated.title })
     }
+
+    // Reporting and liking are always someone's own.
+    if (!userId) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
 
     if (action === 'report') {
       await prisma.recitationReport.create({
@@ -161,15 +169,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-/** DELETE /api/qari/[id]?userId= — only the owner may remove their recitation. */
+/** DELETE /api/qari/[id]?userId= — only the owner, or the admin, may remove a recitation. */
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params
   const userId = new URL(request.url).searchParams.get('userId')?.trim()
+  const admin = verifyAdminSessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
 
   try {
     const recitation = await prisma.recitation.findUnique({ where: { id } })
     if (!recitation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (!userId || recitation.userId !== userId) {
+    if (!admin && (!userId || recitation.userId !== userId)) {
       return NextResponse.json({ error: 'Not yours to delete.' }, { status: 403 })
     }
 

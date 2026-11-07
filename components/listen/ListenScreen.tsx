@@ -381,6 +381,7 @@ export default function ListenScreen() {
         open={playerOpen}
         onClose={() => setPlayerOpen(false)}
         onOpenSleep={() => setSleepOpen(true)}
+        onOpenNature={() => setNatureOpen(true)}
       />
       <NatureSheet
         open={natureOpen}

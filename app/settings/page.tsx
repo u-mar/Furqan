@@ -17,13 +17,16 @@ import {
   Lock,
   LogOut,
   Lightbulb,
+  ShieldCheck,
   Trash,
   UserRound,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/cn'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 import AccountSheet from '@/components/settings/AccountSheet'
 import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import SettingsSheet from '@/components/settings/SettingsSheet'
@@ -152,6 +155,9 @@ export default function SettingsPage() {
   const toastTimer = useRef<number | null>(null)
   const returnHrefResolved = useRef(false)
 
+  const router = useRouter()
+  const isAdmin = useIsAdmin()
+  const adminHold = useRef<number | undefined>(undefined)
   const refreshProfile = useCallback(() => setUser(getSignedInUser()), [])
 
   const showToast = useCallback((message: string) => {
@@ -413,7 +419,30 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        <p className="home-serif mt-8 text-center text-sm italic text-[var(--home-muted)]">{t('For Sadaqah Jariyah')}</p>
+        {isAdmin ? (
+          <div className="set-card mt-[22px]">
+            <Link href="/admin" className="set-row">
+              <RowIcon icon={ShieldCheck} />
+              <span className="set-row__label">{t('Admin')}</span>
+              <RowChevron />
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Held for a moment, it opens the admin sign-in (there is no link to it anywhere else in the app). */}
+        <p
+          className="home-serif mt-8 select-none text-center text-sm italic text-[var(--home-muted)] [-webkit-touch-callout:none]"
+          onPointerDown={() => {
+            window.clearTimeout(adminHold.current)
+            adminHold.current = window.setTimeout(() => router.push('/admin'), 1200)
+          }}
+          onPointerUp={() => window.clearTimeout(adminHold.current)}
+          onPointerLeave={() => window.clearTimeout(adminHold.current)}
+          onPointerCancel={() => window.clearTimeout(adminHold.current)}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {t('For Sadaqah Jariyah')}
+        </p>
       </div>
 
       <BlockedAccountsSheet open={blockedOpen} viewer={user} onClose={() => setBlockedOpen(false)} />

@@ -61,6 +61,7 @@ function RecitationCard({
   const player = useQariPlayer()
   const {
     isOwner,
+    canManage,
     shown,
     isPrivate,
     removing,
@@ -125,11 +126,11 @@ function RecitationCard({
 
   const menu = (
     <RowMenu
-      isOwner={isOwner}
+      isOwner={canManage}
       isPrivate={isPrivate}
-      onEditTitle={isOwner ? () => setTitleOpen(true) : undefined}
+      onEditTitle={canManage ? () => setTitleOpen(true) : undefined}
       onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
-      onChangeBackground={isOwner && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
+      onChangeBackground={canManage && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
       onReport={handleReportTap}
       onDelete={() => void handleDelete()}
       blockUsername={recitation.userUsername}
@@ -271,8 +272,8 @@ function RecitationCard({
 
       <ShareSheet recitation={shown} open={shareOpen} onClose={() => setShareOpen(false)} onNotice={onNotice} />
       <ReportReasonSheet open={reportOpen} onClose={() => setReportOpen(false)} onPick={(reason) => void handleReportReason(reason)} />
-      {isOwner ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
-      {isOwner && !isAyahCard ? (
+      {canManage ? <EditTitleSheet open={titleOpen} title={shown.title} onClose={() => setTitleOpen(false)} onSave={handleRename} /> : null}
+      {canManage && !isAyahCard ? (
         <BackgroundGallery
           open={backgroundOpen}
           items={VIDEO_BACKGROUNDS}
