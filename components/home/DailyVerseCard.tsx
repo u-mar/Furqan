@@ -334,112 +334,92 @@ export default function DailyVerseCard() {
   const leadingWords = qcfWords.slice(0, -2)
   const closingWords = qcfWords.slice(-2)
 
-  // As the design has it, in every theme: the heading above the card, the
-  // surah and verse number at its top and a Listen button in its footer.
+  // No card, in big type like the prayer times: a small spaced line with the surah
+  // and verse, the ayah large in the mushaf's own script, its meaning in grey,
+  // then Listen with round bookmark and share buttons under a thin line.
   return (
-    <section aria-label={t('Verse of the week')}>
-      <h2 className="home-section-label">{t('Verse of the week')}</h2>
-      {/* A quiet card on Home's own colours, so the verse sits with the rest of the page */}
-      <article className="home-verse-card" aria-busy={!ready}>
-        {!ready ? (
-          verseFailed ? (
-            <p className="py-6 text-center text-[0.8125rem] text-[var(--pc-muted)]">
-              {t('This week\'s verse will show when you\'re back online.')}</p>
-          ) : (
-            <VerseSkeleton />
-          )
+    <section aria-label={t('Ayah of the week')} aria-busy={!ready} className="px-1">
+      {!ready ? (
+        verseFailed ? (
+          <>
+            <p className="home-date">{t('Ayah of the week')}</p>
+            <p className="mt-3 text-[0.875rem] text-[var(--home-muted)]">{t("This week's verse will show when you're back online.")}</p>
+          </>
         ) : (
-          <div className="home-fade">
-            <Link
-              href={`/read?page=${page}`}
-              className="ed-focus -mx-1 flex items-baseline justify-between gap-3 rounded-md px-1"
-            >
-              <span className="min-w-0 truncate text-[0.8125rem] font-semibold text-[var(--pc-muted)]">{surahLabel}</span>
-              <span className="shrink-0 text-[0.78125rem] font-medium tabular-nums text-[var(--pc-faint)]">{config.verseKey}</span>
-            </Link>
+          <VerseSkeleton />
+        )
+      ) : (
+        <div className="home-fade">
+          <Link href={`/read?page=${page}`} className="ed-focus block rounded-lg">
+            <span className="home-date block truncate">
+              {t('Ayah of the week')} · {surahLabel} {config.verseKey}
+            </span>
+          </Link>
 
-            {/* Up to three lines of each; the whole verse opens in the reader. */}
-            <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
-              {useGlyphs ? (
-                // The glyph run carries its own ayah marker, so none is added.
-                <p
-                  className="weekly-verse__qcf home-fade"
-                  dir="rtl"
-                  lang="ar"
-                  style={{ fontFamily: qcfPageFontFamily(qcfPage) }}
-                >
-                  {/* A space between words, so a long verse can wrap onto the next line. */}
-                  {leadingWords.map((word, i) => (
+          {/* Up to three lines of each; the whole verse opens in the reader. */}
+          <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
+            {useGlyphs ? (
+              // The glyph run carries its own ayah marker, so none is added.
+              <p className="home-ayah home-ayah--week home-fade" dir="rtl" lang="ar" style={{ fontFamily: qcfPageFontFamily(qcfPage) }}>
+                {/* A space between words, so a long verse can wrap onto the next line. */}
+                {leadingWords.map((word, i) => (
+                  <Fragment key={i}>
+                    <span className="mushaf-translation-qcf-word">{word}</span>{' '}
+                  </Fragment>
+                ))}
+                <span className="weekly-verse__keep">
+                  {closingWords.map((word, i) => (
                     <Fragment key={i}>
-                      <span className="mushaf-translation-qcf-word">{word}</span>{' '}
+                      {i ? ' ' : null}
+                      <span className="mushaf-translation-qcf-word">{word}</span>
                     </Fragment>
                   ))}
-                  <span className="weekly-verse__keep">
-                    {closingWords.map((word, i) => (
-                      <Fragment key={i}>
-                        {i ? ' ' : null}
-                        <span className="mushaf-translation-qcf-word">{word}</span>
-                      </Fragment>
-                    ))}
-                  </span>
-                </p>
-              ) : (
-                <p className="weekly-verse__arabic home-fade" dir="rtl" lang="ar">
-                  {arabicText}{' '}
-                  <AyahEndMark
-                    verseKey={config.verseKey}
-                    pageNumber={endWord?.v2_page || endWord?.page_number || page}
-                    codeV2={endWord?.code_v2}
-                    fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
-                    className="text-[var(--pc-gold)]"
-                  />
-                </p>
-              )}
-
-              {translation === null ? (
-                <TranslationSkeleton />
-              ) : translation ? (
-                <p dir="auto" className="weekly-verse__translation home-fade mx-auto mt-1.5 max-w-[19rem] text-center">
-                  {translation}
-                </p>
-              ) : null}
-            </Link>
-
-            <div className="home-verse-card__foot">
-              <button
-                type="button"
-                onClick={togglePlay}
-                aria-pressed={playing}
-                className="ed-focus flex h-11 items-center gap-2.5 rounded-full pe-3 text-[0.875rem] font-semibold text-[var(--pc-ink)] transition-transform active:scale-95"
-              >
-                <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--pc-emerald)] text-[var(--pc-on-emerald)]">
-                  {playing ? (
-                    <Pause className="h-[13px] w-[13px] fill-current" strokeWidth={0} />
-                  ) : (
-                    <Play className="h-[13px] w-[13px] translate-x-px fill-current" strokeWidth={0} />
-                  )}
                 </span>
-                {playing ? t('Pause') : t('Listen')}
-              </button>
-              <div className="-me-1.5 flex shrink-0 items-center">
-                <IconButton label={saved ? t('Remove bookmark') : t('Bookmark verse')} pressed={saved} onClick={toggleSave}>
-                  <Bookmark
-                    className={cn('h-[17px] w-[17px]', saved && 'fill-current text-[var(--pc-emerald)]')}
-                    strokeWidth={1.8}
-                  />
-                </IconButton>
-                <IconButton label={copied ? t('Copied') : t('Share verse')} onClick={() => void handleShare()}>
-                  {copied ? (
-                    <Check className="h-[17px] w-[17px] text-[var(--pc-emerald)]" strokeWidth={2.4} />
-                  ) : (
-                    <Share className="h-[17px] w-[17px]" strokeWidth={1.8} />
-                  )}
-                </IconButton>
-              </div>
-            </div>
+              </p>
+            ) : (
+              <p className="home-ayah home-ayah--week home-ayah--plain home-fade" dir="rtl" lang="ar">
+                {arabicText}{' '}
+                <AyahEndMark
+                  verseKey={config.verseKey}
+                  pageNumber={endWord?.v2_page || endWord?.page_number || page}
+                  codeV2={endWord?.code_v2}
+                  fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
+                />
+              </p>
+            )}
+
+            {translation === null ? (
+              <TranslationSkeleton />
+            ) : translation ? (
+              <p dir="auto" className="home-ayah-translation home-ayah-translation--week home-fade mt-1.5">
+                {translation}
+              </p>
+            ) : null}
+          </Link>
+
+          <div className="mt-4 flex items-center gap-2 border-t border-[var(--home-rule)] pt-3.5">
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-pressed={playing}
+              className="fx-press ed-focus inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[0.9375rem] font-semibold text-black"
+            >
+              {playing ? (
+                <Pause className="h-[15px] w-[15px] fill-current" strokeWidth={0} />
+              ) : (
+                <Play className="h-[15px] w-[15px] fill-current" strokeWidth={0} />
+              )}
+              {playing ? t('Pause') : t('Listen')}
+            </button>
+            <IconButton label={saved ? t('Remove bookmark') : t('Bookmark verse')} pressed={saved} onClick={toggleSave}>
+              <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} strokeWidth={1.8} />
+            </IconButton>
+            <IconButton label={copied ? t('Copied') : t('Share verse')} onClick={() => void handleShare()}>
+              {copied ? <Check className="h-[18px] w-[18px]" strokeWidth={2.4} /> : <Share className="h-[18px] w-[18px]" strokeWidth={1.8} />}
+            </IconButton>
           </div>
-        )}
-      </article>
+        </div>
+      )}
     </section>
   )
 }
@@ -461,7 +441,7 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}
-      className="ed-focus flex h-[2.375rem] w-[2.375rem] items-center justify-center rounded-full text-[var(--pc-muted)] transition-[color,transform] hover:text-[var(--pc-ink)] active:scale-90"
+      className="ed-focus flex h-[2.625rem] w-[2.625rem] items-center justify-center rounded-full bg-[var(--home-card-bg)] text-white transition-transform active:scale-90"
     >
       {children}
     </button>
@@ -470,30 +450,31 @@ function IconButton({
 
 function ArabicSkeleton() {
   return (
-    <div className="flex flex-col items-center gap-3 py-3" aria-hidden>
-      <span className="qari-skeleton block h-4 w-4/5 rounded-full" />
+    <div className="flex flex-col items-end gap-3 py-3" aria-hidden>
+      <span className="block h-5 w-4/5 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
     </div>
   )
 }
 
 function TranslationSkeleton() {
   return (
-    <div className="mt-1.5 flex flex-col items-center gap-2 py-1" aria-hidden>
-      <span className="qari-skeleton block h-2.5 w-3/4 rounded-full" />
-      <span className="qari-skeleton block h-2.5 w-1/2 rounded-full" />
+    <div className="mt-1.5 flex flex-col gap-2 py-1" aria-hidden>
+      <span className="block h-2.5 w-3/4 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
+      <span className="block h-2.5 w-1/2 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
     </div>
   )
 }
 
-/** Roughly the finished card's shape, so nothing below it jumps when it fills in. */
+/** Roughly the finished section's shape, so nothing jumps when it fills in. */
 function VerseSkeleton() {
   return (
-    <div aria-hidden className="mt-2">
+    <div aria-hidden>
+      <span className="block h-3 w-48 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
       <ArabicSkeleton />
       <TranslationSkeleton />
-      <div className="home-verse-card__foot">
-        <span className="qari-skeleton block h-3 w-28 rounded-full" />
-        <span className="qari-skeleton block h-[30px] w-[6rem] rounded-full" />
+      <div className="mt-4 flex gap-2 border-t border-[var(--home-rule)] pt-3.5">
+        <span className="block h-10 w-24 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
+        <span className="block h-10 w-10 animate-pulse rounded-full bg-[var(--home-card-bg)]" />
       </div>
     </div>
   )

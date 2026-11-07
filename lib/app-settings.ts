@@ -32,6 +32,7 @@ function isReadingMode(value: unknown): value is ReadingMode {
 }
 
 export interface AppSettings {
+  /** The mushaf page's colours in Read. The rest of the app is always black. */
   theme: ThemeMode
   /** Mushaf page width. */
   mushafWidth: MushafWidthMode
@@ -66,7 +67,7 @@ import {
 } from '@/lib/translations'
 
 const defaults: AppSettings = {
-  theme: 'light',
+  theme: 'black',
   mushafWidth: 'spaced',
   offlineDownloaded: false,
   translationsDownloaded: false,
@@ -87,7 +88,7 @@ function parseSettings(
       ? parsed.reciterId
       : DEFAULT_RECITER_ID
   return {
-    theme: isThemeMode(parsed.theme) ? parsed.theme : 'light',
+    theme: isThemeMode(parsed.theme) ? parsed.theme : 'black',
     mushafWidth: isWidthMode(parsed.mushafWidth) ? parsed.mushafWidth : 'spaced',
     offlineDownloaded: Boolean(parsed.offlineDownloaded),
     translationsDownloaded: Boolean(parsed.translationsDownloaded),
@@ -150,8 +151,18 @@ export function setAppSettings(patch: Partial<AppSettings>): AppSettings {
   return next
 }
 
-export function applyThemeToDocument(theme: ThemeMode): void {
+/** The screens that show the mushaf page, which keep the page colours chosen in Read. */
+export function isMushafPath(pathname: string): boolean {
+  return pathname === '/read' || pathname.startsWith('/read/') || pathname === '/hifdh/random'
+}
+
+/**
+ * The app is black throughout; only the mushaf screens take the page colours
+ * chosen in Read (`theme`). Called again on every change of screen.
+ */
+export function applyThemeToDocument(readTheme: ThemeMode, pathname?: string): void {
   if (typeof document === 'undefined') return
+  const theme = isMushafPath(pathname ?? window.location.pathname) ? readTheme : 'black'
   const root = document.documentElement
   root.classList.remove('dark', 'black')
   if (theme === 'dark' || theme === 'black') {

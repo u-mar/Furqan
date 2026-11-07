@@ -27,27 +27,26 @@ const norm = (deg: number) => ((deg % 360) + 360) % 360
 /** Shortest signed turn from a to b, in degrees. */
 const turn = (a: number, b: number) => ((b - a + 540) % 360) - 180
 
-/** The Kaaba, drawn as the cube it is: black cloth, a gold band, a gold door. */
+/** The Kaaba, drawn as the cube it is: black cloth and its gold band. */
 function Kaaba({ x, y, size }: { x: number; y: number; size: number }) {
-  const s = size / 40
+  const s = size / 24
   return (
-    <g transform={`translate(${x - size / 2} ${y - size / 2}) scale(${s})`}>
-      <polygon points="20,3 38,11 20,19 2,11" fill="#3a3a3a" />
-      <polygon points="2,11 20,19 20,39 2,31" fill="#111111" />
-      <polygon points="20,19 38,11 38,31 20,39" fill="#1c1c1c" />
-      <polygon points="2,17 20,25 20,29 2,21" fill="#c9a24d" />
-      <polygon points="20,25 38,17 38,21 20,29" fill="#a8842f" />
-      <polygon points="26,31.5 33,28.3 33,36 26,39.2" fill="#e2c26b" />
-      <polygon points="20,3 38,11 20,19 2,11" fill="none" stroke="#c9a24d" strokeWidth="0.8" />
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <polygon points="-12,-5 0,-9.5 12,-5 0,-0.5" fill="#4a5568" />
+      <polygon points="-12,-5 0,-0.5 0,11 -12,6.5" fill="#1a1d22" />
+      <polygon points="0,-0.5 12,-5 12,6.5 0,11" fill="#262a31" />
+      <polygon points="-12,-2 0,2.5 0,5.2 -12,0.7" fill="#c99a2e" />
+      <polygon points="0,2.5 12,-2 12,0.7 0,5.2" fill="#e2b445" />
     </g>
   )
 }
 
 /**
- * A qibla compass built like a real one: a metal case, a dial marked in degrees
- * that turns with the phone so north stays north, a needle for north, and the
- * Kaaba on the rim at its true bearing. The fixed red mark at the top is where
- * the phone points; turn until the Kaaba sits under it.
+ * A qibla compass in the look of Home's: a black dial with pale-blue marks and
+ * degrees that turns with the phone so north stays north, the Kaaba on the rim
+ * at its true bearing and the needle pointing at it, red end first. The fixed
+ * white mark at the top is where the phone points; turn until the Kaaba sits
+ * under it.
  *
  * The reading is corrected for the difference between magnetic and true north
  * where the person is (magnetic declination), which is what a phone compass on
@@ -145,78 +144,55 @@ export default function QiblaCompass({ place }: { place: Place }) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className={`relative mt-1 aspect-square w-full max-w-[20rem] rounded-full transition-shadow duration-300 ${facing ? 'shadow-[0_0_0_4px_rgba(92,196,171,0.55),0_0_38px_6px_rgba(92,196,171,0.45)]' : 'shadow-[0_18px_34px_-14px_rgba(0,0,0,0.55)]'}`}>
+      <div className={`relative mt-1 aspect-square w-full max-w-[20rem] rounded-full transition-shadow duration-300 ${facing ? 'shadow-[0_0_0_4px_rgba(47,124,246,0.6),0_0_40px_8px_rgba(47,124,246,0.45)]' : 'shadow-[0_18px_34px_-14px_rgba(0,0,0,0.7)]'}`}>
         <svg viewBox="0 0 300 300" className="h-full w-full" role="img" aria-label={t('Compass showing the qibla, {degrees} degrees from north', { degrees: Math.round(bearing) })}>
           <defs>
-            <linearGradient id="qc-case" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#f4f1e8" />
-              <stop offset="0.28" stopColor="#b9b4a6" />
-              <stop offset="0.55" stopColor="#6f6b60" />
-              <stop offset="0.8" stopColor="#cfcabb" />
-              <stop offset="1" stopColor="#57534a" />
-            </linearGradient>
-            <linearGradient id="qc-gold" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#f3dc9b" />
-              <stop offset="0.5" stopColor="#b8893a" />
-              <stop offset="1" stopColor="#e7c775" />
-            </linearGradient>
-            <radialGradient id="qc-face" cx="0.5" cy="0.42" r="0.7">
-              <stop offset="0" stopColor="#1f4a3f" />
-              <stop offset="0.7" stopColor="#0f2b25" />
-              <stop offset="1" stopColor="#081915" />
-            </radialGradient>
-            <radialGradient id="qc-glass" cx="0.35" cy="0.22" r="0.75">
-              <stop offset="0" stopColor="#ffffff" stopOpacity="0.24" />
-              <stop offset="0.5" stopColor="#ffffff" stopOpacity="0.04" />
-              <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-            </radialGradient>
             <filter id="qc-drop" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="1.6" floodColor="#000" floodOpacity="0.55" />
+              <feDropShadow dx="0" dy="1.5" stdDeviation="1.6" floodColor="#000" floodOpacity="0.6" />
             </filter>
           </defs>
 
-          {/* The case */}
-          <circle cx="150" cy="150" r="148" fill="url(#qc-case)" />
-          <circle cx="150" cy="150" r="140" fill="none" stroke="#2c2a25" strokeOpacity="0.55" strokeWidth="2" />
-          <circle cx="150" cy="150" r="137" fill="url(#qc-gold)" />
-          <circle cx="150" cy="150" r="132" fill="url(#qc-face)" />
+          {/* The face and its thin rim */}
+          <circle cx="150" cy="150" r="148" fill="#0b0c0e" />
+          <circle cx="150" cy="150" r="146.5" fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="2" />
 
           {/* The dial: turns so north stays north */}
           <g style={{ transform: `rotate(${dialTurn}deg)`, transformOrigin: '150px 150px', transition: 'transform 120ms linear' }}>
-            <circle cx="150" cy="150" r="129" fill="none" stroke="#c9a24d" strokeOpacity="0.5" strokeWidth="0.8" />
-
-            {/* Degrees */}
-            {Array.from({ length: 72 }, (_, i) => {
-              const deg = i * 5
-              const major = deg % 30 === 0
-              const ten = deg % 10 === 0
-              return (
-                <line
-                  key={deg}
-                  x1="150"
-                  y1="20"
-                  x2="150"
-                  y2={major ? 33 : ten ? 29 : 25.5}
-                  stroke={deg === 0 ? '#ef4444' : '#e8dcc0'}
-                  strokeOpacity={major ? 1 : ten ? 0.85 : 0.55}
-                  strokeWidth={major ? 1.8 : 1}
-                  transform={`rotate(${deg} 150 150)`}
-                />
-              )
-            })}
+            {/* Degrees: every 5°, longer every 10° and 30° */}
+            <g stroke="#cfe3ff" strokeLinecap="round">
+              {Array.from({ length: 72 }, (_, i) => {
+                const deg = i * 5
+                const major = deg % 30 === 0
+                const ten = deg % 10 === 0
+                return (
+                  <line
+                    key={deg}
+                    x1="150"
+                    y1="14"
+                    x2="150"
+                    y2={major ? 32 : ten ? 27 : 23}
+                    strokeOpacity={major ? 1 : ten ? 0.8 : 0.45}
+                    strokeWidth={major ? 3.2 : ten ? 2.2 : 1.6}
+                    transform={`rotate(${deg} 150 150)`}
+                  />
+                )
+              })}
+            </g>
             {Array.from({ length: 12 }, (_, i) => {
               const deg = i * 30
-              if (deg % 90 === 0) return null
+              // No number where a cardinal point stands, or under the Kaaba.
+              if (deg % 90 === 0 || Math.abs(turn(deg, bearing)) < 14) return null
               return (
                 <text
                   key={deg}
                   x="150"
                   y="50"
                   textAnchor="middle"
-                  fontSize="11"
-                  fontWeight="600"
-                  fill="#e8dcc0"
-                  fillOpacity="0.85"
+                  fontSize="11.5"
+                  fontWeight="700"
+                  fontFamily="Arial, Helvetica, sans-serif"
+                  fill="#cfe3ff"
+                  fillOpacity="0.75"
                   transform={`rotate(${deg} 150 150)`}
                 >
                   {deg}
@@ -225,66 +201,38 @@ export default function QiblaCompass({ place }: { place: Place }) {
             })}
 
             {/* Cardinal points, each turned upright toward the rim */}
-            {[
-              ['N', 0, '#ef4444'],
-              ['E', 90, '#f3e6c4'],
-              ['S', 180, '#f3e6c4'],
-              ['W', 270, '#f3e6c4'],
-            ].map(([label, deg, fill]) => (
+            {(['N', 'E', 'S', 'W'] as const).map((label, i) => (
               <text
-                key={label as string}
+                key={label}
                 x="150"
-                y="60"
+                y="66"
                 textAnchor="middle"
-                fontSize="21"
-                fontWeight="700"
-                fontFamily="Georgia, 'Times New Roman', serif"
-                fill={fill as string}
-                transform={`rotate(${deg} 150 150)`}
+                fontSize="26"
+                fontWeight="900"
+                fontFamily="'Arial Black', Arial, sans-serif"
+                fill="#dceaff"
+                transform={`rotate(${i * 90} 150 150)`}
               >
-                {label as string}
+                {label}
               </text>
             ))}
 
-            {/* An eight-point rose behind the needles */}
-            {Array.from({ length: 8 }, (_, i) => (
-              <path
-                key={i}
-                d="M150 150 L143 122 L150 76 L157 122 Z"
-                fill={i % 2 === 0 ? '#c9a24d' : '#9a7b34'}
-                fillOpacity={i % 2 === 0 ? 0.32 : 0.2}
-                stroke="#c9a24d"
-                strokeOpacity="0.5"
-                strokeWidth="0.5"
-                transform={`rotate(${i * 45} 150 150)`}
-              />
-            ))}
-            <circle cx="150" cy="150" r="66" fill="none" stroke="#c9a24d" strokeOpacity="0.28" strokeWidth="0.8" />
-
-            {/* North: a red and white needle */}
-            <g filter="url(#qc-drop)">
-              <polygon points="150,84 158,150 142,150" fill="#dc2626" />
-              <polygon points="150,216 158,150 142,150" fill="#f1efe8" />
-            </g>
-
-            {/* The qibla: a gold arrow to the Kaaba on the rim */}
+            {/* The qibla: the Kaaba on the rim at its bearing, the needle pointing at it */}
             <g transform={`rotate(${bearing} 150 150)`}>
+              <circle cx="150" cy="33" r="19" fill="#0b0c0e" stroke="#dceaff" strokeOpacity="0.55" strokeWidth="1.6" />
+              <Kaaba x={150} y={33} size={26} />
               <g filter="url(#qc-drop)">
-                <polygon points="150,58 160,96 150,90 140,96" fill="url(#qc-gold)" stroke="#fff3c8" strokeWidth="0.6" />
-                <rect x="147.6" y="90" width="4.8" height="60" rx="2.4" fill="url(#qc-gold)" />
+                <polygon points="150,72 160,152 140,152" fill="#e5322d" />
+                <polygon points="150,236 160,152 140,152" fill="#dceaff" />
               </g>
-              <circle cx="150" cy="38" r="17" fill="#0a1f1a" stroke="url(#qc-gold)" strokeWidth="2.2" />
-              <Kaaba x={150} y={38} size={23} />
             </g>
           </g>
 
           {/* Fixed: the mark for where the phone points */}
-          <polygon points="150,10 158,28 142,28" fill="#ef4444" stroke="#ffffff" strokeWidth="1.4" strokeLinejoin="round" />
+          <polygon points="150,4 158,18 142,18" fill="#ffffff" stroke="#0b0c0e" strokeWidth="1.2" strokeLinejoin="round" />
 
-          {/* Centre pin and the glass over it all */}
-          <circle cx="150" cy="150" r="9" fill="url(#qc-gold)" stroke="#5c4514" strokeWidth="1" />
-          <circle cx="150" cy="150" r="3" fill="#2a2110" />
-          <circle cx="150" cy="150" r="132" fill="url(#qc-glass)" />
+          {/* Centre pin */}
+          <circle cx="150" cy="152" r="7" fill="#0b0c0e" stroke="#dceaff" strokeWidth="2" />
         </svg>
       </div>
 

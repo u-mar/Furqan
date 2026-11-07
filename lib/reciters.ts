@@ -421,7 +421,7 @@ export const RECITERS: Reciter[] = [
   {
     // Way2Quran has these surahs from him in full (and short passages of others, left out here).
     id: 'abdul_rahman_musaad',
-    photoUrl: '/reciters/abdul-rahman-musaad.jpg',
+    photoUrl: '/reciters/abdul-rahman-musaad-v2.jpg',
     name: 'Abdul Rahman Musaad',
     source: 'mp3quran',
     folder: 'https://media.way2quran.com/abdul-rahman-musaad/hafs-an-asim',

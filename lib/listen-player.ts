@@ -58,6 +58,10 @@ export const SKIP_SECONDS = 15
 /** Once the sleep time is up the recitation fades out over this long, then stops. */
 const FADE_MS = 8000
 const SLEEP_CHOICE_KEY = 'muyassar_sleep_choice'
+/** The surah last listened to and where, so Home can carry on from it after the app is closed. */
+const LAST_LISTEN_KEY = 'naba_last_listen'
+/** While it plays, the place is saved this often. */
+const LAST_LISTEN_EVERY_MS = 15_000
 
 let state: ListenState = IDLE
 let progress: ListenProgress = NO_PROGRESS
@@ -134,6 +138,7 @@ function element(): HTMLAudioElement {
   })
   el.addEventListener('pause', () => {
     if (!state.surah || switching || el.ended) return
+    saveLastListen(true)
     setState({ status: 'paused' })
     reportPlayback('paused')
     reportPosition()
@@ -141,6 +146,7 @@ function element(): HTMLAudioElement {
   el.addEventListener('timeupdate', () => {
     if (!state.surah || switching) return
     setProgress({ position: el.currentTime, duration: finite(el.duration) || progress.duration })
+    saveLastListen()
     checkSleep()
   })
   el.addEventListener('durationchange', () => {
@@ -173,6 +179,7 @@ export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0)
   switching = true
   setState({ surah, reciterId, status: 'loading', error: null })
   setProgress({ position: resumeAt, duration: 0 })
+  saveLastListen(true)
   describe(surah, reciterId)
 
   const url = await getPlayableListenSurahAudioUrl(reciterId, surah.id)
@@ -339,6 +346,45 @@ async function onEnded(): Promise<void> {
   } else if (state.sleep && !isNaturePlaying()) endSleep()
   setState({ status: 'paused' })
   reportPlayback('paused')
+}
+
+/* ----------------------------------------------------- last listened to */
+
+export interface LastListen {
+  reciterId: string
+  surahId: number
+  /** Seconds in; 0 once it had played to the end, so it starts again. */
+  position: number
+}
+
+let lastSavedAt = 0
+
+function saveLastListen(now = false): void {
+  const { surah, reciterId } = state
+  if (!surah || !reciterId) return
+  if (!now && Date.now() - lastSavedAt < LAST_LISTEN_EVERY_MS) return
+  lastSavedAt = Date.now()
+  const { position, duration } = progress
+  const last: LastListen = {
+    reciterId,
+    surahId: surah.id,
+    position: duration && position > duration - 3 ? 0 : Math.floor(position),
+  }
+  try {
+    localStorage.setItem(LAST_LISTEN_KEY, JSON.stringify(last))
+  } catch {
+    // Only a convenience.
+  }
+}
+
+export function getLastListen(): LastListen | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_LISTEN_KEY) || 'null') as Partial<LastListen> | null
+    if (!saved || typeof saved.reciterId !== 'string' || typeof saved.surahId !== 'number') return null
+    return { reciterId: saved.reciterId, surahId: saved.surahId, position: Math.max(0, Number(saved.position) || 0) }
+  } catch {
+    return null
+  }
 }
 
 /* ----------------------------------------------------------------- sleep */

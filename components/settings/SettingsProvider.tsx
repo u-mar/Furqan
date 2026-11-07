@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, type ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 import {
   applyThemeToDocument,
   getAppSettings,
@@ -18,9 +19,16 @@ import { hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
  * body paints its background, so the wrapper added nothing.
  */
 export default function SettingsProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+
+  // Black everywhere but the mushaf, which keeps its own page colours: set on
+  // every change of screen, before it paints.
+  useLayoutEffect(() => {
+    applyThemeToDocument(getAppSettings().theme, pathname)
+  }, [pathname])
+
   useEffect(() => {
     const settings = getAppSettings()
-    applyThemeToDocument(settings.theme)
     applyLanguageToDocument(settings.language)
 
     /* Warm the offline Quran for the reader, but only once the first screen has

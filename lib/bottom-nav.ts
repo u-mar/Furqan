@@ -5,8 +5,11 @@
  * too — that's a single task with its own way out.
  */
 
-/** The bar's own height, in rem — not counting the phone's safe area below it. */
-export const BOTTOM_NAV_HEIGHT_REM = 4.25
+/** The room the bar takes, in rem — the floating pill and the gap under it, not counting the phone's safe area. */
+export const BOTTOM_NAV_HEIGHT_REM = 4.75
+
+/** The pill's own height, in rem. */
+export const BOTTOM_NAV_PILL_REM = 4
 
 /** Exact pathnames the bar appears on, beyond the whole Qari, Prayer, Halaqa and Hifdh sections. */
 export const BOTTOM_NAV_PATHS = ['/', '/listen'] as const

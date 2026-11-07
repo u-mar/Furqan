@@ -4,16 +4,13 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { LAST_READ_PAGE_KEY, LAST_READ_POSITION_KEY } from '@/lib/mushaf'
-import { tr, useT } from '@/lib/i18n'
+import { tr, useLanguage, useT } from '@/lib/i18n'
 
 interface ContinueState {
   surahName: string
   /** The surah's name in Arabic, when the chapter list could be read. */
   arabicName: string
-  /** Unknown until the reader has saved a position on this page. */
-  ayah: number | null
   page: number
-  progress: number
 }
 
 interface ChapterRow {
@@ -23,32 +20,30 @@ interface ChapterRow {
   pages: [number, number]
 }
 
-/** The page last read, and the first ayah on it when the reader recorded one. */
-function readPosition(): { page: number; surah: number | null; ayah: number | null } {
+/** The page last read, and the ayah the reader recorded on it, if any. */
+function readPosition(): { page: number; verseKey: string | null } {
   const page = Math.min(604, Math.max(1, Number(localStorage.getItem(LAST_READ_PAGE_KEY) || '1') || 1))
   try {
     const raw = localStorage.getItem(LAST_READ_POSITION_KEY)
     const saved = raw ? (JSON.parse(raw) as { page?: number; verseKey?: string }) : null
-    const match = saved?.page === page ? /^(\d+):(\d+)$/.exec(saved.verseKey ?? '') : null
-    if (match) return { page, surah: Number(match[1]), ayah: Number(match[2]) }
+    if (saved?.page === page && /^\d+:\d+$/.test(saved.verseKey ?? '')) return { page, verseKey: saved.verseKey ?? null }
   } catch {
     // Fall back to naming the surah from the page alone.
   }
-  return { page, surah: null, ayah: null }
+  return { page, verseKey: null }
 }
 
 export default function ContinueReadingCard() {
   const t = useT()
+  const language = useLanguage()
   const [state, setState] = useState<ContinueState | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  /* Naming the place needs only the small chapter list. This used to load and
-     parse the whole Quran to read one ayah number, which froze the home
-     screen for a couple of seconds on every visit. */
+  /* Naming the place needs only the small chapter list. */
   useEffect(() => {
     let cancelled = false
-    const { page, surah, ayah } = readPosition()
-    const progress = Math.max(1, Math.min(100, Math.round((page / 604) * 100)))
+    const where = readPosition()
+    const { page } = where
+    const surah = where.verseKey ? Number(where.verseKey.split(':')[0]) : null
 
     fetch('/quran-chapters.json', { cache: 'force-cache' })
       .then((res) => (res.ok ? (res.json() as Promise<{ chapters: ChapterRow[] }>) : Promise.reject()))
@@ -61,24 +56,11 @@ export default function ContinueReadingCard() {
         setState({
           surahName: chapter?.name_simple ?? tr('Page {page}', { page }),
           arabicName: chapter?.name_arabic ?? '',
-          ayah,
           page,
-          progress,
         })
       })
       .catch(() => {
-        if (!cancelled) {
-          setState({
-            surahName: surah ? tr('Surah {surah}', { surah }) : tr('Continue reading'),
-            arabicName: '',
-            ayah,
-            page,
-            progress,
-          })
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setState({ surahName: surah ? tr('Surah {surah}', { surah }) : tr('Continue reading'), arabicName: '', page })
       })
 
     return () => {
@@ -86,49 +68,26 @@ export default function ContinueReadingCard() {
     }
   }, [])
 
-  if (loading) {
-    return (
-      <section aria-label={t('Continue reading')}>
-        <div className="home-continue h-[4.375rem]" />
-      </section>
-    )
-  }
+  if (!state) return <div className="h-[3.75rem] animate-pulse rounded-full bg-[var(--home-card-bg)]" aria-hidden />
 
-  if (!state) return null
+  const surah = language === 'ar' && state.arabicName ? state.arabicName : state.surahName
 
+  // One slim rounded bar: where reading stopped, and a blue arrow to carry on.
   return (
-    <section aria-label={t('Continue reading')}>
-      <Link
-        href={`/read?page=${state.page}`}
-        className="home-continue home-press ed-focus flex items-center gap-3 py-2.5"
-        aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
-      >
-        <span className="home-continue__icon flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--hv-teal-line)] bg-[image:var(--hv-teal-wash)]">
-          <img src="/icons/read.png" alt="" className="h-[1.625rem] w-[1.625rem] object-contain" draggable={false} />
+    <Link
+      href={`/read?page=${state.page}`}
+      className="home-press ed-focus flex items-center gap-3 rounded-full bg-[var(--home-card-bg)] py-2 pe-2 ps-5"
+      aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.78125rem] text-[var(--home-muted)]">{t('Continue reading')}</span>
+        <span className="block truncate text-[1rem] font-semibold text-[var(--home-heading)]">
+          {surah} · {t('Page')} {state.page}
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="home-serif truncate text-[1.0625rem] font-medium leading-tight tracking-[-0.015em]">{state.surahName}</span>
-            {state.arabicName ? (
-              <span lang="ar" dir="rtl" className="amiri shrink-0 text-[0.9375rem] leading-tight text-[var(--hv-accent-gold)]">
-                {state.arabicName}
-              </span>
-            ) : null}
-          </span>
-          <span className="mt-0.5 text-[0.71875rem] tabular-nums text-[var(--hv-text2)]">
-            {state.ayah ? t('Ayah {ayah} · ', { ayah: state.ayah }) : ''}{t('Page')} {state.page} {t('of 604')}
-          </span>
-          <span aria-hidden className="home-continue__track mt-1.5 block h-[3px] overflow-hidden rounded-full">
-            <span className="block h-full min-w-2 rounded-full bg-[var(--hv-teal)]" style={{ width: `${state.progress}%` }} />
-          </span>
-        </span>
-        <span
-          aria-hidden
-          className="flex h-[2.125rem] w-[2.125rem] shrink-0 items-center justify-center rounded-full bg-[var(--hv-teal)] text-[var(--hv-on-teal)] shadow-[0_8px_20px_-8px_var(--hv-teal-glow)]"
-        >
-          <ArrowRight className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2.4} />
-        </span>
-      </Link>
-    </section>
+      </span>
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white" aria-hidden>
+        <ArrowRight className="h-5 w-5 rtl:-scale-x-100" strokeWidth={2.4} />
+      </span>
+    </Link>
   )
 }

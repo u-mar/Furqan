@@ -16,7 +16,7 @@ import {
   Image as ImageIcon,
   Lock,
   LogOut,
-  MessageSquare,
+  Lightbulb,
   Trash,
   UserRound,
   UserX,
@@ -33,12 +33,10 @@ import ReadingRemindersRow from '@/components/settings/ReadingRemindersRow'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
-  applyThemeToDocument,
   getAppSettings,
   setAppSettings,
   type MushafWidthMode,
   type ReadingMode,
-  type ThemeMode,
 } from '@/lib/app-settings'
 import {
   DEFAULT_TRANSLATION_EDITION,
@@ -57,13 +55,6 @@ import { tr, APP_LANGUAGES, isRtl, useLanguage, useT, type AppLanguage } from '@
 
 type SheetName = 'mushaf' | 'reading-mode' | 'translation' | 'feedback' | 'language'
 
-/* Each dot depicts a theme, so its colour is fixed rather than a token. */
-const THEMES: { mode: ThemeMode; label: string; swatch: string }[] = [
-  { mode: 'light', label: 'Light', swatch: '#f5f7f6' },
-  { mode: 'dark', label: 'Dark', swatch: '#161d1a' },
-  { mode: 'black', label: 'Black', swatch: '#000000' },
-]
-
 const MUSHAF_WIDTHS: { mode: MushafWidthMode; label: string; hint: string; inset: string }[] = [
   { mode: 'full', label: 'Full width', hint: 'Bigger script', inset: '0.5rem' },
   { mode: 'spaced', label: 'Spaced', hint: 'Margins on the sides', inset: '1.15rem' },
@@ -80,7 +71,7 @@ const btnBase =
 const btnInk = cn(btnBase, 'ed-ink')
 
 function SectionLabel({ children }: { children: ReactNode }) {
-  return <h2 className="home-label mx-1 mb-2 mt-[22px]">{children}</h2>
+  return <h2 className="set-section">{children}</h2>
 }
 
 function RowIcon({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'neutral' | 'danger' }) {
@@ -93,14 +84,14 @@ function RowIcon({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'neutral' | 'd
       )}
       aria-hidden
     >
-      <Icon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+      <Icon strokeWidth={1.8} />
     </span>
   )
 }
 
 function RowChevron() {
   return (
-    <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+    <ChevronRight className="h-[19px] w-[19px] shrink-0 text-[#5a5a5e] rtl:rotate-180" strokeWidth={2} aria-hidden />
   )
 }
 
@@ -139,7 +130,6 @@ export default function SettingsPage() {
   const [returnHref, setReturnHref] = useState('/')
   const [user, setUser] = useState<AppUser | null>(null)
   const [blockedOpen, setBlockedOpen] = useState(false)
-  const [theme, setTheme] = useState<ThemeMode>('light')
   const [mushafWidth, setMushafWidth] = useState<MushafWidthMode>('spaced')
   const [translationLanguage, setTranslationLanguage] = useState<TranslationLanguageId>('en')
   const [translationEditionId, setTranslationEditionId] = useState<string>(
@@ -174,7 +164,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const s = getAppSettings()
-    setTheme(s.theme)
     setMushafWidth(s.mushafWidth)
     setTranslationLanguage(s.translationLanguage)
     setTranslationEditionId(s.translationEditionId)
@@ -203,12 +192,6 @@ export default function SettingsPage() {
     clearSignedInUser()
     refreshProfile()
     showToast(t('Signed out.'))
-  }
-
-  function saveTheme(next: ThemeMode) {
-    setTheme(next)
-    setAppSettings({ theme: next })
-    applyThemeToDocument(next)
   }
 
   function saveLanguage(next: AppLanguage) {
@@ -294,20 +277,19 @@ export default function SettingsPage() {
       className="cool-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]"
     >
       <div className="mx-auto w-full max-w-lg px-4 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
-        <header className="flex items-center gap-3">
-          <Link href={returnHref} className="home-round ed-focus" aria-label={t('Back')}>
-            <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center">
+          <Link href={returnHref} className="home-round ed-focus justify-self-start" aria-label={t('Back')}>
+            <ChevronLeft className="h-5 w-5 rtl:rotate-180" strokeWidth={1.9} />
           </Link>
-          <h1 className="home-serif text-[1.625rem] font-semibold tracking-[-0.02em] text-[var(--home-heading)]">
-            {t('Settings')}
-          </h1>
+          <h1 className="text-[1.125rem] font-semibold text-[var(--home-heading)]">{t('Settings')}</h1>
         </header>
 
         {/* Account */}
+        <SectionLabel>{t('Your account')}</SectionLabel>
         {user ? (
           <Link
             href={`/qari/${encodeURIComponent(user.username)}`}
-            className="home-card home-press ed-focus mt-[18px] flex items-center gap-3 rounded-2xl px-3.5 py-3"
+            className="set-card home-press ed-focus flex items-center gap-3.5 px-4 py-4"
           >
             <QariAvatar username={user.username} name={user.name} size={48} />
             <span className="min-w-0 flex-1">
@@ -318,58 +300,38 @@ export default function SettingsPage() {
                 @{user.username}
               </span>
             </span>
-            <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+            <RowChevron />
           </Link>
         ) : (
           <button
             type="button"
             onClick={() => setAccountOpen(true)}
-            className="home-card home-press ed-focus mt-[18px] flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left"
+            className="set-card home-press ed-focus flex w-full items-center gap-3.5 px-4 py-4 text-left"
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
-              <UserRound className="h-[22px] w-[22px]" strokeWidth={1.9} />
+            <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
+              <UserRound className="h-6 w-6" strokeWidth={1.9} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-semibold text-[var(--home-heading)]">{t('Add account')}</span>
-              <span className="mt-px block text-[0.8125rem] text-[var(--home-muted)]">
+              <span className="block text-[1.0625rem] font-semibold text-[var(--home-heading)]">{t('Add account')}</span>
+              <span className="mt-px block text-sm text-[var(--home-muted)]">
                 {t('Sign in to share your recitations')}
               </span>
             </span>
-            <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+            <RowChevron />
           </button>
         )}
 
-        {/* Appearance */}
-        <SectionLabel>{t('Appearance')}</SectionLabel>
-        <div className="set-theme" role="radiogroup" aria-label={t('Appearance')}>
-          {THEMES.map(({ mode, label, swatch }) => {
-            const selected = theme === mode
-            return (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => saveTheme(mode)}
-                className="set-theme__option ed-focus"
-              >
-                <span
-                  className="h-3.5 w-3.5 shrink-0 rounded-full"
-                  style={{
-                    background: swatch,
-                    boxShadow: 'inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent)',
-                  }}
-                  aria-hidden
-                />
-                {t(label)}
-              </button>
-            )
-          })}
+        <div className="set-card mt-[22px]">
+          <button type="button" className="set-row" onClick={() => setSheet('feedback')}>
+            <RowIcon icon={Lightbulb} />
+            <span className="set-row__label">{t('Send feedback')}</span>
+            <RowChevron />
+          </button>
         </div>
 
         {/* Reading */}
         <SectionLabel>{t('Reading')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
+        <div className="set-card">
           <button type="button" className="set-row" onClick={() => setSheet('mushaf')}>
             <RowIcon icon={BookOpen} />
             <span className="set-row__label">{t('Mushaf page')}</span>
@@ -395,34 +357,28 @@ export default function SettingsPage() {
           </label>
           <Divider />
           <button type="button" className="set-row" onClick={() => setSheet('translation')}>
-            <RowIcon icon={Globe} />
+            <RowIcon icon={Languages} />
             <span className="set-row__label">{t('Translation')}</span>
             <span className="set-row__value">{t(translationLanguageLabel(translationLanguage))}</span>
+            <RowChevron />
+          </button>
+        </div>
+
+        {/* General */}
+        <SectionLabel>{t('General')}</SectionLabel>
+        <div className="set-card">
+          <button type="button" className="set-row" onClick={() => setSheet('language')}>
+            <RowIcon icon={Globe} />
+            <span className="set-row__label">{t('Language')}</span>
+            <span className="set-row__value">{APP_LANGUAGES.find((l) => l.id === language)?.name}</span>
             <RowChevron />
           </button>
           <ReadingRemindersRow divider />
         </div>
 
-        {/* Language */}
-        <SectionLabel>{t('App language')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
-          <button type="button" className="set-row" onClick={() => setSheet('language')}>
-            <RowIcon icon={Languages} />
-            <span className="set-row__label">{t('App language')}</span>
-            <span className="set-row__value">{APP_LANGUAGES.find((l) => l.id === language)?.name}</span>
-            <RowChevron />
-          </button>
-        </div>
-
-        {/* Support */}
-        <SectionLabel>{t('Support')}</SectionLabel>
-        <div className="home-card overflow-hidden rounded-2xl">
-          <button type="button" className="set-row" onClick={() => setSheet('feedback')}>
-            <RowIcon icon={MessageSquare} />
-            <span className="set-row__label">{t('Send feedback')}</span>
-            <RowChevron />
-          </button>
-          <Divider />
+        {/* About */}
+        <SectionLabel>{t('About')}</SectionLabel>
+        <div className="set-card">
           <Link href="/privacy" className="set-row">
             <RowIcon icon={Lock} />
             <span className="set-row__label">{t('Privacy Policy')}</span>
@@ -438,7 +394,7 @@ export default function SettingsPage() {
 
         {/* Account actions */}
         {user ? (
-          <div className="home-card mt-[22px] overflow-hidden rounded-2xl">
+          <div className="set-card mt-[22px]">
             <button type="button" className="set-row" onClick={() => setBlockedOpen(true)}>
               <RowIcon icon={UserX} tone="neutral" />
               <span className="set-row__label">{t('Blocked accounts')}</span>

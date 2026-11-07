@@ -401,19 +401,35 @@ html:not(.dark) {
   --mushaf-read-accent-soft: rgba(92, 196, 171, 0.18);
 }
 
-/* ---- Pure black (AMOLED) — builds on .dark, then flattens to true black ---- */
+/* ---- Pure black (AMOLED) — builds on .dark, then flattens to true black.
+   The whole app outside the mushaf: black ground, grey cards, white type and
+   a single blue accent (kept under the --home-sage-* names, so everything
+   that used the old verdigris takes the blue). ---- */
 html.dark.black {
   --app-bg: #000000;
-  --app-surface: #0b0b0b;
-  --app-border: rgba(255, 255, 255, 0.1);
-  --home-card-bg: #0d0d0d;
-  --home-card-border: rgba(255, 255, 255, 0.09);
-  --home-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --home-track: #1c1c1c;
-  --home-location-bg: #0b0b0b;
+  --app-surface: #1c1c1e;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-text: #f5f5f7;
+  --app-muted: #8e8e93;
+  --home-heading: #ffffff;
+  --home-muted: #8e8e93;
+  --home-sage: #3b8cff;
+  --home-sage-deep: #2f7cf6;
+  --home-sage-dark: #8fbaff;
+  --home-sage-soft: rgba(47, 124, 246, 0.16);
+  --home-sage-gradient: linear-gradient(160deg, #0d2a5c 0%, #1554c9 100%);
+  --home-ink: #ffffff;
+  --home-ink-fg: #000000;
+  --home-rule: rgba(255, 255, 255, 0.1);
+  --home-rule-strong: rgba(255, 255, 255, 0.22);
+  --home-card-bg: #1c1c1e;
+  --home-card-border: rgba(255, 255, 255, 0.04);
+  --home-card-shadow: none;
+  --home-track: #3a3a3c;
+  --home-location-bg: #1c1c1e;
   --home-glow: none;
   --hifdh-bg: #000000;
-  --hifdh-surface: #0b0b0b;
+  --hifdh-surface: #1c1c1e;
 }
 
 /* .dark.black beats the plain .dark reader rule regardless of source order. */
@@ -2585,6 +2601,122 @@ html.dark.black {
   transform: scale(0.98);
 }
 
+/* New Home: grey blocks flat on the black, an outlined pill and round button at the top. */
+.home-block {
+  border-radius: 1.375rem;
+  background: var(--home-card-bg);
+}
+
+.home-outline-pill {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--home-card-bg);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--home-heading);
+}
+
+.home-outline-round {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--home-card-bg);
+  color: var(--home-heading);
+}
+
+/* "SATURDAY, NOVEMBER 7" above the salam. */
+.home-date {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--home-heading);
+}
+
+html[lang='ar'] .home-date {
+  letter-spacing: 0;
+  font-size: 0.9375rem;
+}
+
+/* An ayah on Home in the mushaf's own glyphs: centred, up to three lines; the
+   whole of it is a tap away in the reader. */
+.home-ayah {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin: 0;
+  direction: rtl;
+  unicode-bidi: isolate;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 1.375rem;
+  line-height: 2;
+  letter-spacing: 0;
+  font-feature-settings: normal;
+  font-synthesis: none;
+  color: var(--home-heading);
+}
+
+.home-ayah .mushaf-translation-qcf-word {
+  display: inline;
+}
+
+.home-ayah--plain {
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', serif;
+  font-size: 1.25rem;
+}
+
+.home-ayah-translation {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-align: center;
+  text-wrap: balance;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--home-muted);
+}
+
+/* The ayah of the week, in big type with no card: from the right, as it is read. */
+.home-ayah--week {
+  text-align: right;
+  font-size: 1.6875rem;
+}
+
+.home-ayah-translation--week {
+  text-align: left;
+  font-size: 0.96875rem;
+}
+
+[dir='rtl'] .home-ayah-translation--week {
+  text-align: right;
+}
+
+.home-star {
+  color: #ffffff;
+  filter: drop-shadow(0 0 6px rgba(255, 233, 160, 0.7));
+}
+
+/* The blue card with rings spreading from its middle. */
+.home-rings {
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 22%, rgba(255, 255, 255, 0.22) 22.4% 22.8%, transparent 23.2% 38%,
+      rgba(255, 255, 255, 0.16) 38.4% 38.8%, transparent 39.2% 56%, rgba(255, 255, 255, 0.1) 56.4% 56.8%, transparent 57.2%),
+    linear-gradient(150deg, #1f6bff 0%, #1048b8 100%);
+}
+
 /* The round buttons at the top of Home and Settings. */
 .home-round {
   display: flex;
@@ -2639,10 +2771,10 @@ html.dark.black {
 .set-row {
   display: flex;
   width: 100%;
-  min-height: 3.25rem;
+  min-height: 3.5rem;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.375rem 0.875rem;
+  gap: 0.875rem;
+  padding: 0.375rem 1rem;
   text-align: left;
   color: var(--home-heading);
   transition: background-color 0.12s ease;
@@ -2674,7 +2806,7 @@ label.set-row:active {
 .set-row__label {
   min-width: 0;
   flex: 1;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
 }
 
@@ -2686,14 +2818,32 @@ label.set-row:active {
 
 .set-row__icon {
   display: flex;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
-  background: var(--home-sage-soft);
-  color: var(--home-sage-deep);
+  color: var(--home-heading);
+}
+
+.set-row__icon svg {
+  width: 1.3125rem;
+  height: 1.3125rem;
+}
+
+/* A group of rows: a grey card, flat on the black. */
+.set-card {
+  overflow: hidden;
+  border-radius: 1.375rem;
+  background: var(--home-card-bg);
+}
+
+/* The grey name above a group, in sentence case. */
+.set-section {
+  margin: 1.5rem 0.375rem 0.5625rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--home-muted);
 }
 
 /* Settings › Appearance: the three themes as one switch, the chosen one lifted out of its track. */
@@ -2730,12 +2880,10 @@ html:not(.dark) .set-theme__option[aria-checked='true'] {
 }
 
 .set-row__icon--neutral {
-  background: color-mix(in srgb, var(--home-heading) 6%, transparent);
   color: var(--home-heading);
 }
 
 .set-row__icon--danger {
-  background: rgba(225, 29, 72, 0.08);
   color: #e11d48;
 }
 
@@ -2744,7 +2892,6 @@ html:not(.dark) .set-theme__option[aria-checked='true'] {
 }
 
 html.dark .set-row__icon--danger {
-  background: rgba(251, 113, 133, 0.12);
   color: #fb7185;
 }
 
@@ -2754,7 +2901,7 @@ html.dark .set-row--danger {
 
 .set-row__divider {
   height: 1px;
-  margin-left: 3.5rem;
+  margin-inline-start: 3.375rem;
   background: color-mix(in srgb, var(--home-heading) 8%, transparent);
 }
 
@@ -3203,6 +3350,15 @@ html.dark .set-row--danger {
 }
 
 /* Surfaces that float over the page: a hairline in the dark themes, a lift in light. */
+/* The floating player: a solid grey card with a hairline and a shadow under it. */
+.listen-card {
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+}
+
 .listen-float {
   background: var(--home-card-bg);
   box-shadow:
@@ -4406,90 +4562,66 @@ html.dark .pt-qibla__dial {
    ====================================================================== */
 
 .bottom-nav {
-  background: color-mix(in srgb, var(--home-card-bg) 92%, transparent);
-  border-top: 1px solid var(--home-card-border);
-  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
 }
 
+/* Grey icons and names; the tab you are on is bright white, with a small dot under it. */
 .bottom-nav__item {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  border-radius: 1rem;
-  color: var(--home-muted);
-  transition: transform 0.15s ease;
+  gap: 0.125rem;
+  border-radius: 999px;
+  color: #8e8e93;
+  transition: transform 0.15s ease, color 0.2s ease;
 }
 
 .bottom-nav__item:active {
   transform: scale(0.94);
 }
 
-.bottom-nav__icon {
-  height: 1.625rem;
-  width: 1.625rem;
-  object-fit: contain;
-  opacity: 0.55;
-  filter: saturate(0.35);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease, filter 0.2s ease;
+.bottom-nav__item[aria-current='page'] {
+  color: #ffffff;
 }
 
-.bottom-nav__icon--active {
-  opacity: 1;
-  filter: saturate(1);
-  transform: scale(1.1) translateY(-1px);
+.bottom-nav__icon {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .bottom-nav__label {
-  font-size: 0.6875rem;
+  font-size: 0.71875rem;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
 
-.bottom-nav__label--active {
+.bottom-nav__item[aria-current='page'] .bottom-nav__label {
   font-weight: 700;
-  color: var(--home-heading);
 }
 
 .bottom-nav__dot {
-  height: 3px;
-  width: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 999px;
   background: transparent;
 }
 
-.bottom-nav__dot--active {
-  background: var(--home-sage);
+.bottom-nav__item[aria-current='page'] .bottom-nav__dot {
+  background: #ffffff;
 }
 
-/* Under Qari's full-screen swipe view the bar is black, one piece with the video above it. */
+/* Over Qari's full-screen videos the bar is a darker glass, so the video shows round it. */
 html.qari-swipe-open .bottom-nav {
-  background: #000;
-  border-top-color: rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: rgba(0, 0, 0, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-html.qari-swipe-open .bottom-nav__item {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-html.qari-swipe-open .bottom-nav__icon {
-  opacity: 0.7;
-}
-
-html.qari-swipe-open .bottom-nav__icon--active {
-  opacity: 1;
-}
-
-html.qari-swipe-open .bottom-nav__label--active {
-  color: #fff;
-}
 
 /* ======================================================================
    Admin dashboard shell — a fixed sidebar on desktop, a slide-over drawer
@@ -5071,16 +5203,6 @@ html:not(.dark) .home-skyline__windows {
   background: var(--hv-surface);
   box-shadow: var(--hv-shadow);
   color: var(--hv-text);
-}
-
-/* The tab bar: a teal dot with a little light under the tab you are on. */
-.bottom-nav__dot {
-  height: 4px;
-  width: 4px;
-}
-
-.bottom-nav__dot--active {
-  box-shadow: 0 0 8px color-mix(in srgb, var(--home-sage) 90%, transparent);
 }
 
 /* Settings and Listen in light: the same cool, soft neutrals as Home instead

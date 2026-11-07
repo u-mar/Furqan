@@ -56,6 +56,30 @@ export default function ListenScreen() {
   const [sleepOpen, setSleepOpen] = useState(false)
   const [natureOpen, setNatureOpen] = useState(false)
 
+  // Home's sheikhs open Listen with that sheikh chosen (?reciter=), its
+  // "See all" with every reciter showing (?reciters=1), its player with Now
+  // playing open (?player=1), and ?nature=1 with Nature mode showing.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const asked = url.searchParams.get('reciter')
+    const nature = url.searchParams.get('nature') === '1'
+    const all = url.searchParams.get('reciters') === '1'
+    const player = url.searchParams.get('player') === '1'
+    if (!asked && !nature && !all && !player) return
+    if (asked && RECITERS.some((r) => r.id === asked)) {
+      setAppSettings({ listenReciterId: asked })
+      changeReciter(asked)
+    }
+    if (nature) setNatureOpen(true)
+    if (all) setPickerOpen(true)
+    if (player && getListenState().surah) setPlayerOpen(true)
+    url.searchParams.delete('player')
+    url.searchParams.delete('reciters')
+    url.searchParams.delete('reciter')
+    url.searchParams.delete('nature')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  }, [])
+
   // Rows are memoised; they reach the current reciter through this.
   const reciterId = useRef(reciter.id)
   reciterId.current = reciter.id
@@ -164,7 +188,7 @@ export default function ListenScreen() {
         style={{
           // Listen always shows the bottom tab bar; the mini player, when playing, docks just above it.
           paddingBottom: listening
-            ? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + 5.5rem + env(safe-area-inset-bottom))`
+            ? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + 5.25rem + env(safe-area-inset-bottom))`
             : `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem + var(--listen-dock, 0px))`,
         }}
       >

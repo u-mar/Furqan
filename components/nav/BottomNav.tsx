@@ -3,15 +3,17 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { BOTTOM_NAV_HEIGHT_REM, showBottomNavFor } from '@/lib/bottom-nav'
+import { BookOpen, Headphones, House, Mic, type LucideIcon } from 'lucide-react'
+import { BOTTOM_NAV_PILL_REM, showBottomNavFor } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import { LAST_READ_PAGE_KEY } from '@/lib/mushaf'
 import { notePath } from '@/lib/nav-trail'
 import { useT } from '@/lib/i18n'
 
 /**
- * Read, Home, Qari, Listen — the four places the app is built around.
- * Fixed to the bottom of Home, Listen, every Qari screen except the
+ * Read, Home, Qari, Listen — the four places the app is built around, on a
+ * rounded bar floating over the bottom of the screen: white line icons with
+ * their names, the tab you are on bright white with a small dot under it. Fixed to the bottom of Home, Listen, every Qari screen except the
  * recorder, both Prayer screens, and Halaqa; the mushaf is its own deeper
  * screen and hides it to keep the whole screen for reading.
  */
@@ -30,20 +32,23 @@ export default function BottomNav() {
 
   if (!showBottomNavFor(pathname)) return null
 
-  const tabs: { id: string; href: string; label: string; icon: string; active: boolean }[] = [
-    { id: 'read', href: `/read?page=${lastPage}`, label: t('Read'), icon: 'read', active: false },
-    { id: 'home', href: '/', label: t('Home'), icon: 'home', active: pathname === '/' },
-    { id: 'qari', href: '/qari', label: t('Qari'), icon: 'qari', active: pathname.startsWith('/qari') },
-    { id: 'listen', href: '/listen', label: t('Listen'), icon: 'listen', active: pathname === '/listen' },
+  const tabs: { id: string; href: string; label: string; icon: LucideIcon; active: boolean }[] = [
+    { id: 'read', href: `/read?page=${lastPage}`, label: t('Read'), icon: BookOpen, active: false },
+    { id: 'home', href: '/', label: t('Home'), icon: House, active: pathname === '/' },
+    { id: 'qari', href: '/qari', label: t('Qari'), icon: Mic, active: pathname.startsWith('/qari') },
+    { id: 'listen', href: '/listen', label: t('Listen'), icon: Headphones, active: pathname === '/listen' },
   ]
 
   return (
     <nav
       aria-label={t('Main navigation')}
-      className="bottom-nav fixed inset-x-0 bottom-0 z-50"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="bottom-nav-dock pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
     >
-      <div className="mx-auto flex w-full max-w-lg items-stretch justify-between px-2" style={{ height: `${BOTTOM_NAV_HEIGHT_REM}rem` }}>
+      <div
+        className="bottom-nav pointer-events-auto mx-auto flex w-full max-w-lg items-stretch justify-between rounded-full p-1.5"
+        style={{ height: `${BOTTOM_NAV_PILL_REM}rem` }}
+      >
         {tabs.map((tab) => (
           <Link
             key={tab.id}
@@ -52,14 +57,9 @@ export default function BottomNav() {
             aria-current={tab.active ? 'page' : undefined}
             className="bottom-nav__item ed-focus"
           >
-            <img
-              src={`/icons/${tab.icon}.png`}
-              alt=""
-              draggable={false}
-              className={`bottom-nav__icon ${tab.active ? 'bottom-nav__icon--active' : ''}`}
-            />
-            <span className={`bottom-nav__label ${tab.active ? 'bottom-nav__label--active' : ''}`}>{tab.label}</span>
-            <span className={`bottom-nav__dot ${tab.active ? 'bottom-nav__dot--active' : ''}`} aria-hidden />
+            <tab.icon className="bottom-nav__icon" strokeWidth={tab.active ? 2.2 : 1.8} aria-hidden />
+            <span className="bottom-nav__label">{tab.label}</span>
+            <span className="bottom-nav__dot" aria-hidden />
           </Link>
         ))}
       </div>
