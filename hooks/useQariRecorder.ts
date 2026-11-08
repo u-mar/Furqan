@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { tr } from '@/lib/i18n-core'
-import { polishRecording, type PolishStage } from '@/lib/qari-polish'
+import { polishRecording, prepareUpload, UploadProblem, type PolishStage } from '@/lib/qari-polish'
 import type { Quality } from '@/lib/qari-polish-dsp'
 
 /**
@@ -354,6 +354,24 @@ export function useQariRecorder(maxSeconds = 600) {
     setState(idle)
   }, [stop, teardown])
 
+  /** Takes a recording made outside the app through to the review state, the same as a finished take. */
+  const importFile = useCallback((file: File) => {
+    const run = ++polishRun.current
+    setState({ ...idle, polishing: true })
+    prepareUpload(file, (fraction, stage) =>
+      setState((s) => (s.polishing && polishRun.current === run ? { ...s, polishProgress: fraction, polishStage: stage } : s))
+    )
+      .then((done) => {
+        if (polishRun.current !== run) return
+        setState({ ...idle, blob: done.blob, mimeType: done.mimeType, durationSec: done.durationSec, elapsed: done.durationSec })
+      })
+      .catch((err: unknown) => {
+        if (polishRun.current !== run) return
+        const error = err instanceof UploadProblem ? err.message : tr('That file could not be read. Try an MP3, M4A or WAV file.')
+        setState({ ...idle, error })
+      })
+  }, [])
+
   /** Drops a finished, already-polished take straight into the review state — for resuming a saved draft, not for a fresh recording. */
   const adopt = useCallback((blob: Blob, mimeType: string, durationSec: number) => {
     polishRun.current += 1
@@ -363,5 +381,5 @@ export function useQariRecorder(maxSeconds = 600) {
     setState({ ...idle, blob, mimeType, durationSec })
   }, [stop, teardown])
 
-  return { state, start, stop, pause, resume, reset, adopt, supported: typeof MediaRecorder !== 'undefined' }
+  return { state, start, stop, pause, resume, reset, adopt, importFile, supported: typeof MediaRecorder !== 'undefined' }
 }

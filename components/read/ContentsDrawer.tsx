@@ -11,13 +11,12 @@ import { cn } from '@/lib/cn'
 import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
-import { getVerseByKey, getVersesByJuz } from '@/lib/quran'
+import { getVersesByJuz } from '@/lib/quran'
 import { JUZ_START_PAGES, juzForChapter, revelationLabel } from '@/lib/mushaf'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
-import { versePageNumber } from '@/lib/qcf-page'
-import type { Chapter, Verse } from '@/types'
+import type { Chapter } from '@/types'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
 
@@ -74,7 +73,6 @@ export default function ContentsDrawer({
   const [bottomNav, setBottomNav] = useState<BottomNav>('chapters')
   const [meta, setMeta] = useState<ChapterMeta[]>([])
   const [quarters, setQuarters] = useState<QuarterMarker[]>([])
-  const [previewVerse, setPreviewVerse] = useState<Record<string, Verse>>({})
   const [bookmarks, setBookmarks] = useState<AyahBookmark[]>([])
 
   useEffect(() => {
@@ -111,42 +109,6 @@ export default function ContentsDrawer({
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a - b)
   }, [quarters])
-
-  useEffect(() => {
-    if (!open || topTab !== 'quarters' || quarters.length === 0) return
-    let cancelled = false
-    const missing = quarters.filter((q) => !previewVerse[q.verseKey])
-    const BATCH = 16
-
-    void (async () => {
-      for (let i = 0; i < missing.length; i += BATCH) {
-        if (cancelled) return
-        const batch = missing.slice(i, i + BATCH)
-        const results = await Promise.all(
-          batch.map(async (q) => {
-            try {
-              const verse = await getVerseByKey(q.verseKey)
-              return verse ? { key: q.verseKey, verse } : null
-            } catch {
-              return null
-            }
-          })
-        )
-        if (cancelled) return
-        const updates: Record<string, Verse> = {}
-        for (const row of results) {
-          if (row) updates[row.key] = row.verse
-        }
-        if (Object.keys(updates).length > 0) {
-          setPreviewVerse((prev) => ({ ...prev, ...updates }))
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [open, topTab, quarters, previewVerse])
 
   useEffect(() => {
     if (!open || bottomNav !== 'bookmarks') return
@@ -329,20 +291,7 @@ export default function ContentsDrawer({
                           type="button"
                           onClick={() => {
                             onClose()
-                            const cached = previewVerse[q.verseKey]
-                            if (cached) {
-                              onGoToPage(versePageNumber(cached) || q.page, q.verseKey)
-                              return
-                            }
                             onGoToPage(q.page, q.verseKey)
-                            void getVerseByKey(q.verseKey)
-                              .then((verse) => {
-                                const realPage = versePageNumber(verse)
-                                if (realPage > 0 && realPage !== q.page) {
-                                  onGoToPage(realPage, q.verseKey)
-                                }
-                              })
-                              .catch(() => {})
                           }}
                           className="flex w-full items-start gap-2 rounded-lg px-2 py-3 text-left hover:bg-white/5"
                         >
@@ -350,19 +299,10 @@ export default function ContentsDrawer({
                             <p className="text-xs font-medium text-teal-400">
                               {t('Quarter')} {q.indexInJuz} {t('starts at')} {q.verseKey}
                             </p>
-                            {previewVerse[q.verseKey] ? (
-                              <QuarterAyahPreview
-                                verse={previewVerse[q.verseKey]}
-                                className="mt-1 line-clamp-2 text-xl leading-snug text-white"
-                              />
-                            ) : (
-                              <p
-                                className="arabic-text mt-1 line-clamp-2 text-xl leading-snug text-white"
-                                dir="rtl"
-                              >
-                                …
-                              </p>
-                            )}
+                            <QuarterAyahPreview
+                              verseKey={q.verseKey}
+                              className="mt-1 flex h-[1.75em] flex-wrap gap-y-[3em] overflow-hidden text-xl leading-snug text-white"
+                            />
                             <p className="mt-1 text-xs text-stone-500">
                               {q.surahName} {t('· Ayah')} {q.ayah} {t('· Page')} {q.page}
                             </p>

@@ -114,12 +114,13 @@ function isSameOriginFontUrl(url: string): boolean {
   return url.startsWith(window.location.origin)
 }
 
-async function loadViaFontFace(page: number, url: string): Promise<boolean> {
+async function loadViaFontFace(page: number, url: string, listRow: boolean): Promise<boolean> {
   const family = qcfPageFontFamily(page)
   const buffer = await fetchFontBuffer(url)
   const face = new FontFace(family, buffer, { display: 'block' })
   const loaded = await face.load()
   document.fonts.add(loaded)
+  if (listRow) return loaded.status === 'loaded'
   const cssUrl = isSameOriginFontUrl(url) ? url : qcfCdnFontUrl(page)
   ensureQcfFontFace(page, cssUrl)
   await document.fonts.ready
@@ -173,9 +174,15 @@ export async function loadSurahNameFont(): Promise<boolean> {
   return surahNameLoading
 }
 
+/**
+ * @param listRow One of many rows on different pages. Skips the second @font-face
+ * rule, which downloads the file again and re-lays the page out, and the waits for
+ * every other font in flight, which hold a row back while a long list scrolls.
+ */
 export async function loadPageFont(
   page: number,
-  sampleGlyphs?: string
+  sampleGlyphs?: string,
+  listRow = false
 ): Promise<boolean> {
   if (page < 1) return false
 
@@ -196,7 +203,7 @@ export async function loadPageFont(
   const task = (async () => {
     try {
       if (typeof document === 'undefined') return false
-      await document.fonts.ready
+      if (!listRow) await document.fonts.ready
 
       const urls = await resolveQcfFontUrlsForLoad(page)
       if (shouldLogFontDebug()) {
@@ -208,7 +215,7 @@ export async function loadPageFont(
 
       for (const url of urls) {
         try {
-          const ok = await loadViaFontFace(page, url)
+          const ok = await loadViaFontFace(page, url, listRow)
           if (!ok) continue
           if (sample && !skipGlyphCheck && !canRenderQcfGlyphs(family, sample)) {
             if (shouldLogFontDebug()) {

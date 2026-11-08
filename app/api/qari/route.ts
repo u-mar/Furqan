@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
 import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
 import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, MAX_IMAGE_BYTES, putAudio, putImage } from '@/lib/qari-storage'
+import { mayUploadRecordings } from '@/lib/qari-upload-access'
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
@@ -251,6 +252,11 @@ export async function POST(request: NextRequest) {
     const userUsername = clean(form.get('userUsername'), 40)
     if (!userId || !userUsername) {
       return NextResponse.json({ error: 'Sign in to publish a recitation.' }, { status: 401 })
+    }
+
+    // A file made outside the app is only for accounts the admin has approved.
+    if (clean(form.get('source'), 10) === 'upload' && !(await mayUploadRecordings(request, userUsername, userId))) {
+      return NextResponse.json({ error: 'Uploading files is not turned on for this account.' }, { status: 403 })
     }
 
     const title = clean(form.get('title'), 80)

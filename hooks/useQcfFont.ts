@@ -12,7 +12,9 @@ export interface QcfFontStatus {
 export function useQcfFont(
   page: number,
   enabled = true,
-  sampleGlyphs = ''
+  sampleGlyphs = '',
+  /** One of many rows on unrelated pages: load lightly, and don't fetch the pages either side. */
+  listRow = false
 ): QcfFontStatus {
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -48,18 +50,18 @@ export function useQcfFont(
 
     let cancelled = false
 
-    void loadPageFont(page, sampleGlyphs).then((ok) => {
+    void loadPageFont(page, sampleGlyphs, listRow).then((ok) => {
       if (cancelled) return
       setReady(ok)
       setFailed(!ok)
       setLoading(false)
-      if (ok) prefetchPageFonts(page, 1)
+      if (ok && !listRow) prefetchPageFonts(page, 1)
     })
 
     return () => {
       cancelled = true
     }
-  }, [enabled, page, sampleGlyphs])
+  }, [enabled, page, sampleGlyphs, listRow])
 
   return { ready, failed, loading }
 }

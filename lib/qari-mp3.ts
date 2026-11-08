@@ -44,7 +44,9 @@ export interface EncodedRecording {
 export async function encodeRecording(
   buffer: AudioBuffer,
   quality: 'medium' | 'low' = 'medium',
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  /** Overrides `quality`'s bitrate when the phone can encode AAC. */
+  bitrate?: number
 ): Promise<EncodedRecording> {
   try {
     const mb = await import('mediabunny')
@@ -52,7 +54,7 @@ export async function encodeRecording(
       const output = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() })
       const source = new mb.AudioBufferSource({
         codec: 'aac',
-        bitrate: quality === 'low' ? 64_000 : 96_000,
+        bitrate: bitrate ?? (quality === 'low' ? 64_000 : 96_000),
       })
       output.addAudioTrack(source)
       await output.start()

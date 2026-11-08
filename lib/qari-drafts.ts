@@ -30,6 +30,8 @@ export interface QariDraftMeta {
   verseTimeline: { verseKey: string; atSeconds: number }[]
   /** The background chosen for it — an id from lib/qari-backgrounds. Missing on drafts from before. */
   background?: string
+  /** A file made outside the app rather than a take recorded here. */
+  fromFile?: boolean
   savedAt: number
 }
 

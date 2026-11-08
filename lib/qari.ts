@@ -280,6 +280,8 @@ export interface PublishInput {
   verseTimeline: VerseTimelineEntry[]
   /** An id from lib/qari-backgrounds. */
   background: string
+  /** Set for a file made outside the app, which only approved accounts may post. */
+  source?: 'upload'
   userId: string
   userName: string
   userUsername: string
@@ -327,6 +329,7 @@ export function publishRecitation(input: PublishInput, onProgress?: (fraction: n
   form.append('peaks', JSON.stringify(input.peaks))
   form.append('verseTimeline', JSON.stringify(input.verseTimeline))
   form.append('background', input.background)
+  if (input.source) form.append('source', input.source)
   form.append('userId', input.userId)
   form.append('userName', input.userName)
   form.append('userUsername', input.userUsername)
@@ -545,4 +548,16 @@ export async function fetchFollowState(
   const res = await fetch(`/api/qari/follow?${params.toString()}`, { cache: 'no-store' })
   if (!res.ok) return { following: false, followers: 0 }
   return (await res.json()) as { following: boolean; followers: number }
+}
+
+/** Whether this account gets the Upload button on the record screen. */
+export async function fetchUploadAccess(username: string, userId: string): Promise<boolean> {
+  try {
+    const query = new URLSearchParams({ username, userId })
+    const res = await fetch(`/api/qari/upload-access?${query}`, { cache: 'no-store' })
+    if (!res.ok) return false
+    return ((await res.json()) as { allowed?: boolean }).allowed === true
+  } catch {
+    return false
+  }
 }

@@ -27,9 +27,12 @@ import {
   integratedLoudness,
   judge,
   limitPeaks,
+  PEAK_CEILING_DB,
+  TARGET_LUFS,
   trimBounds,
   type Quality,
 } from '@/lib/qari-polish-dsp'
+import { tr } from '@/lib/i18n-core'
 
 const RATE = 48000
 /** The voice is brought to about here before anything else touches it. */
@@ -178,4 +181,99 @@ export async function polishRecording(
 
   onProgress(1, 'saving')
   return { blob: saved.blob, mimeType: saved.mimeType, durationSec, quality, cleaned }
+}
+
+/* ------------------------------------------------- a file made elsewhere */
+
+/** The same limit as a recording made in the app. */
+const MAX_UPLOAD_SECONDS = 600
+/** A ten-minute stereo WAV is about 115 MB; far past that a phone runs out of memory decoding it. */
+const MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+/** The server takes 12 MB; this leaves room. */
+const MAX_SAVED_BYTES = 11 * 1024 * 1024
+
+/** Why a chosen file cannot be used, in words to show the reciter. */
+export class UploadProblem extends Error {}
+
+const tooLong = () => new UploadProblem(tr('That file is over 10 minutes. Recordings can be up to 10 minutes.'))
+
+/** Its length from the file's own header, so a long file is turned away before it is decoded. */
+function readDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const audio = new Audio()
+    const finish = (seconds: number | null) => {
+      window.clearTimeout(timer)
+      audio.removeAttribute('src')
+      URL.revokeObjectURL(url)
+      resolve(seconds)
+    }
+    const timer = window.setTimeout(() => finish(null), 8000)
+    audio.preload = 'metadata'
+    audio.onloadedmetadata = () => finish(Number.isFinite(audio.duration) ? audio.duration : null)
+    audio.onerror = () => finish(null)
+    audio.src = url
+  })
+}
+
+/**
+ * A recording made outside the app, made ready to post. Only its loudness is
+ * touched, to match the rest of the feed: the shaping, trimming and noise
+ * removal in polishRecording are all for a phone's microphone, and would make a
+ * recording from a real one worse. Stereo stays stereo.
+ */
+export async function prepareUpload(
+  file: File,
+  onProgress: (fraction: number, stage: PolishStage) => void = () => {}
+): Promise<PolishResult> {
+  if (file.size > MAX_UPLOAD_BYTES) throw new UploadProblem(tr('That file is too large. Try an MP3 or M4A copy of it.'))
+
+  onProgress(0.02, 'reading')
+  const seconds = await readDuration(file)
+  if (seconds !== null && seconds > MAX_UPLOAD_SECONDS + 1) throw tooLong()
+
+  let decoded: AudioBuffer
+  try {
+    decoded = await new OfflineAudioContext(1, 1, RATE).decodeAudioData(await file.arrayBuffer())
+  } catch {
+    throw new UploadProblem(tr('That file could not be read. Try an MP3, M4A or WAV file.'))
+  }
+  if (decoded.duration > MAX_UPLOAD_SECONDS + 1) throw tooLong()
+  await breathe()
+
+  /* The one gain for every channel, held under the ceiling rather than limited. */
+  onProgress(0.4, 'levelling')
+  const channels =
+    decoded.numberOfChannels === 2
+      ? [Float32Array.from(decoded.getChannelData(0)), Float32Array.from(decoded.getChannelData(1))]
+      : [toMono(decoded)]
+  let peak = 0
+  for (const channel of channels) {
+    for (let i = 0; i < channel.length; i += 1) peak = Math.max(peak, Math.abs(channel[i]))
+  }
+  const loudness = integratedLoudness(toMono(decoded))
+  if (peak < 0.001 || !Number.isFinite(loudness)) throw new UploadProblem(tr('That file has no sound in it.'))
+  const gain = Math.min(TARGET_LUFS - loudness, PEAK_CEILING_DB - 20 * Math.log10(peak))
+  channels.forEach((channel) => applyGain(channel, gain))
+  await breathe()
+
+  /* Saved generously, since it started out well: as high as still fits the upload limit. */
+  onProgress(0.6, 'saving')
+  const context = new OfflineAudioContext(channels.length, 1, RATE)
+  const buffer = context.createBuffer(channels.length, channels[0].length, RATE)
+  channels.forEach((channel, c) => buffer.copyToChannel(channel as Float32Array<ArrayBuffer>, c))
+  const wanted = channels.length === 2 ? 192_000 : 128_000
+  const fits = (MAX_SAVED_BYTES * 8) / buffer.duration
+  const bitrate = [wanted, 160_000, 128_000, 96_000].find((rate) => rate <= wanted && rate <= fits) ?? 64_000
+  let saved = await encodeRecording(buffer, 'medium', (f) => onProgress(0.6 + 0.4 * f, 'saving'), bitrate)
+  if (saved.blob.size > MAX_SAVED_BYTES) saved = await encodeRecording(buffer, 'low')
+
+  onProgress(1, 'saving')
+  return {
+    blob: saved.blob,
+    mimeType: saved.mimeType,
+    durationSec: Math.max(1, Math.round(buffer.duration)),
+    quality: 'good',
+    cleaned: false,
+  }
 }

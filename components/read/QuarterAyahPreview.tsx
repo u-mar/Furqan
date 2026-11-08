@@ -1,31 +1,37 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useQcfFont } from '@/hooks/useQcfFont'
-import { getVerseArabicText } from '@/lib/quran-display'
-import {
-  getVerseQcfGlyphWords,
-  pageHasQcfData,
-  qcfPageFontFamily,
-  qcfPageSampleGlyphs,
-  versePageNumber,
-} from '@/lib/qcf-page'
-import type { Verse } from '@/types'
+import { qcfPageFontFamily } from '@/lib/qcf-page'
+import { quarterOpening } from '@/lib/quarters'
+import { cn } from '@/lib/cn'
+
+/** Fonts start loading this far ahead of the scroll, so a row is ready when it arrives. */
+const LOAD_AHEAD_PX = 1500
+
+/** The panel a row scrolls in. A margin on the screen itself cannot reach past that panel's edge. */
+function scrollPanel(el: HTMLElement): HTMLElement | null {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return node
+  }
+  return null
+}
 
 interface QuarterAyahPreviewProps {
-  verse: Verse
+  verseKey: string
   className?: string
 }
 
 /**
- * Renders a quarter's opening ayah with the same QCF mushaf glyphs used in the
- * main reader, instead of a plain Amiri/Uthmani fallback — falls back
- * automatically if the page's glyph font can't be loaded. Font loading is
- * gated behind visibility: the quarters list can mount 200+ of these at
- * once, and each quarter can land on a different page, so loading every
- * page's glyph font up front would fetch/parse hundreds of fonts at once.
+ * A quarter's opening ayah in the same QCF mushaf glyphs as the reader. The
+ * words are built into the app and the fonts ship with it, so this works with
+ * no connection. Nothing is drawn until the page's font is ready, so the
+ * script never visibly changes; only if that font cannot be had is plain text
+ * shown. Font loading is gated behind visibility: there are 240 of these, each
+ * on a different page. The caller gives it one wrapping line's height, so only
+ * whole words show and a row is the same height before and after its font.
  */
-export default function QuarterAyahPreview({ verse, className }: QuarterAyahPreviewProps) {
+export default function QuarterAyahPreview({ verseKey, className }: QuarterAyahPreviewProps) {
   const rootRef = useRef<HTMLParagraphElement | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -37,7 +43,7 @@ export default function QuarterAyahPreview({ verse, className }: QuarterAyahPrev
     const el = rootRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    if (rect.bottom > -300 && rect.top < window.innerHeight + 300) {
+    if (rect.bottom > -LOAD_AHEAD_PX && rect.top < window.innerHeight + LOAD_AHEAD_PX) {
       setVisible(true)
     }
   }, [visible])
@@ -56,35 +62,21 @@ export default function QuarterAyahPreview({ verse, className }: QuarterAyahPrev
           observer.disconnect()
         }
       },
-      { rootMargin: '300px' }
+      { root: scrollPanel(el), rootMargin: `${LOAD_AHEAD_PX}px` }
     )
     observer.observe(el)
     return () => observer.disconnect()
   }, [visible])
 
-  const page = versePageNumber(verse)
-  const hasQcf = visible && page > 0 && pageHasQcfData([verse])
-  const qcfWords = useMemo(
-    () => (hasQcf ? getVerseQcfGlyphWords(verse, page) : []),
-    [hasQcf, verse, page]
-  )
-  const qcfSample = useMemo(
-    () => (hasQcf ? qcfPageSampleGlyphs([verse], page) : ''),
-    [hasQcf, verse, page]
-  )
-  const { ready } = useQcfFont(page, hasQcf && qcfWords.length > 0, qcfSample)
-  const useGlyphs = hasQcf && ready && qcfWords.length > 0
+  const opening = quarterOpening(verseKey)
+  const page = opening?.p ?? 0
+  const sample = opening?.g[0]?.replace(/\s/g, '').slice(0, 12) ?? ''
+  const { ready, failed } = useQcfFont(page, visible && Boolean(opening), sample, true)
 
-  if (useGlyphs) {
+  if (opening && ready) {
     return (
-      <p
-        ref={rootRef}
-        className={className}
-        dir="rtl"
-        lang="ar"
-        style={{ fontFamily: qcfPageFontFamily(page) }}
-      >
-        {qcfWords.map((word, i) => (
+      <p ref={rootRef} className={className} dir="rtl" lang="ar" style={{ fontFamily: qcfPageFontFamily(page) }}>
+        {opening.g.map((word, i) => (
           <span key={i} className="mushaf-translation-qcf-word">
             {word}
           </span>
@@ -93,9 +85,10 @@ export default function QuarterAyahPreview({ verse, className }: QuarterAyahPrev
     )
   }
 
+  // Unseen while its font loads.
   return (
-    <p ref={rootRef} className={className} dir="rtl" lang="ar">
-      {getVerseArabicText(verse, { omitEndMark: true }) || '…'}
+    <p ref={rootRef} className={cn(className, !failed && opening && 'invisible')} dir="rtl" lang="ar">
+      {opening?.t ?? '…'}
     </p>
   )
 }

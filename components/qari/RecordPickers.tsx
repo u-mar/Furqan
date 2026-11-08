@@ -5,7 +5,7 @@ import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
 import { tapFeedback } from '@/lib/haptics'
-import { SPACES, type SpaceId } from '@/lib/audio-space'
+import { AS_RECORDED, SPACES, type SpaceId } from '@/lib/audio-space'
 import { SHEIKHS } from '@/lib/sheikhs'
 import { useT } from '@/lib/i18n'
 
@@ -15,17 +15,21 @@ export function SoundSheet({
   value,
   onClose,
   onSelect,
+  uploaded = false,
 }: {
   open: boolean
   value: SpaceId
   onClose: () => void
   onSelect: (id: SpaceId) => void
+  /** A file made elsewhere: it may already have its own room, so "nothing added" is offered first. */
+  uploaded?: boolean
 }) {
   const t = useT()
+  const spaces = uploaded ? [AS_RECORDED, ...SPACES] : SPACES
   return (
     <SettingsSheet open={open} title={t('Sound')} description={t('How the room around your voice sounds. You can change it after recording too.')} onClose={onClose}>
       <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Sound')}>
-        {SPACES.map((space, i) => {
+        {spaces.map((space, i) => {
           const on = space.id === value
           return (
             <div key={space.id}>

@@ -1,22 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Bookmark, Check, Pause, Play, Share } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { fetchDailyVerseConfig, getLocalDailyVerseConfig } from '@/lib/admin'
 import { addBookmark, isBookmarked, removeBookmark } from '@/lib/bookmarks'
-import AyahEndMark from '@/components/read/AyahEndMark'
 import { getVerseArabicText, stripAyahRefFromLabel } from '@/lib/quran-display'
-import { useQcfFont } from '@/hooks/useQcfFont'
-import { loadPageFont } from '@/lib/mushaf-fonts'
-import {
-  getVerseQcfGlyphWords,
-  pageHasQcfData,
-  qcfPageFontFamily,
-  qcfPageSampleGlyphs,
-  versePageNumber,
-} from '@/lib/qcf-page'
 import { getVerseByKey, everyAyahUrl } from '@/lib/quran'
 import {
   readWeeklyVerseCache as readCache,
@@ -44,7 +34,7 @@ const SERVER_BUDGET_MS = 800
 /** A copy confirmed longer ago than this may be last week's: wait for the server. */
 const CACHE_TRUST_MS = 24 * 60 * 60 * 1000
 
-/** How long to hold the script back for the mushaf font before using the plain one. */
+/** How long to hold the ayah back for its font before showing it in another. */
 const FONT_WAIT_MS = 1500
 
 /**
@@ -69,8 +59,8 @@ async function loadDailyVerse(verseKey: string): Promise<Verse> {
 }
 
 /** The ayah's largest size, and the smallest it may shrink to before it wraps onto a second line instead. */
-const AYAH_MAX_PX = 27
-const AYAH_MIN_PX = 17
+const AYAH_MAX_PX = 21
+const AYAH_MIN_PX = 15
 
 /**
  * Sizes the ayah to sit on one line across the phone's width: as large as
@@ -131,7 +121,7 @@ export default function DailyVerseCard() {
   const [saved, setSaved] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [fontTimedOut, setFontTimedOut] = useState(false)
+  const [fontWaitOver, setFontWaitOver] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const ayahRef = useRef<HTMLParagraphElement>(null)
 
@@ -151,16 +141,6 @@ export default function DailyVerseCard() {
           ? prev
           : { verseKey: next.verseKey, surahName: next.surahName, confirmed }
       )
-    }
-
-    // The verse rarely changes, so its mushaf font can start loading now, while
-    // the server is still being asked, rather than after it answers.
-    const warm = readCache()
-    if (warm) {
-      const warmPage = versePageNumber(warm.verse)
-      if (warmPage > 0 && pageHasQcfData([warm.verse])) {
-        void loadPageFont(warmPage, qcfPageSampleGlyphs([warm.verse], warmPage))
-      }
     }
 
     const sync = async () => {
@@ -270,30 +250,21 @@ export default function DailyVerseCard() {
     }
   }, [verse, translationLanguage, translationEditionId])
 
-  /* The verse is set in the same mushaf glyphs the reader uses, so the two
-     screens agree. It waits a moment for that font rather than flashing a
-     different script first, and falls back to plain text if it cannot load. */
-  const qcfPage = verse ? versePageNumber(verse) : 0
-  const hasQcf = verse !== null && qcfPage > 0 && pageHasQcfData([verse])
-  const qcfWords = useMemo(
-    () => (hasQcf && verse ? getVerseQcfGlyphWords(verse, qcfPage) : []),
-    [hasQcf, verse, qcfPage]
-  )
-  const qcfSample = useMemo(
-    () => (hasQcf && verse ? qcfPageSampleGlyphs([verse], qcfPage) : ''),
-    [hasQcf, verse, qcfPage]
-  )
-  const glyphsWanted = hasQcf && qcfWords.length > 0
-  const { ready: qcfReady, failed: qcfFailed } = useQcfFont(qcfPage, glyphsWanted, qcfSample)
-  const useGlyphs = glyphsWanted && qcfReady
-  const waitingForFont = glyphsWanted && !qcfReady && !qcfFailed && !fontTimedOut
-
+  /* The ayah is set in the King Fahd Uthmanic font: the Madani script at an ordinary
+     weight, where the reader's page fonts are too heavy for one small line. It waits
+     a moment for that font rather than flashing another first. */
   useEffect(() => {
-    if (!glyphsWanted || qcfReady) return
-    setFontTimedOut(false)
-    const timer = window.setTimeout(() => setFontTimedOut(true), FONT_WAIT_MS)
-    return () => window.clearTimeout(timer)
-  }, [glyphsWanted, qcfReady, qcfPage])
+    let cancelled = false
+    const done = () => {
+      if (!cancelled) setFontWaitOver(true)
+    }
+    const timer = window.setTimeout(done, FONT_WAIT_MS)
+    void document.fonts.load(`${AYAH_MAX_PX}px 'UthmanicHafs'`, 'ق').then(done, done)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [])
 
   /* A different verse needs its own recitation. */
   useEffect(() => {
@@ -363,15 +334,21 @@ export default function DailyVerseCard() {
 
   const endWord = verse?.words?.find((word) => word.char_type_name === 'end')
   // The font is part of being ready, so the card appears once, whole.
-  const ready = config !== null && verse !== null && !waitingForFont
-  useOneLineAyah(ayahRef, `${ready}:${verseKey}:${useGlyphs}`)
+  const ready = config !== null && verse !== null && fontWaitOver
+  useOneLineAyah(ayahRef, `${ready}:${verseKey}`)
 
-  // The ayah's closing mark stays on the line with its last word.
-  const leadingWords = qcfWords.slice(0, -2)
-  const closingWords = qcfWords.slice(-2)
+  // Each word as the King Fahd font expects it. That font draws the circle around
+  // the ayah's number itself, and the number stays with the last word.
+  const ayahText =
+    (verse?.words ?? [])
+      .filter((word) => word.char_type_name !== 'end')
+      .map((word) => (word.text_qpc_hafs || word.text_uthmani || '').trim())
+      .filter(Boolean)
+      .join(' ') || arabicText
+  const lastSpace = ayahText.lastIndexOf(' ')
 
-  // No card, in big type like the prayer times: a small spaced line with the surah
-  // and verse, the ayah large in the mushaf's own script, its meaning in grey,
+  // No card, like the prayer times: a small spaced line with the surah and verse,
+  // the ayah in the Madani script, its meaning in grey,
   // then Listen with round bookmark and share buttons under a thin line.
   return (
     <section aria-label={t('Ayah of the week')} aria-busy={!ready} className="px-1">
@@ -395,35 +372,12 @@ export default function DailyVerseCard() {
 
           {/* Up to three lines of each; the whole verse opens in the reader. */}
           <Link href={`/read?page=${page}`} className="ed-focus mt-2 block rounded-lg" aria-label={t('Page {page}', { page })}>
-            {useGlyphs ? (
-              // The glyph run carries its own ayah marker, so none is added.
-              <p ref={ayahRef} className="home-ayah home-ayah--week home-fade" dir="rtl" lang="ar" style={{ fontFamily: qcfPageFontFamily(qcfPage) }}>
-                {/* A space between words, so a long verse can wrap onto the next line. */}
-                {leadingWords.map((word, i) => (
-                  <Fragment key={i}>
-                    <span className="mushaf-translation-qcf-word">{word}</span>{' '}
-                  </Fragment>
-                ))}
-                <span className="weekly-verse__keep">
-                  {closingWords.map((word, i) => (
-                    <Fragment key={i}>
-                      {i ? ' ' : null}
-                      <span className="mushaf-translation-qcf-word">{word}</span>
-                    </Fragment>
-                  ))}
-                </span>
-              </p>
-            ) : (
-              <p ref={ayahRef} className="home-ayah home-ayah--week home-ayah--plain home-fade" dir="rtl" lang="ar">
-                {arabicText}{' '}
-                <AyahEndMark
-                  verseKey={config.verseKey}
-                  pageNumber={endWord?.v2_page || endWord?.page_number || page}
-                  codeV2={endWord?.code_v2}
-                  fallbackText={endWord?.text_uthmani || endWord?.text_qpc_hafs || ''}
-                />
-              </p>
-            )}
+            <p ref={ayahRef} className="home-ayah home-ayah--week home-ayah--plain home-fade" dir="rtl" lang="ar">
+              {ayahText.slice(0, lastSpace + 1)}
+              <span className="weekly-verse__keep">
+                {ayahText.slice(lastSpace + 1)} {endWord?.text_qpc_hafs || endWord?.text_uthmani || ''}
+              </span>
+            </p>
 
             {translation === null ? (
               <TranslationSkeleton />

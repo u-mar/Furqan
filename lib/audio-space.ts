@@ -7,7 +7,7 @@
  * closer to how a published recitation is heard.
  */
 
-export type SpaceId = 'clean' | 'reciter' | 'mosque'
+export type SpaceId = 'clean' | 'reciter' | 'mosque' | 'none'
 
 export interface Space {
   id: SpaceId
@@ -67,7 +67,21 @@ export const SPACES: Space[] = [
   },
 ]
 
+/** For a recording made elsewhere, which already has whatever room it was given: none is added. */
+export const AS_RECORDED: Space = {
+  id: 'none',
+  label: 'As recorded',
+  hint: 'Nothing added',
+  seconds: 0,
+  brightness: 0,
+  damping: 0,
+  preDelay: 0,
+  early: 0,
+  wet: 0,
+}
+
 export function findSpace(id: SpaceId): Space {
+  if (id === 'none') return AS_RECORDED
   return SPACES.find((s) => s.id === id) ?? SPACES[1]
 }
 

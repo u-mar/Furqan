@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { askToSignIn } from '@/lib/account-prompt'
 import { getSignedInUser } from '@/lib/auth'
@@ -22,6 +22,7 @@ import {
   Play,
   RotateCcw,
   Send,
+  Upload,
   X,
 } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
@@ -43,7 +44,7 @@ import {
 import { createSpaceMixer, findSpace, type SpaceId, type SpaceMixer } from '@/lib/audio-space'
 import { errorFeedback, strongFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
-import { formatDuration, tidyHashtags } from '@/lib/qari'
+import { fetchUploadAccess, formatDuration, tidyHashtags } from '@/lib/qari'
 import {
   FEATURED_RECITATION_BACKGROUND_IDS,
   VIDEO_BACKGROUNDS,
@@ -69,7 +70,7 @@ import { tr, useT } from '@/lib/i18n'
  *   post    title, note, hashtags, who can hear it — then Post hands it to
  *           lib/qari-upload and goes to the profile, where it uploads
  */
-type Step = 'ready' | 'countdown' | 'recording' | 'edit' | 'post'
+type Step = 'ready' | 'countdown' | 'recording' | 'importing' | 'edit' | 'post'
 
 const MAX_SECONDS = 600
 const LIVE_BARS = 40
@@ -121,6 +122,22 @@ function RecordFlow() {
   useEffect(() => setBackgroundId(lastRecitationBackground()), [])
 
   const [step, setStep] = useState<Step>('ready')
+  // A file made outside the app, for the accounts the admin has approved.
+  const [fromFile, setFromFile] = useState(false)
+  const [uploadAllowed, setUploadAllowed] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const viewerId = viewer?.id
+  const viewerUsername = viewer?.username
+  useEffect(() => {
+    if (!viewerId || !viewerUsername) return
+    let cancelled = false
+    void fetchUploadAccess(viewerUsername, viewerId).then((allowed) => {
+      if (!cancelled) setUploadAllowed(allowed)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [viewerId, viewerUsername])
   const [count, setCount] = useState(3)
   const preparedRef = useRef<PreparedRecording | null>(null)
   const countdownRef = useRef<number | null>(null)
@@ -208,6 +225,29 @@ function RecordFlow() {
     setStep('ready')
   }, [clearCountdown])
 
+  /** The Upload button's file, on through the same review as a take. */
+  const importChosenFile = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      // So choosing the same file again still counts as a change.
+      event.target.value = ''
+      if (!file) return
+      strongFeedback()
+      setFromFile(true)
+      setSpaceId('none')
+      setStep('importing')
+      recorder.importFile(file)
+    },
+    [recorder]
+  )
+
+  const cancelImport = useCallback(() => {
+    recorder.reset()
+    setFromFile(false)
+    setSpaceId('reciter')
+    setStep('ready')
+  }, [recorder])
+
   /* ---------------------------------------------------------- recording */
 
   // Sample the level on a steady beat, so the waveform keeps moving even
@@ -224,7 +264,11 @@ function RecordFlow() {
 
   // A failure to start drops back to the start, saying why.
   useEffect(() => {
-    if (state.error && step === 'recording') {
+    if (state.error && (step === 'recording' || step === 'importing')) {
+      if (step === 'importing') {
+        setFromFile(false)
+        setSpaceId('reciter')
+      }
       setStep('ready')
       qariNotice(state.error)
     }
@@ -235,7 +279,7 @@ function RecordFlow() {
 
   // When the take lands, move on to editing and measure its shape.
   useEffect(() => {
-    if (!state.blob || step !== 'recording') return
+    if (!state.blob || (step !== 'recording' && step !== 'importing')) return
     strongFeedback()
     freshTakeRef.current = true
     setStep('edit')
@@ -267,6 +311,7 @@ function RecordFlow() {
     peaks,
     verseTimeline: [],
     background: backgroundId,
+    fromFile,
   }
 
   // The recording itself, saved the moment a take is ready — before a title
@@ -282,7 +327,7 @@ function RecordFlow() {
   useEffect(() => {
     if (!editing || !state.blob) return
     saveDraftMeta(draftFieldsRef.current)
-  }, [editing, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, backgroundId])
+  }, [editing, state.blob, title, hashtags, caption, isPrivate, imitate, sheikhId, spaceId, peaks, backgroundId, fromFile])
 
   const resumeDraft = useCallback(async () => {
     tapFeedback()
@@ -294,6 +339,7 @@ function RecordFlow() {
     }
     freshTakeRef.current = false
     recorder.adopt(draft.blob, draft.mimeType, draft.durationSec)
+    setFromFile(Boolean(draft.fromFile))
     setSpaceId((draft.space as SpaceId) || 'reciter')
     setImitate(Boolean(draft.imitating))
     if (draft.imitating) setSheikhId(draft.imitating)
@@ -397,7 +443,11 @@ function RecordFlow() {
     setTitle('')
     setHashtags('')
     setCaption('')
-  }, [recorder, stopPreview])
+    if (fromFile) {
+      setFromFile(false)
+      setSpaceId('reciter')
+    }
+  }, [fromFile, recorder, stopPreview])
 
   /** Back to the camera. The take stays as the draft, one tap away. */
   const backToCamera = useCallback(() => {
@@ -411,7 +461,7 @@ function RecordFlow() {
     if (!retakeArmed) {
       tapFeedback()
       setRetakeArmed(true)
-      qariNotice(tr('Tap again to record again. This take will be discarded.'))
+      qariNotice(fromFile ? tr('Tap again to choose another file. This one will be discarded.') : tr('Tap again to record again. This take will be discarded.'))
       return
     }
     setRetakeArmed(false)
@@ -420,7 +470,7 @@ function RecordFlow() {
     setStep('ready')
     // This take is being abandoned on purpose, so the draft of it goes too.
     void clearDraft()
-  }, [forgetTake, retakeArmed, setRetakeArmed])
+  }, [forgetTake, fromFile, retakeArmed, setRetakeArmed])
 
   const toPost = useCallback(() => {
     tapFeedback()
@@ -468,6 +518,7 @@ function RecordFlow() {
       caption: caption.trim(),
       imitating: imitate ? sheikhId : '',
       peaks,
+      ...(fromFile ? { source: 'upload' as const } : {}),
       verseTimeline: [],
       background: backgroundId,
       userId: viewer.id,
@@ -491,7 +542,7 @@ function RecordFlow() {
 
   const pickers = (
     <>
-      <SoundSheet open={picker === 'sound'} value={spaceId} onClose={() => setPicker(null)} onSelect={setSpaceId} />
+      <SoundSheet open={picker === 'sound'} value={spaceId} onClose={() => setPicker(null)} onSelect={setSpaceId} uploaded={fromFile} />
       <SheikhSheet
         open={picker === 'sheikh'}
         value={sheikhId}
@@ -775,8 +826,8 @@ function RecordFlow() {
               retakeArmed && 'text-rose-300'
             )}
           >
-            <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
-            {t('Record again')}
+            {fromFile ? <Upload className="h-4 w-4" strokeWidth={2.2} /> : <RotateCcw className="h-4 w-4" strokeWidth={2.2} />}
+            {fromFile ? t('Choose another') : t('Record again')}
           </button>
           <button
             type="button"
@@ -797,6 +848,7 @@ function RecordFlow() {
 
   const recording = step === 'recording'
   const countingDown = step === 'countdown'
+  const importing = step === 'importing'
   const elapsed = recording ? state.elapsed : 0
   const left = MAX_SECONDS - elapsed
   const draftBackground = draftMeta?.background ? findVideoBackground(draftMeta.background) : background
@@ -822,8 +874,8 @@ function RecordFlow() {
     >
       <X className="h-5 w-5" strokeWidth={2} />
     </button>
-  ) : countingDown ? (
-    <button type="button" aria-label={t('Cancel')} onClick={cancelCountdown} className="qari-cam-round qari-glass ed-focus">
+  ) : countingDown || importing ? (
+    <button type="button" aria-label={t('Cancel')} onClick={importing ? cancelImport : cancelCountdown} className="qari-cam-round qari-glass ed-focus">
       <X className="h-5 w-5" strokeWidth={2} />
     </button>
   ) : (
@@ -843,7 +895,7 @@ function RecordFlow() {
           </span>
         ) : countingDown ? (
           <span className="qari-cam-text text-[15px] font-semibold">{t('Get ready')}</span>
-        ) : (
+        ) : importing ? null : (
           <div className="flex min-w-0 items-center gap-1.5">
             <button
               type="button"
@@ -906,6 +958,12 @@ function RecordFlow() {
                 setMushafOpen(true)
               }}
             />
+            {uploadAllowed ? (
+              <>
+                <Tool Icon={Upload} label={t('Upload')} onClick={() => fileInputRef.current?.click()} />
+                <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={importChosenFile} aria-hidden tabIndex={-1} />
+              </>
+            ) : null}
           </div>
         ) : null}
 
@@ -913,9 +971,13 @@ function RecordFlow() {
           {state.polishing ? (
             <div className="qari-glass w-full max-w-[17rem] rounded-3xl px-5 py-5 text-center" role="status">
               <span className="mx-auto block h-8 w-8 animate-spin rounded-full border-[3px] border-white/25 border-t-white" />
-              <p className="home-serif mt-3 text-[1.1875rem] font-medium">{t('Polishing your recitation…')}</p>
+              <p className="home-serif mt-3 text-[1.1875rem] font-medium">
+                {importing ? t('Preparing your recording…') : t('Polishing your recitation…')}
+              </p>
               <p className="mt-1 text-[13px] text-white/75" aria-live="polite">
-                {state.polishStage === 'cleaning'
+                {importing && state.polishStage === 'reading'
+                  ? t('Reading the file')
+                  : state.polishStage === 'cleaning'
                   ? t('Removing room noise')
                   : state.polishStage === 'shaping'
                     ? t('Shaping the voice')

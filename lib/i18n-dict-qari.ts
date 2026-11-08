@@ -551,4 +551,27 @@ export const QARI: Dict = {
   'Edit title': { so: 'Wax ka beddel cinwaanka', ar: 'تعديل العنوان' },
   'Title saved.': { so: 'Cinwaanka waa la kaydiyay.', ar: 'تم حفظ العنوان.' },
   'Audio list': { so: 'Liiska codka', ar: 'قائمة الصوت' },
+  Upload: { so: 'Soo geli', ar: 'رفع' },
+  'Choose another': { so: 'Mid kale dooro', ar: 'اختر ملفًا آخر' },
+  'As recorded': { so: 'Sidii la duubay', ar: 'كما سُجّل' },
+  'Nothing added': { so: 'Waxba laguma darin', ar: 'بدون أي إضافة' },
+  'Preparing your recording…': { so: 'Duubistaada waa la diyaarinayaa…', ar: 'جارٍ تجهيز تسجيلك…' },
+  'Reading the file': { so: 'Faylka waa la akhrinayaa', ar: 'جارٍ قراءة الملف' },
+  'That file is over 10 minutes. Recordings can be up to 10 minutes.': {
+    so: 'Faylkaasi wuxuu ka badan yahay 10 daqiiqo. Duubistu waxay noqon kartaa ilaa 10 daqiiqo.',
+    ar: 'هذا الملف أطول من 10 دقائق. يمكن أن يصل التسجيل إلى 10 دقائق.',
+  },
+  'That file is too large. Try an MP3 or M4A copy of it.': {
+    so: 'Faylkaasi aad buu u weyn yahay. Isku day nuqul MP3 ama M4A ah.',
+    ar: 'هذا الملف كبير جدًا. جرّب نسخة MP3 أو M4A منه.',
+  },
+  'That file could not be read. Try an MP3, M4A or WAV file.': {
+    so: 'Faylkaas lama akhrin karin. Isku day fayl MP3, M4A ama WAV ah.',
+    ar: 'تعذّرت قراءة هذا الملف. جرّب ملف MP3 أو M4A أو WAV.',
+  },
+  'That file has no sound in it.': { so: 'Faylkaas cod kuma jiro.', ar: 'لا يوجد صوت في هذا الملف.' },
+  'Tap again to choose another file. This one will be discarded.': {
+    so: 'Mar kale taabo si aad fayl kale u doorato. Kan waa la tuurayaa.',
+    ar: 'انقر مرة أخرى لاختيار ملف آخر. سيُحذف هذا الملف.',
+  },
 }

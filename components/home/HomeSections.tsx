@@ -265,7 +265,7 @@ export function QuickAccess() {
   const t = useT()
   return (
     <section aria-label={t('Quick access')}>
-      <SectionTitle>{t('Quick access')}</SectionTitle>
+      <SectionTitle star>{t('Quick access')}</SectionTitle>
       <nav className="flex justify-between gap-3 px-1">
         <Shortcut href="/prayer/qibla" picture={<QiblaGlyph className="h-full w-full" />} label={t('Qibla')} filled />
         <Shortcut

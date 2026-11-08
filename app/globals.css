@@ -2692,7 +2692,7 @@ html[lang='ar'] .home-date {
 /* The ayah of the week, in big type with no card: from the right, as it is read. */
 .home-ayah--week {
   text-align: right;
-  font-size: 1.6875rem;
+  font-size: 1.3125rem;
 }
 
 .home-ayah-translation--week {

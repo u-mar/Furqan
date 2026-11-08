@@ -31,6 +31,8 @@ model User {
   resetTokenExpires DateTime?
   /// When the last reset email went out, so the button can't be used to flood an inbox.
   resetSentAt       DateTime?
+  /// The admin has allowed this account to post recordings made outside the app.
+  canUpload   Boolean?
   /// Wrong PINs in a row. A 4-digit PIN has only 10,000 values, so without
   /// a limit any account falls to a script in minutes.
   failedPins  Int?

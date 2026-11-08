@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Megaphone, MessageSquare } from 'lucide-react'
 import AdminShell, { type AdminSection } from '@/components/admin/AdminShell'
 import AdminReportsPanel from '@/components/admin/AdminReportsPanel'
+import AdminUploadersPanel from '@/components/admin/AdminUploadersPanel'
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel'
 import {
   listAdminData,
@@ -185,6 +186,8 @@ export default function AdminDashboard() {
       )}
 
       {section === 'users' && <AdminUsersPanel users={users} />}
+
+      {section === 'uploaders' && <AdminUploadersPanel />}
 
       {section === 'popups' && (
         <section className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">
