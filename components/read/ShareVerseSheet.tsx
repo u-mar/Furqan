@@ -8,6 +8,7 @@ import { askToSignIn } from '@/lib/account-prompt'
 import { getSignedInUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { postAyahCard } from '@/lib/qari-upload'
+import type { QariTextMode } from '@/lib/qari-text-mode'
 import {
   DEFAULT_BACKGROUND_ID,
   DEFAULT_VERSE_FONT_SCALE,
@@ -55,7 +56,13 @@ interface ShareVerseSheetProps {
 
 /** Posting an ayah card to Qari is set aside for now: the button is hidden, the rest kept. */
 const AYAH_CARD_POSTING = false
-/** How a part's translation was found — said under the switch, so nobody mistakes a word list for the meaning. */
+/** What the card can say. */
+const CARD_TEXT_CHOICES: { mode: QariTextMode; label: string }[] = [
+  { mode: 'both', label: 'Both' },
+  { mode: 'ayah', label: 'Arabic' },
+  { mode: 'translation', label: 'Translation' },
+]
+/** How a part's translation was found — said under the choice, so nobody mistakes a word list for the meaning. */
 type PartSource = 'ai' | 'matched' | 'words'
 
 const partCache = new Map<string, { text: string | null; source: PartSource | null }>()
@@ -112,7 +119,8 @@ export default function ShareVerseSheet({
   const [range, setRange] = useState<{ start: number; end: number } | null>(null)
   /** The first word tapped, while waiting for the last. */
   const [anchor, setAnchor] = useState<number | null>(null)
-  const [showTranslation, setShowTranslation] = useState(true)
+  const [textMode, setTextMode] = useState<QariTextMode>('both')
+  const showTranslation = textMode !== 'ayah'
   const [fontScale, setFontScale] = useState(DEFAULT_VERSE_FONT_SCALE)
   // Once the size has been set by hand it stays, until another ayah is opened.
   const sizedByHand = useRef(false)
@@ -202,6 +210,7 @@ export default function ShareVerseSheet({
     if (!selection.partial) return translation
     return part?.text ?? null
   }, [showTranslation, selection.partial, translation, part])
+  const showArabic = textMode !== 'translation'
 
   /* Render (and re-render) the card as background, range or translation change. */
   useEffect(() => {
@@ -218,6 +227,7 @@ export default function ShareVerseSheet({
           page: target.page,
           isQcf: useQcf,
           translation: cardTranslation,
+          showArabic,
           surahName: target.surahName,
           verseKey: target.verseKey,
           partial: selection.partial,
@@ -240,7 +250,7 @@ export default function ShareVerseSheet({
     return () => {
       cancelled = true
     }
-  }, [open, target, backgroundId, selection, useQcf, cardTranslation, fontScale, partLoading])
+  }, [open, target, backgroundId, selection, useQcf, cardTranslation, showArabic, fontScale, partLoading])
 
   /* Drop the object URL when the page closes. */
   useEffect(() => {
@@ -278,9 +288,14 @@ export default function ShareVerseSheet({
 
   // The size a choice starts at, chosen again as the selection changes until the size is set by hand:
   // a long one at 70%; a shorter one at 60%, or 50%, when that puts it on a single line; else 100%.
+  // With no Arabic on the card none of that applies.
   const [autoScale, setAutoScale] = useState(DEFAULT_VERSE_FONT_SCALE)
   useEffect(() => {
     if (!target) return
+    if (!showArabic) {
+      setAutoScale(DEFAULT_VERSE_FONT_SCALE)
+      return
+    }
     const words = selection.words
     if (words.length >= LONG_VERSE_WORDS) {
       setAutoScale(LONG_VERSE_FONT_SCALE)
@@ -299,7 +314,7 @@ export default function ShareVerseSheet({
     return () => {
       cancelled = true
     }
-  }, [selection.words, target, useQcf])
+  }, [selection.words, target, useQcf, showArabic])
   useEffect(() => {
     if (!sizedByHand.current) setFontScale(autoScale)
   }, [autoScale, target?.verseKey])
@@ -382,6 +397,7 @@ export default function ShareVerseSheet({
       page: target.page,
       isQcf: useQcf,
       translation: cardTranslation,
+      showArabic,
       surahName: target.surahName,
       verseKey: target.verseKey,
       partial: selection.partial,
@@ -402,7 +418,7 @@ export default function ShareVerseSheet({
       if (made) URL.revokeObjectURL(made)
       setPostImage(null)
     }
-  }, [postOpen, target, selection, useQcf, cardTranslation, backgroundId, fontScale])
+  }, [postOpen, target, selection, useQcf, cardTranslation, showArabic, backgroundId, fontScale])
 
   /** Hands the card to Qari's uploads and returns to reading; the profile shows it going up. */
   const handlePost = useCallback(() => {
@@ -561,37 +577,29 @@ export default function ShareVerseSheet({
           {/* Translation */}
           {translation ? (
             <section className="mt-4 rounded-2xl bg-[var(--mushaf-popup-badge-bg)] px-3.5 py-3">
-              <button
-                type="button"
-                onClick={() => setShowTranslation((v) => !v)}
-                role="switch"
-                aria-checked={showTranslation}
-                className="flex w-full items-center justify-between gap-3 text-left"
-              >
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold">{t('Include translation')}</span>
-                  {showTranslation && partStatus ? (
-                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--mushaf-popup-meta)]">
-                      {partLoading ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" /> : null}
-                      {partStatus}
-                    </span>
-                  ) : null}
-                </span>
-                <span
-                  className={cn(
-                    'relative h-6 w-10 shrink-0 rounded-full transition-colors',
-                    showTranslation ? 'bg-[var(--mushaf-read-accent)]' : 'bg-black/20'
-                  )}
-                  aria-hidden
-                >
-                  <span
+              <div role="radiogroup" aria-label={t('Text on the card')} className="grid grid-cols-3 gap-1">
+                {CARD_TEXT_CHOICES.map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    role="radio"
+                    aria-checked={textMode === mode}
+                    onClick={() => setTextMode(mode)}
                     className={cn(
-                      'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-                      showTranslation ? 'translate-x-[1.15rem]' : 'translate-x-0.5'
+                      'h-10 rounded-xl text-[13px] font-semibold transition-colors',
+                      textMode === mode && 'bg-[var(--mushaf-read-accent)] text-white'
                     )}
-                  />
-                </span>
-              </button>
+                  >
+                    {t(label)}
+                  </button>
+                ))}
+              </div>
+              {showTranslation && partStatus ? (
+                <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--mushaf-popup-meta)]">
+                  {partLoading ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" /> : null}
+                  {partStatus}
+                </p>
+              ) : null}
               {showTranslation && cardTranslation && !partLoading ? (
                 <p className="mt-2.5 border-t border-[var(--mushaf-read-popup-border)] pt-2.5 text-[13.5px] leading-relaxed">
                   {cardTranslation}

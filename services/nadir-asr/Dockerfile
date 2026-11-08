@@ -15,8 +15,8 @@ COPY *.py ./
 COPY model/ ./model/
 
 # Feature settings: change these if selftest.py picks different ones.
-ENV FEATURE_WINDOW=periodic \
-    FEATURE_PAD=reflect \
+ENV FEATURE_WINDOW=symmetric \
+    FEATURE_PAD=constant \
     FEATURE_NORMALIZE=per_feature
 
 # Cloud Run sets PORT (8080 by default).

@@ -6,9 +6,11 @@ and when each word starts and ends. It runs
 on CPU, on Google Cloud Run.
 
 ```
-GET  /            → {"ok": true}  when the model is loaded
+GET  /            → {"ok": true}  when the model and the Quran text are loaded
 POST /transcribe  → multipart form with an "audio" file (WebM, M4A, MP3, WAV…)
                     header x-api-key: <ASR_API_KEY>
+POST /mark        → the same form; the ayat recited, with each word's time
+                    header x-api-key, or x-marking-token from the app's server
 ```
 
 Reply:
@@ -23,8 +25,9 @@ Reply:
 }
 ```
 
-Matching the words to ayat happens in the Nadir app's server, which has the
-Quran text. This service only listens.
+`/mark` is what the app uses when a recitation is posted. Its reply is
+`{ "timeline": [{ "verseKey": "112:1", "atSeconds": 7, "words": [7, 7.6, …] }, …], … }`,
+with no `timeline` when nothing could be matched to the Quran with confidence.
 
 **Licence:** the model is NPL-1.1 (no profit of any kind may be made from it),
 and its base model is NVIDIA's (CC-BY 4.0, which needs an NVIDIA credit in the app).
@@ -38,6 +41,7 @@ and its base model is NVIDIA's (CC-BY 4.0, which needs an NVIDIA credit in the a
    - `onnx/model.onnx` → save as `model/model.onnx`
    - `tokenizer.model` → `model/tokenizer.model`
    - the `demo/` folder → `model/demo/` (for the check in step 2)
+3. Copy the app's `public/quran-data.json` to `model/quran-data.json`.
 
 ## 2. Check it on your computer (recommended)
 
@@ -62,7 +66,7 @@ python selftest.py model/demo
 The self-test tries the three audio-processing settings that differ between
 toolkits, and prints the ones the model is most confident with, plus each
 demo clip's text. The texts should read as Q 1:4, 112:1 and 38:67. If the
-winning settings aren't the defaults (`periodic`, `reflect`,
+winning settings aren't the defaults (`symmetric`, `constant`,
 `per_feature`), change the three `FEATURE_…` lines in the `Dockerfile`.
 
 **Optional, faster and smaller:** `pip install onnx`, then `python quantize.py`
@@ -117,6 +121,41 @@ computer) and prints the service URL at the end.
   billing (the default) is what the monthly free allowance covers. Set a
   budget alert in Billing.
 
+### Or deploy to Modal
+
+`modal_app.py` runs this same service on [Modal](https://modal.com), whose
+Starter plan includes free monthly credit. Skip section 1: Modal fetches the
+model from the app's R2 bucket while it builds, and the tokenizer comes from
+`public/models/asr/tokenizer.model` (git-ignored, so deploy from a computer
+that has it). The Quran text comes from `public/quran-data.json`.
+
+1. Sign up at modal.com, and set a budget on https://modal.com/settings/usage.
+2. Install it and sign in:
+
+```bash
+python -m pip install modal
+```
+
+```bash
+python -m modal setup
+```
+
+3. Make a key with the command in section 3, then store it, in place of `YOUR-KEY`:
+
+```bash
+python -m modal secret create nadir-asr-key ASR_API_KEY=YOUR-KEY
+```
+
+4. From this folder:
+
+```bash
+python -m modal deploy modal_app.py
+```
+
+It prints the service URL at the end, ending in `.modal.run`. Modal answers a
+request still running after 150 seconds with a redirect to wait on, so use
+`curl -L` for long recordings.
+
 ## 4. Check it
 
 ```bash
@@ -136,21 +175,24 @@ Add to the Nadir app's hosting environment:
 - `ASR_URL` = the service URL
 - `ASR_API_KEY` = the same key
 
-Wiring Qari uploads to it (sending recordings during "Finishing up…" and
-saving the ayat and word timings) is the next step in the app.
+When a recitation is posted, the app asks its server for a short-lived
+permission (`app/api/qari/marking-access`), and the phone sends the recording
+straight to `/mark`. Until both settings are there, posting a recitation fails
+with "Could not mark the ayat". If the site moves to another address, add it to
+`SITE_ORIGINS` in `app.py` and deploy again.
 
 ## Settings
 
 | Variable | Default | |
 |---|---|---|
-| `ASR_API_KEY` | not set | When set, required as the `x-api-key` header |
+| `ASR_API_KEY` | not set | When set, required as the `x-api-key` header, and signs the app's permissions |
 | `MODEL_DIR` | `./model` | Uses `model.int8.onnx`, else `model.onnx`, else `model.fp16.onnx` |
-| `MODEL_PATH`, `TOKENIZER_PATH` | | Point at exact files instead |
+| `MODEL_PATH`, `TOKENIZER_PATH`, `QURAN_DATA` | | Point at exact files instead |
 | `ORT_THREADS` | all CPUs | Threads for the model |
-| `FEATURE_WINDOW` | `periodic` | `periodic` or `symmetric` |
-| `FEATURE_PAD` | `reflect` | `reflect` or `constant` |
+| `FEATURE_WINDOW` | `symmetric` | `symmetric` or `periodic` |
+| `FEATURE_PAD` | `constant` | `constant` or `reflect` |
 | `FEATURE_NORMALIZE` | `per_feature` | `per_feature` or `none` |
 
-Recordings longer than 40 seconds are cut at the quietest moment between 25
-and 40 seconds (reciters pause between ayat), so memory use stays flat. The
+Recordings longer than 20 seconds are cut at the quietest moment between 12
+and 20 seconds (reciters pause between ayat), so memory use stays flat. The
 limits are 30 MB and 15 minutes per recording.

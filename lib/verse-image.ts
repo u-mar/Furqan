@@ -60,6 +60,8 @@ export interface VerseImageInput {
   /** True when `words` are QCF glyph codes rather than plain Uthmani text. */
   isQcf: boolean
   translation?: string | null
+  /** False for a card of the translation alone. Ignored when there is no translation to show instead. */
+  showArabic?: boolean
   /** e.g. "Al-Baqarah" */
   surahName: string
   /** e.g. "2:255" */
@@ -259,48 +261,55 @@ export async function renderVerseImage(input: VerseImageInput): Promise<Blob> {
   const contentBottom = bottom
   const available = contentBottom - contentTop
 
-  const arabicBlock = fitBlock(ctx, arabicWords, {
-    fontStack: arabicFont,
-    maxWidth: arabicWidth,
-    maxHeight: available * (translation ? 0.6 : 0.92),
-    startSize: Math.round(78 * fontScale),
-    minSize: Math.round(34 * fontScale),
-    lineHeightRatio: 1.85,
-  })
-
   const trimmedTranslation = (translation || '').replace(/\s+/g, ' ').trim()
+  const translationAlone = input.showArabic === false && Boolean(trimmedTranslation)
+
+  const arabicBlock = translationAlone
+    ? null
+    : fitBlock(ctx, arabicWords, {
+        fontStack: arabicFont,
+        maxWidth: arabicWidth,
+        maxHeight: available * (translation ? 0.6 : 0.92),
+        startSize: Math.round(78 * fontScale),
+        minSize: Math.round(34 * fontScale),
+        lineHeightRatio: 1.85,
+      })
+
+  // The size control is for the whole card, but below 80% only the Arabic keeps shrinking:
+  // a one-line ayah set small must not leave its translation too small to read.
+  const besideArabicScale = Math.max(fontScale, MIN_TRANSLATION_SCALE)
   const translationBlock = trimmedTranslation
     ? fitBlock(ctx, trimmedTranslation.split(/\s+/), {
         fontStack: fonts.serif,
         weight: '500',
-        maxWidth: translationWidth,
-        maxHeight: available * 0.36,
-        // The size control is for the whole card, but below 80% only the Arabic keeps shrinking:
-        // a one-line ayah set small must not leave its translation too small to read.
-        startSize: Math.round(38 * Math.max(fontScale, MIN_TRANSLATION_SCALE)),
-        minSize: Math.max(16, Math.round(22 * Math.max(fontScale, MIN_TRANSLATION_SCALE))),
+        maxWidth: translationAlone ? arabicWidth : translationWidth,
+        maxHeight: available * (translationAlone ? 0.92 : 0.36),
+        startSize: Math.round(translationAlone ? 60 * fontScale : 38 * besideArabicScale),
+        minSize: translationAlone ? Math.max(18, Math.round(26 * fontScale)) : Math.max(16, Math.round(22 * besideArabicScale)),
         lineHeightRatio: 1.55,
       })
     : null
 
-  const dividerSpace = translationBlock ? 92 : 0
-  const groupHeight = arabicBlock.height + dividerSpace + (translationBlock?.height ?? 0)
+  const dividerSpace = arabicBlock && translationBlock ? 92 : 0
+  const groupHeight = (arabicBlock?.height ?? 0) + dividerSpace + (translationBlock?.height ?? 0)
   let cursorY = contentTop + (available - groupHeight) / 2
 
   /* ---- Arabic ---- */
-  withShadow(() => {
-    ctx.direction = 'rtl'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = INK
-    ctx.font = `${arabicBlock.fontSize}px ${arabicFont}`
-    let y = cursorY
-    for (const line of arabicBlock.lines) {
-      y += arabicBlock.lineHeight
-      ctx.fillText(line, W / 2, y - arabicBlock.lineHeight * 0.28)
-    }
-  })
-  cursorY += arabicBlock.height
+  if (arabicBlock) {
+    withShadow(() => {
+      ctx.direction = 'rtl'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillStyle = INK
+      ctx.font = `${arabicBlock.fontSize}px ${arabicFont}`
+      let y = cursorY
+      for (const line of arabicBlock.lines) {
+        y += arabicBlock.lineHeight
+        ctx.fillText(line, W / 2, y - arabicBlock.lineHeight * 0.28)
+      }
+    })
+    cursorY += arabicBlock.height
+  }
 
   /* ---- Divider + translation ---- */
   if (translationBlock) {

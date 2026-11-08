@@ -36,15 +36,16 @@ NORM_EPS = 1e-5
 
 @dataclass(frozen=True)
 class FeatureConfig:
-    window: str = "periodic"
-    pad: str = "reflect"
+    # NeMo's own defaults, checked against the real model (lib/asr used them on phones).
+    window: str = "symmetric"
+    pad: str = "constant"
     normalize: str = "per_feature"
 
     @staticmethod
     def from_env() -> "FeatureConfig":
         return FeatureConfig(
-            window=os.environ.get("FEATURE_WINDOW", "periodic"),
-            pad=os.environ.get("FEATURE_PAD", "reflect"),
+            window=os.environ.get("FEATURE_WINDOW", "symmetric"),
+            pad=os.environ.get("FEATURE_PAD", "constant"),
             normalize=os.environ.get("FEATURE_NORMALIZE", "per_feature"),
         )
 

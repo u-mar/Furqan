@@ -17,6 +17,9 @@ import { tr } from '@/lib/i18n-core'
 const CACHE_NAME = 'muyassar-asr-model-v1'
 const FLAG_KEY = 'muyassar_asr_model_cached'
 const MODEL_URL = 'https://pub-0d4d974a9cad4a92b81667e5b4f5523f.r2.dev/model.q8.onnx'
+/** Where phones saved the model that used to mark Qari ayat (about 460 MB). The speech service does that now. */
+const QARI_CACHE_NAME = 'muyassar-qari-asr-v1'
+const QARI_FLAG_KEY = 'muyassar_qari_asr_model'
 
 export const ASR_MODEL_CACHE_KEY = '/models/asr/model.q8.onnx'
 
@@ -35,13 +38,14 @@ export function isAsrModelDownloaded(): boolean {
 }
 
 /**
- * Deletes the downloaded model (~130 MB) from this phone. The app no longer
- * uses it, so phones that saved it get the space back.
+ * Deletes the downloaded models (~130 MB and ~460 MB) from this phone. The
+ * app no longer uses them, so phones that saved them get the space back.
  */
 export async function forgetAsrModel(): Promise<void> {
   clearAsrModelDownloadedFlag()
   try {
-    if (typeof caches !== 'undefined') await caches.delete(CACHE_NAME)
+    if (typeof caches !== 'undefined') await Promise.all([caches.delete(CACHE_NAME), caches.delete(QARI_CACHE_NAME)])
+    localStorage.removeItem(QARI_FLAG_KEY)
   } catch {
     /* nothing to free */
   }

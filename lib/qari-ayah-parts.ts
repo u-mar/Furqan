@@ -6,7 +6,7 @@
  * starts the first word of the next one, it takes over, with the translation
  * of just those words.
  *
- * When each word starts comes from the marking (lib/asr/quran-match.ts).
+ * When each word starts comes from the marking (services/nadir-asr/marking.py).
  * Recitations marked before that was kept are paced evenly through the time
  * the ayah takes instead.
  */

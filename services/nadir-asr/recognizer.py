@@ -12,16 +12,17 @@ from __future__ import annotations
 
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import onnxruntime as ort
 import sentencepiece as spm
 
 from features import HOP_LENGTH, SAMPLE_RATE, FeatureConfig, log_mel
+from marking import EmissionPiece
 
-MAX_CHUNK_SEC = 40.0
-MIN_CHUNK_SEC = 25.0
+MAX_CHUNK_SEC = 20.0
+MIN_CHUNK_SEC = 12.0
 
 
 @dataclass
@@ -37,6 +38,7 @@ class Transcript:
     words: list[Word] = field(default_factory=list)
     duration: float = 0.0
     confidence: float = 0.0
+    emissions: list[EmissionPiece] = field(default_factory=list)
 
 
 class Recognizer:
@@ -59,15 +61,17 @@ class Recognizer:
 
     # ------------------------------------------------------------------ public
 
-    def transcribe(self, samples: np.ndarray, config: FeatureConfig | None = None) -> Transcript:
+    def transcribe(self, samples: np.ndarray, config: FeatureConfig | None = None, keep_emissions: bool = False) -> Transcript:
         duration = len(samples) / SAMPLE_RATE
         words: list[Word] = []
         texts: list[str] = []
         confidences: list[float] = []
+        emissions: list[EmissionPiece] = []
         for start, piece in self._chunks(samples):
-            part = self._transcribe_piece(piece, config)
+            part = self._transcribe_piece(piece, config, keep_emissions)
             offset = start / SAMPLE_RATE
             words.extend(Word(w.word, round(w.start + offset, 3), round(w.end + offset, 3)) for w in part.words)
+            emissions.extend(replace(e, start=e.start + offset) for e in part.emissions)
             if part.text:
                 texts.append(part.text)
             confidences.append(part.confidence)
@@ -76,6 +80,7 @@ class Recognizer:
             words=words,
             duration=round(duration, 3),
             confidence=float(np.mean(confidences)) if confidences else 0.0,
+            emissions=emissions,
         )
 
     # ------------------------------------------------------------------ internals
@@ -97,7 +102,7 @@ class Recognizer:
         if total - start > 0:
             yield start, samples[start:]
 
-    def _transcribe_piece(self, samples: np.ndarray, config: FeatureConfig | None) -> Transcript:
+    def _transcribe_piece(self, samples: np.ndarray, config: FeatureConfig | None, keep_emissions: bool) -> Transcript:
         features = log_mel(samples, config)
         n_in = features.shape[1]
         if n_in < 8:
@@ -111,9 +116,16 @@ class Recognizer:
             return Transcript(text="")
         logprobs = logprobs.astype(np.float32)
 
-        # Each output frame stands for this much audio (the encoder shortens time 8x).
-        subsampling = max(1, round(n_in / logprobs.shape[0]))
-        frame_sec = subsampling * HOP_LENGTH / SAMPLE_RATE
+        # Each output frame stands for this much audio (the encoder shortens time about 8x).
+        frame_sec = (n_in / logprobs.shape[0]) * (HOP_LENGTH / SAMPLE_RATE)
+
+        emissions: list[EmissionPiece] = []
+        if keep_emissions:
+            # Normalised, whether the model gave log-probabilities or raw scores.
+            values = logprobs.astype(np.float64)
+            top = values.max(axis=1, keepdims=True)
+            total = top + np.log(np.exp(values - top).sum(axis=1, keepdims=True))
+            emissions.append(EmissionPiece(0.0, frame_sec, (values - total).astype(np.float32)))
 
         best = logprobs.argmax(axis=1)
         confidence = float(np.exp(logprobs.max(axis=1)).mean())
@@ -132,7 +144,7 @@ class Recognizer:
             prev = label
 
         text = self.tokenizer.decode([tid for tid, _, _ in tokens]).strip()
-        return Transcript(text=text, words=self._words(tokens, frame_sec), confidence=confidence)
+        return Transcript(text=text, words=self._words(tokens, frame_sec), confidence=confidence, emissions=emissions)
 
     def _words(self, tokens: list[tuple[int, int, int]], frame_sec: float) -> list[Word]:
         """Groups pieces into words: a piece starting with ▁ begins a new one."""

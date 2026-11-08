@@ -60,10 +60,12 @@ export default function AdminLogin({ onSuccess, configured }: AdminLoginProps) {
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Email</span>
+            <span className="mb-1 block text-xs font-medium text-[var(--home-muted)]">Email or username</span>
             <input
-              type="email"
+              type="text"
               inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"

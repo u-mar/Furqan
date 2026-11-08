@@ -229,6 +229,11 @@ export default function PrivacyPage() {
           recitations and recitation timings.
         </li>
         <li>
+          <strong>Modal</strong> &mdash; runs our Quran speech recognition. When you post a recitation, the
+          recording is sent there so its ayat can be marked. It is used only for that and is not kept
+          afterwards. Your name and account details are not sent with it.
+        </li>
+        <li>
           <strong>Cloudinary</strong> &mdash; serves the moving backgrounds used in Qari and in shared
           videos.
         </li>

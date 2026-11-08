@@ -25,7 +25,7 @@ import { useT } from '@/lib/i18n'
  * is saved too. A small card shows a download's progress, and can be put away.
  */
 export default function OfflineBootstrap() {
-  // The speech model the Hifdh Test used is no longer part of the app; free the space where it was saved.
+  // Speech models are no longer kept on phones; free the space where they were saved.
   useEffect(() => {
     void forgetAsrModel()
   }, [])

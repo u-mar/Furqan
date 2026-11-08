@@ -3,11 +3,9 @@ const STATIC_CACHE = 'al-quran-static-v12'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
 const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
-/** The speech model for marking Qari ayat. Must match lib/asr/offline-model-cache.ts QARI_ASR_CACHE */
-const QARI_ASR_CACHE = 'muyassar-qari-asr-v1'
 /** Reciter portraits, bundled locally under /reciters/ — small, rarely
  *  change, so a dedicated stable cache keeps them offline across app updates
- *  the same way fonts/translations/the ASR model do. */
+ *  the same way fonts and translations do. */
 const RECITER_PHOTOS_CACHE = 'muyassar-reciter-photos-v1'
 
 /** Shown for a screen opened offline that has never been opened online — the one page safe to precache, since it never goes stale. */
