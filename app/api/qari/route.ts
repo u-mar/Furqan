@@ -3,7 +3,16 @@ import { parseVerseTimeline } from '@/lib/qari-verse-timeline'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
 import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
-import { MAX_AUDIO_BYTES, MAX_DURATION_SEC, MAX_IMAGE_BYTES, putAudio, putImage } from '@/lib/qari-storage'
+import {
+  joinAudioPieces,
+  MAX_AUDIO_BYTES,
+  MAX_AUDIO_PIECES,
+  MAX_DURATION_SEC,
+  MAX_IMAGE_BYTES,
+  putAudio,
+  putImage,
+  removeAudioPieces,
+} from '@/lib/qari-storage'
 import { mayUploadRecordings } from '@/lib/qari-upload-access'
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
@@ -230,19 +239,24 @@ export async function POST(request: NextRequest) {
   try {
     const form = await request.formData()
     if (clean(form.get('kind'), 10) === 'ayah') return await postAyahCard(form)
-    const file = form.get('audio')
+    const attached = form.get('audio')
+    const file = attached instanceof File ? attached : null
+    // A longer recording arrives in pieces beforehand (app/api/qari/audio-piece); this says which.
+    const uploadId = clean(form.get('audioUpload'), 64)
+    const pieceCount = Number(form.get('audioPieces'))
+    const pieced = !file && Boolean(uploadId) && Number.isInteger(pieceCount) && pieceCount > 0 && pieceCount <= MAX_AUDIO_PIECES
 
-    if (!(file instanceof File)) {
+    if (!file && !pieced) {
       return NextResponse.json({ error: 'No audio was attached.' }, { status: 400 })
     }
-    if (file.size === 0) {
+    if (file?.size === 0) {
       return NextResponse.json({ error: 'The recording is empty.' }, { status: 400 })
     }
-    if (file.size > MAX_AUDIO_BYTES) {
+    if (file && file.size > MAX_AUDIO_BYTES) {
       return NextResponse.json({ error: 'That recording is too long to upload.' }, { status: 413 })
     }
 
-    const mimeType = (file.type || 'audio/webm').split(';')[0]
+    const mimeType = ((file ? file.type : clean(form.get('audioType'), 60)) || 'audio/webm').split(';')[0]
     if (!ALLOWED_MIME.includes(mimeType)) {
       return NextResponse.json({ error: 'Unsupported audio format.' }, { status: 415 })
     }
@@ -281,7 +295,13 @@ export async function POST(request: NextRequest) {
       durationSec
     )
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const buffer = file ? Buffer.from(await file.arrayBuffer()) : await joinAudioPieces(userUsername, uploadId, pieceCount)
+    if (!buffer) {
+      return NextResponse.json({ error: 'Part of the recording did not arrive. Try again.' }, { status: 400 })
+    }
+    if (buffer.length > MAX_AUDIO_BYTES) {
+      return NextResponse.json({ error: 'That recording is too long to upload.' }, { status: 413 })
+    }
     const audioId = await putAudio(buffer, {
       filename: `${userUsername}-${Date.now()}`,
       mimeType,
@@ -317,6 +337,7 @@ export async function POST(request: NextRequest) {
     // Once the reciter has their answer: the translation of every phrase the video view will
     // show, worked out now by the AI and kept, so no viewer waits for it.
     if (verseTimeline.length) after(() => warmRecitationCaptions(verseTimeline.map((entry) => entry.verseKey)))
+    if (pieced) after(() => removeAudioPieces(userUsername, uploadId))
 
     return NextResponse.json({ id: created.id }, { status: 201 })
   } catch (err) {

@@ -292,10 +292,10 @@ export interface PublishInput {
  * XMLHttpRequest rather than fetch, because only it reports an upload's
  * progress. Resolves with the new post's id.
  */
-function sendPost(form: FormData, onProgress?: (fraction: number) => void): Promise<string> {
+function sendForm(url: string, form: FormData, onProgress?: (fraction: number) => void): Promise<{ id?: string }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', '/api/qari')
+    xhr.open('POST', url)
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total)
     }
@@ -306,7 +306,7 @@ function sendPost(form: FormData, onProgress?: (fraction: number) => void): Prom
       } catch {
         /* not JSON — falls through to the generic message */
       }
-      if (xhr.status >= 200 && xhr.status < 300 && data.id) resolve(data.id)
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data)
       else reject(new Error(data.error || tr('Could not publish.')))
     }
     xhr.onerror = () => reject(new Error(tr('No connection. Your recitation is kept — try again.')))
@@ -314,11 +314,44 @@ function sendPost(form: FormData, onProgress?: (fraction: number) => void): Prom
   })
 }
 
+async function sendPost(form: FormData, onProgress?: (fraction: number) => void): Promise<string> {
+  const { id } = await sendForm('/api/qari', form, onProgress)
+  if (!id) throw new Error(tr('Could not publish.'))
+  return id
+}
+
+/** The host refuses a request over about 4.5 MB; a recording larger than this goes up in pieces this size. */
+const AUDIO_PIECE_BYTES = 3.5 * 1024 * 1024
+
+/** Sends a long recording a piece at a time. The post then says which upload is its audio. */
+async function sendAudioPieces(input: PublishInput, onProgress?: (fraction: number) => void): Promise<{ uploadId: string; count: number }> {
+  const uploadId = crypto.randomUUID()
+  const count = Math.ceil(input.blob.size / AUDIO_PIECE_BYTES)
+  for (let index = 0; index < count; index++) {
+    const form = new FormData()
+    form.append('piece', input.blob.slice(index * AUDIO_PIECE_BYTES, (index + 1) * AUDIO_PIECE_BYTES), 'piece')
+    form.append('uploadId', uploadId)
+    form.append('index', String(index))
+    form.append('userId', input.userId)
+    form.append('userUsername', input.userUsername)
+    await sendForm('/api/qari/audio-piece', form, (fraction) => onProgress?.((index + fraction) / count))
+  }
+  return { uploadId, count }
+}
+
 /** Sends a recording and everything about it. Resolves with the new recitation's id. */
-export function publishRecitation(input: PublishInput, onProgress?: (fraction: number) => void): Promise<string> {
+export async function publishRecitation(input: PublishInput, onProgress?: (fraction: number) => void): Promise<string> {
   const form = new FormData()
-  const ext = input.mimeType.includes('mp4') ? 'm4a' : input.mimeType.includes('ogg') ? 'ogg' : 'webm'
-  form.append('audio', input.blob, `recitation.${ext}`)
+  const inPieces = input.blob.size > AUDIO_PIECE_BYTES
+  if (inPieces) {
+    const { uploadId, count } = await sendAudioPieces(input, onProgress)
+    form.append('audioUpload', uploadId)
+    form.append('audioPieces', String(count))
+    form.append('audioType', input.mimeType)
+  } else {
+    const ext = input.mimeType.includes('mp4') ? 'm4a' : input.mimeType.includes('ogg') ? 'ogg' : 'webm'
+    form.append('audio', input.blob, `recitation.${ext}`)
+  }
   form.append('durationSec', String(input.durationSec))
   form.append('title', input.title)
   form.append('space', input.space)
@@ -333,7 +366,7 @@ export function publishRecitation(input: PublishInput, onProgress?: (fraction: n
   form.append('userId', input.userId)
   form.append('userName', input.userName)
   form.append('userUsername', input.userUsername)
-  return sendPost(form, onProgress)
+  return sendPost(form, inPieces ? undefined : onProgress)
 }
 
 /** An ayah card made on the Read screen's share page, to post to Qari as a picture. */

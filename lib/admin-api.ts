@@ -33,12 +33,23 @@ export interface Uploader {
   name: string
 }
 
-/** The accounts allowed to post recordings made outside the app. */
-export async function listUploaders(): Promise<Uploader[]> {
+/** Who may post recordings made outside the app: every account when `open`, otherwise `uploaders`. */
+export async function listUploaders(): Promise<{ uploaders: Uploader[]; open: boolean }> {
   const res = await fetch('/api/admin/uploaders', { credentials: 'include', cache: 'no-store' })
   if (!res.ok) throw new Error('Could not load the list.')
-  const data = (await res.json()) as { uploaders?: Uploader[] }
-  return data.uploaders ?? []
+  const data = (await res.json()) as { uploaders?: Uploader[]; open?: boolean }
+  return { uploaders: data.uploaders ?? [], open: data.open === true }
+}
+
+/** Opens uploading to every account, or back to the approved ones. */
+export async function setUploadsOpen(open: boolean): Promise<void> {
+  const res = await fetch('/api/admin/uploaders', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ open }),
+  })
+  if (!res.ok) throw new Error('Could not change that.')
 }
 
 /** Turns uploading on or off for one account, by its username. */

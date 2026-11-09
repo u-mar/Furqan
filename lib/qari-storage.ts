@@ -18,7 +18,7 @@ import { r2Delete, r2PublicUrl, r2Put, r2Ready } from '@/lib/r2'
  * id. Older ones stay in GridFS until moved (scripts/move-recordings-to-r2.mjs).
  */
 
-export type QariBucket = 'qari_audio' | 'qari_avatars' | 'qari_images'
+export type QariBucket = 'qari_audio' | 'qari_audio_pieces' | 'qari_avatars' | 'qari_images'
 
 /** Recordings are short; anything larger is almost certainly a mistake. */
 export const MAX_AUDIO_BYTES = 12 * 1024 * 1024
@@ -144,6 +144,52 @@ export const openAudio = (audioId: string) => (isR2Audio(audioId) ? Promise.reso
 export async function removeAudio(audioId: string): Promise<void> {
   if (isR2Audio(audioId)) await r2Delete(audioId.slice(R2_AUDIO.length))
   else await removeFile(audioId, 'qari_audio')
+}
+
+/* ------------------------------------------------------ recordings sent in pieces */
+
+/**
+ * The host refuses any request over about 4.5 MB, before this code runs, and a
+ * recording can be 12 MB. A longer one is sent in pieces, kept here for the
+ * moment it takes, and joined when it is posted (lib/qari.ts sends them).
+ */
+export const MAX_AUDIO_PIECE_BYTES = 4 * 1024 * 1024
+export const MAX_AUDIO_PIECES = 4
+/** The pieces of an upload nobody finished are cleared away after this. */
+const AUDIO_PIECE_LIFETIME_MS = 60 * 60 * 1000
+
+const pieceName = (owner: string, uploadId: string, index: number) => `${owner}/${uploadId}/${index}`
+
+async function deleteMatching(gfs: GridFSBucket, filter: Record<string, unknown>): Promise<void> {
+  const files = await gfs.find(filter).toArray()
+  await Promise.all(files.map((file) => gfs.delete(file._id)))
+}
+
+export async function putAudioPiece(data: Buffer, owner: string, uploadId: string, index: number): Promise<void> {
+  const gfs = await bucket('qari_audio_pieces')
+  const filename = pieceName(owner, uploadId, index)
+  await deleteMatching(gfs, { filename })
+  await putFile(data, { filename, mimeType: 'application/octet-stream', bucket: 'qari_audio_pieces' })
+  if (index === 0) await deleteMatching(gfs, { uploadDate: { $lt: new Date(Date.now() - AUDIO_PIECE_LIFETIME_MS) } })
+}
+
+/** The whole recording, or null if a piece of it never arrived. */
+export async function joinAudioPieces(owner: string, uploadId: string, count: number): Promise<Buffer | null> {
+  const gfs = await bucket('qari_audio_pieces')
+  const parts: Buffer[] = []
+  for (let index = 0; index < count; index++) {
+    const [file] = await gfs.find({ filename: pieceName(owner, uploadId, index) }).limit(1).toArray()
+    if (!file) return null
+    const chunks: Buffer[] = []
+    for await (const chunk of gfs.openDownloadStream(file._id)) chunks.push(chunk as Buffer)
+    parts.push(Buffer.concat(chunks))
+  }
+  return Buffer.concat(parts)
+}
+
+export async function removeAudioPieces(owner: string, uploadId: string): Promise<void> {
+  const filenames = Array.from({ length: MAX_AUDIO_PIECES }, (_, index) => pieceName(owner, uploadId, index))
+  await deleteMatching(await bucket('qari_audio_pieces'), { filename: { $in: filenames } })
 }
 
 /* Named wrappers keep the image call sites reading clearly. */

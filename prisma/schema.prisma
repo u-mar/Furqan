@@ -49,6 +49,8 @@ model AdminConfig {
   key              String   @unique
   dailyVerseKey    String
   dailyVerseSurah  String
+  /// True when every account may upload recordings, not only the approved ones.
+  uploadsOpen      Boolean?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }

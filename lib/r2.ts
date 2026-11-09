@@ -49,16 +49,20 @@ export function r2PublicUrl(key: string): string {
 export async function r2Put(key: string, data: Uint8Array, contentType: string): Promise<void> {
   const c = config()
   if (!c) throw new Error('R2 is not set up')
-  const res = await c.client.fetch(`${c.endpoint}/${key}`, {
+  // A copy on its own ArrayBuffer: what fetch takes as a body.
+  const body = new Uint8Array(data)
+  const signed = await c.client.sign(`${c.endpoint}/${key}`, {
     method: 'PUT',
-    // A copy on its own ArrayBuffer: what fetch takes as a body.
-    body: new Uint8Array(data),
+    body,
     headers: {
       'Content-Type': contentType,
       // A recording never changes under its key: a new one gets a new key.
       'Cache-Control': 'public, max-age=31536000, immutable',
     },
   })
+  // Sent by hand rather than as the signed Request, whose body the server's fetch turns into a
+  // stream with no stated length, which R2 refuses (411).
+  const res = await fetch(signed.url, { method: 'PUT', headers: signed.headers, body })
   if (!res.ok) throw new Error(`R2 refused the upload (${res.status})`)
 }
 
