@@ -98,7 +98,7 @@ export default function DownloadButton({
       aria-label={t('Download {englishName}', { englishName: chapter.englishName })}
       className="ed-focus fx-press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)] transition-colors hover:text-[var(--home-heading)] disabled:opacity-40"
     >
-      <Download className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      <Download className="h-[19px] w-[19px]" strokeWidth={1.9} />
     </button>
   )
 }

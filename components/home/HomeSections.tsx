@@ -73,8 +73,8 @@ export function HomeTopBar() {
     <header className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
         <p className="home-date truncate">{clock ? longDate(clock, language) : ' '}</p>
-        <p className="mt-1.5 text-[1.125rem] font-medium text-[var(--home-muted)]">{t('Assalamu alaikum,')}</p>
-        <h1 className="mt-0.5 truncate text-[2.5rem] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--home-heading)]">
+        <p className="mt-1.5 text-[1rem] font-medium text-[var(--home-muted)]">{t('Assalamu alaikum,')}</p>
+        <h1 className="mt-0.5 truncate text-[2.125rem] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--home-heading)]">
           {name === null ? ' ' : name || t('Guest')}
         </h1>
       </div>
@@ -151,18 +151,18 @@ export function ListeningHero() {
   return (
     <section className="flex items-center gap-4" aria-label={t('Continue listening')}>
       <Link href={`/listen?reciter=${encodeURIComponent(reciterId)}`} className="home-press ed-focus shrink-0 rounded-full">
-        <ReciterAvatar reciter={reciter} size={128} />
+        <ReciterAvatar reciter={reciter} size={112} />
       </Link>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.9375rem] text-[var(--home-muted)]">
+        <p className="truncate text-[0.875rem] text-[var(--home-muted)]">
           {favoriteIds.includes(reciterId) ? t('From your favourites') : t('Your reciter')}
         </p>
-        <p className="line-clamp-2 text-[1.375rem] font-bold leading-tight tracking-[-0.01em] text-[var(--home-heading)]">{reciter.name}</p>
-        {surahName ? <p className="mt-0.5 truncate text-[0.875rem] text-[var(--home-muted)]">{surahName}</p> : null}
+        <p className="line-clamp-2 text-[1.25rem] font-bold leading-tight tracking-[-0.01em] text-[var(--home-heading)]">{reciter.name}</p>
+        {surahName ? <p className="mt-0.5 truncate text-[0.8125rem] text-[var(--home-muted)]">{surahName}</p> : null}
         <button
           type="button"
           onClick={() => void go()}
-          className="fx-press ed-focus mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[0.9375rem] font-semibold text-black"
+          className="fx-press ed-focus mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.875rem] font-semibold text-black"
         >
           {busy ? (
             <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} aria-hidden />
@@ -210,7 +210,7 @@ export function NextPrayerCard() {
       <span className="home-date block">
         {t('Next prayer')} · {t('in {time}', { time: timeLeft })}
       </span>
-      <span className="mt-1 flex items-baseline gap-3 text-[2.75rem] font-extrabold leading-[1.1] tracking-[-0.02em]">
+      <span className="mt-1 flex items-baseline gap-3 text-[2.375rem] font-extrabold leading-[1.1] tracking-[-0.02em]">
         <span className="truncate text-[var(--home-heading)]">{prayerName(state.next.id)}</span>
         <span className="shrink-0 tabular-nums text-[var(--home-muted)]">{shortTime(state.next.at, language, place.timeZone)}</span>
       </span>
@@ -232,17 +232,32 @@ export function NextPrayerCard() {
 }
 
 /** A section's name, with a blue link on the right when there is more to see. */
-function SectionTitle({ children, star, more }: { children: ReactNode; star?: boolean; more?: { href: string; label: string } }) {
+export function SectionTitle({
+  children,
+  star,
+  more,
+}: {
+  children: ReactNode
+  star?: boolean
+  more?: { label: string } & ({ href: string } | { onClick: () => void })
+}) {
+  const moreClass = 'ed-focus shrink-0 rounded-md text-[0.875rem] font-medium text-[var(--home-sage)]'
   return (
     <div className="mb-3 flex items-center justify-between gap-3 px-1">
-      <h2 className="flex items-center gap-2 text-[1.3125rem] font-bold tracking-[-0.01em] text-[var(--home-heading)]">
-        {star ? <Star className="home-star h-[1.125rem] w-[1.125rem] fill-current" strokeWidth={0} aria-hidden /> : null}
+      <h2 className="flex items-center gap-2 text-[1.125rem] font-bold tracking-[-0.01em] text-[var(--home-heading)]">
+        {star ? <Star className="home-star h-4 w-4 fill-current" strokeWidth={0} aria-hidden /> : null}
         {children}
       </h2>
       {more ? (
-        <Link href={more.href} className="ed-focus shrink-0 rounded-md text-[0.9375rem] font-medium text-[var(--home-sage)]">
-          {more.label}
-        </Link>
+        'href' in more ? (
+          <Link href={more.href} className={moreClass}>
+            {more.label}
+          </Link>
+        ) : (
+          <button type="button" onClick={more.onClick} className={moreClass}>
+            {more.label}
+          </button>
+        )
       ) : null}
     </div>
   )
@@ -251,11 +266,11 @@ function SectionTitle({ children, star, more }: { children: ReactNode; star?: bo
 /** A round shortcut with its name below. `filled`: the picture is the whole circle (the qibla dial). */
 function Shortcut({ href, picture, label, filled }: { href: string; picture: ReactNode; label: string; filled?: boolean }) {
   return (
-    <Link href={href} className="home-press ed-focus flex w-[5.75rem] shrink-0 flex-col items-center gap-2 rounded-2xl text-center">
-      <span className={`flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-full ${filled ? '' : 'bg-[var(--home-card-bg)]'}`}>
+    <Link href={href} className="home-press ed-focus flex w-[5.25rem] shrink-0 flex-col items-center gap-2 rounded-2xl text-center">
+      <span className={`flex h-[5rem] w-[5rem] items-center justify-center rounded-full ${filled ? '' : 'bg-[var(--home-card-bg)]'}`}>
         {picture}
       </span>
-      <span className="text-[0.9375rem] font-medium leading-tight text-[var(--home-heading)]">{label}</span>
+      <span className="text-[0.875rem] font-medium leading-tight text-[var(--home-heading)]">{label}</span>
     </Link>
   )
 }
@@ -270,10 +285,10 @@ export function QuickAccess() {
         <Shortcut href="/prayer/qibla" picture={<QiblaGlyph className="h-full w-full" />} label={t('Qibla')} filled />
         <Shortcut
           href="/prayer"
-          picture={<img src="/icons/prayer-dua.png" alt="" className="h-[4.25rem] w-[4.25rem]" draggable={false} />}
+          picture={<img src="/icons/prayer-dua.png" alt="" className="h-[3.875rem] w-[3.875rem]" draggable={false} />}
           label={t('Prayer times')}
         />
-        <Shortcut href="/halaqa" picture={<HalaqaGlyph className="h-11 w-11" />} label={t('Halaqa')} />
+        <Shortcut href="/halaqa" picture={<HalaqaGlyph className="h-10 w-10" />} label={t('Halaqa')} />
       </nav>
     </section>
   )
@@ -301,12 +316,12 @@ export function FavouriteSheikhs() {
                 href={`/listen?reciter=${encodeURIComponent(reciter.id)}`}
                 className="home-press ed-focus flex flex-col items-center gap-2 rounded-2xl text-center"
               >
-                <ReciterAvatar reciter={reciter} size={104} />
-                <span className="line-clamp-2 text-[0.9375rem] font-medium leading-snug text-[var(--home-heading)]">{reciter.name}</span>
+                <ReciterAvatar reciter={reciter} size={88} />
+                <span className="line-clamp-2 text-[0.875rem] font-medium leading-snug text-[var(--home-heading)]">{reciter.name}</span>
               </Link>
             ))
           : Array.from({ length: 3 }, (_, i) => (
-              <span key={i} className="mx-auto h-[6.5rem] w-[6.5rem] animate-pulse rounded-full bg-[var(--home-card-bg)]" aria-hidden />
+              <span key={i} className="mx-auto h-[5.5rem] w-[5.5rem] animate-pulse rounded-full bg-[var(--home-card-bg)]" aria-hidden />
             ))}
       </div>
     </section>
