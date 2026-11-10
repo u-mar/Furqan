@@ -413,7 +413,8 @@ function RecordFlow() {
       previewRef.current = audio
 
       // Through the mixer, so this is exactly what listeners will hear.
-      const ctx = new AudioContext()
+      // A larger buffer, as in lib/qari-player.ts: the room's reverb on a small one can crackle.
+      const ctx = new AudioContext({ latencyHint: 'playback' })
       previewCtxRef.current = ctx
       const mixer = createSpaceMixer(ctx, ctx.createMediaElementSource(audio))
       mixer.output.connect(ctx.destination)

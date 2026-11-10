@@ -18,7 +18,7 @@ import { useHydrated } from '@/hooks/useHydrated'
 import { useDownloadsVersion, useListenState } from '@/hooks/useListen'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { setAppSettings } from '@/lib/app-settings'
-import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { errorFeedback, successFeedback, tapFeedback } from '@/lib/haptics'
 import { onDownloadFinished, surahDownload } from '@/lib/listen-downloads'
@@ -198,7 +198,7 @@ export default function ListenScreen() {
         style={{
           // Listen always shows the bottom tab bar; the mini player, when playing, docks just above it.
           paddingBottom: listening
-            ? `calc(${BOTTOM_NAV_HEIGHT_REM}rem + 5.25rem + env(safe-area-inset-bottom))`
+            ? `calc(${BOTTOM_NAV_HEIGHT_REM + BOTTOM_NAV_RAISE_REM}rem + 5.25rem + env(safe-area-inset-bottom))`
             : `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 1.25rem + var(--listen-dock, 0px))`,
         }}
       >
@@ -335,13 +335,13 @@ export default function ListenScreen() {
             {t('Shuffle')}</button>
         </div>
 
-        <div className="home-card mt-3 overflow-hidden rounded-2xl">
+        <div className="mt-3">
           {loading ? (
             <ListSkeleton />
           ) : visible.length ? (
             visible.map((chapter, i) => (
               <Fragment key={chapter.id}>
-                {i ? <div className="set-row__divider" style={{ marginLeft: 66 }} aria-hidden /> : null}
+                {i ? <div className="set-row__divider" style={{ marginLeft: 56 }} aria-hidden /> : null}
                 <SurahRow
                   chapter={chapter}
                   reciterId={reciter.id}
@@ -516,7 +516,7 @@ const SurahRow = memo(function SurahRow({
   return (
     <div
       className={cn(
-        'flex min-h-[68px] items-center pr-1.5 transition-colors duration-300',
+        'flex min-h-[68px] items-center rounded-xl transition-colors duration-300',
         active && 'bg-[color-mix(in_srgb,var(--home-sage)_7%,transparent)]'
       )}
     >
@@ -525,7 +525,7 @@ const SurahRow = memo(function SurahRow({
         onClick={() => onPlay(chapter)}
         disabled={unavailable}
         aria-label={`${playing || loading ? t('Pause') : t('Play')} ${chapter.englishName}`}
-        className="ed-focus group flex min-w-0 flex-1 items-center gap-3 self-stretch py-2.5 pl-3.5 pr-2 text-left disabled:opacity-45"
+        className="ed-focus group flex min-w-0 flex-1 items-center gap-3 self-stretch py-2.5 pl-1 pr-2 text-left disabled:opacity-45"
       >
         <span
           className={cn(
@@ -556,10 +556,8 @@ const SurahRow = memo(function SurahRow({
           >
             {chapter.englishName}
           </span>
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[0.8125rem] text-[var(--home-muted)]">
-            <span className="amiri truncate text-[1rem] leading-none">{chapter.name}</span>
-            <span aria-hidden>·</span>
-            <span className="shrink-0">{chapter.versesCount} {t('ayahs')}</span>
+          <span className="mt-0.5 block text-[0.8125rem] text-[var(--home-muted)]">
+            {chapter.versesCount} {t('ayahs')}
           </span>
         </span>
         {playing || status === 'paused' ? <Equalizer paused={!playing} /> : null}
@@ -574,7 +572,7 @@ function ListSkeleton() {
   return (
     <div aria-busy aria-label={t('Loading surahs')}>
       {Array.from({ length: 7 }, (_, i) => (
-        <div key={i} className="flex h-[68px] items-center gap-3 px-3.5">
+        <div key={i} className="flex h-[68px] items-center gap-3 px-1">
           <div className="qari-skeleton h-10 w-10 rounded-xl" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="qari-skeleton h-3 w-28 rounded-full" />

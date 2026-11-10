@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ChevronLeft, Pencil, Share2 } from 'lucide-react'
+import { ChevronLeft, Pencil, Share2, UserRoundPlus } from 'lucide-react'
 import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
@@ -21,6 +21,7 @@ export function ProfileTopBar({
   name,
   avatarVersion,
   showNotifications = false,
+  findPeople = false,
   onShare,
   extra,
 }: {
@@ -29,6 +30,11 @@ export function ProfileTopBar({
   avatarVersion?: number
   /** Your own profile carries the bell: notifications no longer have a button on the feed. */
   showNotifications?: boolean
+  /**
+   * Your own profile: reached from its tab in the bottom bar, so it has no Back, and the way to find
+   * other qaris sits top left instead, as on TikTok.
+   */
+  findPeople?: boolean
   onShare: () => void
   /** More actions beside Share, e.g. blocking someone else's profile. */
   extra?: React.ReactNode
@@ -50,9 +56,16 @@ export function ProfileTopBar({
         condensed && 'bg-[color-mix(in_srgb,var(--app-bg)_88%,transparent)] shadow-[0_1px_0_var(--home-rule)] backdrop-blur-md'
       )}
     >
-      <Link href="/qari" className="home-round ed-focus" aria-label={t('Back')}>
-        <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
-      </Link>
+      {findPeople ? null : (
+        <Link href="/qari" className="home-round ed-focus" aria-label={t('Back')}>
+          <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
+        </Link>
+      )}
+      {findPeople ? (
+        <Link href="/qari/qaris" onClick={() => tapFeedback()} className="home-round ed-focus" aria-label={t('Find qaris')}>
+          <UserRoundPlus className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        </Link>
+      ) : null}
       <div
         className={cn(
           'flex min-w-0 flex-1 items-center gap-2 transition-all duration-200',

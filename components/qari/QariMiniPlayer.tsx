@@ -6,7 +6,7 @@ import { SkipForward } from 'lucide-react'
 import PlayButton from '@/components/qari/PlayButton'
 import QariAvatar from '@/components/qari/QariAvatar'
 import { useQariPlayer } from '@/hooks/useQariPlayer'
-import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import { hasNextRecitation, pausePlayback, resumePlayback, skipToNextRecitation } from '@/lib/qari-player'
 import { useT } from '@/lib/i18n'
@@ -78,7 +78,7 @@ export default function QariMiniPlayer() {
   return (
     <div
       className="listen-mini fixed inset-x-0 z-40 px-3"
-      style={{ bottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 0.5rem)` }}
+      style={{ bottom: `calc(${BOTTOM_NAV_HEIGHT_REM + BOTTOM_NAV_RAISE_REM}rem + env(safe-area-inset-bottom) + 0.5rem)` }}
     >
       <div className="listen-float mx-auto max-w-lg overflow-hidden rounded-[18px]">
         <div className="h-[2.5px] bg-[var(--home-track)]" aria-hidden>

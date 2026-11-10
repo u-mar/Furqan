@@ -157,8 +157,46 @@ async function save(viewer: Viewer, subscription: PushSubscription | Address): P
   return Boolean(res?.ok)
 }
 
+const QARI_CHOICE_KEY = 'naba-qari-notifications'
+
+/** Remembers someone turning Qari notifications off (or back on), so they are not turned on for them again. */
+function setQariChoice(on: boolean): void {
+  try {
+    localStorage.setItem(QARI_CHOICE_KEY, on ? 'on' : 'off')
+  } catch {
+    // Only a memory of the choice.
+  }
+}
+
+function turnedQariOff(): boolean {
+  try {
+    return localStorage.getItem(QARI_CHOICE_KEY) === 'off'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * On opening the app while signed in. In the Play Store app, a qari hears about
+ * their likes, followers and milestones without turning anything on, wherever
+ * the phone already allows Naba's notifications (asked when the app first
+ * opens): this never asks. On the website it stays a choice, kept up to date
+ * once made. Turned off on the notifications page, it stays off.
+ */
+export async function keepQariPushOn(viewer: Viewer): Promise<void> {
+  if (typeof window === 'undefined' || turnedQariOff()) return
+  if (inApp()) {
+    if (!(await appPushReady())) return
+    const address = await appAddress(false)
+    if (address && address !== 'blocked') await save(viewer, address)
+    return
+  }
+  await syncPush(viewer)
+}
+
 /** Ask permission and subscribe. Must be called from a tap. Returns the new state. */
 export async function enablePush(viewer: Viewer): Promise<PushState> {
+  setQariChoice(true)
   const state = await pushState()
   if (state !== 'off') return state
   if (inApp()) {
@@ -181,6 +219,7 @@ export async function enablePush(viewer: Viewer): Promise<PushState> {
 }
 
 export async function disablePush(viewer: Viewer): Promise<PushState> {
+  setQariChoice(false)
   if (inApp()) {
     return appForget((endpoint) =>
       fetch('/api/qari/push', {

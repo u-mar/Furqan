@@ -5,11 +5,14 @@
  * too — that's a single task with its own way out.
  */
 
-/** The room the bar takes, in rem — the floating pill and the gap under it, not counting the phone's safe area. */
-export const BOTTOM_NAV_HEIGHT_REM = 4.75
+/** The bar's height in rem, not counting the phone's safe area under it. It sits flush on the bottom edge, as on TikTok. */
+export const BOTTOM_NAV_HEIGHT_REM = 3.5
 
-/** The pill's own height, in rem. */
-export const BOTTOM_NAV_PILL_REM = 4
+/**
+ * How far the round Home button in the middle rises above the bar, in rem. Anything that sits just
+ * above the bar across its middle (the mini players, a notice) stands this much higher, clear of it.
+ */
+export const BOTTOM_NAV_RAISE_REM = 1.375
 
 /** Exact pathnames the bar appears on, beyond the whole Qari, Prayer, Halaqa and Hifdh sections. */
 export const BOTTOM_NAV_PATHS = ['/', '/listen'] as const

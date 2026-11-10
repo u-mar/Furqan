@@ -7,7 +7,8 @@ import { useQariView, type QariView } from '@/lib/qari-view'
 import { useT } from '@/lib/i18n'
 
 /**
- * Audio or video: the same choice as the switch on Qari's front page, so a
+ * Audio or video, as two icons (headphones, clapperboard), their names read
+ * out rather than written: the same choice as the switch on Qari's front page, so a
  * profile or a search opens the way the person was already watching, and a
  * change here carries back there.
  */
@@ -37,13 +38,13 @@ export default function QariViewToggle({ className }: { className?: string }) {
               tapFeedback()
               setView(id)
             }}
+            aria-label={label}
             className={cn(
-              'ed-focus flex h-full items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold transition-colors',
+              'ed-focus flex h-full w-10 items-center justify-center rounded-full transition-colors',
               on ? 'bg-[var(--home-sage)] text-[var(--qari-on-teal)] shadow-sm' : 'text-[var(--home-muted)]'
             )}
           >
-            <Icon className="h-[14px] w-[14px]" strokeWidth={2.1} />
-            {label}
+            <Icon className="h-4 w-4" strokeWidth={2.1} aria-hidden />
           </button>
         )
       })}

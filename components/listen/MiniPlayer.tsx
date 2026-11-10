@@ -5,7 +5,7 @@ import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { SkipForward } from 'lucide-react'
 import { PlayPauseButton } from '@/components/listen/PlayerControls'
 import { useListenProgress, useListenState } from '@/hooks/useListen'
-import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
 import { playNeighbour } from '@/lib/listen-player'
@@ -13,7 +13,7 @@ import { getReciterById } from '@/lib/reciters'
 import { useT } from '@/lib/i18n'
 
 /** Floats just above the bottom tab bar, on Listen and on Home. */
-const MINI_PLAYER_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
+const MINI_PLAYER_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM + BOTTOM_NAV_RAISE_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
 
 /**
  * The player along the bottom: a slim grey pill with the reciter's photo, the

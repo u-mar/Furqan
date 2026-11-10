@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Ban, ChevronLeft, Ellipsis, Heart, Mic } from 'lucide-react'
+import { Ban, ChevronLeft, Ellipsis, Heart, LayoutGrid, Mic } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
@@ -279,6 +279,7 @@ export default function QariProfile() {
         name={displayName}
         avatarVersion={avatarVersion}
         showNotifications={isMe}
+        findPeople={isMe}
         onShare={() => void handleShare()}
         extra={isMe ? null : <ProfileMenu blocked={isBlocked} username={username} onToggleBlock={() => void toggleBlock()} />}
       />
@@ -356,17 +357,23 @@ export default function QariProfile() {
               type="button"
               role="tab"
               aria-selected={tab === id}
+              aria-label={label}
               onClick={() => {
                 if (tab === id) return
                 tapFeedback()
                 setTab(id)
               }}
               className={cn(
-                'ed-focus relative h-11 text-[14.5px] font-medium transition-colors',
+                'ed-focus relative flex h-11 items-center text-[14.5px] font-medium transition-colors',
                 tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
               )}
             >
-              {label}
+              {/* Icons, not words, as on TikTok: a grid for the recitations, a heart for favourites. */}
+              {id === 'favourites' ? (
+                <Heart className={cn('h-5 w-5', tab === id && 'fill-current')} strokeWidth={2} aria-hidden />
+              ) : (
+                <LayoutGrid className="h-5 w-5" strokeWidth={tab === id ? 2.2 : 1.9} aria-hidden />
+              )}
               {id === 'recitations' && recitations ? (
                 <span className="ml-1.5 text-[12.5px] font-medium text-[var(--home-muted)]">
                   {recitations.filter((r) => r.kind !== 'ayah').length}

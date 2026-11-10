@@ -4557,28 +4557,50 @@ html.dark .pt-qibla__dial {
 }
 
 /* ======================================================================
-   Bottom tab bar — Read, Home, Qari, Listen. Each tab carries its own small
-   flat-gradient picture (public/icons/*.png), so the active state is a lift
-   and a dot rather than a colour change the icons already have their own.
+   Bottom tab bar — Read, Home, Qari, Listen, on a black bar flush with the
+   bottom edge, as on TikTok: grey icons and names, the tab you are on white.
    ====================================================================== */
 
-.bottom-nav {
-  background: #1c1c1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(22px) saturate(1.5);
-  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+/* The bar is drawn by its parts (components/BottomNav.tsx): the sides here, the dip in the middle as a shape. */
+.bottom-nav__side {
+  background: #000000;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Grey icons and names; the tab you are on is bright white, with a small dot under it. */
+/* Home, in the middle: a round button sitting in the dip, a little above the bar, its name below. */
+.bottom-nav__home-circle {
+  position: absolute;
+  top: -1.375rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-left: -1.625rem;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bottom-nav__home-circle.is-active {
+  background: #ffffff;
+  color: #000000;
+}
+
+.bottom-nav__home {
+  position: relative;
+}
+
 .bottom-nav__item {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.125rem;
-  border-radius: 999px;
+  gap: 0.1875rem;
   color: #8e8e93;
   transition: transform 0.15s ease, color 0.2s ease;
 }
@@ -4597,7 +4619,7 @@ html.dark .pt-qibla__dial {
 }
 
 .bottom-nav__label {
-  font-size: 0.71875rem;
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -4606,21 +4628,16 @@ html.dark .pt-qibla__dial {
   font-weight: 700;
 }
 
-.bottom-nav__dot {
-  width: 4px;
-  height: 4px;
+/* New notifications: a red dot on the Profile tab, as TikTok marks its inbox. */
+.bottom-nav__badge {
+  position: absolute;
+  top: -1px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
-  background: transparent;
-}
-
-.bottom-nav__item[aria-current='page'] .bottom-nav__dot {
-  background: #ffffff;
-}
-
-/* Over Qari's full-screen videos the bar is a darker glass, so the video shows round it. */
-html.qari-swipe-open .bottom-nav {
-  background: rgba(0, 0, 0, 0.72);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: #fe2c55;
+  box-shadow: 0 0 0 2px #000000;
 }
 
 

@@ -12,7 +12,6 @@ import {
   RotateCw,
   Search,
   SearchX,
-  UserRound,
   Users,
   UsersRound,
   X,
@@ -35,7 +34,6 @@ import {
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
-import { useUnreadNotifications } from '@/hooks/useUnreadNotifications'
 import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { useQariView } from '@/lib/qari-view'
@@ -94,7 +92,6 @@ function QariHomeContent() {
   useEffect(() => {
     if (view === 'swipe' && sort === 'recent') setSort('top')
   }, [view, sort])
-  const unread = useUnreadNotifications(viewer)
   const searching = query.length > 0
   // A search keeps the results on screen; a result opened from them still plays full screen.
   const swipeOn = overlay !== null || (!searching && view === 'swipe')
@@ -267,49 +264,23 @@ function QariHomeContent() {
     </button>
   )
 
+  // A plain magnifier, as on TikTok: over the video in white with a shadow, on the list in the page's ink.
   const searchBtn = (
     <button
       type="button"
       onClick={toggleSearch}
-      className="home-round ed-focus"
+      className={cn(
+        'ed-focus flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+        swipeOn ? 'text-white [filter:drop-shadow(0_1px_4px_rgba(0,0,0,0.55))]' : 'text-[var(--home-heading)]'
+      )}
       aria-label={searchOpen ? t('Close search') : t('Search recitations')}
       aria-expanded={searchOpen}
     >
       {searchOpen ? (
-        <X className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        <X className="h-[26px] w-[26px]" strokeWidth={2.2} />
       ) : (
-        <Search className="h-[18px] w-[18px]" strokeWidth={1.9} />
+        <Search className="h-[26px] w-[26px]" strokeWidth={2.2} />
       )}
-    </button>
-  )
-
-  const profileBtn = viewer ? (
-    <Link
-      href={`/qari/${encodeURIComponent(viewer.username)}`}
-      onClick={tapFeedback}
-      className="qari-press ed-focus relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-[2px] shadow-[inset_0_0_0_1.5px_var(--home-sage)]"
-      aria-label={unread > 0 ? t('Your profile, {count} new notifications', { count: unread }) : t('Your profile')}
-    >
-      <QariAvatar username={viewer.username} name={viewer.name} size={30} />
-      {/* Notifications live behind the avatar now: a dot here, the list on the profile. */}
-      {unread > 0 ? (
-        <span
-          className="qari-pop absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-[var(--home-sage)] ring-2 ring-[var(--app-bg)]"
-          aria-hidden
-        />
-      ) : null}
-    </Link>
-  ) : (
-    <button
-      type="button"
-      onClick={() => {
-        tapFeedback()
-        askToSignIn()
-      }}
-      className="home-round ed-focus"
-      aria-label={t('Sign in')}
-    >
-      <UserRound className="h-[19px] w-[19px]" strokeWidth={1.9} />
     </button>
   )
 
@@ -317,7 +288,6 @@ function QariHomeContent() {
     <div className="flex items-center gap-2">
       {switchBtn}
       {searchBtn}
-      {profileBtn}
     </div>
   )
 
@@ -436,14 +406,10 @@ function QariHomeContent() {
           <div className="qari-swipe pointer-events-none fixed inset-x-0 top-0 z-40 bg-gradient-to-b from-black/65 via-black/25 to-transparent pb-8 [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_label]:pointer-events-auto">
             <div className="mx-auto max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center gap-2">
-                {/* An empty slot as wide as the buttons on the right keeps the tabs centred. */}
-                {overlay ? closeOverlay : <span className="w-[5rem] shrink-0" aria-hidden />}
+                {/* An empty slot as wide as the search on the right keeps the tabs centred. */}
+                {overlay ? closeOverlay : <span className="w-10 shrink-0" aria-hidden />}
                 {overlay ? <span className="flex-1" /> : swipeTabs}
-                <div className="flex w-[5rem] shrink-0 items-center justify-end gap-2">
-                  {searchBtn}
-                  {/* Opened from a profile or a search there is a way back instead of the profile. */}
-                  {overlay ? null : profileBtn}
-                </div>
+                <div className="flex w-10 shrink-0 items-center justify-end">{searchBtn}</div>
               </div>
               {searchBar}
             </div>

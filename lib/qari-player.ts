@@ -120,8 +120,22 @@ function ensureAudio(): HTMLAudioElement {
   el.addEventListener('error', () => {
     if (el.src) fail(tr('That recitation could not be played.'))
   })
+  // Qari is listened to on its screen: leaving the app, or locking the phone, stops it.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') pauseAtOnce()
+  })
   audio = el
   return el
+}
+
+/** Paused now, with no fade (timers may not run once the app is out of sight), and nothing waiting to start. */
+function pauseAtOnce(): void {
+  playTicket += 1
+  awaiting = false
+  if (pauseTimer !== null) window.clearTimeout(pauseTimer)
+  pauseTimer = null
+  if (audio && !audio.paused) audio.pause()
+  if (snapshot.current && snapshot.status !== 'paused') emit({ status: 'paused' })
 }
 
 /**
@@ -134,7 +148,9 @@ async function applySpace(r: Recitation) {
   if (!el) return
   const space = findSpace(r.space as SpaceId)
   try {
-    if (!context) context = new AudioContext()
+    // A larger buffer than the default, which is sized for games and live music: the room's reverb
+    // is real work, and a phone that cannot finish a tiny buffer in time crackles.
+    if (!context) context = new AudioContext({ latencyHint: 'playback' })
     if (context.state !== 'running') await context.resume()
     if (context.state !== 'running') return
     if (!mixer) {

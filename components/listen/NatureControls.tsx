@@ -25,7 +25,7 @@ import {
 import { SleepLeft } from '@/components/listen/SleepControls'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useListenState } from '@/hooks/useListen'
-import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import {
   NATURE_SOUNDS,
@@ -242,7 +242,7 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
 }
 
 /** Docked just above the bottom tab bar, where Listen's own player sits. */
-const DOCK_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
+const DOCK_BOTTOM = `calc(${BOTTOM_NAV_HEIGHT_REM + BOTTOM_NAV_RAISE_REM}rem + env(safe-area-inset-bottom) + 0.5rem)`
 
 /**
  * Listen's player for the nature sounds once they have started, so they can be

@@ -13,7 +13,7 @@ import { ensureOfflineHydrated, isOfflineReady } from '@/lib/local-quran-store'
 import { hasBundledQuran } from '@/lib/native-app'
 import { getAppSettings } from '@/lib/app-settings'
 import { forgetAsrModel } from '@/lib/asr/model-cache'
-import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
+import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -64,7 +64,7 @@ function OfflineSaveCard() {
     <div
       className="pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4"
       style={{
-        bottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + max(0.75rem, env(safe-area-inset-bottom)) + var(--toast-lift, 0px))`,
+        bottom: `calc(${BOTTOM_NAV_HEIGHT_REM + BOTTOM_NAV_RAISE_REM}rem + max(0.75rem, env(safe-area-inset-bottom)) + var(--toast-lift, 0px))`,
       }}
     >
       <div

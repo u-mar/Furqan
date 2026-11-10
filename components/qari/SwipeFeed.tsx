@@ -33,6 +33,7 @@ import {
   playRecitation,
   seekPlayback,
   setPlaybackRate,
+  stopPlayback,
   togglePlayback,
   type PlayerSnapshot,
 } from '@/lib/qari-player'
@@ -53,6 +54,13 @@ import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
 const HINT_KEY = 'muyassar_qari_swipe_hint'
+
+/**
+ * Full-screen feeds open right now. Closing the last one stops its recitation. Counted, rather than
+ * stopped as each one goes, because React mounts a screen twice in development, and a feed replaced
+ * by another (a different sort) hands straight over to it.
+ */
+let openFeeds = 0
 
 /** Swipe views mounted right now — one replacing another must not drop the dark bar between them. */
 let swipeViewsOpen = 0
@@ -323,7 +331,7 @@ function Backdrop({ recitation, playing, position }: { recitation: Recitation; p
   // Black is just black: no mist drifting over it, no shading.
   if (!background.url && !background.videoUrl) return <div className="absolute inset-0 bg-black" aria-hidden />
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]" aria-hidden>
+    <div className="absolute inset-0 overflow-hidden bg-black" aria-hidden>
       {reel.length > 1 ? (
         <SceneReel reel={reel} shot={shotAt(starts, position)} playing={playing} />
       ) : (
@@ -404,7 +412,7 @@ function SceneReel({ reel, shot, playing }: { reel: VideoBackground[]; shot: num
 function AyahCardMedia({ src, alt }: { src: string; alt: string }) {
   const [framed, setFramed] = useState(false)
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#0d1f1c]">
+    <div className="absolute inset-0 overflow-hidden bg-black">
       {framed ? (
         <>
           <img src={src} alt="" aria-hidden decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-80 blur-2xl" />
@@ -691,7 +699,7 @@ const Slide = memo(function Slide({
     <section
       data-recitation={recitation.id}
       aria-label={recitation.title}
-      className="relative h-full w-full select-none overflow-hidden bg-[#0d1f1c] [-webkit-touch-callout:none]"
+      className="relative h-full w-full select-none overflow-hidden bg-black [-webkit-touch-callout:none]"
       onClick={onTap}
       onPointerDown={onPointerDown}
       onPointerUp={endHold}
@@ -968,6 +976,17 @@ export default function SwipeFeed({
     }
   }, [])
 
+  // Leaving the full-screen view stops what it was playing.
+  useEffect(() => {
+    openFeeds += 1
+    return () => {
+      openFeeds -= 1
+      window.setTimeout(() => {
+        if (openFeeds === 0) stopPlayback()
+      }, 0)
+    }
+  }, [])
+
   // Autoplay the recitation opened on, once, when the list first has something in it.
   const hasItems = items.length > 0
   const started = useRef(false)
@@ -1079,7 +1098,7 @@ export default function SwipeFeed({
       onKeyDown={onKeyDown}
       tabIndex={0}
       aria-label={t('Recitations')}
-      className="qari-swipe qari-swipe-scroller fixed inset-x-0 top-0 z-30 overflow-y-scroll bg-[#0d1f1c]"
+      className="qari-swipe qari-swipe-scroller fixed inset-x-0 top-0 z-30 overflow-y-scroll bg-black"
       style={{ bottom: `calc(${BOTTOM_NAV_HEIGHT_REM}rem + env(safe-area-inset-bottom))` }}
     >
       {items.length === 0 && loading ? (

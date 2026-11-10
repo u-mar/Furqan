@@ -27,7 +27,7 @@ export default function RecitationGrid({ items, onOpen }: { items: Recitation[];
               onOpen(r.id)
             }}
             aria-label={card ? t('Ayah card for {verseKey}', { verseKey: r.verseKey ?? '' }) : r.title}
-            className="qari-press ed-focus relative aspect-[9/16] overflow-hidden rounded-xl bg-[#0d1f1c]"
+            className="qari-press ed-focus relative aspect-[9/16] overflow-hidden rounded-xl bg-black"
           >
             {card && r.imageUrl ? (
               <img src={r.imageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
