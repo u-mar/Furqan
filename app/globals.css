@@ -3240,6 +3240,20 @@ html.dark .set-row--danger {
   transform: scale(0.94);
 }
 
+/* Offline, and never kept on the phone: it cannot play until there is a connection. */
+.nature-tile--away .nature-tile__dot,
+.nature-tile--away .nature-tile__label {
+  opacity: 0.4;
+}
+
+/* Nature mode stays green in the pure-black theme, where the accent elsewhere is blue. */
+html.dark.black .nature-accent {
+  --home-sage: #5cc4ab;
+  --home-sage-deep: #3aa88f;
+  --home-sage-dark: #9be0cd;
+  --home-sage-soft: rgba(92, 196, 171, 0.13);
+}
+
 .nature-tile[aria-pressed='true'] .nature-tile__dot {
   background: var(--home-sage-deep);
   color: var(--app-bg);

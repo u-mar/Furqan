@@ -17,11 +17,14 @@ function opaqueHex(css: string): string | null {
 
 /**
  * The colour showing along the top edge of the screen: the nearest background
- * behind the middle of it (a see-through header shows the page through it),
- * else the page's own, else the theme colour.
+ * behind the middle of it that runs edge to edge (a see-through header shows the
+ * page through it), else the page's own, else the theme colour. Only one that
+ * runs edge to edge counts: a white button or a grey card passing under the top
+ * edge while scrolling would otherwise flash both bars that colour.
  */
 function topColor(): string | null {
   for (let el = document.elementFromPoint(window.innerWidth / 2, 1); el; el = el.parentElement) {
+    if (el.getBoundingClientRect().width < window.innerWidth - 1) continue
     const hex = opaqueHex(getComputedStyle(el).backgroundColor)
     if (hex) return hex
   }
@@ -44,6 +47,10 @@ export default function NativeBars() {
   useEffect(() => {
     const capacitor = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
     if (!capacitor?.isNativePlatform?.()) return
+    // No glow or stretch past the very top and bottom of a page, which Android draws in a light colour.
+    // Only in the app: on the website the same setting would also stop the browser's pull-to-refresh.
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    document.body.style.overscrollBehaviorY = 'none'
     let cancelled = false
     let timer = 0
     void import('@capacitor/core').then(({ registerPlugin }) => {
