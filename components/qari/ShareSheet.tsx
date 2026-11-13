@@ -888,7 +888,7 @@ function QualityRow({
             >
               <span className="text-[0.8125rem] font-semibold">{t(q.label)}</span>
               <span className="whitespace-nowrap text-[0.6875rem] font-medium tabular-nums opacity-75">
-                {t('{resolution} · {size} MB', { resolution: q.resolution, size: videoSizeMb(id, seconds) })}
+                {t('{resolution} · {size} MB', { resolution: q.resolution, size: videoSizeMb(id, seconds, options.backgroundId) })}
               </span>
             </button>
           )

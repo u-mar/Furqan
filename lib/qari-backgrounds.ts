@@ -79,6 +79,11 @@ export const VIDEO_BACKGROUND_GROUPS = [
     'Mosques',
     'Quran',
     'Prayer',
+    'Candlelight',
+    'Incense',
+    'Tasbih',
+    'Soft light',
+    'Under water',
     'Night drives',
     'Streets',
     'Moody night',
@@ -105,6 +110,11 @@ type MotionGroup =
   | 'Mosques'
   | 'Quran'
   | 'Prayer'
+  | 'Candlelight'
+  | 'Incense'
+  | 'Tasbih'
+  | 'Soft light'
+  | 'Under water'
   | 'Night drives'
   | 'Streets'
   | 'Moody night'
@@ -114,11 +124,70 @@ type MotionGroup =
   | EditGroup
 
 /**
+ * Clips no longer offered, still played for the recitations already posted on
+ * them (as with the retired photos). Taken out after every clip was looked at
+ * under the app's shade with an ayah over it, and its brightness and clutter
+ * measured where the ayah sits. To bring one back, delete its line.
+ */
+const RETIRED_MOTION_IDS: ReadonlySet<string> = new Set([
+  // The same clip as another one kept.
+  'nabawi-gathering',
+  'nabawi-courtyard',
+  'night-road',
+  'frost-tree',
+  'pink-mist',
+  'two-tier-falls',
+  // A subject that does not suit a recitation.
+  'wind-turbine-dusk',
+  'lake-castle',
+  'ferry-at-sunset',
+  'deep-dive',
+  'white-horse',
+  'forest-cabin',
+  'town-at-sunset',
+  'metro-arrival',
+  'yellow-train',
+  'red-tram',
+  'old-cafe',
+  'old-quarter',
+  'village-street',
+  'crowd-shadows',
+  'city-street',
+  'neon-street',
+  // People's faces, or other writing in the frame.
+  'candle-lanterns',
+  'eyup-sultan',
+  'ramadan-lights-mosque',
+  'lit-minaret-night',
+  // Lightning: sudden flashes, not calm.
+  'violet-lightning',
+  'city-lightning',
+  // Too bright behind the ayah to read it well.
+  'wild-tulips',
+  'scenery-window-seat',
+  'sun-through-leaves',
+  'misty-sun',
+  'frozen-sea-haze',
+  'cloud-ridge',
+  'scenery-reed-lake',
+  'pink-roses',
+  // Too cluttered behind the ayah.
+  'bare-trees-sunset',
+  'reading-by-window',
+  'city-lights',
+  'sunset-through-pines',
+  'scenery-raindrops',
+  'neon-wet-street',
+  'lakeside-tree',
+  'lake-through-branches',
+])
+
+/**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
  * The first six are Coverr footage; the rest are Pexels clips cut into short portrait loops (720×1280, silent,
  * the end faded into the start).
  */
-const MOTION_BACKGROUNDS: VideoBackground[] = (
+const ALL_MOTION_BACKGROUNDS: VideoBackground[] = (
   [
     ['sunset-in-auckland-new-zealand', 'Auckland sunset', 'Motion'],
     ['sunset-on-sayulita-beach-in-mexico', 'Sayulita beach', 'Motion'],
@@ -495,6 +564,75 @@ const MOTION_BACKGROUNDS: VideoBackground[] = (
   group,
 }))
 
+/**
+ * Calm clips added after the review that retired the ones above: candlelight,
+ * incense, a tasbih in hand, soft light, light under water, dunes, the moon
+ * and night clouds, and Makkah. Pexels footage cut into the same loops as the
+ * rest (1080 x 1920, silent, at most 15 s, the end faded into the start), but
+ * hosted only on our own media host (R2), not Cloudinary, so each has its
+ * 720p copy, poster and picker thumbnail there too.
+ */
+const MEDIA_MOTION_BACKGROUNDS: VideoBackground[] = (
+  [
+    ['kaaba-up-close', 'Kaaba up close', 'Makkah & Madinah'],
+    ['clock-tower-at-night', 'Clock tower at night', 'Makkah & Madinah'],
+    ['makkah-from-above', 'Makkah from above', 'Makkah & Madinah'],
+    ['quran-in-hand', 'Quran in hand', 'Quran'],
+    ['tasbih-in-hand', 'Tasbih in hand', 'Tasbih'],
+    ['pearl-tasbih', 'Pearl tasbih', 'Tasbih'],
+    ['green-tasbih', 'Green tasbih', 'Tasbih'],
+    ['amber-tasbih', 'Amber tasbih', 'Tasbih'],
+    ['red-candle', 'Red candle', 'Candlelight'],
+    ['tall-candle', 'Tall candle', 'Candlelight'],
+    ['candle-in-the-dark', 'Candle in the dark', 'Candlelight'],
+    ['candle-on-a-dish', 'Candle on a dish', 'Candlelight'],
+    ['thin-smoke', 'Thin smoke', 'Incense'],
+    ['incense-stick', 'Incense stick', 'Incense'],
+    ['smoke-in-the-dark', 'Smoke in the dark', 'Incense'],
+    ['bakhoor', 'Bakhoor', 'Incense'],
+    ['smoke-in-light', 'Smoke in light', 'Incense'],
+    ['rising-embers', 'Rising embers', 'Soft light'],
+    ['blue-bokeh', 'Blue bokeh', 'Soft light'],
+    ['drifting-specks', 'Drifting specks', 'Soft light'],
+    ['sea-floor', 'Sea floor', 'Under water'],
+    ['sunlit-water', 'Sunlit water', 'Under water'],
+    ['blue-cavern', 'Blue cavern', 'Under water'],
+    ['light-in-the-deep', 'Light in the deep', 'Under water'],
+    ['orange-dune', 'Orange dune', 'Desert'],
+    ['dusk-over-the-dunes', 'Dusk over the dunes', 'Desert'],
+    ['dune-crest', 'Dune crest', 'Desert'],
+    ['dune-lines', 'Dune lines', 'Desert'],
+    ['desert-evening', 'Desert evening', 'Desert'],
+    ['desert-plain', 'Desert plain', 'Desert'],
+    ['violet-desert', 'Violet desert', 'Desert'],
+    ['full-moon', 'Full moon', 'Night sky'],
+    ['red-moon', 'Red moon', 'Night sky'],
+    ['hazy-moon', 'Hazy moon', 'Night sky'],
+    ['silver-cloud', 'Silver cloud', 'Night sky'],
+    ['moon-through-cloud', 'Moon through cloud', 'Night sky'],
+    ['clouds-after-rain', 'Clouds after rain', 'Clouds'],
+    ['drifting-night-clouds', 'Drifting night clouds', 'Clouds'],
+    ['blue-night-sky', 'Blue night sky', 'Clouds'],
+  ] as const satisfies readonly (readonly [string, string, MotionGroup])[]
+).map(([id, label, group]) => ({
+  id: `motion-${id}`,
+  label,
+  url: `${MEDIA_BASE}/clips/posters/${id}.jpg`,
+  thumb: `${MEDIA_BASE}/clips/thumbs/${id}.jpg`,
+  videoUrl: `${MEDIA_BASE}/clips/720/${id}.mp4`,
+  videoUrlHd: `${MEDIA_BASE}/clips/${id}.mp4`,
+  group,
+}))
+
+const isRetiredMotion = (b: VideoBackground) => RETIRED_MOTION_IDS.has(b.id.replace(/^motion-/, ''))
+
+/** The clips the pickers offer and a video cuts between. */
+const MOTION_BACKGROUNDS: VideoBackground[] = [
+  // The new ones first, so each group opens on them.
+  ...MEDIA_MOTION_BACKGROUNDS,
+  ...ALL_MOTION_BACKGROUNDS.filter((b) => !isRetiredMotion(b)),
+]
+
 export const VIDEO_BACKGROUNDS: VideoBackground[] = [
   { id: 'black', label: 'Black', url: null, thumb: null, group: 'Plain' },
   ...MOTION_BACKGROUNDS,
@@ -526,8 +664,11 @@ function photoBackground(b: ShareBackground): VideoBackground {
   return { id: `photo-${b.id}`, label: b.label, url: b.tall ?? b.src, thumb: b.thumb, group: b.group }
 }
 
-/** Photos no longer offered, still drawn for the recitations already posted on them. */
-const RETIRED_VIDEO_BACKGROUNDS: VideoBackground[] = RETIRED_SHARE_BACKGROUNDS.map(photoBackground)
+/** Photos and clips no longer offered, still drawn for the recitations already posted on them. */
+const RETIRED_VIDEO_BACKGROUNDS: VideoBackground[] = [
+  ...RETIRED_SHARE_BACKGROUNDS.map(photoBackground),
+  ...ALL_MOTION_BACKGROUNDS.filter(isRetiredMotion),
+]
 
 export function findVideoBackground(id: string): VideoBackground {
   return (
@@ -609,6 +750,11 @@ const MIXABLE_GROUPS = new Set<string>([
   'Mosques',
   'Quran',
   'Prayer',
+  'Candlelight',
+  'Incense',
+  'Tasbih',
+  'Soft light',
+  'Under water',
   'Night drives',
   'Streets',
   'Moody night',

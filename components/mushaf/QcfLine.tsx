@@ -168,7 +168,11 @@ function QcfLineComponent({
 
   const content =
     line.kind === 'surah-header' ? (
-      <span className="mushaf-qcf-line__surah-name">{line.text}</span>
+      // The glyph has a span of its own so its ink can be found and its name
+      // inked apart from its frame (see lib/qcf-ornaments.ts).
+      <span className="mushaf-qcf-line__surah-name">
+        <span className="mushaf-qcf-line__surah-glyph">{line.text}</span>
+      </span>
     ) : line.kind === 'basmalah' ? (
       <span className="mushaf-qcf-line__glyphs" style={glyphStyle} aria-label={BASMALAH_ARABIC}>
         {BASMALAH_ORNAMENT}

@@ -366,6 +366,9 @@ html.dark:not(.black):has(.mushaf-reader-immersive) {
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-bg: rgba(13, 107, 99, 0.13);
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.32);
+  /* The frames of the ayah ornaments and surah banners: an old gold, deep
+     enough that a hairline of it still shows on white. */
+  --mushaf-ornament-gold: #a37f2a;
   /* Deep verdigris ink card — a near-white popup would dissolve into this
      near-white page, so the popup goes dark and reads as ink on paper.
      Badge/meta tokens are re-tinted for legibility against it. */
@@ -1121,6 +1124,68 @@ html:not(.dark) .mushaf-ayah-end,
 html:not(.dark) .mushaf-qcf-segment--end {
   color: #1a5336;
 }
+
+/* On the mushaf page, as in print: the ornament's frame is gold and the number
+   inside it is ink. They are one glyph, so the two colours are a background
+   clipped to the glyph: ink within the ring the number sits in, gold beyond
+   it. Where that ring is (--ink-x, --ink-y) is measured for each ornament by
+   lib/qcf-ornaments.ts, which sets data-inked; until then it keeps the single
+   colour above. The ring is the frame's own inner edge (0.373 by 0.252 em),
+   so a three-digit number, which all but touches it, stays wholly ink. */
+html:not(.dark) .mushaf-qcf-segment--end[data-inked] {
+  color: transparent;
+  /* The ornament overhangs its own advance on some pages, and nothing is
+     painted outside the box: the padding makes room, the margin gives the
+     space back to the line. */
+  padding-inline: 0.12em;
+  margin-inline: -0.12em;
+  background-color: var(--mushaf-ornament-gold, #a37f2a);
+  background-image: radial-gradient(
+    ellipse 0.3786em 0.2558em at var(--ink-x) var(--ink-y),
+    var(--mushaf-read-text, #262626) 0,
+    var(--mushaf-read-text, #262626) 97%,
+    var(--mushaf-ornament-gold, #a37f2a) 100%
+  );
+  background-origin: content-box;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* The surah banner the same way: a gold frame around the name in ink. Every
+   surah's banner is the same strip with the name in the middle of it, so the
+   ink is a band (--ink-x/y/w/h, also measured) across the middle of the strip,
+   fading to gold in the thin gap between the tallest letters and the frame. */
+html:not(.dark) .mushaf-qcf-line__surah-glyph[data-inked] {
+  color: transparent;
+  background-color: var(--mushaf-ornament-gold, #a37f2a);
+  background-image: linear-gradient(
+    to bottom,
+    var(--mushaf-ornament-gold, #a37f2a) 14.75%,
+    var(--mushaf-read-text, #262626) 16.25%,
+    var(--mushaf-read-text, #262626) 83.75%,
+    var(--mushaf-ornament-gold, #a37f2a) 85.25%
+  );
+  background-position: var(--ink-x) var(--ink-y);
+  background-size: var(--ink-w) var(--ink-h);
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* The basmalah under a banner is drawn finer than the page's script; a little
+   larger, its strokes match the lines below it. */
+html:not(.dark) .mushaf-fit-grid .mushaf-qcf-line--basmalah .mushaf-qcf-line__glyphs {
+  font-size: clamp(27px, 5.5vw, 50px);
+}
+
+/* The two opening pages are short by design: their lines sit in the middle of
+   the page, as in print, rather than at its top. Each line moves down by half
+   the rows left empty (QcfPage sets how many). */
+html:not(.dark) .mushaf-qcf-page--opening .mushaf-fit-line {
+  transform: translateY(calc(var(--mushaf-opening-shift, 0) * 100%));
+}
+
 
 /* Outside the reader (the Home verse card) the ornament takes the accent. */
 html:not(.dark) .ed-arabic .mushaf-ayah-end,

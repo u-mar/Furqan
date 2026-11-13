@@ -12,24 +12,47 @@ import { findVideoBackground } from '@/lib/qari-backgrounds'
 export type VideoQuality = 'standard' | 'high' | 'best'
 
 /**
- * The average rate each is made at. The encoder varies it (lib/qari-share-media.ts): still
- * moments take little and moving ones more, so these look far better than the same figure held
- * constant, and a minute comes to roughly 17, 30 and 47 MB.
+ * What is behind the ayah, as the encoder sees it: plain black, a photo that
+ * drifts slowly, or a clip that moves. How much changes from frame to frame is
+ * what decides how many bits a frame needs.
  */
-export const VIDEO_QUALITIES: Record<VideoQuality, { width: number; bitrate: number; label: string; resolution: string }> = {
-  /** 720p at about what TikTok and Instagram keep once they re-encode: quick to make, small to send. */
-  standard: { width: 720, bitrate: 2_200_000, label: 'Standard', resolution: '720p' },
+export type VideoScene = 'plain' | 'still' | 'moving'
+
+export function videoScene(backgroundId: string): VideoScene {
+  const background = findVideoBackground(backgroundId)
+  return background.videoUrl ? 'moving' : background.url ? 'still' : 'plain'
+}
+
+/**
+ * The average rate each is made at, for each kind of scene: enough for it to be
+ * sharp and no more. The encoder varies it within the video (lib/qari-share-media.ts).
+ * Measured by making the same video at each rate (with no film grain) and scoring it
+ * against a near-lossless copy (PSNR; about 40 dB and up is hard to tell from the
+ * original): at 1080p a photo scored 47 dB at 2 Mbps and gained under 1 dB from any
+ * more; a busy clip 42.5 at 2.5, 45 at 4 and 46.6 at 6. At 720p a photo scored 46 at
+ * 1 Mbps and a clip 42.5 at 2. Plain black never uses more than about 1.4 Mbps.
+ */
+export const VIDEO_QUALITIES: Record<
+  VideoQuality,
+  { width: number; bitrate: Record<VideoScene, number>; label: string; resolution: string }
+> = {
+  /** 720p: quick to make, small to send. */
+  standard: { width: 720, bitrate: { plain: 1_000_000, still: 1_000_000, moving: 2_000_000 }, label: 'Standard', resolution: '720p' },
   /** Full HD: the script and the translation stay crisp on any phone. */
-  high: { width: 1080, bitrate: 4_000_000, label: 'High', resolution: '1080p' },
+  high: { width: 1080, bitrate: { plain: 1_500_000, still: 2_000_000, moving: 3_500_000 }, label: 'High', resolution: '1080p' },
   /** Full HD with room to spare for the moving backgrounds' detail; the largest file. */
-  best: { width: 1080, bitrate: 6_000_000, label: 'Best', resolution: '1080p' },
+  best: { width: 1080, bitrate: { plain: 2_500_000, still: 3_500_000, moving: 6_000_000 }, label: 'Best', resolution: '1080p' },
 }
 
 export const VIDEO_QUALITY_ORDER: VideoQuality[] = ['standard', 'high', 'best']
 
-/** About how large a video of `seconds` comes out at this quality, in MB (the sound included). */
-export function videoSizeMb(quality: VideoQuality, seconds: number): number {
-  const bits = (VIDEO_QUALITIES[quality].bitrate + 192_000) * Math.max(1, seconds + 2)
+/** Encoders run a little over a low rate they are given: about this much, measured. */
+const ENCODER_OVERSHOOT = 1.08
+
+/** About how large a video of `seconds` over this background comes out at this quality, in MB (the sound included). */
+export function videoSizeMb(quality: VideoQuality, seconds: number, backgroundId: string): number {
+  const rate = VIDEO_QUALITIES[quality].bitrate[videoScene(backgroundId)]
+  const bits = (rate * ENCODER_OVERSHOOT + 192_000) * Math.max(1, seconds + 2)
   return Math.max(1, Math.round(bits / 8 / 1_000_000))
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useLayoutEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
 import QcfLine, { QcfSegment } from '@/components/mushaf/QcfLine'
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/lib/qcf-page'
 import { getQcfLineRevealState } from '@/lib/qcf-reveal'
 import { alignQcfBaselines } from '@/lib/qcf-baseline'
+import { inkQcfOrnaments } from '@/lib/qcf-ornaments'
 import type { Verse } from '@/types'
 import { useT } from '@/lib/i18n'
 
@@ -159,6 +160,33 @@ function useFitQcfPageLines(
   }, [containerRef, layout, fontFamily])
 }
 
+/**
+ * The ayah ornaments and surah banners are inked once they can be measured
+ * (see lib/qcf-ornaments.ts): after any render, since a render can bring new
+ * ones (another page's lines, an ayah revealed in Hifdh), and when a font they
+ * are drawn in arrives. Those already done are skipped, so this costs little.
+ */
+function useInkQcfOrnaments(pageRef: React.RefObject<HTMLElement | null>, fontFamily: string) {
+  useLayoutEffect(() => {
+    if (pageRef.current) inkQcfOrnaments(pageRef.current)
+  })
+
+  useEffect(() => {
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined
+    if (!fonts) return
+    let cancelled = false
+    const ink = () => {
+      if (!cancelled && pageRef.current) inkQcfOrnaments(pageRef.current)
+    }
+    const family = fontFamily.replace(/["']/g, '').trim()
+    fonts.load(`16px "${family}"`).then(ink).catch(() => {})
+    fonts.load('16px "SurahNameV2"').then(ink).catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [pageRef, fontFamily])
+}
+
 type FlowBlock =
   | { type: 'line'; line: QcfPageLayout['lines'][number] }
   | { type: 'text'; key: number; segments: QcfPageSegment[] }
@@ -241,7 +269,17 @@ function QcfPageComponent({
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
   useFitQcfPageLines(pageRef, layout, qcfFamily)
+  useInkQcfOrnaments(pageRef, qcfFamily)
   const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
+  // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by
+  // design: in print their lines sit in the middle of the page, not at its top.
+  // Half the rows left empty at the foot is how far down that is.
+  const openingShift = useMemo(() => {
+    if (pageNumber > 2) return 0
+    let empty = 0
+    for (let i = layout.lines.length - 1; i >= 0 && layout.lines[i].kind === 'empty'; i -= 1) empty += 1
+    return empty / 2
+  }, [layout, pageNumber])
 
   if (!fontReady) {
     return null
@@ -311,8 +349,10 @@ function QcfPageComponent({
         'mushaf-qcf-page',
         immersive && 'mushaf-qcf-page--immersive',
         scrollable && 'mushaf-qcf-page--scrollable',
+        openingShift > 0 && 'mushaf-qcf-page--opening',
         pageClass
       )}
+      style={openingShift > 0 ? ({ '--mushaf-opening-shift': openingShift } as CSSProperties) : undefined}
       data-page={pageNumber}
       data-qcf-font={qcfFamily}
       dir="rtl"

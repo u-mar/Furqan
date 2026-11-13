@@ -22,7 +22,6 @@ export function ProfileTopBar({
   avatarVersion,
   showNotifications = false,
   findPeople = false,
-  onShare,
   extra,
 }: {
   username: string
@@ -35,8 +34,7 @@ export function ProfileTopBar({
    * other qaris sits top left instead, as on TikTok.
    */
   findPeople?: boolean
-  onShare: () => void
-  /** More actions beside Share, e.g. blocking someone else's profile. */
+  /** More actions at the end of the bar, e.g. blocking someone else's profile. Sharing lives in the hero. */
   extra?: React.ReactNode
 }) {
   const t = useT()
@@ -78,9 +76,6 @@ export function ProfileTopBar({
       </div>
       <div className="ml-auto flex items-center gap-2">
         {showNotifications ? <NotificationsBell /> : null}
-        <button type="button" onClick={onShare} className="home-round ed-focus" aria-label={t('Share profile')}>
-          <Share2 className="h-[18px] w-[18px]" strokeWidth={1.9} />
-        </button>
         {extra}
       </div>
     </header>

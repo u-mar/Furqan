@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Ban, ChevronLeft, Ellipsis, Heart, LayoutGrid, Mic } from 'lucide-react'
+import { Ban, ChevronLeft, Ellipsis, Heart, LayoutGrid, Lock, Mic } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
@@ -30,7 +30,7 @@ import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
 
-type Tab = 'recitations' | 'favourites'
+type Tab = 'recitations' | 'private' | 'favourites'
 
 export default function QariProfile() {
   const t = useT()
@@ -177,8 +177,13 @@ export default function QariProfile() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
   }, [recitations])
 
+  // Your own "Only me" posts live behind the lock, not in the main tab. Others
+  // never receive them, so this split only shows on your own profile.
+  const publicRecitations = useMemo(() => recitations?.filter((r) => !r.isPrivate) ?? null, [recitations])
+  const privateRecitations = useMemo(() => recitations?.filter((r) => r.isPrivate) ?? null, [recitations])
+
   // Recitations are listed to listen to; ayah cards (pictures) sit in a row above, opening full screen.
-  const shown = tab === 'recitations' ? recitations : favourites
+  const shown = tab === 'recitations' ? publicRecitations : tab === 'private' ? privateRecitations : favourites
   const list = useMemo(() => shown?.filter((r) => r.kind !== 'ayah') ?? null, [shown])
   const ayahCards = useMemo(() => shown?.filter((r) => r.kind === 'ayah') ?? [], [shown])
   // Audio or video, as on Qari's front page: a list to listen to, or a grid of videos.
@@ -222,12 +227,13 @@ export default function QariProfile() {
     setFavourites(apply)
   }, [])
 
-  const tabs = isMe
+  const tabs: { id: Tab; label: string }[] = isMe
     ? [
-        { id: 'recitations' as const, label: t('Recitations') },
-        { id: 'favourites' as const, label: t('Favourites') },
+        { id: 'recitations', label: t('Recitations') },
+        { id: 'private', label: t('Private') },
+        { id: 'favourites', label: t('Favourites') },
       ]
-    : null
+    : [{ id: 'recitations', label: t('Recitations') }]
 
   if (cardsOpen) {
     return (
@@ -280,7 +286,6 @@ export default function QariProfile() {
         avatarVersion={avatarVersion}
         showNotifications={isMe}
         findPeople={isMe}
-        onShare={() => void handleShare()}
         extra={isMe ? null : <ProfileMenu blocked={isBlocked} username={username} onToggleBlock={() => void toggleBlock()} />}
       />
 
@@ -351,7 +356,7 @@ export default function QariProfile() {
       {/* Tabs and play all */}
       <div className={cn('mt-6 flex items-center justify-between border-b border-[var(--home-rule)]', isBlocked && 'hidden')}>
         <div className="flex gap-6" role="tablist" aria-label={t('Profile sections')}>
-          {(tabs ?? [{ id: 'recitations' as const, label: t('Recitations') }]).map(({ id, label }) => (
+          {tabs.map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -368,15 +373,17 @@ export default function QariProfile() {
                 tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
               )}
             >
-              {/* Icons, not words, as on TikTok: a grid for the recitations, a heart for favourites. */}
+              {/* Icons, not words, as on TikTok: a grid for the recitations, a lock for the private ones, a heart for favourites. */}
               {id === 'favourites' ? (
                 <Heart className={cn('h-5 w-5', tab === id && 'fill-current')} strokeWidth={2} aria-hidden />
+              ) : id === 'private' ? (
+                <Lock className="h-5 w-5" strokeWidth={tab === id ? 2.2 : 1.9} aria-hidden />
               ) : (
                 <LayoutGrid className="h-5 w-5" strokeWidth={tab === id ? 2.2 : 1.9} aria-hidden />
               )}
-              {id === 'recitations' && recitations ? (
+              {id === 'recitations' && publicRecitations ? (
                 <span className="ml-1.5 text-[12.5px] font-medium text-[var(--home-muted)]">
-                  {recitations.filter((r) => r.kind !== 'ayah').length}
+                  {publicRecitations.filter((r) => r.kind !== 'ayah').length}
                 </span>
               ) : null}
               <span
@@ -404,7 +411,7 @@ export default function QariProfile() {
         ) : null}
         {list === null ? (
           <RecitationSkeletons count={3} />
-        ) : failed && tab === 'recitations' ? (
+        ) : failed && tab !== 'favourites' ? (
           <EmptyState
             Icon={Mic}
             title={t('Could not load this profile')}
@@ -420,6 +427,18 @@ export default function QariProfile() {
               title={t('Nothing saved yet')}
               body={t('Tap the heart on a recitation and it will be waiting here.')}
               action={{ label: t('Explore Qari'), href: '/qari' }}
+            />
+          ) : tab === 'private' ? (
+            <EmptyState
+              Icon={Lock}
+              title={t('No private recitations')}
+              body={t('Post a recitation as Only me and it will be kept here, for you alone.')}
+            />
+          ) : isMe && privateRecitations && privateRecitations.length > 0 ? (
+            <EmptyState
+              Icon={Mic}
+              title={t('Nothing public yet')}
+              body={t('Your recitations are set to Only me. You will find them behind the lock.')}
             />
           ) : isMe ? (
             <EmptyState
@@ -439,7 +458,7 @@ export default function QariProfile() {
                 recitation={recitation}
                 queue={list}
                 index={i}
-                hideAuthor={tab === 'recitations'}
+                hideAuthor={tab !== 'favourites'}
                 viewerId={viewerId}
                 viewerUsername={viewer?.username ?? null}
                 onRemoved={removeRecitation}

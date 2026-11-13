@@ -153,7 +153,7 @@ export {
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
 
-import { DEFAULT_VIDEO_OPTIONS, MIX_CLIPS_OFFERED, VIDEO_QUALITIES, type VideoOptions } from '@/lib/qari-video-options'
+import { DEFAULT_VIDEO_OPTIONS, MIX_CLIPS_OFFERED, VIDEO_QUALITIES, type VideoOptions, type VideoScene } from '@/lib/qari-video-options'
 
 export {
   DEFAULT_VIDEO_OPTIONS,
@@ -166,6 +166,7 @@ export {
   videoSizeMb,
   type VideoOptions,
   type VideoQuality,
+  type VideoScene,
 } from '@/lib/qari-video-options'
 
 /** Whether this background has others of its kind to mix in, while mixing is offered (MIX_CLIPS_OFFERED). */
@@ -238,8 +239,8 @@ interface Scene {
   still: HTMLCanvasElement | null
   /** The moving background — one clip, or several of a kind cut between — frame by frame. */
   clip: Reel | null
-  /** A few frames of film grain, laid over the picture one after another. null on plain black. */
-  grain: HTMLCanvasElement[] | null
+  /** Whether there is a picture behind the ayah (a photo or a clip), to be graded as film is; false on plain black. */
+  picture: boolean
   /** The shade over the background, and the soft black when there is none. */
   shade: HTMLCanvasElement
   captions: Caption[]
@@ -773,28 +774,6 @@ async function openReel(mb: Mediabunny, shots: Shot[]): Promise<Reel | null> {
 }
 
 /**
- * Film grain: a few frames of fine black and white specks, each of its own
- * strength, laid lightly over the picture one after another. Full size, so
- * nothing has to be scaled while the video is made.
- */
-function makeGrain(): HTMLCanvasElement[] {
-  return Array.from({ length: 3 }, () => {
-    const [canvas, ctx] = makeCanvas()
-    const image = ctx.createImageData(W, H)
-    const data = image.data
-    for (let p = 0; p < data.length; p += 4) {
-      const v = Math.random() < 0.5 ? 0 : 255
-      data[p] = v
-      data[p + 1] = v
-      data[p + 2] = v
-      data[p + 3] = Math.random() * 255
-    }
-    ctx.putImageData(image, 0, 0)
-    return canvas
-  })
-}
-
-/**
  * One colour for every clip, so a cut between two never jumps: darker and cooler
  * in the shadows, and the blacks lifted a touch toward warm, as on film. Two
  * plain blends, which cost a phone next to nothing per frame (a full colour
@@ -862,7 +841,7 @@ async function prepareScene(
   return {
     still: still ? drawStill(still) : fallback ? drawStill(fallback) : null,
     clip,
-    grain: picturePresent ? makeGrain() : null,
+    picture: picturePresent,
     shade: drawShade(picturePresent),
     captions,
     titleCard: captions.length ? null : drawTitleCard(r.title, serif),
@@ -890,13 +869,13 @@ function drawFrame(ctx: CanvasRenderingContext2D, scene: Scene, i: number, clipF
     const y = (H - dh) / 2 + (-0.01 + 0.02 * phase) * H
     ctx.drawImage(scene.still, x, y, dw, dh)
   }
-  if (scene.grain) grade(ctx)
+  if (scene.picture) grade(ctx)
+  // No film grain over the picture, though an edit would have it. Specks that change every frame
+  // are the one thing a video encoder cannot keep: measured, they took nearly all of 6 Mbps and
+  // still came out as smear, the picture and the ayah no sharper than at 1.5 Mbps. Left clean, the
+  // same frame is sharper at a third of the size (see VIDEO_QUALITIES), and stays so when TikTok
+  // or WhatsApp encode it again.
   ctx.drawImage(scene.shade, 0, 0)
-  if (scene.grain) {
-    ctx.globalAlpha = 0.07
-    ctx.drawImage(scene.grain[i % scene.grain.length], 0, 0)
-    ctx.globalAlpha = 1
-  }
 
   // The ayah (or part) being recited: the last one whose time has come, held until the next.
   let caption: Caption | null = null
@@ -994,10 +973,14 @@ export async function makeRecitationVideo(
   // 25+ Mbps, a hundred megabytes for half a minute. The person picks how much (VIDEO_QUALITIES);
   // full HD kept at 720p's rate would only be blurrier, so the rate goes with the size. Varying,
   // not held constant: a phone's encoder held to a constant rate spends it as evenly on a still
-  // frame as on a moving one, and dark night scenes came out blocky even in big files.
+  // frame as on a moving one, and dark night scenes came out blocky even in big files. The rate is
+  // what the picture needs: a clip that moves needs more than a photo that drifts, and plain black
+  // least. What was actually drawn decides, since a clip that would not load became a still.
+  const sceneKind: VideoScene = scene.clip ? 'moving' : scene.still ? 'still' : 'plain'
+  const rates = width === quality.width ? quality.bitrate : VIDEO_QUALITIES.standard.bitrate
   const video = new mb.CanvasSource(canvas, {
     codec: 'avc',
-    quality: new mb.Quality({ bitrate: width === quality.width ? quality.bitrate : VIDEO_QUALITIES.standard.bitrate, bitrateMode: 'variable' }),
+    quality: new mb.Quality({ bitrate: rates[sceneKind], bitrateMode: 'variable' }),
     // A full picture every 4 seconds: often enough to seek, far fewer bits than every 2.
     keyFrameInterval: 4,
   })

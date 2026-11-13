@@ -22,7 +22,8 @@ const TARGET_BASELINE = 0.65
 /** Lines measured per page: enough that one odd line cannot sway it. */
 const SAMPLE_LINES = 5
 
-function isLoaded(family: string): boolean {
+/** Whether the web font of this family has arrived (a family the page never declared is not "loaded"). */
+export function isFontLoaded(family: string): boolean {
   const target = family.replace(/["']/g, '').trim()
   for (const face of document.fonts) {
     if (face.family.replace(/["']/g, '').trim() === target && face.status === 'loaded') return true
@@ -32,7 +33,7 @@ function isLoaded(family: string): boolean {
 
 /** How far (in em of its text) `glyphs`' baseline is from where it should be in its row. */
 export function alignQcfBaselines(page: HTMLElement, glyphs: HTMLElement[], family: string): void {
-  if (typeof document === 'undefined' || !document.fonts || !isLoaded(family) || glyphs.length === 0) return
+  if (typeof document === 'undefined' || !document.fonts || !isFontLoaded(family) || glyphs.length === 0) return
   page.style.setProperty('--qcf-baseline-shift', '0em')
   // Every marker goes in before anything is measured, then all are read and
   // removed together: the page is laid out once, not once per sampled line.
