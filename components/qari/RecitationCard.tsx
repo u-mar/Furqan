@@ -129,7 +129,7 @@ function RecitationCard({
       isOwner={canManage}
       isPrivate={isPrivate}
       onEditTitle={canManage ? () => setTitleOpen(true) : undefined}
-      onTogglePrivacy={isOwner ? () => void handleTogglePrivacy() : undefined}
+      onTogglePrivacy={canManage ? () => void handleTogglePrivacy() : undefined}
       onChangeBackground={canManage && !isAyahCard ? () => setBackgroundOpen(true) : undefined}
       onReport={handleReportTap}
       onDelete={() => void handleDelete()}

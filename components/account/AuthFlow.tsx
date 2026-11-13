@@ -77,6 +77,8 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
     const data = (await res.json().catch(() => ({}))) as {
       error?: string
       user?: AppUser
+      /** The admin's credentials were entered: the admin session is set, and Qari opens to manage recitations. */
+      admin?: boolean
       needsUsername?: boolean
       suggestion?: string
       name?: string
@@ -109,6 +111,13 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
     const id = identifier.trim()
     try {
       const { ok, data } = await post('/api/auth/email', { action: 'login', identifier: id, password })
+      if (ok && data.admin) {
+        // Into Qari, where every recitation's menu now offers its title, background and
+        // removal (hooks/useRecitationActions.ts). A full load, so the page asks afresh
+        // whether this is the admin; the dashboard stays at /admin.
+        window.location.assign('/qari')
+        return
+      }
       if (ok && data.user) return finish(data.user)
       setPassword('')
       fail(data.error ? tr(data.error) : tr('Something went wrong. Please try again.'))

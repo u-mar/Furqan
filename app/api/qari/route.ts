@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { parseVerseTimeline } from '@/lib/qari-verse-timeline'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
+import { isAdminRequestAuthenticated } from '@/lib/admin-auth-server'
 import { likedIdsFor, toClientRecitation } from '@/lib/qari-serialize'
 import {
   joinAudioPieces,
@@ -140,9 +141,11 @@ export async function GET(request: NextRequest) {
 
     // Private recordings belong to their reciter alone. They surface only on
     // that person's own profile, and only once the server has confirmed the
-    // caller really is them.
+    // caller really is them — or to the admin on that profile, who may change
+    // who can hear them and so has to be able to find them again.
     const ownProfile =
-      Boolean(username) && Boolean(viewerId) && (await ownsUsername(username!, viewerId!))
+      Boolean(username) &&
+      ((Boolean(viewerId) && (await ownsUsername(username!, viewerId!))) || (await isAdminRequestAuthenticated(request)))
 
     const where = {
       hidden: false,

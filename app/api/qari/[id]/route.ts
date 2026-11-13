@@ -62,15 +62,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ playCount: updated.playCount, counted: true })
     }
 
-    // Signed in at /admin: may rename any recitation or change what it is shown on.
+    // The admin session: may rename any recitation, change what it is shown on, or who can hear it.
     const admin = verifyAdminSessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value)
-    const adminMay = admin && (action === 'setBackground' || action === 'setTitle')
+    const adminMay = admin && (action === 'setBackground' || action === 'setTitle' || action === 'setPrivacy')
 
     if (!userId && !adminMay) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
 
     if (action === 'setPrivacy') {
-      // Only the reciter decides who can hear their own recording.
-      if (recitation.userId !== userId) {
+      // The reciter decides who can hear their own recording, and the admin may too.
+      if (recitation.userId !== userId && !adminMay) {
         return NextResponse.json({ error: 'Not yours to change.' }, { status: 403 })
       }
       const updated = await prisma.recitation.update({

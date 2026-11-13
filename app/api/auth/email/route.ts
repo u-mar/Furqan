@@ -3,6 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { hashPassword, verifyPassword, verifyPin } from '@/lib/pin-hash'
 import { EMAIL_RULE, normalizeEmail } from '@/lib/email-address'
 import { isUsernameTaken, normalizeUsername, suggestUsername, USERNAME_RULE } from '@/lib/usernames'
+import {
+  adminCredentialsConfigured,
+  createAdminSessionToken,
+  setAdminSessionCookie,
+  verifyAdminCredentials,
+} from '@/lib/admin-auth-server'
 
 export const runtime = 'nodejs'
 
@@ -85,6 +91,15 @@ export async function POST(req: Request) {
     const identifier = normalizeEmail(body.identifier)
     if (!identifier || !password) {
       return NextResponse.json({ error: 'Enter your email and password.' }, { status: 400 })
+    }
+    // The admin signs in here too, with the admin email (or username) and password
+    // set on the server: no account of theirs is looked up, they get the admin
+    // session, with which any recitation's title and background can be changed
+    // (app/api/qari/[id]) and the dashboard at /admin opens.
+    if (adminCredentialsConfigured() && verifyAdminCredentials(identifier, password)) {
+      const res = NextResponse.json({ admin: true })
+      setAdminSessionCookie(res, createAdminSessionToken())
+      return res
     }
     const user = identifier.includes('@')
       ? await findByEmail(identifier)

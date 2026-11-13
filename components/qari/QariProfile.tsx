@@ -26,6 +26,7 @@ import { useQariView } from '@/lib/qari-view'
 import { dismissUpload, useUploads } from '@/lib/qari-upload'
 import { blockUser, unblockUser, useBlockedUsers } from '@/lib/qari-blocks'
 import { askToSignIn } from '@/lib/account-prompt'
+import { useIsAdmin } from '@/hooks/useIsAdmin'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
@@ -41,6 +42,7 @@ export default function QariProfile() {
 
   // Usernames are stored lower-case; a link may arrive with any casing.
   const isMe = viewer?.username.toLowerCase() === username.toLowerCase()
+  const isAdmin = useIsAdmin()
   const blockedUsers = useBlockedUsers(viewer)
   const isBlocked = !isMe && blockedUsers.has(username.toLowerCase())
 
@@ -227,13 +229,20 @@ export default function QariProfile() {
     setFavourites(apply)
   }, [])
 
+  // The admin sees a reciter's private recordings too (the server sends them), behind
+  // the same lock, so one made private can be found and made public again.
   const tabs: { id: Tab; label: string }[] = isMe
     ? [
         { id: 'recitations', label: t('Recitations') },
         { id: 'private', label: t('Private') },
         { id: 'favourites', label: t('Favourites') },
       ]
-    : [{ id: 'recitations', label: t('Recitations') }]
+    : isAdmin
+      ? [
+          { id: 'recitations', label: t('Recitations') },
+          { id: 'private', label: t('Private') },
+        ]
+      : [{ id: 'recitations', label: t('Recitations') }]
 
   if (cardsOpen) {
     return (
@@ -432,7 +441,11 @@ export default function QariProfile() {
             <EmptyState
               Icon={Lock}
               title={t('No private recitations')}
-              body={t('Post a recitation as Only me and it will be kept here, for you alone.')}
+              body={
+                isMe
+                  ? t('Post a recitation as Only me and it will be kept here, for you alone.')
+                  : t('Recitations set to Only me show here, for the admin.')
+              }
             />
           ) : isMe && privateRecitations && privateRecitations.length > 0 ? (
             <EmptyState

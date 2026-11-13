@@ -75,19 +75,19 @@ export function useRecitationActions({
   }, [isAdmin, onNotice, onRemoved, recitation.id, viewerId])
 
   const handleTogglePrivacy = useCallback(async () => {
-    if (!viewerId) return
+    if (!viewerId && !isAdmin) return
     const next = !isPrivate
     tapFeedback()
     setOptimisticPrivate(next)
     try {
-      await setRecitationPrivacy(recitation.id, viewerId, next)
+      await setRecitationPrivacy(recitation.id, viewerId ?? '', next)
       onNotice?.(next ? tr('Only you can hear it now.') : tr('Everyone can hear it now.'))
       onUpdated?.(recitation.id, { isPrivate: next })
     } catch {
       setOptimisticPrivate(!next)
       onNotice?.(tr('Could not change that.'))
     }
-  }, [isPrivate, onNotice, onUpdated, recitation.id, viewerId])
+  }, [isAdmin, isPrivate, onNotice, onUpdated, recitation.id, viewerId])
 
   const handleChangeBackground = useCallback(
     async (background: string) => {

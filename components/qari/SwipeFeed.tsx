@@ -864,7 +864,7 @@ const Slide = memo(function Slide({
           isOwner: canManage,
           isPrivate,
           onEditTitle: canManage ? () => setTitleOpen(true) : undefined,
-          onTogglePrivacy: isOwner ? () => void handleTogglePrivacy() : undefined,
+          onTogglePrivacy: canManage ? () => void handleTogglePrivacy() : undefined,
           onChangeBackground: canManage && !isAyahCard ? () => setBackgroundOpen(true) : undefined,
           onDelete: () => void handleDelete(),
           onReport: handleReportTap,

@@ -213,6 +213,10 @@ export const QARI: Dict = {
   Private: { so: 'Gaar', ar: 'خاص' },
   'Find friends': { so: 'Raadi asxaab', ar: 'ابحث عن أصدقاء' },
   'No private recitations': { so: 'Tilaawo gaar ah ma jirto', ar: 'لا توجد تلاوات خاصة' },
+  'Recitations set to Only me show here, for the admin.': {
+    so: 'Tilaawooyinka loo dhigay “Aniga oo keliya” halkan ayay ka muuqdaan, maamulaha.',
+    ar: 'التلاوات المضبوطة على "أنا فقط" تظهر هنا للمشرف.',
+  },
   'Post a recitation as Only me and it will be kept here, for you alone.': {
     so: 'Tilaawo ku dhig “Aniga oo keliya” halkan ayaa laguu hayn doonaa, adiga keliya.',
     ar: 'انشر تلاوة بخيار "أنا فقط" وستُحفظ هنا لك وحدك.',
