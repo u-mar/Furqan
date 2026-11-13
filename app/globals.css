@@ -2657,6 +2657,13 @@ html.dark.black {
   box-shadow: var(--home-lift);
 }
 
+/* Listen's "Reciting" card on the black theme: black like the page, held apart
+   from it by a hairline rather than a grey fill. */
+html.black .listen-reciter-card {
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
 /* Cards you can tap sink a little under the finger. */
 .home-press {
   transition: transform 0.14s ease;

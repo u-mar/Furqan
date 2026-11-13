@@ -427,7 +427,7 @@ function ReciterCard({
   }, [reciter.id])
 
   return (
-    <section className="home-card mt-[18px] rounded-[18px] p-4" aria-label={t('Reciting')}>
+    <section className="home-card listen-reciter-card mt-[18px] rounded-[18px] p-4" aria-label={t('Reciting')}>
       <div className="flex items-center gap-4">
         <button type="button" onClick={onChoose} className="ed-focus fx-press shrink-0 rounded-full" aria-label={t('Choose a reciter')}>
           <ReciterAvatar key={reciter.id} reciter={reciter} size={80} className="home-fade" />
