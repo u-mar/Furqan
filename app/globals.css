@@ -1985,6 +1985,63 @@ html.dark .auth-screen {
 }
 
 /* The app's icon on the welcome screen: نبأ in square Kufic on its black square */
+/* The first sign-in screen's wall of scenes: three tilted columns drifting slowly upward. */
+.auth-wall {
+  position: absolute;
+  inset: -2.5rem -3rem auto;
+  height: 70%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+.auth-wall__column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: auth-wall-drift 60s linear infinite;
+}
+
+.auth-wall__column:nth-child(2) {
+  animation-duration: 75s;
+}
+
+.auth-wall__tile {
+  width: 100%;
+  flex-shrink: 0;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #1c1c1e;
+  filter: saturate(0.85) brightness(0.82);
+}
+
+.auth-wall__fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.1) 25%, var(--app-bg) 62%);
+  pointer-events: none;
+}
+
+/* Over the photos the close button needs a ground of its own to be seen. */
+.auth-wall-top .auth-icon-button {
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+}
+
+@keyframes auth-wall-drift {
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-wall__column {
+    animation: none;
+  }
+}
+
 .auth-mark {
   display: flex;
   width: 4.5rem;
@@ -2010,16 +2067,146 @@ html.dark .auth-screen {
   background: var(--auth-line);
 }
 
-/* A field: label above, a soft box with a hairline border. */
+/* Where the person is in the steps: a bar per step between Back and Close. */
+.auth-progress {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  max-width: 13rem;
+}
+
+.auth-progress span {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--auth-line);
+  transition: background-color 0.3s ease;
+}
+
+.auth-progress span.is-done {
+  background: var(--auth-check);
+}
+
+/* The step's own icon, on a soft tile of the accent. */
+.auth-step-icon {
+  display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--auth-check) 16%, transparent);
+  color: var(--auth-check);
+}
+
+.auth-step-icon.is-solid {
+  background: var(--auth-accent);
+  color: var(--auth-on-accent);
+}
+
+/* The email a step is for: a small pill that goes back to change it. */
+.auth-chip {
+  display: inline-flex;
+  max-width: 100%;
+  height: 2rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0 0.75rem;
+  background: var(--auth-field-bg);
+  box-shadow: inset 0 0 0 1px var(--auth-field-border);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--auth-text);
+}
+
+/* How strong a new password is: four bars and a word. */
+.auth-strength {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  --strength: #e11d48;
+}
+
+.auth-strength[data-score='2'] {
+  --strength: #d97706;
+}
+
+.auth-strength[data-score='3'],
+.auth-strength[data-score='4'] {
+  --strength: var(--auth-check);
+}
+
+.auth-strength__bars {
+  display: flex;
+  width: 7.5rem;
+  gap: 5px;
+}
+
+.auth-strength__bars span {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: var(--auth-line);
+  transition: background-color 0.2s ease;
+}
+
+.auth-strength__bars span.is-on {
+  background: var(--strength);
+}
+
+.auth-strength__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--strength);
+}
+
+/* The profile as it will look, while its name and username are typed. */
+.auth-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border-radius: 1.25rem;
+  padding: 0.875rem 1rem;
+  background: var(--auth-field-bg);
+  box-shadow: inset 0 0 0 1px var(--auth-field-border);
+}
+
+.auth-preview__avatar {
+  display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--auth-accent);
+  color: var(--auth-on-accent);
+  font-family: var(--font-home-serif), 'Fraunces', Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+/* The main button, held at the bottom of the screen above the keyboard. */
+.auth-footer {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -1.5rem;
+  padding: 0.75rem 1.5rem 0;
+  background: linear-gradient(transparent, var(--app-bg) 30%);
+}
+
+/* A field: label above, a filled box that lights up when typed in. */
 .auth-box {
   display: flex;
-  height: 3.125rem;
+  height: 3.5rem;
   align-items: center;
   gap: 0.6rem;
   padding: 0 1rem;
-  border-radius: 0.9rem;
-  border: 1px solid var(--auth-field-border);
+  border-radius: 1rem;
+  border: 1.5px solid transparent;
   background: var(--auth-field-bg);
+  box-shadow: inset 0 0 0 1px var(--auth-field-border);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -2038,7 +2225,7 @@ html.dark .auth-screen {
   min-width: 0;
   flex: 1;
   background: transparent;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--auth-text);
 }
 
@@ -2053,7 +2240,7 @@ html.dark .auth-screen {
 
 .auth-button {
   display: flex;
-  height: 3.25rem;
+  height: 3.5rem;
   width: 100%;
   align-items: center;
   justify-content: center;

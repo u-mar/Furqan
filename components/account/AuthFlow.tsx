@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, AtSign, Check, CircleAlert, Eye, EyeOff, Loader2, Mail, MailCheck, X } from 'lucide-react'
+import { ArrowLeft, AtSign, Check, CircleAlert, Eye, EyeOff, KeyRound, Loader2, LockKeyhole, Mail, MailCheck, Pencil, UserRound, X } from 'lucide-react'
 import GoogleButton from '@/components/account/GoogleButton'
 import LogoMark from '@/components/brand/LogoMark'
 import { APP_NAME } from '@/lib/app-brand'
@@ -11,6 +11,19 @@ import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
 type View = 'choose' | 'email' | 'signin' | 'signup' | 'profile' | 'forgot' | 'sent'
+
+/** The wall behind the first screen: scenes the Qari recitations are made on, in three columns. */
+const WALL_SCENES = [
+  'misty-pines', 'moon-path', 'valley-sunset', 'dusk-river', 'golden-mist-swans', 'pier-lights',
+  'sunbeam-valley', 'alpine-lake', 'meadow-stream', 'blue-mist', 'silver-sea', 'peaks-in-fog',
+]
+const WALL_COLUMNS = [0, 1, 2].map((c) =>
+  WALL_SCENES.filter((_, i) => i % 3 === c).map(
+    (id) => `https://res.cloudinary.com/r2ule9za/video/upload/w_300,h_420,c_fill,so_4,q_auto/nadir/share-bg-video/${id}.jpg`
+  )
+)
+const WALL_OFFSETS = [0, -60, -20]
+const WALL_HEIGHTS = [170, 205, 160, 190]
 
 const USERNAME_RULE = /^[a-z0-9_]{3,20}$/
 const EMAIL_RULE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -280,8 +293,20 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
               ? () => go('signin')
               : null
 
+  // Where this screen is on the way in: creating an account takes three steps, signing in two.
+  const steps: { at: number; of: number } | null =
+    view === 'email'
+      ? { at: 1, of: 3 }
+      : view === 'signup'
+        ? { at: 2, of: 3 }
+        : view === 'profile'
+          ? { at: 3, of: 3 }
+          : view === 'signin' && !byUsername
+            ? { at: 2, of: 2 }
+            : null
+
   const topBar = (
-    <div className="flex h-11 items-center justify-between">
+    <div className="flex h-11 items-center justify-between gap-3">
       {back ? (
         <button type="button" onClick={back} aria-label={t('Back')} className="auth-icon-button ed-focus -ml-2">
           <ArrowLeft className="h-5 w-5 rtl:-scale-x-100" strokeWidth={2} />
@@ -289,6 +314,13 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
       ) : (
         <span />
       )}
+      {steps ? (
+        <div className="auth-progress" role="progressbar" aria-valuemin={1} aria-valuemax={steps.of} aria-valuenow={steps.at} aria-label={t('Step {at} of {of}', steps)}>
+          {Array.from({ length: steps.of }, (_, i) => (
+            <span key={i} className={i < steps.at ? 'is-done' : undefined} />
+          ))}
+        </div>
+      ) : null}
       {onClose ? (
         <button type="button" onClick={onClose} aria-label={t('Close')} className="auth-icon-button ed-focus -mr-2">
           <X className="h-5 w-5" strokeWidth={2} />
@@ -328,29 +360,47 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
   if (view === 'choose') {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain">
-        <div className="relative flex min-h-full flex-1 flex-col px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-          {topBar}
+        <div className="relative flex min-h-full flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+          {/* A wall of the scenes recitations are made on, tilted and drifting, fading into black. */}
+          <div className="auth-wall" aria-hidden>
+            {WALL_COLUMNS.map((column, i) => (
+              <div key={i} className="auth-wall__column" style={{ marginTop: WALL_OFFSETS[i] }}>
+                {[...column, ...column].map((src, k) => (
+                  <img key={k} src={src} alt="" decoding="async" className="auth-wall__tile" style={{ height: WALL_HEIGHTS[(i + k) % WALL_HEIGHTS.length] }} />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="auth-wall__fade" aria-hidden />
 
-          <div className="auth-step flex flex-1 flex-col items-center justify-center py-10 text-center">
+          <div className="auth-wall-top relative z-10">{topBar}</div>
+
+          <div className="auth-step relative z-10 mt-auto flex flex-col items-center pb-7 pt-[38vh] text-center">
             <span className="auth-mark" aria-hidden>
               <LogoMark className="h-full w-full" />
             </span>
-            <h1 className="home-serif mt-6 text-[2rem] font-medium leading-tight tracking-[-0.02em] text-[var(--auth-text)]">
-              {t('Welcome to {name}', { name: APP_NAME })}
+            <h1 className="home-serif mt-4 text-[2rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--auth-text)]">
+              {t('Join {name}', { name: APP_NAME })}
             </h1>
-            <p className="mt-2.5 max-w-[19rem] text-[0.95rem] leading-relaxed text-[var(--auth-muted)]">
-              {reason ?? t('Save your place, follow qaris and read together.')}
+            <p className="mt-2 max-w-[20rem] text-[0.95rem] leading-relaxed text-[var(--auth-muted)]">
+              {reason ?? t('Read, listen and recite the Quran, with your place kept on every phone.')}
             </p>
           </div>
 
-          <div className="auth-step space-y-3">
+          <div className="auth-step relative z-10 space-y-3">
             {alert}
             <GoogleButton onCredential={(c) => void withGoogle(c)} onError={fail} disabled={busy} />
             <button type="button" onClick={() => go('email')} disabled={busy} className="auth-button ed-focus">
               <Mail className="h-[18px] w-[18px]" strokeWidth={2} />
               {t('Continue with email')}
             </button>
-            <p className="px-2 pt-2 text-center text-[0.75rem] leading-relaxed text-[var(--auth-muted)]">
+            <p className="pt-1 text-center text-[0.84rem] text-[var(--auth-muted)]">
+              {t('Already have an account?')}{' '}
+              <button type="button" onClick={() => go('email')} className="ed-focus rounded font-semibold text-[var(--auth-text)]">
+                {t('Sign in')}
+              </button>
+            </p>
+            <p className="px-2 text-center text-[0.75rem] leading-relaxed text-[var(--auth-muted)]">
               {t('By continuing you agree to our')}{' '}
               <Link href="/terms" className="font-semibold text-[var(--auth-text)] underline-offset-2 hover:underline">
                 {t('Terms of Service')}
@@ -382,12 +432,14 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
     email: { title: t('What is your email?'), line: t("We'll check whether you already have an account.") },
     signin: byUsername
       ? { title: t('Sign in'), line: t("Welcome back, you've been missed.") }
-      : { title: t('Welcome back'), line: t('Enter your password for {email}.', { email: identifier.trim() }) },
-    signup: { title: t('Create your account'), line: t('Choose a password for {email}.', { email: email.trim() }) },
-    profile: { title: t('Almost done'), line: t('Pick the name and username your recitations will go under.') },
+      : { title: t('Welcome back'), line: t('Enter your password to sign in.') },
+    signup: { title: t('Create a password'), line: t('You are new here. Choose a password for your account.') },
+    profile: { title: t('Make it yours'), line: t('Pick the name and username your recitations will go under.') },
     forgot: { title: t('Forgot password'), line: t("Enter your email and we'll send you a link to choose a new password.") },
     sent: { title: t('Check your email'), line: '' },
   }[view]
+
+  const StepIcon = { choose: Mail, email: Mail, signin: LockKeyhole, signup: LockKeyhole, profile: UserRound, forgot: KeyRound, sent: MailCheck }[view]
 
   const button = {
     email: t('Continue'),
@@ -410,18 +462,26 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
       >
         {topBar}
 
-        <div key={view} className="auth-step mt-6">
-          {view === 'sent' ? (
-            <span className="auth-badge mb-5 flex h-14 w-14 items-center justify-center rounded-2xl">
-              <MailCheck className="h-7 w-7" strokeWidth={1.8} />
-            </span>
+        <div key={view} className="auth-step mt-7">
+          <span className={cn('auth-step-icon', view === 'sent' && 'is-solid')} aria-hidden>
+            <StepIcon className="h-6 w-6" strokeWidth={1.9} />
+          </span>
+          {steps ? (
+            <p className="mt-5 text-[0.8125rem] font-semibold text-[var(--auth-check)]">{t('Step {at} of {of}', steps)}</p>
           ) : null}
-          <h1 className="home-serif text-[1.85rem] font-medium leading-tight tracking-[-0.02em] text-[var(--auth-text)]">
+          <h1 className={cn('home-serif text-[2rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--auth-text)]', steps ? 'mt-1' : 'mt-5')}>
             {heading.title}
           </h1>
           {heading.line ? (
-            // A long email address wraps rather than running off the screen.
-            <p className="mt-1.5 text-[0.95rem] leading-snug text-[var(--auth-muted)] [overflow-wrap:anywhere]">{heading.line}</p>
+            <p className="mt-1.5 text-[0.95rem] leading-snug text-[var(--auth-muted)]">{heading.line}</p>
+          ) : null}
+          {/* The address this is for, to see at a glance and change with a tap. */}
+          {(view === 'signin' && !byUsername) || view === 'signup' ? (
+            <button type="button" onClick={() => go('email')} className="auth-chip ed-focus mt-3" aria-label={t('Change email')}>
+              <Mail className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              <span className="truncate">{(view === 'signin' ? identifier : email).trim()}</span>
+              <Pencil className="h-3 w-3 shrink-0 opacity-70" strokeWidth={2.2} aria-hidden />
+            </button>
           ) : null}
           {view === 'sent' ? (
             <p className="mt-2 text-[0.95rem] leading-relaxed text-[var(--auth-muted)]">
@@ -516,6 +576,7 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
                   autoFocus
                   note={password && !passwordOk ? t('Use at least 8 characters for your password.') : undefined}
                 />
+                {password ? <PasswordStrength password={password} /> : null}
                 <PasswordField
                   label={t('Confirm password')}
                   placeholder={t('Enter the password again')}
@@ -542,6 +603,13 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
 
             {view === 'profile' ? (
               <>
+                <div className="auth-preview" aria-hidden>
+                  <span className="auth-preview__avatar">{(name.trim() || username || '?').charAt(0).toUpperCase()}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[1rem] font-semibold text-[var(--auth-text)]">{name.trim() || t('Your name')}</span>
+                    <span className="block truncate text-[0.84rem] text-[var(--auth-muted)]">@{username || t('username')}</span>
+                  </span>
+                </div>
                 <Field label={t('Your name')}>
                   <input
                     value={name}
@@ -582,16 +650,6 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
 
           {alert}
 
-          {view === 'sent' ? (
-            <button type="button" onClick={() => go('signin')} className="auth-button mt-8 ed-focus">
-              {t('Back to sign in')}
-            </button>
-          ) : (
-            <button type="submit" disabled={busy} className="auth-button mt-7 ed-focus">
-              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : button}
-            </button>
-          )}
-
           {view === 'email' ? (
             <button
               type="button"
@@ -622,7 +680,18 @@ export default function AuthFlow({ onDone, onSkip, onClose, reason }: AuthFlowPr
           ) : null}
         </div>
 
-        <div className="min-h-8 flex-1" />
+        <div className="min-h-6 flex-1" />
+        <div className="auth-footer">
+          {view === 'sent' ? (
+            <button type="button" onClick={() => go('signin')} className="auth-button ed-focus">
+              {t('Back to sign in')}
+            </button>
+          ) : (
+            <button type="submit" disabled={busy} className="auth-button ed-focus">
+              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : button}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   )
@@ -703,6 +772,24 @@ function PasswordField({
         {shown ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
       </button>
     </Field>
+  )
+}
+
+/** How hard a new password is to guess, in four bars: its length, and how mixed its characters are. */
+function PasswordStrength({ password }: { password: string }) {
+  const t = useT()
+  const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((kind) => kind.test(password)).length
+  const score = password.length < MIN_PASSWORD ? 1 : Math.min(4, 1 + (password.length >= 12 ? 1 : 0) + (kinds >= 2 ? 1 : 0) + (kinds >= 3 ? 1 : 0))
+  const label = [t('Too short'), t('Fair'), t('Good'), t('Strong')][score - 1]
+  return (
+    <div className="auth-strength -mt-2" data-score={score}>
+      <span className="auth-strength__bars" aria-hidden>
+        {[1, 2, 3, 4].map((n) => (
+          <span key={n} className={n <= score ? 'is-on' : undefined} />
+        ))}
+      </span>
+      <span className="auth-strength__label">{label}</span>
+    </div>
   )
 }
 
