@@ -5,6 +5,19 @@ import { ownsUsername } from '@/lib/qari-owner'
 export const runtime = 'nodejs'
 
 const MAX_NAME = 40
+const MAX_BIO = 120
+
+/** GET /api/qari/profile?username= — what a profile shows beyond its recitations: the bio. */
+export async function GET(request: NextRequest) {
+  const username = new URL(request.url).searchParams.get('username')?.trim().toLowerCase() ?? ''
+  if (!username) return NextResponse.json({ bio: '' })
+  try {
+    const user = await prisma.user.findUnique({ where: { username }, select: { bio: true } })
+    return NextResponse.json({ bio: user?.bio ?? '' })
+  } catch {
+    return NextResponse.json({ bio: '' })
+  }
+}
 
 /**
  * PATCH /api/qari/profile — change the display name on a qari's profile.
@@ -18,6 +31,7 @@ export async function PATCH(request: NextRequest) {
       username?: string
       userId?: string
       name?: string
+      bio?: string
     }
 
     const username = (body.username || '').trim().toLowerCase()
@@ -27,11 +41,22 @@ export async function PATCH(request: NextRequest) {
     if (!username || !userId) {
       return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
     }
-    if (!name) {
-      return NextResponse.json({ error: 'Your name cannot be empty.' }, { status: 400 })
-    }
     if (!(await ownsUsername(username, userId))) {
       return NextResponse.json({ error: 'That is not your profile.' }, { status: 403 })
+    }
+
+    // The bio alone: one line of plain text, or empty to clear it. Kept on the account, so a
+    // local-only one (which has no row here) cannot have one.
+    if (typeof body.bio === 'string' && body.name === undefined) {
+      const bio = body.bio.replace(/\s+/g, ' ').trim().slice(0, MAX_BIO)
+      if (userId.startsWith('local_')) {
+        return NextResponse.json({ error: 'Create an account to add a bio.' }, { status: 400 })
+      }
+      await prisma.user.update({ where: { username }, data: { bio: bio || null } })
+      return NextResponse.json({ ok: true, bio })
+    }
+    if (!name) {
+      return NextResponse.json({ error: 'Your name cannot be empty.' }, { status: 400 })
     }
 
     // Database-backed accounts carry the name on their User row. Local-only

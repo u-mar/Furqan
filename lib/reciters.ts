@@ -1089,9 +1089,35 @@ const TIMED_SURAH_RECITERS: Record<string, number> = {
 /**
  * The same for reciters MP3Quran keeps timings for (its ayat_timing endpoint), keyed to the id of
  * the recording there. Only Hafs 'an 'Asim: the other narrations number their ayat differently.
+ * Each was checked to be the very file this app plays (same size, surahs 1 and 112) with timings
+ * for every ayah of all 114 surahs (November 2026). Left out: Ali Al-Huthaifi (id 74), whose
+ * timings run one ayah behind in every surah. Al-Juhani's An-Nisa stops at 165, so that one surah
+ * is treated as untimed (app/api/ayah/route.ts).
  */
 const MP3QURAN_TIMED_RECITERS: Record<string, number> = {
   soufi: 258,
+  johany: 62,
+  balilah: 217,
+  yasser_dosari: 92,
+  twfeeq: 17,
+  ayyub: 109,
+  akdar: 1,
+  qahtani: 21,
+  aloosi: 225,
+  budair: 43,
+  a_ahmed: 55,
+  maher_mujawwad: 133,
+  majed_zamil: 139,
+  ahmed_amer: 203,
+  raad_kurdi: 221,
+  abdullah_khalaf: 244,
+  dawood_hamza: 25,
+  ibrahim_asiri: 3,
+  saleh_alshamrani: 300,
+  saleh_habdan: 42,
+  abdullah_khayyat: 61,
+  ali_jaber: 76,
+  idris_abkar: 12,
 }
 
 /**
@@ -1103,6 +1129,36 @@ const BUNDLED_TIMED_RECITERS = new Set(['hadi_toure'])
 export type TimedSurahSource =
   | { source: 'quran.com' | 'mp3quran'; id: number }
   | { source: 'local'; id: string }
+
+/**
+ * Listen's own recordings MP3Quran keeps ayah timings for, beyond the ones above: the whole-surah
+ * file Listen plays is the timed one (same size, surahs 1 and 112), though Read plays these
+ * reciters from other files (ayah by ayah, or Quran.com's recording with Quran.com's timings).
+ * Every surah was checked (November 2026); the few with an ayah missing or extra (Husary's
+ * Al-Fatihah, Minshawi's At-Tawbah, four of Shuraim's) are refused by app/api/ayah/route.ts.
+ */
+const LISTEN_MP3QURAN_TIMINGS: Record<string, number> = {
+  husary: 118,
+  minshawi: 112,
+  sudais: 54,
+  ghamadi: 30,
+  shatri: 4,
+  qatami: 86,
+  shuraim: 31,
+  ajmi: 5,
+  hani: 89,
+  bukhatir: 46,
+  sahl_yassin: 32,
+  fares_abbad: 81,
+}
+
+/** Where the ayah timings for the recording Listen plays come from (Video mode), or null when there are none. */
+export function listenTimingSource(reciter: Reciter): TimedSurahSource | null {
+  const mp3quran = MP3QURAN_TIMED_RECITERS[reciter.id] ?? LISTEN_MP3QURAN_TIMINGS[reciter.id]
+  if (mp3quran !== undefined) return { source: 'mp3quran', id: mp3quran }
+  if (BUNDLED_TIMED_RECITERS.has(reciter.id)) return { source: 'local', id: reciter.id }
+  return null
+}
 
 /** Where this reciter's ayah timings come from, or null when there are none. */
 export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {

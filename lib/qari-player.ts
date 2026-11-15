@@ -102,6 +102,9 @@ function ensureAudio(): HTMLAudioElement {
   el.playbackRate = rate
   // Needed for the space mixer to read the samples.
   el.crossOrigin = 'anonymous'
+  // A recitation plays again from the start when it ends, as a short video loops; the feed never
+  // moves on by itself. The next one is a swipe away (or the next button, which still skips).
+  el.loop = true
   el.addEventListener('playing', () => emit({ status: 'playing' }))
   el.addEventListener('waiting', () => emit({ status: 'loading' }))
   el.addEventListener('pause', () => {
@@ -114,9 +117,8 @@ function ensureAudio(): HTMLAudioElement {
       duration: finite(el.duration) || snapshot.current?.durationSec || 0,
     })
   })
-  el.addEventListener('ended', () => {
-    if (!playNext()) emit({ status: 'paused', position: 0 })
-  })
+  // Only if looping is ever turned off: then it stops at the end, at the start again.
+  el.addEventListener('ended', () => emit({ status: 'paused', position: 0 }))
   el.addEventListener('error', () => {
     if (el.src) fail(tr('That recitation could not be played.'))
   })

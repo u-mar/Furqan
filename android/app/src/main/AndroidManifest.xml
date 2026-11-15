@@ -52,6 +52,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- Listen and Nature mode playing on with the phone locked (NabaPlaybackService), with a
+             "Now playing" notification to pause or stop them. -->
+        <service
+            android:name=".NabaPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -78,6 +85,11 @@
          from the Prayer screen), and its alarms set again after the phone restarts. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- A recitation or nature sounds playing on with the phone locked: a media-playback
+         foreground service, and the phone kept awake for the stream while it plays. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Voice search uses the phone's speech recognition; Android 11+ only lets the app see it when asked for here. -->
     <queries>

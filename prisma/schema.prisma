@@ -23,6 +23,8 @@ model User {
   /// reset is sent; for a Google account, the address Google confirmed.
   /// Uniqueness is guarded in code, like `googleId`.
   email       String?
+  /// A line or two about themselves, shown on their Qari profile. Theirs to write and clear.
+  bio         String?
   /// `scrypt$<salt>$<hash>` of the password, for accounts made with an email.
   passwordHash String?
   /// SHA-256 of the one-time token in the last "reset your password" email,

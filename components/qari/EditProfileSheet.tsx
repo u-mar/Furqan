@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, Trash2, X } from 'lucide-react'
 import QariAvatar, { removeAvatar, uploadAvatar } from '@/components/qari/QariAvatar'
-import { renameQari } from '@/lib/qari'
+import { renameQari, saveQariBio } from '@/lib/qari'
 import { renameLocalUser, setSignedInUser, type AppUser } from '@/lib/auth'
 import { tr, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
@@ -14,8 +14,10 @@ interface EditProfileSheetProps {
   /** Bumped whenever the picture changes, to defeat the image cache. */
   avatarVersion?: number
   hasAvatar: boolean
+  /** The bio as it stands. */
+  bio: string
   onClose: () => void
-  onSaved: (changes: { name?: string; avatarChanged?: boolean }) => void
+  onSaved: (changes: { name?: string; bio?: string; avatarChanged?: boolean }) => void
   onNotice: (message: string) => void
 }
 
@@ -29,6 +31,7 @@ export default function EditProfileSheet({
   viewer,
   avatarVersion,
   hasAvatar,
+  bio,
   onClose,
   onSaved,
   onNotice,
@@ -36,6 +39,10 @@ export default function EditProfileSheet({
   const t = useT()
   useCloseOnBack(open, onClose)
   const [name, setName] = useState(viewer.name)
+  const [about, setAbout] = useState(bio)
+  useEffect(() => {
+    if (open) setAbout(bio)
+  }, [open, bio])
   const [saving, setSaving] = useState(false)
   const [busyPhoto, setBusyPhoto] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -80,13 +87,20 @@ export default function EditProfileSheet({
       onNotice(tr('Your name cannot be empty.'))
       return
     }
-    if (next === viewer.name) {
+    const nextBio = about.replace(/\s+/g, ' ').trim()
+    if (next === viewer.name && nextBio === bio) {
       onClose()
       return
     }
 
     setSaving(true)
     try {
+      if (nextBio !== bio) onSaved({ bio: await saveQariBio(viewer, nextBio) })
+      if (next === viewer.name) {
+        onNotice(tr('Profile updated.'))
+        onClose()
+        return
+      }
       const saved = await renameQari(viewer, next)
       // Local-only accounts keep their own record of the name as well.
       if (viewer.id.startsWith('local_')) renameLocalUser(viewer.username, saved)
@@ -99,7 +113,7 @@ export default function EditProfileSheet({
     } finally {
       setSaving(false)
     }
-  }, [name, onClose, onNotice, onSaved, viewer])
+  }, [about, bio, name, onClose, onNotice, onSaved, viewer])
 
   if (!open) return null
 
@@ -209,7 +223,22 @@ export default function EditProfileSheet({
         <p className="mt-2 text-[11px] leading-relaxed text-[var(--home-muted)]">
           {t('Shown on everything you publish. Your handle @{username} stays the same — links to your profile keep working.', { username: viewer.username })}</p>
 
-        <div className="mt-5 flex gap-2">
+        <label
+          htmlFor="qari-bio"
+          className="mb-1.5 mt-5 block text-[10px] font-semibold uppercase tracking-wider text-[var(--home-muted)]"
+        >
+          {t('Bio')}</label>
+        <textarea
+          id="qari-bio"
+          rows={2}
+          value={about}
+          onChange={(e) => setAbout(e.target.value.slice(0, 120))}
+          placeholder={t('A line about you and your recitation')}
+          className="ed-focus block w-full resize-none rounded-xl border border-[var(--home-rule-strong)] bg-[var(--app-surface)] px-3 py-2.5 text-sm text-[var(--home-heading)] placeholder:text-[var(--home-muted)]"
+        />
+        <p className="mt-1 text-right text-[11px] tabular-nums text-[var(--home-muted)]">{about.length}/120</p>
+
+        <div className="mt-4 flex gap-2">
           <button
             type="button"
             onClick={onClose}

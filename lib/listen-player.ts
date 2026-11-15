@@ -70,6 +70,25 @@ const progressListeners = new Set<() => void>()
 
 /** Bumped by every new play or stop, so a slow load cannot overwrite a newer one. */
 let session = 0
+
+/*
+ * Picking up after the connection drops. A surah is one long file streamed bit by bit (Al-Baqarah
+ * is over 100 MB), so on a phone the stream can break minutes in: a network change, a weak signal,
+ * the phone saving power. The element then fires `error`, or sits on `waiting` for good. Rather
+ * than stop with "could not be played", the surah is loaded again where it was, a few times with
+ * a growing wait, and after the connection comes back if it is gone.
+ */
+const RECOVERY_WAITS_MS = [1000, 3000, 8000, 15000]
+/** Buffering this long with nothing playing counts as stuck. */
+const STALL_MS = 20_000
+/** Offline this long while picking up, and it stops waiting. */
+const OFFLINE_WAIT_MS = 90_000
+/** Playing this long after picking up, and the tries start again from the first. */
+const RECOVERED_AFTER_S = 60
+let recoveries = 0
+let recoveredAt = 0
+let recovering = false
+let stallTimer: number | null = null
 /** True while a new source is loading, when the element's own pause is expected. */
 let switching = false
 let wired = false
@@ -128,6 +147,7 @@ function element(): HTMLAudioElement {
   wired = true
 
   el.addEventListener('playing', () => {
+    clearStallTimer()
     if (!state.surah || switching) return
     setState({ status: 'playing', error: null })
     reportPlayback('playing')
@@ -135,8 +155,11 @@ function element(): HTMLAudioElement {
   })
   el.addEventListener('waiting', () => {
     if (state.surah && state.status === 'playing') setState({ status: 'loading' })
+    watchForStall()
   })
+  el.addEventListener('stalled', watchForStall)
   el.addEventListener('pause', () => {
+    clearStallTimer()
     if (!state.surah || switching || el.ended) return
     saveLastListen(true)
     setState({ status: 'paused' })
@@ -145,6 +168,8 @@ function element(): HTMLAudioElement {
   })
   el.addEventListener('timeupdate', () => {
     if (!state.surah || switching) return
+    if (!el.paused && el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) clearStallTimer()
+    if (recoveries && el.currentTime - recoveredAt > RECOVERED_AFTER_S) recoveries = 0
     setProgress({ position: el.currentTime, duration: finite(el.duration) || progress.duration })
     saveLastListen()
     checkSleep()
@@ -158,9 +183,72 @@ function element(): HTMLAudioElement {
   el.addEventListener('ended', () => void onEnded())
   el.addEventListener('error', () => {
     if (!state.surah || switching || !el.getAttribute('src')) return
-    setState({ status: 'paused', error: tr('This surah could not be played.') })
+    // A surah that never started is a file that cannot be played; one cut off midway is picked up again.
+    if (progress.position > 0 || el.currentTime > 0) void recover()
+    else setState({ status: 'paused', error: tr('This surah could not be played.') })
   })
   return el
+}
+
+function clearStallTimer() {
+  if (stallTimer !== null) window.clearTimeout(stallTimer)
+  stallTimer = null
+}
+
+/** Buffering: if nothing plays for a long while (and the person has not paused), load it again where it was. */
+function watchForStall() {
+  if (stallTimer !== null || !state.surah) return
+  stallTimer = window.setTimeout(() => {
+    stallTimer = null
+    const el = peekListenAudio()
+    if (!el || !state.surah || switching || el.paused || el.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return
+    void recover()
+  }, STALL_MS)
+}
+
+/** Resolves once there is a connection, or false after `ms` without one. */
+function onlineWithin(ms: number): Promise<boolean> {
+  if (typeof navigator === 'undefined' || navigator.onLine) return Promise.resolve(true)
+  return new Promise((resolve) => {
+    const done = (ok: boolean) => {
+      window.removeEventListener('online', back)
+      window.clearTimeout(timer)
+      resolve(ok)
+    }
+    const back = () => done(true)
+    const timer = window.setTimeout(() => done(false), ms)
+    window.addEventListener('online', back)
+  })
+}
+
+/** The stream broke or stuck midway: load the surah again from where it was, a few times before giving up. */
+async function recover(): Promise<void> {
+  const { surah, reciterId } = state
+  if (recovering || !surah || !reciterId) return
+  if (recoveries >= RECOVERY_WAITS_MS.length) {
+    recoveries = 0
+    clearStallTimer()
+    setState({ status: 'paused', error: tr('This surah could not be played.') })
+    return
+  }
+  const el = peekListenAudio()
+  const at = Math.max(0, (el && el.currentTime > 0 ? el.currentTime : progress.position) - 1)
+  const mine = session
+  recovering = true
+  setState({ status: 'loading', error: null })
+  const wait = RECOVERY_WAITS_MS[recoveries]
+  recoveries += 1
+  await new Promise((resolve) => window.setTimeout(resolve, wait))
+  const online = await onlineWithin(OFFLINE_WAIT_MS)
+  recovering = false
+  // Paused, stopped or moved on to something else meanwhile.
+  if (mine !== session || state.surah?.id !== surah.id || state.reciterId !== reciterId || state.status !== 'loading') return
+  if (!online && !isSurahAudioDownloaded(reciterId, surah.id)) {
+    setState({ status: 'paused', error: tr('You are offline, and this surah is not downloaded.') })
+    return
+  }
+  recoveredAt = at
+  await playSurah(surah, reciterId, at, { pickingUp: true })
 }
 
 function unload(el: HTMLAudioElement) {
@@ -170,17 +258,29 @@ function unload(el: HTMLAudioElement) {
   clearListenObjectUrl()
 }
 
-/** Start a surah, optionally from a point in it (switching narration keeps your place). */
-export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0): Promise<void> {
-  // A surah is listened to on its own: the nature sounds stop.
-  stopNature()
+/**
+ * Start a surah, optionally from a point in it (switching narration keeps your place).
+ * `pickingUp` is the same surah loaded again after the stream broke: nothing else changes.
+ */
+export async function playSurah(
+  surah: Chapter,
+  reciterId: string,
+  resumeAt = 0,
+  { pickingUp = false }: { pickingUp?: boolean } = {}
+): Promise<void> {
+  clearStallTimer()
+  if (!pickingUp) {
+    recoveries = 0
+    // A surah is listened to on its own: the nature sounds stop.
+    stopNature()
+  }
   const el = element()
   const mine = ++session
   switching = true
   setState({ surah, reciterId, status: 'loading', error: null })
-  setProgress({ position: resumeAt, duration: 0 })
+  setProgress({ position: resumeAt, duration: pickingUp ? progress.duration : 0 })
   saveLastListen(true)
-  describe(surah, reciterId)
+  if (!pickingUp) describe(surah, reciterId)
 
   const url = await getPlayableListenSurahAudioUrl(reciterId, surah.id)
   if (mine !== session) return
@@ -211,12 +311,19 @@ export async function playSurah(surah: Chapter, reciterId: string, resumeAt = 0)
       if (el.paused) setState({ status: 'paused' })
       return
     }
+    // Picking up and the connection is still not back: try again, until the tries run out.
+    if (pickingUp) {
+      void recover()
+      return
+    }
     setState({ status: 'paused', error: tr('This surah could not be played.') })
   }
 }
 
 export function pause(): void {
   peekListenAudio()?.pause()
+  // Waiting to pick up a broken stream: the element is already still, so say paused here.
+  if (recovering && state.status === 'loading') setState({ status: 'paused' })
 }
 
 export function resume(): void {
@@ -271,6 +378,8 @@ export function stopListening(): void {
   if (!state.surah && !state.sleep && !el?.getAttribute('src')) return
   session++
   switching = false
+  clearStallTimer()
+  recoveries = 0
   if (el) {
     unload(el)
     restoreVolume(el)

@@ -24,6 +24,8 @@ export interface FcmMessage {
   url: string
   /** A newer message with the same tag replaces the older one on the phone. */
   tag?: string
+  /** A picture shown on the notification (the person's profile picture), as a full https address. */
+  image?: string
 }
 
 function serviceAccount(): ServiceAccount | null {
@@ -88,7 +90,11 @@ export async function sendFcm(token: string, message: FcmMessage): Promise<'sent
         android: {
           ttl: '86400s',
           // The "Qari and halaqa" channel the app makes (components/NativeNotifications.tsx).
-          notification: { channel_id: 'activity', ...(message.tag ? { tag: message.tag } : {}) },
+          notification: {
+            channel_id: 'activity',
+            ...(message.tag ? { tag: message.tag } : {}),
+            ...(message.image ? { image: message.image } : {}),
+          },
         },
       },
     }),

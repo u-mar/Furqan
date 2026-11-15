@@ -1042,7 +1042,8 @@ export default function SwipeFeed({
 
   useEffect(() => () => window.clearTimeout(settleTimer.current), [])
 
-  // When the feed moves on by itself (a recitation ended), follow it.
+  // When the recitation is changed from elsewhere (the next button on the lock screen), follow it.
+  // An ending one never moves it on: it plays again (lib/qari-player.ts).
   const currentId = player.current?.id ?? null
   // Only a change after opening counts: what was playing when this opened is not a reason to move.
   const seenId = useRef(currentId)

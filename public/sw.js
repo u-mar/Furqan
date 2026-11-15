@@ -268,7 +268,8 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(message.title, {
       body: message.body,
       tag: message.tag,
-      icon: '/icons/icon-192',
+      // The person's picture when the message carries one, as on a social app; else the app's own mark.
+      icon: message.image || '/icons/icon-192',
       badge: '/icons/badge-96',
       data: { url: message.url },
     })

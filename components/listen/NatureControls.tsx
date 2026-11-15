@@ -170,7 +170,7 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
       onClose={onClose}
     >
       <div className="nature-accent">
-        <div className="grid grid-cols-5 gap-x-1 gap-y-3.5">
+        <div className="grid grid-cols-2 gap-2">
           {NATURE_SOUNDS.map((sound) => {
             const Icon = ICONS[sound.id]
             const on = sounds.includes(sound.id)
@@ -188,9 +188,15 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
               >
                 <span className="nature-tile__dot" aria-hidden>
                   <Icon className="h-5 w-5" strokeWidth={1.8} />
-                  {on && playing ? <span className="nature-tile__live" /> : null}
                 </span>
                 <span className="nature-tile__label">{natureName(sound.id)}</span>
+                {on ? (
+                  <span className={`listen-eq ms-auto${playing ? '' : ' listen-eq--paused'}`} aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : null}
               </button>
             )
           })}

@@ -41,6 +41,8 @@ export interface PushMessage {
   url: string
   /** A newer message with the same tag replaces the older one on the phone. */
   tag?: string
+  /** A picture for the notification (who it is from), as a full https address. */
+  image?: string
 }
 
 interface Subscribed {

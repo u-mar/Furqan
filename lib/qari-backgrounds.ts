@@ -180,7 +180,12 @@ const RETIRED_MOTION_IDS: ReadonlySet<string> = new Set([
   'neon-wet-street',
   'lakeside-tree',
   'lake-through-branches',
+  // Taken out at the owner's request (November 2026).
+  'snow-field-sunset',
 ])
+
+/** Verse-card photos Qari no longer offers (Share ayah keeps them); still drawn for recitations already posted on them. */
+const PHOTOS_NOT_IN_QARI: ReadonlySet<string> = new Set(['snow-field-sunset'])
 
 /**
  * Looping clips, hosted on Cloudinary (see public/share-bg-video's absence: these never ship in the app bundle).
@@ -646,7 +651,7 @@ export const VIDEO_BACKGROUNDS: VideoBackground[] = [
     return { id, label, url, thumb: url, group: 'Landscapes' }
   }),
   // Everything the verse cards use, too.
-  ...SHARE_BACKGROUNDS.map(photoBackground),
+  ...SHARE_BACKGROUNDS.filter((b) => !PHOTOS_NOT_IN_QARI.has(b.id)).map(photoBackground),
 ]
 
 /**
@@ -667,6 +672,7 @@ function photoBackground(b: ShareBackground): VideoBackground {
 /** Photos and clips no longer offered, still drawn for the recitations already posted on them. */
 const RETIRED_VIDEO_BACKGROUNDS: VideoBackground[] = [
   ...RETIRED_SHARE_BACKGROUNDS.map(photoBackground),
+  ...SHARE_BACKGROUNDS.filter((b) => PHOTOS_NOT_IN_QARI.has(b.id)).map(photoBackground),
   ...ALL_MOTION_BACKGROUNDS.filter(isRetiredMotion),
 ]
 
@@ -688,7 +694,6 @@ export function isVideoBackgroundId(id: unknown): id is string {
 
 /** The strip under the preview when posting: a quick handful across every kind, before "More". */
 export const FEATURED_RECITATION_BACKGROUND_IDS = [
-  'motion-snow-field-sunset',
   'motion-falls-and-flowers',
   'motion-pier-lights',
   'motion-rays-over-fields',

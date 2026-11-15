@@ -46,6 +46,7 @@ import {
 } from '@/lib/prayer'
 import { tapFeedback } from '@/lib/haptics'
 import { tr, useLanguage, useT } from '@/lib/i18n'
+import { useGreenAccent } from '@/hooks/useGreenAccent'
 
 /** Each prayer's icon — plain outline, one colour, not a small illustration. */
 const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
@@ -85,6 +86,7 @@ type Sheet = 'method' | null
  */
 export default function PrayerPage() {
   const t = useT()
+  useGreenAccent()
   const language = useLanguage()
   const { place, settings, ready } = usePrayerState()
   const clock = useNow(1000)

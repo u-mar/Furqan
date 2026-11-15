@@ -61,8 +61,9 @@ export default function FollowButton({
       disabled={busy}
       aria-pressed={on}
       className={cn(
-        'qari-press ed-focus flex shrink-0 items-center justify-center rounded-full font-semibold transition-colors',
-        size === 'lg' ? 'h-12 flex-1 gap-2 text-[14.5px]' : 'h-[34px] gap-1.5 text-[13px]',
+        'qari-press ed-focus flex shrink-0 items-center justify-center font-semibold transition-colors',
+        // On a profile it sits beside Share profile, the same shape and height.
+        size === 'lg' ? 'h-10 flex-1 gap-2 rounded-xl text-[14.5px]' : 'h-[34px] gap-1.5 rounded-full text-[13px]',
         size === 'sm' && (on ? 'pl-2.5 pr-3' : 'px-[15px]'),
         on ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)]' : 'ed-ink'
       )}

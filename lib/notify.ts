@@ -1,6 +1,14 @@
 import { prisma } from '@/lib/prisma'
 import { sendPush } from '@/lib/push'
 
+/** Where the site lives, for the picture a notification carries (phones fetch it themselves). */
+const SITE = (process.env.APP_URL || 'https://qurannaba.com').replace(/\/$/, '')
+
+/** A qari's profile picture, as a notification shows it beside their name. */
+function avatarOf(username: string): string {
+  return `${SITE}/api/qari/avatar/${encodeURIComponent(username)}`
+}
+
 /** Worth telling someone about — small numbers as much as round ones, since most recitations never reach the big ones. */
 export const PLAY_MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
 export const LIKE_MILESTONES = [5, 10, 25, 50, 100, 250, 500, 1000]
@@ -53,8 +61,9 @@ export async function notifyLike(
       },
     })
     await sendPush(recipient, {
-      title: `${actor.name} liked your recitation`,
-      body: recitation.title ? `“${recitation.title}”` : 'Open Qari to hear who.',
+      title: actor.name,
+      body: recitation.title ? `liked your recitation “${recitation.title}”` : 'liked your recitation',
+      image: avatarOf(actor.username),
       url: '/qari/notifications',
       tag: `like-${recitation.id}`,
     })
@@ -78,8 +87,9 @@ export async function notifyFollow(targetUsername: string, actorUserId: string):
       data: { recipientUsername: recipient, type: 'follow', actorUsername: actor.username, actorName: actor.name },
     })
     await sendPush(recipient, {
-      title: `${actor.name} started following you`,
-      body: 'Open Qari to see your new follower.',
+      title: actor.name,
+      body: 'started following you',
+      image: avatarOf(actor.username),
       url: '/qari/notifications',
       tag: `follow-${actor.username}`,
     })
@@ -120,8 +130,8 @@ export async function notifyMilestone(
     })
     const label = recitation.title ? `“${recitation.title}”` : 'Your recitation'
     await sendPush(recipient, {
-      title: kind === 'plays' ? `${label} just passed ${count} plays` : `${label} just passed ${count} likes`,
-      body: 'Open Qari to see it.',
+      title: label,
+      body: kind === 'plays' ? `just passed ${count} plays` : `just passed ${count} likes`,
       url: '/qari/notifications',
       tag: `milestone-${recitation.id}-${kind}-${count}`,
     })

@@ -13,6 +13,7 @@ import NativeBars from '@/components/NativeBars'
 import { SITE_URL, openGraphFor } from '@/lib/share-preview'
 import NativeBack from '@/components/NativeBack'
 import NativeNotifications from '@/components/NativeNotifications'
+import NativePlayback from '@/components/NativePlayback'
 import NativeShare from '@/components/NativeShare'
 import PwaRegister from '@/components/PwaRegister'
 import SettingsProvider from '@/components/settings/SettingsProvider'
@@ -123,6 +124,7 @@ export default function RootLayout({
           <NativeBars />
           <NativeShare />
           <NativeNotifications />
+          <NativePlayback />
           <NativeBack />
           <AccountPromptHost />
           <ToastHost />

@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import { Moon } from 'lucide-react'
-import Switch from '@/components/qari/Switch'
-import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useListenProgress, useListenState } from '@/hooks/useListen'
 import { useNow } from '@/hooks/useNow'
@@ -12,7 +10,6 @@ import {
   SLEEP_CHOICES,
   endSleep,
   formatMinutesLeft,
-  lastSleepChoice,
   sleepChoiceLabel,
   sleepMsLeft,
   startSleep,
@@ -61,48 +58,68 @@ export function SleepSheet({ open, onClose }: { open: boolean; onClose: () => vo
     closing.current = window.setTimeout(onClose, 320)
   }
 
+  const minutes = SLEEP_CHOICES.filter((choice): choice is Exclude<SleepChoice, 'surah'> => choice !== 'surah')
+
   return (
     <SettingsSheet open={open} title={t('Sleep mode')} description={t('Fall asleep to the Quran. It stops by itself.')} onClose={onClose}>
-      <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]">
-        <label className="set-row cursor-pointer" style={{ paddingBlock: 9 }}>
-          <span className="set-row__icon" aria-hidden>
-            <Moon className="h-[17px] w-[17px]" strokeWidth={1.9} />
+      <div className="nature-accent">
+        {/* What it is doing now: the time left, large, with the way to turn it off beside it. */}
+        <div className="sleep-status" data-on={sleep ? 'true' : 'false'}>
+          <span className="sleep-status__moon" aria-hidden>
+            <Moon className="h-6 w-6" strokeWidth={1.8} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-medium">{t('Sleep mode')}</span>
-            <span className="mt-px block text-[0.78125rem] tabular-nums text-[var(--home-muted)]">
-              {sleep ? <SleepLeft prefix={t('Stops in ')} fallback={t('Stops at the end of this surah')} /> : t('Off')}
+            <span className="block text-[1.375rem] font-semibold leading-tight tabular-nums text-[var(--home-heading)]">
+              {sleep ? <SleepLeft fallback={t('End of this surah')} /> : t('Off')}
+            </span>
+            <span className="mt-0.5 block text-[0.8125rem] text-[var(--home-muted)]">
+              {sleep ? t('until the recitation stops') : t('Choose when it stops')}
             </span>
           </span>
-          <Switch
-            checked={Boolean(sleep)}
-            onChange={(on) => (on ? turnOnSleep(lastSleepChoice()) : turnOffSleep())}
-            label={t('Sleep mode')}
-          />
-        </label>
-      </div>
-
-      <h3 className="home-label mx-1 mb-2 mt-[18px]">{t('Stop after')}</h3>
-      <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Stop after')}>
-        {SLEEP_CHOICES.map((choice, i) => (
-          <div key={String(choice)}>
-            {i ? <div className="set-row__divider" style={{ marginLeft: 14 }} aria-hidden /> : null}
+          {sleep ? (
             <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                turnOffSleep()
+              }}
+              className="fx-press ed-focus h-10 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] px-4 text-[0.875rem] font-semibold text-[var(--home-heading)]"
+            >
+              {t('Turn off')}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label={t('Stop after')}>
+          {minutes.map((choice) => (
+            <button
+              key={choice}
               type="button"
               role="radio"
               aria-checked={sleep?.choice === choice}
-              disabled={choice === 'surah' && !surah}
+              aria-label={sleepChoiceLabel(choice)}
               onClick={() => choose(choice)}
-              className="set-row"
+              className="sleep-chip ed-focus"
             >
-              <span className="set-row__label">{sleepChoiceLabel(choice)}</span>
-              <Radio on={sleep?.choice === choice} />
+              <span className="text-[1.5rem] font-semibold leading-none tabular-nums">{choice}</span>
+              <span className="mt-1 text-[0.75rem] font-medium opacity-70">{t('min')}</span>
             </button>
-          </div>
-        ))}
+          ))}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={sleep?.choice === 'surah'}
+            disabled={!surah}
+            onClick={() => choose('surah')}
+            className="sleep-chip sleep-chip--wide ed-focus col-span-4"
+          >
+            <span className="text-[0.9375rem] font-semibold">{sleepChoiceLabel('surah')}</span>
+          </button>
+        </div>
+        <p className="mx-1 mt-3 text-[0.78125rem] leading-relaxed text-[var(--home-muted)]">
+          {t('When a surah ends, the next one plays until the time is up. Then sleep mode turns itself off.')}
+        </p>
       </div>
-      <p className="mx-1 mt-2.5 text-[0.78125rem] leading-relaxed text-[var(--home-muted)]">
-        {t('When a surah ends, the next one plays until the time is up. Then sleep mode turns itself off.')}</p>
     </SettingsSheet>
   )
 }

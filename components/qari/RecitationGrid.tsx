@@ -12,10 +12,19 @@ import { useT } from '@/lib/i18n'
  * each on its background, with its title and how often it was played. A tap
  * opens it full screen, to swipe on through the rest from there.
  */
-export default function RecitationGrid({ items, onOpen }: { items: Recitation[]; onOpen: (id: string) => void }) {
+export default function RecitationGrid({
+  items,
+  onOpen,
+  flush = false,
+}: {
+  items: Recitation[]
+  onOpen: (id: string) => void
+  /** Edge to edge with hairline gaps and square-cornered tiles, as a profile shows them. */
+  flush?: boolean
+}) {
   const t = useT()
   return (
-    <div className="grid grid-cols-3 gap-1.5">
+    <div className={flush ? '-mx-4 grid grid-cols-3 gap-0.5' : 'grid grid-cols-3 gap-1.5'}>
       {items.map((r) => {
         const card = r.kind === 'ayah'
         return (
@@ -27,7 +36,7 @@ export default function RecitationGrid({ items, onOpen }: { items: Recitation[];
               onOpen(r.id)
             }}
             aria-label={card ? t('Ayah card for {verseKey}', { verseKey: r.verseKey ?? '' }) : r.title}
-            className="qari-press ed-focus relative aspect-[9/16] overflow-hidden rounded-xl bg-black"
+            className={`qari-press ed-focus relative overflow-hidden bg-black ${flush ? 'aspect-[3/4]' : 'aspect-[9/16] rounded-xl'}`}
           >
             {card && r.imageUrl ? (
               <img src={r.imageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />

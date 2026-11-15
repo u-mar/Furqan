@@ -8,7 +8,6 @@ import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
 import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
-import QariViewToggle from '@/components/qari/QariViewToggle'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import RecitationGrid from '@/components/qari/RecitationGrid'
 import SwipeFeed from '@/components/qari/SwipeFeed'
@@ -20,13 +19,11 @@ import {
 } from '@/components/qari/QariShell'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
-import { fetchFeed, fetchFollowState, peekFeed, type Recitation } from '@/lib/qari'
+import { fetchFeed, fetchFollowState, fetchQariBio, peekFeed, type Recitation } from '@/lib/qari'
 import { onPlayerError } from '@/lib/qari-player'
-import { useQariView } from '@/lib/qari-view'
 import { dismissUpload, useUploads } from '@/lib/qari-upload'
 import { blockUser, unblockUser, useBlockedUsers } from '@/lib/qari-blocks'
 import { askToSignIn } from '@/lib/account-prompt'
-import { useIsAdmin } from '@/hooks/useIsAdmin'
 import { copyText } from '@/lib/qari-share-media'
 import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
@@ -42,7 +39,6 @@ export default function QariProfile() {
 
   // Usernames are stored lower-case; a link may arrive with any casing.
   const isMe = viewer?.username.toLowerCase() === username.toLowerCase()
-  const isAdmin = useIsAdmin()
   const blockedUsers = useBlockedUsers(viewer)
   const isBlocked = !isMe && blockedUsers.has(username.toLowerCase())
 
@@ -136,7 +132,21 @@ export default function QariProfile() {
     if (tab === 'favourites') setFavourites(null)
   })
 
-  const handleSaved = useCallback((changes: { name?: string; avatarChanged?: boolean }) => {
+  // The line they wrote about themselves.
+  const [bio, setBio] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    setBio('')
+    void fetchQariBio(username).then((text) => {
+      if (!cancelled) setBio(text)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [username])
+
+  const handleSaved = useCallback((changes: { name?: string; bio?: string; avatarChanged?: boolean }) => {
+    if (changes.bio !== undefined) setBio(changes.bio)
     if (changes.name) {
       const saved = changes.name
       setNameOverride(saved)
@@ -188,9 +198,8 @@ export default function QariProfile() {
   const shown = tab === 'recitations' ? publicRecitations : tab === 'private' ? privateRecitations : favourites
   const list = useMemo(() => shown?.filter((r) => r.kind !== 'ayah') ?? null, [shown])
   const ayahCards = useMemo(() => shown?.filter((r) => r.kind === 'ayah') ?? [], [shown])
-  // Audio or video, as on Qari's front page: a list to listen to, or a grid of videos.
-  const [view] = useQariView()
-  const videoView = view === 'swipe'
+  // Always the grid of videos, as on TikTok: a profile has no audio-list switch.
+  const videoView = true
   // Opened full screen from a grid tile or an ayah card, swiping on through the rest.
   const [cardsOpen, setCardsOpen] = useState<{ items: Recitation[]; startId: string; autoplay: boolean } | null>(null)
 
@@ -237,12 +246,7 @@ export default function QariProfile() {
         { id: 'private', label: t('Private') },
         { id: 'favourites', label: t('Favourites') },
       ]
-    : isAdmin
-      ? [
-          { id: 'recitations', label: t('Recitations') },
-          { id: 'private', label: t('Private') },
-        ]
-      : [{ id: 'recitations', label: t('Recitations') }]
+    : [{ id: 'recitations', label: t('Recitations') }]
 
   if (cardsOpen) {
     return (
@@ -286,7 +290,7 @@ export default function QariProfile() {
   }
 
   return (
-    <QariScreen>
+    <QariScreen recordFab={false}>
       <PullIndicator pull={pull} refreshing={refreshing} />
 
       <ProfileTopBar
@@ -310,6 +314,7 @@ export default function QariProfile() {
             loved: recitations === null ? null : totals.loved,
           }}
           sheikhIds={sheikhIds}
+          bio={bio}
           onShare={() => void handleShare()}
           onEditPicture={() => setEditOpen(true)}
           actions={
@@ -320,7 +325,7 @@ export default function QariProfile() {
                   tapFeedback()
                   setEditOpen(true)
                 }}
-                className="qari-press ed-focus flex h-11 w-full items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_8%,transparent)] text-[14.5px] font-semibold text-[var(--home-heading)]"
+                className="qari-press ed-focus flex h-10 w-full items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--home-heading)_8%,transparent)] text-[14.5px] font-semibold text-[var(--home-heading)]"
               >
                 {t('Edit profile')}</button>
             ) : isBlocked ? null : (
@@ -363,8 +368,8 @@ export default function QariProfile() {
       ) : null}
 
       {/* Tabs and play all */}
-      <div className={cn('mt-6 flex items-center justify-between border-b border-[var(--home-rule)]', isBlocked && 'hidden')}>
-        <div className="flex gap-6" role="tablist" aria-label={t('Profile sections')}>
+      <div className={cn('-mx-4 mt-5 flex items-center border-b border-[var(--home-rule)]', isBlocked && 'hidden')}>
+        <div className="flex min-w-0 flex-1" role="tablist" aria-label={t('Profile sections')}>
           {tabs.map(({ id, label }) => (
             <button
               key={id}
@@ -378,7 +383,7 @@ export default function QariProfile() {
                 setTab(id)
               }}
               className={cn(
-                'ed-focus relative flex h-11 items-center text-[14.5px] font-medium transition-colors',
+                'ed-focus relative flex h-11 flex-1 items-center justify-center text-[14.5px] font-medium transition-colors',
                 tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
               )}
             >
@@ -397,17 +402,16 @@ export default function QariProfile() {
               ) : null}
               <span
                 className={cn(
-                  'absolute inset-x-0 -bottom-px h-[2.5px] rounded-full bg-[var(--home-sage)] transition-opacity',
+                  'absolute -bottom-px left-1/2 h-[2.5px] w-11 -translate-x-1/2 rounded-full bg-[var(--home-heading)] transition-opacity',
                   tab === id ? 'opacity-100' : 'opacity-0'
                 )}
               />
             </button>
           ))}
         </div>
-        {shown && shown.length > 0 ? <QariViewToggle className="mb-1" /> : null}
       </div>
 
-      <div className={cn('mt-3', isBlocked && 'hidden')}>
+      <div className={cn(videoView && shown && shown.length > 0 ? 'mt-0.5' : 'mt-3', isBlocked && 'hidden')}>
         {tab === 'recitations' && myUploads.length > 0 ? (
           <div className={cn('flex flex-col gap-2.5', list && list.length > 0 && 'mb-2.5')}>
             {myUploads.map((upload) => (
@@ -428,7 +432,7 @@ export default function QariProfile() {
             action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
         ) : videoView && shown && shown.length > 0 ? (
-          <RecitationGrid items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
+          <RecitationGrid flush items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
         ) : list.length === 0 ? (
           (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 ? null : tab === 'favourites' ? (
             <EmptyState
@@ -489,6 +493,7 @@ export default function QariProfile() {
           viewer={viewer}
           avatarVersion={avatarVersion}
           hasAvatar={hasAvatar}
+          bio={bio}
           onClose={() => setEditOpen(false)}
           onSaved={handleSaved}
           onNotice={qariNotice}

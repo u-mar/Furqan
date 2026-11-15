@@ -3284,32 +3284,45 @@ html.dark .set-row--danger {
    Listen: the surah list, the player along the bottom and Now playing.
    ====================================================================== */
 
-/* Nature mode's sounds: a round icon with its name below, filled while chosen. */
+/* Nature mode's sounds: a card each, two across, filled while chosen. */
 .nature-tile {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  height: 3.5rem;
   align-items: center;
-  gap: 6px;
-  border-radius: 12px;
-  padding-block: 2px;
+  gap: 0.625rem;
+  border-radius: 1.125rem;
+  padding: 0 0.875rem 0 0.5rem;
+  background: color-mix(in srgb, var(--home-heading) 6%, transparent);
+  transition: background-color 0.18s ease, transform 0.12s ease;
 }
 
 .nature-tile__dot {
   position: relative;
   display: flex;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--home-heading) 7%, transparent);
+  background: color-mix(in srgb, var(--home-heading) 8%, transparent);
   color: var(--home-heading);
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
-.nature-tile:active .nature-tile__dot {
-  transform: scale(0.94);
+.nature-tile:active {
+  transform: scale(0.97);
+}
+
+.nature-tile[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--home-sage-deep) 22%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--home-sage-deep);
+}
+
+.nature-tile[aria-pressed='true'] .nature-tile__dot {
+  background: var(--home-sage-deep);
+  color: var(--app-bg);
 }
 
 /* Offline, and never kept on the phone: it cannot play until there is a connection. */
@@ -3318,8 +3331,10 @@ html.dark .set-row--danger {
   opacity: 0.4;
 }
 
-/* Nature mode stays green in the pure-black theme, where the accent elsewhere is blue. */
-html.dark.black .nature-accent {
+/* Nature mode and Prayer stay green in the pure-black theme, where the accent elsewhere is blue
+   (Prayer marks the whole page while it is open, so its sheets are green too: hooks/useGreenAccent.ts). */
+html.dark.black .nature-accent,
+html.dark.black.accent-green {
   --home-sage: #5cc4ab;
   --home-sage-deep: #3aa88f;
   --home-sage-dark: #9be0cd;
@@ -3372,16 +3387,73 @@ html.dark.black .nature-accent {
 }
 
 .nature-tile__label {
-  max-width: 100%;
-  font-size: 0.71875rem;
-  font-weight: 500;
-  line-height: 1.2;
-  text-align: center;
-  color: var(--home-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--home-heading);
 }
 
 .nature-tile[aria-pressed='true'] .nature-tile__label {
   color: var(--home-heading);
+}
+
+/* Sleep mode's sheet: what it is doing now, then when to stop as large buttons. */
+.sleep-status {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  border-radius: 1.25rem;
+  padding: 0.875rem 1rem;
+  background: color-mix(in srgb, var(--home-heading) 5%, transparent);
+}
+
+.sleep-status__moon {
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--home-heading) 8%, transparent);
+  color: var(--home-muted);
+}
+
+.sleep-status[data-on='true'] .sleep-status__moon {
+  background: var(--home-sage-deep);
+  color: var(--app-bg);
+}
+
+.sleep-chip {
+  display: flex;
+  height: 4.75rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.125rem;
+  background: color-mix(in srgb, var(--home-heading) 7%, transparent);
+  color: var(--home-heading);
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+
+.sleep-chip--wide {
+  height: 3.25rem;
+}
+
+.sleep-chip:active {
+  transform: scale(0.96);
+}
+
+.sleep-chip[aria-checked='true'] {
+  background: var(--home-sage-deep);
+  color: var(--app-bg);
+}
+
+.sleep-chip:disabled {
+  opacity: 0.4;
 }
 
 /* The bars beside the surah that is playing; they rest while paused. */
@@ -3488,6 +3560,63 @@ html.dark.black .nature-accent {
 }
 
 /* The seek bar: the played part filled, a thumb that grows while held. */
+/* Listen's Video mode (components/listen/VideoMode.tsx): on the clip, the shared parts turn white
+   and see-through, and the tab bar steps aside so the clip covers the page. */
+.listen-video {
+  --home-heading: #ffffff;
+  --home-muted: rgba(255, 255, 255, 0.72);
+  --home-card-bg: rgba(20, 20, 20, 0.38);
+  --home-lift-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  --home-track: rgba(255, 255, 255, 0.25);
+  --home-sage: #ffffff;
+  --home-sage-deep: #ffffff;
+  --home-sage-soft: rgba(255, 255, 255, 0.2);
+}
+
+.listen-video .listen-seek::-webkit-slider-runnable-track {
+  height: 4px;
+}
+
+.listen-video .listen-seek::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.listen-video .listen-seek::-moz-range-thumb {
+  background: #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+html.listen-video-on .bottom-nav {
+  visibility: hidden;
+}
+
+.listen-video__button {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: transparent;
+  color: #ffffff;
+  transition: transform 0.12s ease;
+}
+
+.listen-video__button.is-on {
+  background: #ffffff;
+  box-shadow: none;
+  color: #000000;
+}
+
+.listen-video__button:active {
+  transform: scale(0.94);
+}
+
 .listen-seek {
   -webkit-appearance: none;
   appearance: none;

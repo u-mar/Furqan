@@ -746,7 +746,9 @@ export function usePageRecitation({
     if (chapter) {
       const ayah = chapter.byKey.get(versesRef.current[indexRef.current]?.verse_key ?? '')
       if (!ayah) return null
-      const length = (ayah.to - ayah.from) / 1000
+      // A last ayah whose end the timings lack runs to the end of the recording.
+      const end = Number.isFinite(audio.duration) && audio.duration > 0 ? Math.min(ayah.to / 1000, audio.duration) : ayah.to / 1000
+      const length = Math.max(0, end - ayah.from / 1000)
       return { at: Math.min(length, Math.max(0, audio.currentTime - ayah.from / 1000)), length }
     }
     const length = audio.duration

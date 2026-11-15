@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import LocationOffNote from '@/components/prayer/LocationOffNote'
 import QiblaCompass from '@/components/prayer/QiblaCompass'
+import { useGreenAccent } from '@/hooks/useGreenAccent'
 import { useAutoLocate, usePrayerState } from '@/hooks/usePrayer'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
@@ -15,6 +16,7 @@ import { useT } from '@/lib/i18n'
  */
 export default function QiblaPage() {
   const t = useT()
+  useGreenAccent()
   const { place, ready } = usePrayerState()
   const location = useAutoLocate(ready, place)
 

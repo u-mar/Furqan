@@ -12,6 +12,43 @@ const BUNDLED_TIMINGS: Record<string, Record<string, [number, number]>> = {
   hadi_toure: hadiToureTimings as unknown as Record<string, [number, number]>,
 }
 
+/** How many ayat each surah has in the Hafs count the mushaf uses, surah 1 first. */
+const AYAH_COUNTS = [
+  7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128, 111, 110, 98, 135, 112, 78, 118, 64,
+  77, 227, 93, 88, 69, 60, 34, 30, 73, 54, 45, 83, 182, 88, 75, 85, 54, 53, 89, 59, 37, 35, 38, 29, 18, 45, 60,
+  49, 62, 55, 78, 96, 29, 22, 24, 13, 14, 11, 11, 18, 12, 12, 30, 52, 52, 44, 28, 28, 20, 56, 40, 31, 50, 40,
+  46, 42, 29, 19, 36, 25, 22, 17, 19, 26, 30, 20, 15, 21, 11, 8, 8, 19, 5, 8, 8, 11, 11, 8, 3, 9, 5, 4, 7, 3, 6,
+  3, 5, 4, 5, 6,
+]
+
+/** A last ayah whose end MP3Quran has wrong runs to the end of the recording (the player stops at that). */
+const OPEN_END_MS = 60 * 60 * 1000
+
+/**
+ * MP3Quran's timings as the player wants them, or null when they cannot be trusted for this surah.
+ * Some recordings carry an "ayah 0" row for what comes before the first ayah (the isti'adha or
+ * basmala): dropped, so ayah 1 begins at its own start. An end before its start (seen on a
+ * surah's last ayah) becomes the next ayah's start, or the end of the recording. A surah missing
+ * any ayah is treated as having no timings, rather than playing on with the wrong ayah marked.
+ */
+function tidyMp3QuranTimings(
+  rows: Array<{ ayah: number; start_time: number; end_time: number }>,
+  chapter: number
+): Array<{ key: string; from: number; to: number }> | null {
+  const count = AYAH_COUNTS[chapter - 1]
+  // Ayat past the surah's end mean the recording was cut up wrongly somewhere: none of it is trusted.
+  if (rows.some((r) => r.ayah > count)) return null
+  const ayat = rows
+    .filter((r) => Number.isInteger(r.ayah) && r.ayah >= 1 && r.ayah <= count && Number.isFinite(r.start_time))
+    .sort((a, b) => a.ayah - b.ayah)
+  if (ayat.length !== count || ayat.some((r, i) => r.ayah !== i + 1)) return null
+  return ayat.map((r, i) => {
+    const next = ayat[i + 1]
+    const to = r.end_time > r.start_time ? r.end_time : next ? next.start_time : r.start_time + OPEN_END_MS
+    return { key: `${chapter}:${r.ayah}`, from: r.start_time, to }
+  })
+}
+
 // A mushaf glyph run is Arabic presentation-form codepoints only. The upstream
 // API has occasionally returned a `code_v2` string with a stray ASCII letter
 // spliced in, which renders as a literal Latin letter in the middle of the
@@ -237,19 +274,15 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'reciter and chapter (1-114) required' }, { status: 400 })
       }
       if (searchParams.get('source') === 'mp3quran') {
-        const timing = await fetch(`https://mp3quran.net/api/v3/ayat_timing?surah=${chapter}&read=${reciter}`, {
+        const timing = await fetch(`https://www.mp3quran.net/api/v3/ayat_timing?surah=${chapter}&read=${reciter}`, {
           next: { revalidate: 60 * 60 * 24 * 30 },
           signal: AbortSignal.timeout(API_TIMEOUT_MS),
         })
         if (!timing.ok) return NextResponse.json({ error: 'Audio timings unavailable' }, { status: 502 })
         const rows = (await timing.json()) as Array<{ ayah: number; start_time: number; end_time: number }>
-        if (!Array.isArray(rows) || rows.length === 0) {
-          return NextResponse.json({ error: 'No timings for this recitation' }, { status: 404 })
-        }
-        return NextResponse.json(
-          { ayat: rows.map((r) => ({ key: `${chapter}:${r.ayah}`, from: r.start_time, to: r.end_time })) },
-          { headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=2592000' } }
-        )
+        const ayat = Array.isArray(rows) ? tidyMp3QuranTimings(rows, chapter) : null
+        if (!ayat) return NextResponse.json({ error: 'No timings for this recitation' }, { status: 404 })
+        return NextResponse.json({ ayat }, { headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=2592000' } })
       }
       const response = await fetch(`${QURAN_API_BASE}/chapter_recitations/${reciter}/${chapter}?segments=true`, {
         next: { revalidate: 60 * 60 * 24 * 30 },

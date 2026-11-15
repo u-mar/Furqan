@@ -314,7 +314,7 @@ export default function SettingsPage() {
             onClick={() => setAccountOpen(true)}
             className="set-card home-press ed-focus flex w-full items-center gap-3.5 px-4 py-4 text-left"
           >
-            <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white">
+            <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-black text-white">
               <UserRound className="h-6 w-6" strokeWidth={1.9} />
             </span>
             <span className="min-w-0 flex-1">

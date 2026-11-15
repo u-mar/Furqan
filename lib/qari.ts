@@ -418,6 +418,28 @@ export async function renameQari(user: {
   return data.name
 }
 
+/** The line a qari wrote about themselves; empty when there is none. */
+export async function fetchQariBio(username: string): Promise<string> {
+  try {
+    const res = await fetch(`/api/qari/profile?username=${encodeURIComponent(username)}`, { cache: 'no-store' })
+    const data = (await res.json()) as { bio?: string }
+    return data.bio ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export async function saveQariBio(user: { id: string; username: string }, bio: string): Promise<string> {
+  const res = await fetch('/api/qari/profile', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, userId: user.id, bio }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { bio?: string; error?: string }
+  if (!res.ok || typeof data.bio !== 'string') throw new Error(data.error || tr('Could not save your bio.'))
+  return data.bio
+}
+
 /**
  * The downloaded recording, kept so a share never fetches it twice.
  *

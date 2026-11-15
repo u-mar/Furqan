@@ -9,7 +9,9 @@ import {
   Film,
   Flag,
   Globe,
+  Check,
   Image as ImageIcon,
+  Languages,
   LayoutGrid,
   LayoutList,
   Link2,
@@ -57,10 +59,16 @@ import { successFeedback, tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { useAppSettings } from '@/hooks/useAppSettings'
+import { setAppSettings } from '@/lib/app-settings'
+import { DEFAULT_TRANSLATION_EDITION, TRANSLATION_LANGUAGES, translationLanguageLabel } from '@/lib/translations'
 
 type Stage =
   | { name: 'choose' }
   | { name: 'customize' }
+  /** The ⋯ sheet's own steps: how sharp to save the video, and which language the translation is in. */
+  | { name: 'download' }
+  | { name: 'language' }
   | { name: 'working'; kind: ShareKind; progress: number }
   | { name: 'ready'; media: ShareMedia }
   | { name: 'error'; kind: ShareKind; message: string }
@@ -308,7 +316,7 @@ ${url}`)
           'qari-sheet__panel relative w-full max-w-md rounded-t-[1.75rem] px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:rounded-[1.75rem]',
           videoView
             ? // Over the video, not a white card on it: dark glass, like the rest of the full-screen view.
-              'qari-swipe bg-[#141a18]/95 shadow-[0_-12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl'
+              'qari-more qari-swipe bg-[#1c1c1e] shadow-[0_-12px_40px_rgba(0,0,0,0.5)]'
             : 'bg-[var(--home-card-bg)] shadow-[var(--home-card-shadow)]'
         )}
         onClick={(e) => e.stopPropagation()}
@@ -330,13 +338,17 @@ ${url}`)
                 ? stage.media.kind === 'video'
                   ? t('Your video is ready')
                   : t('Your audio is ready')
-                : pickTarget
+                : stage.name === 'download'
+                  ? t('Save video')
+                  : stage.name === 'language'
+                    ? t('Translation')
+                    : pickTarget
                   ? t('Share to')
                   : isAyahCard
                     ? t('Share ayah card')
                     : t('Share recitation')}
             </h2>
-            {pickTarget ? null : (
+            {pickTarget || stage.name === 'download' || stage.name === 'language' ? null : (
               <p className="mt-0.5 truncate text-[0.82rem] text-[var(--home-muted)]">
                 {recitation.title} · {recitation.userName}
               </p>
@@ -379,8 +391,24 @@ ${url}`)
               {isAyahCard ? (
                 <MoreTarget icon={Download} label={t('Save picture')} onClick={() => void saveCard()} />
               ) : (
-                <MoreTarget icon={Download} label={t('Save video')} disabled={!videoPossible} onClick={() => void make('video')} />
+                <MoreTarget
+                  icon={Download}
+                  label={t('Save video')}
+                  disabled={!videoPossible}
+                  onClick={() => {
+                    tapFeedback()
+                    setStage({ name: 'download' })
+                  }}
+                />
               )}
+              <MoreTarget
+                icon={Languages}
+                label={t('Translation')}
+                onClick={() => {
+                  tapFeedback()
+                  setStage({ name: 'language' })
+                }}
+              />
               {actions?.onShowList ? (
                 <MoreTarget
                   icon={LayoutList}
@@ -467,12 +495,31 @@ ${url}`)
           </div>
         ) : null}
 
-        {stage.name === 'choose' && videoView && !isAyahCard && videoPossible ? (
-          <>
+        {stage.name === 'download' ? (
+          <div className="pb-1">
             <QualityRow options={videoOptions} onChange={setVideoOptions} seconds={recitation.durationSec} />
             <MixClipsRow options={videoOptions} onChange={setVideoOptions} />
-          </>
+            <div className="mt-5 flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setStage({ name: 'choose' })}
+                className="ed-focus h-12 flex-1 rounded-full bg-white/10 text-[0.9375rem] font-semibold text-white"
+              >
+                {t('Back')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void make('video')}
+                className="qari-press ed-focus flex h-12 flex-[2] items-center justify-center gap-2 rounded-full bg-white text-[0.9375rem] font-semibold text-black"
+              >
+                <Download className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
+                {t('Download')}
+              </button>
+            </div>
+          </div>
         ) : null}
+
+        {stage.name === 'language' ? <LanguageList onBack={() => setStage({ name: 'choose' })} /> : null}
 
         {stage.name === 'choose' && !videoView && !isAyahCard ? (
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
@@ -927,5 +974,43 @@ function MixClipsRow({ options, onChange }: { options: VideoOptions; onChange: (
         label={t('Mix similar clips')}
       />
     </label>
+  )
+}
+
+/**
+ * The language of the translation under the ayat, changed without leaving the video. It is the
+ * same choice as in Settings and Read, so it follows the person everywhere.
+ */
+function LanguageList({ onBack }: { onBack: () => void }) {
+  const t = useT()
+  const current = useAppSettings().translationLanguage
+  return (
+    <div className="mt-3 pb-1">
+      <ul className="qari-no-scrollbar max-h-[46dvh] overflow-y-auto" role="radiogroup" aria-label={t('Translation')}>
+        {TRANSLATION_LANGUAGES.map((lang) => {
+          const on = lang === current
+          return (
+            <li key={lang}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => {
+                  tapFeedback()
+                  setAppSettings({ translationLanguage: lang, translationEditionId: DEFAULT_TRANSLATION_EDITION[lang] })
+                }}
+                className="ed-focus flex h-12 w-full items-center justify-between rounded-xl px-2 text-left text-[0.9375rem] font-medium text-white"
+              >
+                {translationLanguageLabel(lang)}
+                {on ? <Check className="h-[18px] w-[18px] text-[#57c2a9]" strokeWidth={2.6} aria-hidden /> : null}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <button type="button" onClick={onBack} className="ed-focus mt-3 h-12 w-full rounded-full bg-white/10 text-[0.9375rem] font-semibold text-white">
+        {t('Done')}
+      </button>
+    </div>
   )
 }
