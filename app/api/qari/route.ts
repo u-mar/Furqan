@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { FOR_YOU_LOVED, FOR_YOU_NEWEST, forYouOrder } from '@/lib/qari-foryou'
 import { parseVerseTimeline } from '@/lib/qari-verse-timeline'
 import { prisma } from '@/lib/prisma'
 import { ownsUsername } from '@/lib/qari-owner'
@@ -67,12 +68,14 @@ function parsePeaks(raw: string): number[] {
 
 
 /**
- * GET /api/qari?sort=recent|top&user=username&likedBy=userId&imitating=sheikhId
+ * GET /api/qari?sort=recent|top|foryou&seed=&user=username&likedBy=userId&imitating=sheikhId
  *   &following=1&viewerId=&guestId=&q=&skip=&take=
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const sort = searchParams.get('sort') === 'top' ? 'top' : 'recent'
+  const sortParam = searchParams.get('sort')
+  const sort = sortParam === 'top' ? 'top' : sortParam === 'foryou' ? 'foryou' : 'recent'
+  const seed = (searchParams.get('seed') || 'naba').slice(0, 40)
   const username = searchParams.get('user')?.trim()
   const viewerId = searchParams.get('viewerId')?.trim()
   const likedBy = searchParams.get('likedBy')?.trim()
@@ -161,12 +164,27 @@ export async function GET(request: NextRequest) {
       ...(blocked.length ? { AND: [{ userUsername: { notIn: blocked } }] } : {}),
     }
 
-    const recitations = await prisma.recitation.findMany({
-      where,
-      orderBy: sort === 'top' ? [{ likeCount: 'desc' }, { createdAt: 'desc' }] : { createdAt: 'desc' },
-      skip,
-      take,
-    })
+    let recitations
+    if (sort === 'foryou') {
+      // A mix drawn by weight (lib/qari-foryou.ts): the pool's few fields first, then only the page's rows.
+      const fields = { id: true, userUsername: true, likeCount: true, playCount: true, createdAt: true } as const
+      const [newest, loved] = await Promise.all([
+        prisma.recitation.findMany({ where, select: fields, orderBy: { createdAt: 'desc' }, take: FOR_YOU_NEWEST }),
+        prisma.recitation.findMany({ where, select: fields, orderBy: { likeCount: 'desc' }, take: FOR_YOU_LOVED }),
+      ])
+      const pool = [...new Map([...newest, ...loved].map((c) => [c.id, c])).values()]
+      const ids = forYouOrder(pool, seed).slice(skip, skip + take)
+      const rows = await prisma.recitation.findMany({ where: { id: { in: ids } } })
+      const byId = new Map(rows.map((r) => [r.id, r]))
+      recitations = ids.map((id) => byId.get(id)).filter((r): r is (typeof rows)[number] => Boolean(r))
+    } else {
+      recitations = await prisma.recitation.findMany({
+        where,
+        orderBy: sort === 'top' ? [{ likeCount: 'desc' }, { createdAt: 'desc' }] : { createdAt: 'desc' },
+        skip,
+        take,
+      })
+    }
 
     // Someone without an account sees their own hearts too, by their phone's guest id.
     const guestId = searchParams.get('guestId')?.trim()

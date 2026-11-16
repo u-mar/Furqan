@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronUp, FastForward, Headphones, Loader2, Lock, MoreHorizontal, Play, Plus } from 'lucide-react'
+import { ChevronUp, FastForward, Headphones, Loader2, Lock, MoreHorizontal, Play, Plus, RotateCw } from 'lucide-react'
 import LikeButton from '@/components/qari/LikeButton'
 import QariAvatar from '@/components/qari/QariAvatar'
 import ReportReasonSheet from '@/components/qari/ReportReasonSheet'
@@ -26,6 +26,7 @@ import {
 } from '@/lib/qari'
 import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
 import { ayahParts, loadPhraseTranslations, partFor, wordAt } from '@/lib/qari-ayah-parts'
+import { dropOverlappingAyat } from '@/lib/qari-verse-timeline'
 import { cycleQariTextMode, useQariTextMode, type QariTextMode } from '@/lib/qari-text-mode'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import {
@@ -146,7 +147,7 @@ function AyahStage({
   paused: boolean
 }) {
   const timeline = useMemo(
-    () => [...(recitation.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds),
+    () => dropOverlappingAyat(recitation.verseTimeline ?? []),
     [recitation.verseTimeline]
   )
   const entryIndex = currentEntryIndex(timeline, position)
@@ -325,7 +326,7 @@ function Backdrop({ recitation, playing, position }: { recitation: Recitation; p
   const background = recitationBackground(recitation)
   const reel = useMemo(() => (mixScenes ? backgroundReel(background) : [background]), [background, mixScenes])
   const starts = useMemo(
-    () => shotStarts((recitation.verseTimeline ?? []).map((entry) => entry.atSeconds), recitation.durationSec),
+    () => shotStarts(dropOverlappingAyat(recitation.verseTimeline ?? []).map((entry) => entry.atSeconds), recitation.durationSec),
     [recitation.durationSec, recitation.verseTimeline]
   )
   // Black is just black: no mist drifting over it, no shading.
@@ -900,6 +901,7 @@ export default function SwipeFeed({
   hasMore,
   loadingMore,
   onLoadMore,
+  onRefresh,
   startId,
   autoplay,
   viewerId,
@@ -915,6 +917,8 @@ export default function SwipeFeed({
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
+  /** Pulling down on the first recitation calls this, as on TikTok. */
+  onRefresh?: () => void
   /** The recitation to open on. */
   startId?: string | null
   /** Start playing at once. Needs a tap to have happened just before — otherwise the browser refuses. */
@@ -1092,11 +1096,42 @@ export default function SwipeFeed({
     }
   }
 
+  // Pull down on the first recitation to refresh: how far it is pulled, and whether far enough.
+  const pullStart = useRef<number | null>(null)
+  const [pulled, setPulled] = useState(0)
+  const PULL_TO_REFRESH = 70
+  const pullHandlers = onRefresh
+    ? {
+        onTouchStart: (e: React.TouchEvent) => {
+          pullStart.current = (scrollerRef.current?.scrollTop ?? 1) <= 0 ? e.touches[0].clientY : null
+        },
+        onTouchMove: (e: React.TouchEvent) => {
+          if (pullStart.current === null) return
+          const dy = e.touches[0].clientY - pullStart.current
+          setPulled(dy > 0 ? Math.min(110, dy * 0.5) : 0)
+        },
+        onTouchEnd: () => {
+          if (pullStart.current !== null && pulled >= PULL_TO_REFRESH) onRefresh()
+          pullStart.current = null
+          setPulled(0)
+        },
+      }
+    : {}
+
   return (
+    <>
+    {pulled > 0 ? (
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center" style={{ transform: `translateY(${pulled}px)` }} aria-hidden>
+        <span className={cn('flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white', pulled >= PULL_TO_REFRESH && 'bg-white text-black')}>
+          <RotateCw className="h-4 w-4" strokeWidth={2.4} style={{ transform: `rotate(${pulled * 3}deg)` }} />
+        </span>
+      </div>
+    ) : null}
     <div
       ref={scrollerRef}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
+      {...pullHandlers}
       tabIndex={0}
       aria-label={t('Recitations')}
       className="qari-swipe qari-swipe-scroller fixed inset-x-0 top-0 z-30 overflow-y-scroll bg-black"
@@ -1183,5 +1218,6 @@ export default function SwipeFeed({
         </div>
       ) : null}
     </div>
+    </>
   )
 }

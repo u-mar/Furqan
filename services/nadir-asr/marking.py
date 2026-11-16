@@ -416,7 +416,9 @@ def mark_ayat(heard_words: list[Any], index: WordIndex) -> tuple[list[dict[str, 
         rare = len(index.by_word.get(index.norm[group.start], [0] * 999)) <= 60
         leads_next = rare and g + 1 < len(groups) and _next_verse_key(group.verse_key, index) == groups[g + 1].verse_key
         short = index.word_count.get(group.verse_key, 9) <= 2
-        if group.count >= 2 or is_next or leads_next or short:
+        # Being next along is not enough for a common word (من, الله, ...): one heard in the middle
+        # of the last ayah used to start an ayah the reciter never reached.
+        if group.count >= 2 or (is_next and rare) or leads_next or short:
             kept.append(group)
     # A few words from an ayah that the recitation then goes back before are a stray match, not an ayah.
     kept = [
@@ -484,7 +486,8 @@ def mark_ayat(heard_words: list[Any], index: WordIndex) -> tuple[list[dict[str, 
         at = max(0, heard_words[group.first].start - LEAD_SECONDS)
         floor = timeline[-1]["atSeconds"] + 0.1 if timeline else 0
         at_seconds = _js_round(max(at, floor) * 10) / 10
-        entry: dict[str, Any] = {"verseKey": group.verse_key, "atSeconds": at_seconds}
+        # "_heard" (how many of its words were heard) is for align_recitation only, never sent out.
+        entry: dict[str, Any] = {"verseKey": group.verse_key, "atSeconds": at_seconds, "_heard": group.count}
         words = word_times(group, at_seconds)
         if words is not None:
             entry["words"] = words
@@ -741,7 +744,13 @@ class Marker:
             end = following["atSeconds"] if following else duration
             stop = min(end + 1.5, (following["atSeconds"] + after_next["atSeconds"]) / 2 if following and after_next else end + 1.5)
             run = self._align_run(emissions, [entry["verseKey"]], start, stop)
-            found.append(run[0][0] if run and run[1] >= MIN_SCORE else entry)
+            if run and run[1] >= MIN_SCORE:
+                found.append(run[0][0])
+            elif entry.get("_heard", 2) >= 2:
+                found.append(entry)
+            # else: one word heard and the ayah's text does not fit the sound there: not recited.
+        if not found:
+            return []
 
         def missing_before(i: int) -> list[str]:
             """The ayat between two found ones (or before the first) that were not heard."""
@@ -790,7 +799,7 @@ class Marker:
             if out[i].get("words"):
                 entry["words"] = [max(w, at_seconds) for w in out[i]["words"]]
             out[i] = entry
-        return out
+        return _without_overlaps(out)
 
     # ------------------------------------------------------------------ public
 
@@ -799,7 +808,23 @@ class Marker:
         timeline, coverage = mark_ayat(words, self.index)
         if not timeline or coverage < self.min_coverage:
             return None, coverage
-        return self.align_recitation(timeline, emissions, duration), coverage
+        return _without_overlaps(self.align_recitation(timeline, emissions, duration)), coverage
+
+
+OVERLAP_ALLOWED = 0.3  # how far an ayah's start may reach back into the last word of the one before
+
+
+def _without_overlaps(timeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The ayat in order without the false ones, and without internal keys. An ayah that "starts"
+    while the one before it is still being recited (before its last word) did not happen; the app
+    applies the same rule (dropOverlappingAyat in lib/qari-verse-timeline.ts)."""
+    kept: list[dict[str, Any]] = []
+    for entry in sorted(timeline, key=lambda e: e["atSeconds"]):
+        previous_words = kept[-1].get("words") if kept else None
+        if previous_words and entry["atSeconds"] < previous_words[-1] - OVERLAP_ALLOWED:
+            continue
+        kept.append({k: v for k, v in entry.items() if not k.startswith("_")})
+    return kept
 
 
 def load_marker(pieces: list[str], blank: int) -> Marker:

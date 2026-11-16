@@ -17,11 +17,31 @@ const VERSE_KEY_RE = /^\d{1,3}:\d{1,3}$/
 /** The longest ayah (2:282) has 128 words. */
 const MAX_AYAH_WORDS = 200
 
+/** How far an ayah's start may reach back into the words of the one before it, in seconds. */
+const OVERLAP_ALLOWED_S = 0.3
+
+/**
+ * Ayah marks in order, without the false ones: a mark that starts while the ayah before it is
+ * still being recited (before that ayah's last word) did not happen. The automatic marking
+ * sometimes adds one at the end, such as an ayah 65 the reciter never reached, starting in the
+ * middle of ayah 64; left in, the recitation showed it over the end of the real one.
+ */
+export function dropOverlappingAyat<T extends { atSeconds: number; words?: number[] }>(timeline: readonly T[]): T[] {
+  const kept: T[] = []
+  for (const entry of [...timeline].sort((a, b) => a.atSeconds - b.atSeconds)) {
+    const previous = kept[kept.length - 1]
+    const lastWord = previous?.words?.length ? previous.words[previous.words.length - 1] : null
+    if (lastWord !== null && entry.atSeconds < lastWord - OVERLAP_ALLOWED_S) continue
+    kept.push(entry)
+  }
+  return kept
+}
+
 /** `value` as ayah marks within a recording `maxSeconds` long; [] if it is not that. */
 export function sanitizeVerseTimeline(value: unknown, maxSeconds: number): VerseTimelineMark[] {
   if (!Array.isArray(value)) return []
   const clamp = (n: number) => Math.round(Math.max(0, Math.min(maxSeconds, n)) * 100) / 100
-  return value
+  const marks = value
     .slice(0, MAX_VERSE_TIMELINE)
     .filter(
       (entry): entry is { verseKey: string; atSeconds: number } =>
@@ -41,6 +61,7 @@ export function sanitizeVerseTimeline(value: unknown, maxSeconds: number): Verse
         ...(keep ? { words: (words as number[]).map(clamp) } : {}),
       }
     })
+  return dropOverlappingAyat(marks)
 }
 
 /** The same, from the JSON text a form sends. */

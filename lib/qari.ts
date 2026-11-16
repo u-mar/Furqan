@@ -53,7 +53,7 @@ export interface FeedPage {
   hasMore: boolean
 }
 
-export type FeedSort = 'recent' | 'top'
+export type FeedSort = 'recent' | 'top' | 'foryou'
 
 export function recitationAudioUrl(id: string): string {
   return `/api/qari/audio/${id}`
@@ -144,6 +144,23 @@ function recall<T>(key: string): T | null {
 
 type FeedOptions = Parameters<typeof fetchFeed>[0]
 
+/**
+ * The For You mix this app session is on: the same while the app stays open (so coming back to
+ * Qari finds the same order), a new one the next time it opens, or when the feed is refreshed.
+ */
+export function forYouSeed(fresh = false): string {
+  const key = 'naba_foryou_seed'
+  try {
+    const kept = sessionStorage.getItem(key)
+    if (kept && !fresh) return kept
+    const seed = Math.random().toString(36).slice(2, 10)
+    sessionStorage.setItem(key, seed)
+    return seed
+  } catch {
+    return Math.random().toString(36).slice(2, 10)
+  }
+}
+
 /** Only a plain first page is kept: a search or "load more" is never worth remembering. */
 function feedKey(o: FeedOptions): string | null {
   if (o.query || o.skip) return null
@@ -154,6 +171,7 @@ function feedKey(o: FeedOptions): string | null {
     o.likedBy ? 'liked' : '',
     o.imitating ?? '',
     o.following ? 'following' : '',
+    o.seed ?? '',
     o.take ?? '',
     o.viewerId ?? 'anon',
   ].join(':')
@@ -181,6 +199,8 @@ export async function fetchFeed(options: {
   imitating?: string
   /** Only people the viewer follows. */
   following?: boolean
+  /** For You only: which mix. The same seed keeps one order while paging; a new one draws another. */
+  seed?: string
   skip?: number
   take?: number
 }): Promise<FeedPage> {
@@ -197,6 +217,7 @@ export async function fetchFeed(options: {
   if (options.query) params.set('q', options.query)
   if (options.imitating) params.set('imitating', options.imitating)
   if (options.following) params.set('following', '1')
+  if (options.seed) params.set('seed', options.seed)
   if (options.skip) params.set('skip', String(options.skip))
   if (options.take) params.set('take', String(options.take))
 

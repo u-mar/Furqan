@@ -9,7 +9,7 @@ import { findVideoBackground } from '@/lib/qari-backgrounds'
  */
 
 /** How sharp the video is made: the person chooses, trading time to make it and file size. */
-export type VideoQuality = 'standard' | 'high' | 'best'
+export type VideoQuality = 'standard' | 'high' | 'best' | 'master'
 
 /**
  * What is behind the ayah, as the encoder sees it: plain black, a photo that
@@ -42,6 +42,11 @@ export const VIDEO_QUALITIES: Record<
   high: { width: 1080, bitrate: { plain: 1_500_000, still: 2_000_000, moving: 3_500_000 }, label: 'High', resolution: '1080p' },
   /** Full HD with room to spare for the moving backgrounds' detail; the largest file. */
   best: { width: 1080, bitrate: { plain: 2_500_000, still: 3_500_000, moving: 6_000_000 }, label: 'Best', resolution: '1080p' },
+  /**
+   * Not offered to people: what the cloud makes first (app/render-video), at 720p and rates high
+   * enough that the careful re-encode after it (services/nadir-asr) loses nothing to them.
+   */
+  master: { width: 720, bitrate: { plain: 6_000_000, still: 8_000_000, moving: 12_000_000 }, label: 'Master', resolution: '720p' },
 }
 
 export const VIDEO_QUALITY_ORDER: VideoQuality[] = ['standard', 'high', 'best']

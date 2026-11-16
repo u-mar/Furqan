@@ -26,8 +26,8 @@ interface Tab {
 }
 
 /** The middle of the bar, a dip that cradles the Home button: its top edge, then filled black below. */
-const NOTCH_EDGE = 'M0,0.5 H12 Q18,0.5 20,4.5 A32,32 0 0 0 84,4.5 Q86,0.5 92,0.5 H104'
-const NOTCH_FILL = 'M0,0 H12 Q18,0 20,4 A32,32 0 0 0 84,4 Q86,0 92,0 H104 V56 H0 Z'
+const NOTCH_EDGE = 'M0,0.5 H13 Q19,0.5 20.7,4.5 A26,26 0 1 0 71.3,4.5 Q73,0.5 79,0.5 H92'
+const NOTCH_FILL = 'M0,0 H13 Q19,0 20.7,4 A26,26 0 1 0 71.3,4 Q73,0 79,0 H92 V56 H0 Z'
 
 /**
  * Quran, Listen, Home, Qari and Profile, on a black bar flush with the bottom
@@ -121,8 +121,8 @@ export default function BottomNav() {
       {/* The bar itself: black either side, and a dip in the middle that the Home button sits in. */}
       <div className="pointer-events-none absolute inset-0 flex" aria-hidden>
         <div className="bottom-nav__side flex-1" />
-        <div className="flex w-[104px] flex-col">
-          <svg viewBox="0 0 104 56" className="block h-14 w-[104px] shrink-0">
+        <div className="flex w-[92px] flex-col">
+          <svg viewBox="0 0 92 56" className="block h-14 w-[92px] shrink-0">
             <path d={NOTCH_FILL} fill="#000000" />
             <path d={NOTCH_EDGE} fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="1" />
           </svg>
@@ -137,14 +137,12 @@ export default function BottomNav() {
           href="/"
           onClick={() => tapFeedback()}
           aria-current={homeActive ? 'page' : undefined}
+          aria-label={t('Home')}
           className="bottom-nav__item bottom-nav__home ed-focus"
         >
           <span className={cn('bottom-nav__home-circle', homeActive && 'is-active')}>
-            <House className="h-[1.375rem] w-[1.375rem]" strokeWidth={homeActive ? 2.3 : 1.9} aria-hidden />
+            <House className="h-5 w-5" strokeWidth={homeActive ? 2.3 : 1.9} aria-hidden />
           </span>
-          {/* Holds the icon's place, so the name lines up with the other tabs' names, under the button. */}
-          <span className="bottom-nav__icon" aria-hidden />
-          <span className="bottom-nav__label">{t('Home')}</span>
         </Link>
         {right.map(item)}
       </div>

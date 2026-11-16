@@ -34,7 +34,7 @@ import {
   qariNotice,
   useViewer,
 } from '@/components/qari/QariShell'
-import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation } from '@/lib/qari'
+import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation, forYouSeed } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { useQariView } from '@/lib/qari-view'
 import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
@@ -44,7 +44,7 @@ import type { AppUser } from '@/lib/auth'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
-type Sort = 'recent' | 'top' | 'following'
+type Sort = 'recent' | 'top' | 'following' | 'foryou'
 
 function QariHomeContent() {
   const t = useT()
@@ -55,8 +55,10 @@ function QariHomeContent() {
   const [search, setSearch] = useState(urlQuery)
   const [query, setQuery] = useState(urlQuery)
   const [view, setView] = useQariView()
-  // The full-screen view opens on "For You" (most loved); the list on the latest.
-  const [sort, setSort] = useState<Sort>(() => (view === 'swipe' ? 'top' : 'recent'))
+  // The full-screen view opens on "For You" (a mix, lib/qari-foryou.ts); the list on the latest.
+  const [sort, setSort] = useState<Sort>(() => (view === 'swipe' ? 'foryou' : 'recent'))
+  // Which For You mix: kept for the session, drawn again on a refresh.
+  const [seed, setSeed] = useState(() => (typeof window === 'undefined' ? '' : forYouSeed()))
   const [searchOpen, setSearchOpen] = useState(urlQuery.length > 0)
   // A recitation opened full screen from a card, over the list. Closing it returns to the list.
   const [overlay, setOverlay] = useState<{ items: Recitation[]; startId: string } | null>(null)
@@ -88,9 +90,10 @@ function QariHomeContent() {
   useEffect(() => onPlayerError(qariNotice), [])
 
   const viewerId = viewer?.id ?? null
-  // The full-screen view has "For You" (most loved) and "Following"; "Latest" is a list thing.
+  // The full-screen view has "For You" and "Following"; "Latest" and "Most loved" are the list's.
   useEffect(() => {
-    if (view === 'swipe' && sort === 'recent') setSort('top')
+    if (view === 'swipe' && (sort === 'recent' || sort === 'top')) setSort('foryou')
+    if (view !== 'swipe' && sort === 'foryou') setSort('recent')
   }, [view, sort])
   const searching = query.length > 0
   // A search keeps the results on screen; a result opened from them still plays full screen.
@@ -116,8 +119,9 @@ function QariHomeContent() {
     setFailed(false)
     try {
       const page = await fetchFeed({
-        sort: sort === 'top' ? 'top' : 'recent',
+        sort: sort === 'following' ? 'recent' : sort,
         following: sort === 'following',
+        seed: sort === 'foryou' ? seed : undefined,
         viewerId,
       })
       if (load !== loads.current) return
@@ -128,7 +132,7 @@ function QariHomeContent() {
     } finally {
       if (load === loads.current) setLoading(false)
     }
-  }, [sort, viewerId])
+  }, [seed, sort, viewerId])
 
   useEffect(() => {
     if (searching) return
@@ -140,7 +144,12 @@ function QariHomeContent() {
 
   useEffect(() => {
     if (searching) return
-    const remembered = peekFeed({ sort: sort === 'top' ? 'top' : 'recent', following: sort === 'following', viewerId })
+    const remembered = peekFeed({
+      sort: sort === 'following' ? 'recent' : sort,
+      following: sort === 'following',
+      seed: sort === 'foryou' ? seed : undefined,
+      viewerId,
+    })
     if (remembered) {
       setItems(remembered.items)
       setHasMore(remembered.hasMore)
@@ -161,8 +170,9 @@ function QariHomeContent() {
     const load = loads.current
     try {
       const page = await fetchFeed({
-        sort: sort === 'top' ? 'top' : 'recent',
+        sort: sort === 'following' ? 'recent' : sort,
         following: sort === 'following',
+        seed: sort === 'foryou' ? seed : undefined,
         viewerId,
         skip: items.length,
       })
@@ -174,7 +184,7 @@ function QariHomeContent() {
     } finally {
       setLoadingMore(false)
     }
-  }, [items.length, sort, viewerId])
+  }, [items.length, seed, sort, viewerId])
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((r) => r.id !== id))
@@ -291,17 +301,30 @@ function QariHomeContent() {
     </div>
   )
 
+  /** A new For You mix, from the top, as TikTok does on a pull or a second tap of the tab. */
+  const refreshForYou = useCallback(() => {
+    tapFeedback()
+    stopPlayback()
+    setSwipeAutoplay(true)
+    setLoading(true)
+    setItems([])
+    setSeed(forYouSeed(true))
+  }, [])
+
   /* Following | For You — the two feeds of the full-screen view, as tabs along the top. */
   const swipeTab: 'following' | 'foryou' = sort === 'following' ? 'following' : 'foryou'
   const pickSwipeTab = (next: 'following' | 'foryou') => {
-    if (next === swipeTab) return
+    if (next === swipeTab) {
+      if (next === 'foryou') refreshForYou()
+      return
+    }
     if (next === 'following' && !viewer) {
       askToSignIn({ reason: tr('Create a free account to follow qaris.') })
       return
     }
     tapFeedback()
     setSwipeAutoplay(true)
-    setSort(next === 'following' ? 'following' : 'top')
+    setSort(next === 'following' ? 'following' : 'foryou')
   }
   const swipeTabs = (
     <div role="tablist" aria-label={t('Recitations')} className="flex min-w-0 flex-1 items-center justify-center gap-5">
@@ -367,12 +390,13 @@ function QariHomeContent() {
       {swipeOn ? (
         <>
           <SwipeFeed
-            key={overlay ? `overlay-${overlay.startId}` : `feed-${sort}`}
+            key={overlay ? `overlay-${overlay.startId}` : `feed-${sort}-${sort === 'foryou' ? seed : ''}`}
             items={swipeItems}
             loading={!overlay && loading}
             hasMore={overlay ? false : hasMore}
             loadingMore={loadingMore}
             onLoadMore={loadMore}
+            onRefresh={overlay ? undefined : sort === 'foryou' ? refreshForYou : () => void loadFeed()}
             startId={overlay?.startId ?? null}
             autoplay={swipeAutoplay}
             viewerId={viewerId}

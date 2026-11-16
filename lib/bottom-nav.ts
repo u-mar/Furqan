@@ -12,7 +12,7 @@ export const BOTTOM_NAV_HEIGHT_REM = 3.5
  * How far the round Home button in the middle rises above the bar, in rem. Anything that sits just
  * above the bar across its middle (the mini players, a notice) stands this much higher, clear of it.
  */
-export const BOTTOM_NAV_RAISE_REM = 1.375
+export const BOTTOM_NAV_RAISE_REM = 0.625
 
 /** Exact pathnames the bar appears on, beyond the whole Qari, Prayer, Halaqa and Hifdh sections. */
 export const BOTTOM_NAV_PATHS = ['/', '/listen'] as const

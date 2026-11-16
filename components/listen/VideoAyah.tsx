@@ -18,8 +18,8 @@ import { useT } from '@/lib/i18n'
 const TEXT_SHADOW = '0 2px 18px rgba(0, 0, 0, 0.6)'
 const TRANSLATION_SHADOW = '0 1px 10px rgba(0, 0, 0, 0.6)'
 /** As large as this on one line, and only as small as that before a phrase may wrap. */
-const LINE_MAX_PX = 26
-const LINE_MIN_PX = 19
+const LINE_MAX_PX = 20
+const LINE_MIN_PX = 15
 /** Ayat after the current one fetched ahead, so each change lands at once. */
 const AHEAD = 2
 
@@ -172,13 +172,13 @@ export default function VideoAyah({
             // Persian…) in Amiri, which has every Arabic-script letter.
             style={
               ayah.translationRtl
-                ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontWeight: 400, textShadow: TRANSLATION_SHADOW, fontSize: 15 }
+                ? { fontFamily: 'var(--font-amiri), Amiri, serif', fontWeight: 400, textShadow: TRANSLATION_SHADOW, fontSize: 13 }
                 : {
                     fontFamily: "var(--font-edit), 'Cormorant Garamond', Georgia, serif",
                     fontStyle: 'italic',
                     fontWeight: 500,
                     textShadow: TRANSLATION_SHADOW,
-                    fontSize: 17,
+                    fontSize: 15,
                   }
             }
           >

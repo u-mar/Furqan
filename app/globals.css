@@ -5047,17 +5047,17 @@ html.dark .pt-qibla__dial {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Home, in the middle: a round button sitting in the dip, a little above the bar, its name below. */
+/* Home, in the middle: a small round button sitting low in the dip, with no name under it. */
 .bottom-nav__home-circle {
   position: absolute;
-  top: -1.375rem;
+  top: -0.59rem;
   left: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.25rem;
-  height: 3.25rem;
-  margin-left: -1.625rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: -1.25rem;
   border-radius: 999px;
   background: #1c1c1e;
   color: #ffffff;

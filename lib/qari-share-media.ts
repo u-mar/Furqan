@@ -12,6 +12,7 @@
  * someone actually shares, so it costs nothing on the feed.
  */
 
+import { dropOverlappingAyat } from '@/lib/qari-verse-timeline'
 import { APP_NAME } from '@/lib/app-brand'
 import { drawLogoMark, LOGO_GROUND } from '@/lib/app-logo'
 import { createSpaceMixer, findSpace, type SpaceId } from '@/lib/audio-space'
@@ -451,7 +452,7 @@ async function prepareCaptions(
   translationStyle: string,
   translationRtl: boolean
 ): Promise<Caption[]> {
-  const timeline = [...(r.verseTimeline ?? [])].sort((a, b) => a.atSeconds - b.atSeconds)
+  const timeline = dropOverlappingAyat(r.verseTimeline ?? [])
   if (!timeline.length) return []
   const mode = getQariTextMode()
   // In the language of whoever is sharing it: the translation they read the Quran with.
@@ -832,7 +833,7 @@ async function prepareScene(
   // Cut where the ayat change, so the captions are needed first.
   // Just the chosen clip, unless the clips like it were asked for too.
   const reel = options.mix ? backgroundReel(background) : [background]
-  const ayahStarts = (r.verseTimeline ?? []).map((entry) => entry.atSeconds)
+  const ayahStarts = dropOverlappingAyat(r.verseTimeline ?? []).map((entry) => entry.atSeconds)
   const clip = background.videoUrl ? await openReel(mb, planShots(reel, ayahStarts, frames)) : null
   // A clip that cannot be read stands still on its poster frame instead.
   const fallback = background.videoUrl && !clip && background.url ? await loadImage(background.url) : null

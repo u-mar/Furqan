@@ -11,6 +11,7 @@ import VideoAyah from '@/components/listen/VideoAyah'
 import { useListenProgress, useListenState } from '@/hooks/useListen'
 import { tapFeedback } from '@/lib/haptics'
 import { togglePlay } from '@/lib/listen-player'
+import { peekListenAudio } from '@/lib/listen-audio'
 import { LISTEN_VIDEO_BACKGROUND, listenTimeline, setListenVideo } from '@/lib/listen-video'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { getQiraat, getReciterById } from '@/lib/reciters'
@@ -40,6 +41,27 @@ export default function VideoMode({
   const { surah, reciterId, status, error } = useListenState()
   const { position, duration } = useListenProgress()
   const playing = status === 'playing'
+  // The audio's own clock, read every frame while it plays: the player reports its place only a few
+  // times a second, which made the ayah change up to a quarter of a second behind the voice.
+  const [clock, setClock] = useState<number | null>(null)
+  useEffect(() => {
+    if (!playing) {
+      setClock(null)
+      return
+    }
+    let frame = 0
+    let last = -1
+    const tick = () => {
+      const at = peekListenAudio()?.currentTime
+      if (at !== undefined && Math.abs(at - last) >= 0.03) {
+        last = at
+        setClock(at)
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [playing])
   // undefined while it loads, null when this recording has none.
   const [timeline, setTimeline] = useState<{ key: string; entries: VerseTimelineEntry[] | null } | undefined>(undefined)
   const timelineKey = surah && reciterId ? `${reciterId}:${surah.id}` : ''
@@ -106,7 +128,7 @@ export default function VideoMode({
 
         <div className="flex min-h-0 flex-1 items-center justify-center px-2">
           {entries ? (
-            <VideoAyah timeline={entries} position={position} durationSec={duration} paused={!playing} />
+            <VideoAyah timeline={entries} position={clock ?? position} durationSec={duration} paused={!playing} />
           ) : entries === null ? (
             <div className="text-center">
               <h2 className="home-serif text-[2.125rem] font-semibold leading-tight tracking-[-0.02em]" style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}>

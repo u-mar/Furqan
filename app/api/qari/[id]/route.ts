@@ -5,6 +5,7 @@ import { removeAudio, removeImage } from '@/lib/qari-storage'
 import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
 import { isGuestId } from '@/lib/guest-id'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
+import { toClientRecitation } from '@/lib/qari-serialize'
 
 export const runtime = 'nodejs'
 
@@ -25,6 +26,15 @@ function guestMayLike(guestId: string): boolean {
     for (const [id, taps] of guestTaps) if (taps.every((t) => now - t >= 60_000)) guestTaps.delete(id)
   }
   return true
+}
+
+/** GET /api/qari/[id] — one public recitation, as the feed lists it (for the video made in the cloud). */
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
+  if (!/^[a-f0-9]{24}$/i.test(id)) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+  const recitation = await prisma.recitation.findFirst({ where: { id, hidden: false, isPrivate: false } }).catch(() => null)
+  if (!recitation) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+  return NextResponse.json({ recitation: toClientRecitation(recitation, false) })
 }
 
 /** POST /api/qari/[id] — like, unlike, count a play, report, or (the reciter) change who hears it, what it is shown on, or its title. */

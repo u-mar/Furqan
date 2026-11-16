@@ -34,6 +34,15 @@ export function setListenVideo(next: boolean): void {
 const timelines = new Map<string, Promise<VerseTimelineEntry[] | null>>()
 
 /**
+ * How long after MP3Quran's start of an ayah the next one is shown, in seconds, for the recitations
+ * measured against their sound (the silences between ayat found in the audio, Ar-Rahman and Al-Mulk):
+ * for Sheikh Sufi the start sits right after the last ayah's sound ends, and the next sound begins
+ * 0.4 to 0.5 seconds later (up to 0.75), so the ayah changed before it was said. A recitation not
+ * measured keeps its times as they are.
+ */
+const SWITCH_DELAY_S: Record<string, number> = { soufi: 0.4 }
+
+/**
  * When each ayah starts in the recording Listen plays for this reciter and surah, or null when
  * that recording has no timings (or they could not be had; asked again next time).
  */
@@ -48,7 +57,8 @@ export function listenTimeline(reciterId: string, surah: number): Promise<VerseT
         if (!res.ok) return null
         const data = (await res.json()) as { ayat?: { key: string; from: number }[] }
         if (!data.ayat?.length) return null
-        return data.ayat.map((a) => ({ verseKey: a.key, atSeconds: a.from / 1000 })).sort((a, b) => a.atSeconds - b.atSeconds)
+        const delay = SWITCH_DELAY_S[reciterId] ?? 0
+        return data.ayat.map((a) => ({ verseKey: a.key, atSeconds: a.from / 1000 + (a.key.endsWith(':1') ? 0 : delay) })).sort((a, b) => a.atSeconds - b.atSeconds)
       })
       .catch(() => null)
     timelines.set(key, pending)
