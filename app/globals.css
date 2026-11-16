@@ -5050,7 +5050,7 @@ html.dark .pt-qibla__dial {
 /* Home, in the middle: a small round button sitting low in the dip, with no name under it. */
 .bottom-nav__home-circle {
   position: absolute;
-  top: -0.59rem;
+  top: -0.1875rem;
   left: 50%;
   display: flex;
   align-items: center;

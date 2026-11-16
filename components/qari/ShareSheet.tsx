@@ -33,6 +33,7 @@ import {
   canShareMedia,
   copyText,
   DEFAULT_VIDEO_OPTIONS,
+  downloadReadyVideo,
   loadVideoOptions,
   makeRecitationAudio,
   makeRecitationVideo,
@@ -60,6 +61,7 @@ import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
 import { useAppSettings } from '@/hooks/useAppSettings'
+import { useQariTextMode } from '@/lib/qari-text-mode'
 import { setAppSettings } from '@/lib/app-settings'
 import { DEFAULT_TRANSLATION_EDITION, TRANSLATION_LANGUAGES, translationLanguageLabel } from '@/lib/translations'
 
@@ -119,6 +121,18 @@ export default function ShareSheet({ recitation, open, onClose, onNotice, videoV
   const abortRef = useRef<AbortController | null>(null)
   const videoPossible = useMemo(() => (open ? canMakeVideo() : true), [open])
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  // In English there is one video, made ahead of time in the cloud in full HD: nothing to choose.
+  const settings = useAppSettings()
+  const textMode = useQariTextMode()
+  const english = settings.translationLanguage === 'en'
+  const readyVideoUrl =
+    english &&
+    settings.translationEditionId === DEFAULT_TRANSLATION_EDITION.en &&
+    textMode === 'both' &&
+    !videoOptions.mix &&
+    videoOptions.backgroundId === (recitation.background || 'black')
+      ? recitation.videoUrl || null
+      : null
 
   useEffect(() => {
     if (!open) return
@@ -159,10 +173,25 @@ export default function ShareSheet({ recitation, open, onClose, onNotice, videoV
 
       if (kind === 'video') saveVideoOptions(videoOptions)
       try {
+        // The ready video when there is one; otherwise (or if it cannot be downloaded) the phone makes it,
+        // in English at the standard 720p since there is no quality to choose.
+        const ready =
+          kind === 'video' && readyVideoUrl
+            ? await downloadReadyVideo(recitation, readyVideoUrl, onProgress, controller.signal).catch((err) => {
+                if (controller.signal.aborted) throw err
+                return null
+              })
+            : null
         const media =
-          kind === 'video'
-            ? await makeRecitationVideo(recitation, onProgress, controller.signal, videoOptions)
-            : await makeRecitationAudio(recitation, onProgress, controller.signal)
+          ready ??
+          (kind === 'video'
+            ? await makeRecitationVideo(
+                recitation,
+                onProgress,
+                controller.signal,
+                english ? { ...videoOptions, quality: 'high' } : videoOptions
+              )
+            : await makeRecitationAudio(recitation, onProgress, controller.signal))
         if (controller.signal.aborted) return
         successFeedback()
         if (videoView && kind === 'video') {
@@ -187,7 +216,7 @@ export default function ShareSheet({ recitation, open, onClose, onNotice, videoV
         })
       }
     },
-    [onClose, onNotice, recitation, videoOptions, videoView]
+    [english, onClose, onNotice, readyVideoUrl, recitation, videoOptions, videoView]
   )
 
   const cancel = useCallback(() => {
@@ -497,7 +526,9 @@ ${url}`)
 
         {stage.name === 'download' ? (
           <div className="pb-1">
-            <QualityRow options={videoOptions} onChange={setVideoOptions} seconds={recitation.durationSec} />
+            {english ? null : (
+              <QualityRow options={videoOptions} onChange={setVideoOptions} seconds={recitation.durationSec} />
+            )}
             <MixClipsRow options={videoOptions} onChange={setVideoOptions} />
             <div className="mt-5 flex gap-2.5">
               <button
@@ -555,6 +586,7 @@ ${url}`)
           <CustomizeVideo
             options={videoOptions}
             seconds={recitation.durationSec}
+            showQuality={!english}
             onChange={setVideoOptions}
             onBack={() => setStage({ name: 'choose' })}
             onMake={() => void make('video')}
@@ -565,7 +597,11 @@ ${url}`)
           <div className="mt-6 pb-1">
             <div className="flex items-baseline justify-between">
               <p className="text-sm font-semibold text-[var(--home-heading)]">
-                {stage.kind === 'video' ? t('Making your video…') : t('Preparing the audio…')}
+                {stage.kind === 'video'
+                  ? readyVideoUrl
+                    ? t('Downloading your video…')
+                    : t('Making your video…')
+                  : t('Preparing the audio…')}
               </p>
               <span className="text-sm font-semibold tabular-nums text-[var(--home-sage)]">
                 {Math.round(stage.progress * 100)}%
@@ -737,12 +773,14 @@ function ShareOption({
 function CustomizeVideo({
   options,
   seconds,
+  showQuality,
   onChange,
   onBack,
   onMake,
 }: {
   options: VideoOptions
   seconds: number
+  showQuality: boolean
   onChange: (options: VideoOptions) => void
   onBack: () => void
   onMake: () => void
@@ -805,7 +843,7 @@ function CustomizeVideo({
         onSelect={(id) => onChange({ ...options, backgroundId: id })}
         onClose={() => setGalleryOpen(false)}
       />
-      <QualityRow options={options} onChange={onChange} seconds={seconds} />
+      {showQuality ? <QualityRow options={options} onChange={onChange} seconds={seconds} /> : null}
       <MixClipsRow options={options} onChange={onChange} />
 
       <div className="mt-4 flex gap-2">

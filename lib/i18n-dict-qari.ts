@@ -303,6 +303,7 @@ export const QARI: Dict = {
   'An MP3 for WhatsApp or Telegram': { so: 'MP3 loogu talagalay WhatsApp ama Telegram', ar: 'ملف MP3 لواتساب أو تيليغرام' },
   'Copy link': { so: 'Koobiyee linkiga', ar: 'نسخ الرابط' },
   'Making your video…': { so: 'Muuqaalkaaga waa la samaynayaa…', ar: 'جارٍ إنشاء الفيديو…' },
+  'Downloading your video…': { so: 'Muuqaalkaaga waa la soo dejinayaa…', ar: 'جارٍ تنزيل الفيديو…' },
   'Preparing the audio…': { so: 'Codka waa la diyaarinayaa…', ar: 'جارٍ تجهيز الصوت…' },
   'Keep the app open. Longer recitations take a little longer.': { so: 'App-ka furan ku hay. Tilaawooyinka dhaadheer waxay qaataan wax yar oo dheeraad ah.', ar: 'أبقِ التطبيق مفتوحًا. التلاوات الأطول تستغرق وقتًا أطول قليلًا.' },
   'Saved. Upload it to TikTok from your gallery.': { so: 'Waa la keydiyay. Ka soo geli TikTok bandhigga sawirradaada.', ar: 'تم الحفظ. ارفعها إلى تيك توك من معرض الصور.' },

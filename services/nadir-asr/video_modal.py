@@ -52,11 +52,12 @@ with image.imports():
 
 
 def _key_for(recitation_id: str) -> str:
-    return f"videos/en/{recitation_id}.mp4"
+    """A new name for every video made: a remade one is never served from an old cached copy."""
+    return f"videos/en/{recitation_id}-{int(time.time() * 1000):x}.mp4"
 
 
-async def _make_master(site: str, recitation_id: str) -> tuple[bytes, float]:
-    """The video as the app makes it (720p, high rate), and the seconds it took."""
+async def _make_master(site: str, recitation_id: str) -> tuple[bytes, float, str]:
+    """The video as the app makes it (1080p, high rate), the seconds it took, and what it was made for."""
     from playwright.async_api import async_playwright
 
     started = time.time()
@@ -79,6 +80,7 @@ async def _make_master(site: str, recitation_id: str) -> tuple[bytes, float]:
             state = await page.evaluate("window.__nabaVideoState")
             if state != "done":
                 raise RuntimeError(f"{state}; console: {' | '.join(logs[-8:])}")
+            made_for = await page.evaluate("window.__nabaVideoMadeFor || ''")
             size = await page.evaluate("window.__nabaVideo.size")
             chunks: list[bytes] = []
             step = 4 * 1024 * 1024
@@ -93,7 +95,7 @@ async def _make_master(site: str, recitation_id: str) -> tuple[bytes, float]:
                     [offset, offset + step],
                 )
                 chunks.append(base64.b64decode(piece))
-            return b"".join(chunks), time.time() - started
+            return b"".join(chunks), time.time() - started, made_for
         finally:
             await browser.close()
 
@@ -133,32 +135,32 @@ def _upload(key: str, data: bytes) -> str:
     return f"{os.environ['R2_PUBLIC_URL'].rstrip('/')}/{key}"
 
 
-def _tell_site(site: str, recitation_id: str, url: str, size: int) -> None:
-    """Records the ready video on the recitation (POST /api/qari/<id>/video)."""
-    body = json.dumps({"url": url, "bytes": size}).encode()
+def _tell_site(site: str, recitation_id: str, key: str, made_for: str) -> bool:
+    """Records the ready video on the recitation (POST /api/qari/<id>/video); False if it was out of date."""
+    body = json.dumps({"key": key, "madeFor": made_for}).encode()
     req = urllib.request.Request(
         f"{site}/api/qari/{recitation_id}/video", data=body, method="POST",
         headers={"content-type": "application/json", "x-api-key": os.environ["ASR_API_KEY"], "user-agent": "naba-video"},
     )
-    urllib.request.urlopen(req, timeout=60).read()
+    return bool(json.load(urllib.request.urlopen(req, timeout=60)).get("kept"))
 
 
 @app.function(
     image=image,
     cpu=4.0,
-    memory=4096,
+    memory=6144,
     timeout=RENDER_TIMEOUT_S + 300,
     max_containers=2,
     secrets=[modal.Secret.from_name("nadir-asr-key"), modal.Secret.from_name("naba-r2")],
 )
 async def render(recitation_id: str, site: str = SITE, tell: bool = True) -> dict:
-    master, render_s = await _make_master(site, recitation_id)
+    master, render_s, made_for = await _make_master(site, recitation_id)
     small, encode_s = _reencode(master)
-    url = _upload(_key_for(recitation_id), small)
-    if tell:
-        _tell_site(site, recitation_id, url, len(small))
+    key = _key_for(recitation_id)
+    url = _upload(key, small)
+    kept = _tell_site(site, recitation_id, key, made_for) if tell else None
     result = {
-        "id": recitation_id, "url": url, "bytes": len(small), "masterBytes": len(master),
+        "id": recitation_id, "url": url, "kept": kept, "bytes": len(small), "masterBytes": len(master),
         "renderSeconds": round(render_s, 1), "encodeSeconds": round(encode_s, 1),
     }
     print(json.dumps(result))

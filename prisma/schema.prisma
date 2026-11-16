@@ -125,6 +125,9 @@ model Recitation {
   /// lib/qari-backgrounds. Absent for recitations posted before it could be
   /// chosen; those get one of the landscapes.
   background  String?
+  /// Its English share video, made ahead of time in the cloud (lib/qari-cloud-video): the R2 key,
+  /// videos/en/<id>-<stamp>.mp4. Absent until made, and again whenever what it shows changes.
+  videoKey    String?
   caption     String   @default("")
   likeCount   Int      @default(0)
   playCount   Int      @default(0)

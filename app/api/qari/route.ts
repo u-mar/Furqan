@@ -21,6 +21,7 @@ import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
 import { isGuestId } from '@/lib/guest-id'
 import { warmRecitationCaptions } from '@/lib/part-translation-store'
+import { requestCloudVideo } from '@/lib/qari-cloud-video'
 
 export const runtime = 'nodejs'
 
@@ -359,6 +360,8 @@ export async function POST(request: NextRequest) {
     // show, worked out now by the AI and kept, so no viewer waits for it.
     if (verseTimeline.length) after(() => warmRecitationCaptions(verseTimeline.map((entry) => entry.verseKey)))
     if (pieced) after(() => removeAudioPieces(userUsername, uploadId))
+    // Its English share video, made in the cloud while nobody waits (lib/qari-cloud-video).
+    if (!isPrivate) after(() => requestCloudVideo(created.id))
 
     return NextResponse.json({ id: created.id }, { status: 201 })
   } catch (err) {

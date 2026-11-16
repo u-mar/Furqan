@@ -40,6 +40,8 @@ export interface Recitation {
   verseTimeline: VerseTimelineEntry[]
   /** What it is shown on — an id from lib/qari-backgrounds; null for those posted before it could be chosen. */
   background: string | null
+  /** Its English share video, made ahead of time in the cloud; absent until it is ready. */
+  videoUrl?: string | null
   caption: string
   durationSec: number
   likeCount: number

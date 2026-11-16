@@ -4,6 +4,7 @@ import { verifyPassword, verifyPin } from '@/lib/pin-hash'
 import { verifyGoogleCredential } from '@/lib/google-auth'
 import { ownsUsername } from '@/lib/qari-owner'
 import { removeAudio, removeFile, removeImage } from '@/lib/qari-storage'
+import { dropCloudVideo } from '@/lib/qari-cloud-video'
 
 export const runtime = 'nodejs'
 
@@ -65,7 +66,7 @@ export async function DELETE(req: Request) {
 
     const recitations = await prisma.recitation.findMany({
       where: { userUsername: username },
-      select: { id: true, audioId: true, imageId: true },
+      select: { id: true, audioId: true, imageId: true, videoKey: true },
     })
     const recitationIds = recitations.map((r) => r.id)
 
@@ -73,6 +74,7 @@ export async function DELETE(req: Request) {
     // rows still there and tries again, rather than leaving orphaned audio.
     for (const r of recitations) {
       if (r.audioId) await removeAudio(r.audioId).catch(() => {})
+      await dropCloudVideo(r, true)
       if (r.imageId) await removeImage(r.imageId).catch(() => {})
     }
     const avatar = await prisma.qariAvatar.findUnique({ where: { username } })

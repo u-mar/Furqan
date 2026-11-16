@@ -1042,6 +1042,42 @@ export async function makeRecitationVideo(
   }
 }
 
+/**
+ * The recitation's English video, already made in the cloud (lib/qari-cloud-video): downloaded,
+ * not made. Full HD and a fraction of the size the phone would make; throws if it cannot be had,
+ * and the phone then makes it itself.
+ */
+export async function downloadReadyVideo(
+  r: Recitation,
+  url: string,
+  onProgress: Progress,
+  signal?: AbortSignal
+): Promise<ShareMedia> {
+  onProgress(0.02)
+  const res = await fetch(url, { signal, cache: 'force-cache' })
+  if (!res.ok || !res.body) throw new Error(`video ${res.status}`)
+  const total = Number(res.headers.get('content-length')) || 0
+  const reader = res.body.getReader()
+  const parts: Uint8Array<ArrayBuffer>[] = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    parts.push(value as Uint8Array<ArrayBuffer>)
+    received += value.length
+    if (total) onProgress(0.02 + 0.98 * Math.min(1, received / total))
+  }
+  throwIfCancelled(signal)
+  if (!received) throw new Error('empty video')
+  onProgress(1)
+  return {
+    kind: 'video',
+    blob: new Blob(parts, { type: 'video/mp4' }),
+    fileName: `${fileStem(r)}.mp4`,
+    mimeType: 'video/mp4',
+  }
+}
+
 /* ------------------------------------------------------------ handing over */
 
 export function recitationLink(r: Pick<Recitation, 'id' | 'userUsername'>): string {

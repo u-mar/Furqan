@@ -1,6 +1,7 @@
 import type { Recitation as RecitationRecord } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { r2AudioUrl } from '@/lib/qari-storage'
+import { r2PublicUrl } from '@/lib/r2'
 
 /** Which of these recitations the viewer has hearted, in one query. */
 export async function likedIdsFor(viewerId: string | null | undefined, ids: string[]): Promise<Set<string>> {
@@ -32,6 +33,8 @@ export function toClientRecitation(r: RecitationRecord, liked: boolean) {
     peaks: r.peaks ?? [],
     verseTimeline: Array.isArray(r.verseTimeline) ? (r.verseTimeline as { verseKey: string; atSeconds: number; words?: number[] }[]) : [],
     background: r.background ?? null,
+    // The English video made ahead of time, ready to download (lib/qari-cloud-video).
+    videoUrl: r.videoKey ? r2PublicUrl(r.videoKey) || null : null,
     caption: r.caption,
     durationSec: r.durationSec,
     likeCount: r.likeCount,

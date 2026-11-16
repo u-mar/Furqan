@@ -1,10 +1,12 @@
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from '@/lib/admin-auth-server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
+import type { Recitation as RecitationRecord } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { removeAudio, removeImage } from '@/lib/qari-storage'
 import { LIKE_MILESTONES, notifyLike, notifyMilestone, PLAY_MILESTONES } from '@/lib/notify'
 import { isGuestId } from '@/lib/guest-id'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
+import { cloudVideoFor, dropCloudVideo, requestCloudVideo } from '@/lib/qari-cloud-video'
 import { toClientRecitation } from '@/lib/qari-serialize'
 
 export const runtime = 'nodejs'
@@ -88,6 +90,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         data: { isPrivate: Boolean(body.isPrivate) },
         select: { isPrivate: true },
       })
+      // Made public without its English video yet: make it now.
+      if (!updated.isPrivate && !recitation.videoKey && recitation.kind !== 'ayah') after(() => requestCloudVideo(id))
       return NextResponse.json({ isPrivate: updated.isPrivate })
     }
 
@@ -105,6 +109,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         data: { background: body.background },
         select: { background: true },
       })
+      await videoAgainIfChanged(recitation, { ...recitation, background: updated.background })
       return NextResponse.json({ background: updated.background })
     }
 
@@ -116,6 +121,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       const title = typeof body.title === 'string' ? body.title.trim().slice(0, 80) : ''
       if (!title) return NextResponse.json({ error: 'Give your recitation a title.' }, { status: 400 })
       const updated = await prisma.recitation.update({ where: { id }, data: { title }, select: { title: true } })
+      await videoAgainIfChanged(recitation, { ...recitation, title: updated.title })
       return NextResponse.json({ title: updated.title })
     }
 
@@ -194,6 +200,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
     if (recitation.audioId) await removeAudio(recitation.audioId)
     if (recitation.imageId) await removeImage(recitation.imageId)
+    await dropCloudVideo(recitation, true)
     await prisma.recitationLike.deleteMany({ where: { recitationId: id } })
     await prisma.recitation.delete({ where: { id } })
 
@@ -202,4 +209,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     console.error('[qari] delete failed:', err)
     return NextResponse.json({ error: 'Could not delete.' }, { status: 500 })
   }
+}
+
+/**
+ * When what a recitation's video shows has changed (its background, or the title it shows when it has
+ * no ayah marks): the old video goes and, once this answer is sent, a new one is made.
+ */
+async function videoAgainIfChanged(before: RecitationRecord, after_: RecitationRecord): Promise<void> {
+  if (before.kind === 'ayah' || cloudVideoFor(before) === cloudVideoFor(after_)) return
+  await dropCloudVideo(before)
+  if (!after_.isPrivate) after(() => requestCloudVideo(before.id))
 }

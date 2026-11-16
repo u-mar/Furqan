@@ -26,8 +26,8 @@ interface Tab {
 }
 
 /** The middle of the bar, a dip that cradles the Home button: its top edge, then filled black below. */
-const NOTCH_EDGE = 'M0,0.5 H13 Q19,0.5 20.7,4.5 A26,26 0 1 0 71.3,4.5 Q73,0.5 79,0.5 H92'
-const NOTCH_FILL = 'M0,0 H13 Q19,0 20.7,4 A26,26 0 1 0 71.3,4 Q73,0 79,0 H92 V56 H0 Z'
+const NOTCH_EDGE = 'M0,0.5 H15 Q21,0.5 23.2,4.5 A26,26 0 1 0 68.8,4.5 Q71,0.5 77,0.5 H92'
+const NOTCH_FILL = 'M0,0 H15 Q21,0 23.5,4 A26,26 0 1 0 68.5,4 Q71,0 77,0 H92 V56 H0 Z'
 
 /**
  * Quran, Listen, Home, Qari and Profile, on a black bar flush with the bottom

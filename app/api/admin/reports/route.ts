@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isAdminRequestAuthenticated, unauthorizedAdminResponse } from '@/lib/admin-auth-server'
 import { removeAudio, removeImage } from '@/lib/qari-storage'
+import { dropCloudVideo } from '@/lib/qari-cloud-video'
 
 type Action = 'dismiss' | 'removeRecitation'
 
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
       const recitation = await prisma.recitation.findUnique({ where: { id: recitationId } })
       if (recitation) {
         if (recitation.audioId) await removeAudio(recitation.audioId).catch(() => {})
+        await dropCloudVideo(recitation, true)
         if (recitation.imageId) await removeImage(recitation.imageId).catch(() => {})
         await prisma.recitationLike.deleteMany({ where: { recitationId } })
       }
