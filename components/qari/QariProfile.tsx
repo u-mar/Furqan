@@ -7,6 +7,7 @@ import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import { PullIndicator, usePullToRefresh } from '@/components/qari/PullToRefresh'
+import { DraftsSheet, DraftsTile, useDrafts } from '@/components/qari/ProfileDrafts'
 import ProfileHero, { ProfileTopBar } from '@/components/qari/ProfileHero'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import RecitationGrid from '@/components/qari/RecitationGrid'
@@ -200,6 +201,11 @@ export default function QariProfile() {
   const ayahCards = useMemo(() => shown?.filter((r) => r.kind === 'ayah') ?? [], [shown])
   // Always the grid of videos, as on TikTok: a profile has no audio-list switch.
   const videoView = true
+  // Recitations saved for later on this phone: a tile of their own at the start of your grid.
+  const drafts = useDrafts()
+  const [draftsOpen, setDraftsOpen] = useState(false)
+  const draftsTile =
+    isMe && tab === 'recitations' && drafts.length > 0 ? <DraftsTile count={drafts.length} onOpen={() => setDraftsOpen(true)} /> : null
   // Opened full screen from a grid tile or an ayah card, swiping on through the rest.
   const [cardsOpen, setCardsOpen] = useState<{ items: Recitation[]; startId: string; autoplay: boolean } | null>(null)
 
@@ -411,7 +417,7 @@ export default function QariProfile() {
         </div>
       </div>
 
-      <div className={cn(videoView && shown && shown.length > 0 ? 'mt-0.5' : 'mt-3', isBlocked && 'hidden')}>
+      <div className={cn(videoView && shown && (shown.length > 0 || draftsTile) ? 'mt-0.5' : 'mt-3', isBlocked && 'hidden')}>
         {tab === 'recitations' && myUploads.length > 0 ? (
           <div className={cn('flex flex-col gap-2.5', list && list.length > 0 && 'mb-2.5')}>
             {myUploads.map((upload) => (
@@ -431,8 +437,8 @@ export default function QariProfile() {
             body={t('Check your connection and try again.')}
             action={{ label: t('Try again'), onClick: () => void loadRecitations() }}
           />
-        ) : videoView && shown && shown.length > 0 ? (
-          <RecitationGrid flush items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
+        ) : videoView && shown && (shown.length > 0 || draftsTile) ? (
+          <RecitationGrid flush first={draftsTile} items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
         ) : list.length === 0 ? (
           (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 ? null : tab === 'favourites' ? (
             <EmptyState
@@ -487,6 +493,7 @@ export default function QariProfile() {
         )}
       </div>
 
+      {isMe ? <DraftsSheet open={draftsOpen} onClose={() => setDraftsOpen(false)} /> : null}
       {isMe && viewer ? (
         <EditProfileSheet
           open={editOpen}

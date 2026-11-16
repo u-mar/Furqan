@@ -3587,6 +3587,79 @@ html.dark.black.accent-green {
   color: var(--home-heading);
 }
 
+/* Trimming a recording: its shape, with a handle for the start and one for the end laid over it. */
+.trim-wave {
+  position: relative;
+  height: 5.5rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--home-heading) 6%, transparent);
+}
+
+.trim-wave__bars {
+  position: absolute;
+  inset: 0.75rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.trim-wave__bars span {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--home-heading) 22%, transparent);
+  transition: background-color 0.12s ease;
+}
+
+.trim-wave__bars span.is-kept {
+  background: #57c2a9;
+}
+
+/* Two sliders on the same track: only their handles take a touch, so both can be reached. */
+.trim-range {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  inset: 0 0.75rem;
+  width: calc(100% - 1.5rem);
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.trim-range::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
+.trim-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 100%;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.trim-range::-moz-range-thumb {
+  width: 14px;
+  height: 5.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.trim-range:focus {
+  outline: none;
+}
+
 /* Sleep mode's sheet: what it is doing now, then when to stop as large buttons. */
 .sleep-status {
   display: flex;

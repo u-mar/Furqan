@@ -16,15 +16,19 @@ export default function RecitationGrid({
   items,
   onOpen,
   flush = false,
+  first,
 }: {
   items: Recitation[]
   onOpen: (id: string) => void
   /** Edge to edge with hairline gaps and square-cornered tiles, as a profile shows them. */
   flush?: boolean
+  /** A tile of the caller's own before the recitations: your drafts, on your profile. */
+  first?: React.ReactNode
 }) {
   const t = useT()
   return (
     <div className={flush ? '-mx-4 grid grid-cols-3 gap-0.5' : 'grid grid-cols-3 gap-1.5'}>
+      {first}
       {items.map((r) => {
         const card = r.kind === 'ayah'
         return (

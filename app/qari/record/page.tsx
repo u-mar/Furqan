@@ -24,6 +24,7 @@ import {
   Send,
   Upload,
   X,
+  Scissors,
 } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import MushafReadAlong from '@/components/qari/MushafReadAlong'
@@ -53,7 +54,8 @@ import {
   lastRecitationBackground,
   type VideoBackground,
 } from '@/lib/qari-backgrounds'
-import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, type QariDraftMeta } from '@/lib/qari-drafts'
+import TrimSheet from '@/components/qari/TrimSheet'
+import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, shelveDraft, type QariDraftMeta } from '@/lib/qari-drafts'
 import { postRecitation } from '@/lib/qari-upload'
 import { measurePeaks } from '@/lib/qari-waveform'
 import { findSheikh, SHEIKHS } from '@/lib/sheikhs'
@@ -148,6 +150,7 @@ function RecordFlow() {
   const [levels, setLevels] = useState<number[]>([])
 
   const [peaks, setPeaks] = useState<number[]>([])
+  const [trimOpen, setTrimOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [hashtags, setHashtags] = useState('')
   const [caption, setCaption] = useState('')
@@ -352,6 +355,13 @@ function RecordFlow() {
     setStep('edit')
   }, [recorder])
 
+  const openedDraftRef = useRef(false)
+  useEffect(() => {
+    if (openedDraftRef.current || params.get('draft') !== '1' || step !== 'ready') return
+    openedDraftRef.current = true
+    void resumeDraft()
+  }, [params, resumeDraft, step])
+
   const discardDraft = useCallback(() => {
     if (!draftDiscardArmed) {
       tapFeedback()
@@ -531,13 +541,15 @@ function RecordFlow() {
     router.replace(`/qari/${encodeURIComponent(viewer.username)}`)
   }, [backgroundId, caption, hashtags, imitate, isPrivate, peaks, router, sheikhId, spaceId, state, stopPreview, title, viewer])
 
-  const saveToDrafts = useCallback(() => {
+  const saveToDrafts = useCallback(async () => {
     tapFeedback()
     saveDraftMeta(draftFieldsRef.current)
     stopPreview()
+    // Onto the shelf, so the next recording does not replace it; found again under Drafts on the profile.
+    await shelveDraft()
     toast(tr('Saved to drafts.'), 'success')
-    router.replace('/qari')
-  }, [router, stopPreview])
+    router.replace(viewer ? `/qari/${encodeURIComponent(viewer.username)}` : '/qari')
+  }, [router, stopPreview, viewer])
 
   /* ---------------------------------------------------------- shared pieces */
 
@@ -726,7 +738,7 @@ function RecordFlow() {
           <div className="mx-auto flex w-full max-w-lg gap-2.5">
             <button
               type="button"
-              onClick={saveToDrafts}
+              onClick={() => void saveToDrafts()}
               className="qari-press ed-focus flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[15px] font-semibold text-[var(--home-heading)]"
             >
               <FileAudio className="h-[17px] w-[17px]" strokeWidth={2} />
@@ -781,6 +793,15 @@ function RecordFlow() {
           </button>
           <div className="absolute -right-2 top-4 flex flex-col items-center gap-4">
             <Tool Icon={AudioLines} label={t(space.label)} onClick={() => openPicker('sound')} />
+            <Tool
+              Icon={Scissors}
+              label={t('Trim')}
+              onClick={() => {
+                tapFeedback()
+                stopPreview()
+                setTrimOpen(true)
+              }}
+            />
             <Tool
               Icon={MicVocal}
               label={imitate && sheikh ? sheikh.shortName : t('Imitate')}
@@ -841,6 +862,23 @@ function RecordFlow() {
         </div>
 
         {pickers}
+        <TrimSheet
+          open={trimOpen}
+          blob={state.blob}
+          durationSec={state.durationSec}
+          peaks={peaks}
+          onClose={() => setTrimOpen(false)}
+          onTrimmed={(cut) => {
+            // The same take, shorter: its title and the rest stay as they were.
+            freshTakeRef.current = false
+            recorder.adopt(cut.blob, cut.mimeType, cut.durationSec)
+            measurePeaks(cut.blob)
+              .then(setPeaks)
+              .catch(() => setPeaks([]))
+            toast(tr('Trimmed.'), 'success')
+          }}
+          onFailed={() => qariNotice(tr('Could not trim this recording.'))}
+        />
       </Studio>
     )
   }

@@ -119,14 +119,14 @@ export default function EditProfileSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 pt-12 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="qari-edit-title"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[22rem] rounded-3xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 pb-6 pt-5 shadow-[var(--home-card-shadow)]"
+        className="relative max-h-[calc(100dvh-2.5rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[1.75rem] border border-[var(--home-card-border)] bg-[var(--home-card-bg)] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-[var(--home-card-shadow)] sm:rounded-[1.75rem]"
         onClick={(e) => e.stopPropagation()}
       >
         <button

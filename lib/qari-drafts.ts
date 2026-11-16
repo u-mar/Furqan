@@ -136,3 +136,104 @@ export async function clearDraft(): Promise<void> {
     // Best effort.
   }
 }
+
+/* ------------------------------------------------------------------ the shelf */
+
+/*
+ * Drafts kept for later, as many as the person likes: "Save to drafts" moves the
+ * working draft above onto this shelf, and opening one from the profile moves it
+ * back to be finished (whatever was being worked on changes places with it, so
+ * nothing is lost). Each one's audio sits beside the working draft's in Cache
+ * Storage; their details are one list in localStorage.
+ */
+
+const SHELF_KEY = 'naba_qari_drafts'
+const DRAFTS_EVENT = 'naba-qari-drafts'
+
+export interface ShelvedDraft extends QariDraftMeta {
+  id: string
+}
+
+const shelfAudioUrl = (id: string) => `/__qari-draft-audio__/${id}`
+
+export function listDrafts(): ShelvedDraft[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const list = JSON.parse(localStorage.getItem(SHELF_KEY) || '[]') as ShelvedDraft[]
+    return Array.isArray(list) ? list.filter((d) => d && typeof d.id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeShelf(list: ShelvedDraft[]): void {
+  try {
+    localStorage.setItem(SHELF_KEY, JSON.stringify(list))
+  } catch {
+    // Kept only as far as the phone allows.
+  }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(DRAFTS_EVENT))
+}
+
+/** Told when a draft is saved, opened or deleted, for whatever lists them. */
+export function subscribeDrafts(listener: () => void): () => void {
+  window.addEventListener(DRAFTS_EVENT, listener)
+  window.addEventListener('storage', listener)
+  return () => {
+    window.removeEventListener(DRAFTS_EVENT, listener)
+    window.removeEventListener('storage', listener)
+  }
+}
+
+/** The working draft, put on the shelf for later. False when there was none, or it could not be kept. */
+export async function shelveDraft(): Promise<boolean> {
+  const meta = readMeta()
+  if (!meta || typeof caches === 'undefined') return false
+  try {
+    const cache = await caches.open(DRAFT_CACHE)
+    const audio = await cache.match(DRAFT_AUDIO_URL)
+    if (!audio) return false
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+    await cache.put(shelfAudioUrl(id), audio)
+    writeShelf([{ ...meta, id, savedAt: Date.now() }, ...listDrafts()])
+    await clearDraft()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** A shelved draft made the working one, to be finished on the record screen. */
+export async function openDraft(id: string): Promise<boolean> {
+  const chosen = listDrafts().find((d) => d.id === id)
+  if (!chosen || typeof caches === 'undefined') return false
+  try {
+    const cache = await caches.open(DRAFT_CACHE)
+    const audio = await cache.match(shelfAudioUrl(id))
+    if (!audio) {
+      writeShelf(listDrafts().filter((d) => d.id !== id))
+      return false
+    }
+    const blob = await audio.blob()
+    // Whatever was being worked on goes onto the shelf in its place.
+    await shelveDraft()
+    await cache.put(DRAFT_AUDIO_URL, new Response(blob, { headers: { 'Content-Type': chosen.mimeType } }))
+    const { id: _id, ...meta } = chosen
+    void _id
+    writeMeta(meta)
+    await cache.delete(shelfAudioUrl(id))
+    writeShelf(listDrafts().filter((d) => d.id !== id))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function deleteDraft(id: string): Promise<void> {
+  writeShelf(listDrafts().filter((d) => d.id !== id))
+  try {
+    if (typeof caches !== 'undefined') await (await caches.open(DRAFT_CACHE)).delete(shelfAudioUrl(id))
+  } catch {
+    // Its entry is gone either way.
+  }
+}
