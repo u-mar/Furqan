@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, Search, X, type LucideIcon } from 'lucide-react'
 import QariMiniPlayer from '@/components/qari/QariMiniPlayer'
 import QariRecordFab from '@/components/qari/QariRecordFab'
@@ -31,12 +32,24 @@ export function QariHeader({
   hideBack?: boolean
 }) {
   const t = useT()
+  const router = useRouter()
   return (
     <header className="flex items-center gap-3">
       {hideBack
         ? null
         : (back ?? (
-            <Link href={backHref} className="home-round ed-focus" aria-label={t('Back')}>
+            // Back goes to the screen this was opened from (your profile, say), not always to the
+            // Qari feed; the link is only for a page opened directly, with nothing behind it.
+            <Link
+              href={backHref}
+              onClick={(e) => {
+                if (typeof window === 'undefined' || window.history.length <= 1) return
+                e.preventDefault()
+                router.back()
+              }}
+              className="home-round ed-focus"
+              aria-label={t('Back')}
+            >
               <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
             </Link>
           ))}

@@ -116,6 +116,10 @@
   text-rendering: geometricPrecision;
   padding-inline: 0.08em;
   box-sizing: content-box;
+  /* The page fonts draw heavy at phone sizes, heavier still as light script on a dark page. A hairline
+     in the page's own colour over the edge of each letter takes a little off its weight, the way
+     the printed mushaf's finer strokes look. */
+  -webkit-text-stroke: 0.18px var(--mushaf-read-bg, transparent);
 }
 
 /* Continuous scroll — words flow as paragraphs instead of keeping the

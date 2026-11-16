@@ -5,12 +5,19 @@ import { Loader2, Pause, Play, Scissors } from 'lucide-react'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { tapFeedback } from '@/lib/haptics'
 import { formatDuration } from '@/lib/qari'
-import { MIN_TRIM_SECONDS, trimRecording } from '@/lib/qari-trim'
+import { MIN_TRIM_SECONDS, cutOutOfRecording, trimRecording } from '@/lib/qari-trim'
+import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
+/** Keep what is between the handles (cutting the start and end), or take that part out of the middle. */
+type Mode = 'keep' | 'remove'
+/** Listening to a middle cut: this much before it and after it, so the join is heard. */
+const AROUND_CUT_S = 3
+
 /**
- * Cut the start and the end off a recording before it is posted: two handles over its shape,
- * the part that stays lit and the parts that go dimmed. "Listen" plays only what stays.
+ * Cut a recording before it is posted: two handles over its shape. "Ends" keeps what is between
+ * them and drops the start and the end; "Middle" takes what is between them out and joins the
+ * rest. The part that stays is lit, the part that goes dimmed, and "Listen" plays what stays.
  */
 export default function TrimSheet({
   open,
@@ -30,13 +37,14 @@ export default function TrimSheet({
   onFailed: () => void
 }) {
   const t = useT()
+  const [mode, setMode] = useState<Mode>('keep')
   const [from, setFrom] = useState(0)
   const [to, setTo] = useState(durationSec)
   const [playing, setPlaying] = useState(false)
   const [working, setWorking] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const bounds = useRef({ from: 0, to: durationSec })
-  bounds.current = { from, to }
+  const bounds = useRef({ from: 0, to: durationSec, mode: 'keep' as Mode, jumped: false })
+  bounds.current = { ...bounds.current, from, to, mode }
 
   const url = useMemo(() => (open ? URL.createObjectURL(blob) : null), [open, blob])
   useEffect(() => {
@@ -48,6 +56,7 @@ export default function TrimSheet({
   // Each time it opens: the whole recording, nothing playing.
   useEffect(() => {
     if (!open) return
+    setMode('keep')
     setFrom(0)
     setTo(durationSec)
     setPlaying(false)
@@ -68,7 +77,9 @@ export default function TrimSheet({
     const audio = audioRef.current
     if (!audio) return
     if (playing) return stop()
-    audio.currentTime = from
+    // A middle cut is heard from a little before it, over the join, to a little after.
+    bounds.current.jumped = false
+    audio.currentTime = mode === 'keep' ? from : Math.max(0, from - AROUND_CUT_S)
     void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
   }
 
@@ -78,7 +89,7 @@ export default function TrimSheet({
     stop()
     setWorking(0)
     try {
-      onTrimmed(await trimRecording(blob, from, to, setWorking))
+      onTrimmed(await (mode === 'keep' ? trimRecording : cutOutOfRecording)(blob, from, to, setWorking))
       onClose()
     } catch {
       setWorking(null)
@@ -95,29 +106,69 @@ export default function TrimSheet({
       return Math.max(8, ...peaks.slice(a, b))
     })
   }, [peaks])
-  const kept = Math.max(0, to - from)
-  const changed = from > 0.05 || to < durationSec - 0.05
+  const kept = mode === 'keep' ? Math.max(0, to - from) : Math.max(0, durationSec - (to - from))
+  const changed = mode === 'keep' ? from > 0.05 || to < durationSec - 0.05 : to - from > 0.05 && kept >= MIN_TRIM_SECONDS
+
+  /** The other way of cutting, with the handles put where it starts: the whole of it, or its middle third. */
+  const choose = (next: Mode) => {
+    if (next === mode) return
+    tapFeedback()
+    stop()
+    setMode(next)
+    setFrom(next === 'keep' ? 0 : durationSec / 3)
+    setTo(next === 'keep' ? durationSec : (durationSec * 2) / 3)
+  }
   const step = durationSec > 120 ? 0.5 : 0.1
 
   return (
-    <SettingsSheet open={open} title={t('Trim')} description={t('Cut the start or the end. Drag the two handles to what you want to keep.')} onClose={onClose}>
+    <SettingsSheet open={open} title={t('Trim')} description={mode === 'keep' ? t('Cut the start or the end. Drag the two handles to what you want to keep.') : t('Take a part out of the middle. Drag the two handles around what you want to remove.')} onClose={onClose}>
       {url ? (
         <audio
           ref={audioRef}
           src={url}
           preload="auto"
           onTimeUpdate={(e) => {
-            if (e.currentTarget.currentTime >= bounds.current.to) stop()
+            const at = e.currentTarget.currentTime
+            const now = bounds.current
+            if (now.mode === 'keep') {
+              if (at >= now.to) stop()
+            } else if (!now.jumped && at >= now.from) {
+              now.jumped = true
+              e.currentTarget.currentTime = now.to
+            } else if (now.jumped && at >= now.to + AROUND_CUT_S) {
+              stop()
+            }
           }}
           onEnded={() => setPlaying(false)}
         />
       ) : null}
 
-      <div className="trim-wave" dir="ltr">
+      <div className="ed-seg mb-3 grid-cols-2" role="radiogroup" aria-label={t('What to cut')}>
+        {(
+          [
+            { id: 'keep', label: t('Start and end') },
+            { id: 'remove', label: t('Middle') },
+          ] as { id: Mode; label: string }[]
+        ).map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={mode === option.id}
+            aria-pressed={mode === option.id}
+            onClick={() => choose(option.id)}
+            className="ed-seg__item ed-focus flex min-h-[40px] items-center justify-center text-[0.875rem] font-semibold"
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={cn('trim-wave', mode === 'remove' && 'is-removing')} dir="ltr">
         <div className="trim-wave__bars" aria-hidden>
           {shape.map((height, i) => {
             const at = ((i + 0.5) / bars) * durationSec
-            return <span key={i} className={at >= from && at <= to ? 'is-kept' : undefined} style={{ height: `${height}%` }} />
+            return <span key={i} className={(at >= from && at <= to) === (mode === 'keep') ? 'is-kept' : undefined} style={{ height: `${height}%` }} />
           })}
         </div>
         <input
@@ -128,7 +179,7 @@ export default function TrimSheet({
           value={from}
           onChange={(e) => {
             stop()
-            setFrom(Math.min(Number(e.target.value), to - MIN_TRIM_SECONDS))
+            setFrom(Math.min(Number(e.target.value), to - (mode === 'keep' ? MIN_TRIM_SECONDS : 0.3)))
           }}
           aria-label={t('Start')}
           className="trim-range"
@@ -141,7 +192,7 @@ export default function TrimSheet({
           value={to}
           onChange={(e) => {
             stop()
-            setTo(Math.max(Number(e.target.value), from + MIN_TRIM_SECONDS))
+            setTo(Math.max(Number(e.target.value), from + (mode === 'keep' ? MIN_TRIM_SECONDS : 0.3)))
           }}
           aria-label={t('End')}
           className="trim-range"
@@ -178,7 +229,7 @@ export default function TrimSheet({
           ) : (
             <>
               <Scissors className="h-4 w-4" strokeWidth={2.2} />
-              {t('Trim')}
+              {mode === 'keep' ? t('Trim') : t('Cut out')}
             </>
           )}
         </button>

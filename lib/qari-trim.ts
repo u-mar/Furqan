@@ -34,3 +34,37 @@ export async function trimRecording(
   const encoded = await encodeRecording(kept, 'medium', onProgress)
   return { blob: encoded.blob, mimeType: encoded.mimeType, durationSec: kept.length / kept.sampleRate }
 }
+
+/**
+ * A recording with a piece taken out of its middle: what comes before `from` and what comes
+ * after `to` (seconds), joined. Each side of the join is faded over a few milliseconds, so the
+ * place where a cough or a mistake was does not click.
+ */
+export async function cutOutOfRecording(
+  blob: Blob,
+  from: number,
+  to: number,
+  onProgress?: (fraction: number) => void
+): Promise<{ blob: Blob; mimeType: string; durationSec: number }> {
+  const decoder = new OfflineAudioContext(1, 1, 44100)
+  const buffer = await decoder.decodeAudioData(await blob.arrayBuffer())
+  const a = Math.max(0, Math.min(buffer.length, Math.floor(from * buffer.sampleRate)))
+  const b = Math.max(a, Math.min(buffer.length, Math.ceil(to * buffer.sampleRate)))
+  const length = a + (buffer.length - b)
+  if (length < MIN_TRIM_SECONDS * buffer.sampleRate) throw new Error('too short')
+  const joined = new AudioBuffer({ length, numberOfChannels: buffer.numberOfChannels, sampleRate: buffer.sampleRate })
+  const fade = Math.min(Math.floor(buffer.sampleRate * 0.012), Math.floor(a / 2), Math.floor((buffer.length - b) / 2))
+  for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    const source = buffer.getChannelData(channel)
+    const data = joined.getChannelData(channel)
+    data.set(source.subarray(0, a), 0)
+    data.set(source.subarray(b), a)
+    for (let i = 0; i < fade; i += 1) {
+      const gain = i / fade
+      data[a - 1 - i] *= gain
+      data[a + i] *= gain
+    }
+  }
+  const encoded = await encodeRecording(joined, 'medium', onProgress)
+  return { blob: encoded.blob, mimeType: encoded.mimeType, durationSec: joined.length / joined.sampleRate }
+}
