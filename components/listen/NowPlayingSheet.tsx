@@ -218,7 +218,7 @@ export default function NowPlayingSheet({
         </div>
       </div>
       {/* Full screen over everything, the tab bar too (it portals itself to the page). */}
-      {video ? <VideoMode onClose={onClose} onOpenSleep={onOpenSleep} onOpenNature={onOpenNature} /> : null}
+      {video ? <VideoMode onOpenSleep={onOpenSleep} onOpenNature={onOpenNature} /> : null}
     </div>,
     document.body
   )

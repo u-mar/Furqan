@@ -1,4 +1,5 @@
 import { areOfflineFontsCached, resolveQcfFontUrlsForLoad } from '@/lib/offline-font-cache'
+import { hasBundledQuran } from '@/lib/native-app'
 import {
   qcfCdnFontUrl,
   qcfPageFontFamily,
@@ -189,11 +190,8 @@ export async function loadPageFont(
   const family = qcfPageFontFamily(page)
   const sample = sampleGlyphs?.trim() ?? ''
 
-  if (
-    loadedPages.has(page) &&
-    isFamilyRegisteredAndLoaded(family) &&
-    (!sample || canRenderQcfGlyphs(family, sample))
-  ) {
+  // Only a font that was accepted is in loadedPages, so it is not checked again.
+  if (loadedPages.has(page) && isFamilyRegisteredAndLoaded(family)) {
     return true
   }
 
@@ -210,14 +208,22 @@ export async function loadPageFont(
         console.info('[Muyassar] Loading QCF font', { page, family, urls })
       }
 
+      // The glyph check compares the page font's width with a plain font's, and on some phones the
+      // two can happen to match: page 130 then counted as not loaded and showed only the error,
+      // retrying in vain. The app's own fonts are the originals, so it is skipped there.
       const skipGlyphCheck =
-        (typeof navigator !== 'undefined' && !navigator.onLine) || areOfflineFontsCached()
+        (typeof navigator !== 'undefined' && !navigator.onLine) || areOfflineFontsCached() || hasBundledQuran()
+
+      // A font that loaded but failed the check: still used if nothing better turns up, since the
+      // check can be wrong and the page font is far better than an error.
+      let loadedButUnchecked: string | null = null
 
       for (const url of urls) {
         try {
           const ok = await loadViaFontFace(page, url, listRow)
           if (!ok) continue
           if (sample && !skipGlyphCheck && !canRenderQcfGlyphs(family, sample)) {
+            loadedButUnchecked ??= url
             if (shouldLogFontDebug()) {
               console.warn('[Muyassar] QCF font loaded but glyphs did not render', {
                 page,
@@ -237,6 +243,14 @@ export async function loadPageFont(
             console.warn('[Muyassar] QCF font attempt failed', { page, url, err })
           }
         }
+      }
+
+      if (loadedButUnchecked && isFamilyRegisteredAndLoaded(family)) {
+        loadedPages.add(page)
+        if (shouldLogFontDebug()) {
+          console.info('[Muyassar] QCF font used although the glyph check failed', { page, url: loadedButUnchecked })
+        }
+        return true
       }
 
       loadedPages.delete(page)

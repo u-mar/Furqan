@@ -58,7 +58,7 @@ import TrimSheet from '@/components/qari/TrimSheet'
 import { clearDraft, loadDraft, peekDraftMeta, saveDraftAudio, saveDraftMeta, shelveDraft, type QariDraftMeta } from '@/lib/qari-drafts'
 import { postRecitation } from '@/lib/qari-upload'
 import { measurePeaks } from '@/lib/qari-waveform'
-import { findSheikh, SHEIKHS } from '@/lib/sheikhs'
+import { findSheikh, SHEIKHS, IMITATE_ON } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 
@@ -114,7 +114,7 @@ function RecordFlow() {
   const { state } = recorder
 
   // Arriving from a sheikh's page ("Imitate Sheikh Sufi") switches Imitate on.
-  const preset = findSheikh(params.get('imitate'))
+  const preset = IMITATE_ON ? findSheikh(params.get('imitate')) : null
   const [spaceId, setSpaceId] = useState<SpaceId>('reciter')
   const [imitate, setImitate] = useState(Boolean(preset))
   const [sheikhId, setSheikhId] = useState(preset?.id ?? SHEIKHS[0].id)
@@ -344,7 +344,7 @@ function RecordFlow() {
     recorder.adopt(draft.blob, draft.mimeType, draft.durationSec)
     setFromFile(Boolean(draft.fromFile))
     setSpaceId((draft.space as SpaceId) || 'reciter')
-    setImitate(Boolean(draft.imitating))
+    setImitate(IMITATE_ON && Boolean(draft.imitating))
     if (draft.imitating) setSheikhId(draft.imitating)
     if (draft.background) setBackgroundId(findVideoBackground(draft.background).id)
     setPeaks(draft.peaks)
@@ -694,6 +694,8 @@ function RecordFlow() {
             <div className="home-card overflow-hidden rounded-[20px]">
               <PostRow Icon={AudioLines} label={t('Sound')} value={t(space.label)} onClick={() => openPicker('sound')} />
               <RowDivider />
+              {IMITATE_ON ? (
+              <>
               <div className="set-row" style={{ paddingBlock: 8 }}>
                 <span className="set-row__icon">
                   <MicVocal className="h-[17px] w-[17px]" strokeWidth={1.9} />
@@ -716,6 +718,8 @@ function RecordFlow() {
                 </div>
               ) : null}
               <RowDivider />
+              </>
+              ) : null}
               <PostRow
                 Icon={isPrivate ? Lock : Globe}
                 label={t('Who can hear it')}
@@ -802,12 +806,14 @@ function RecordFlow() {
                 setTrimOpen(true)
               }}
             />
-            <Tool
-              Icon={MicVocal}
-              label={imitate && sheikh ? sheikh.shortName : t('Imitate')}
-              active={imitate}
-              onClick={() => openPicker('sheikh')}
-            />
+            {IMITATE_ON ? (
+              <Tool
+                Icon={MicVocal}
+                label={imitate && sheikh ? sheikh.shortName : t('Imitate')}
+                active={imitate}
+                onClick={() => openPicker('sheikh')}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -934,7 +940,7 @@ function RecordFlow() {
           </span>
         ) : countingDown ? (
           <span className="qari-cam-text text-[15px] font-semibold">{t('Get ready')}</span>
-        ) : importing ? null : (
+        ) : importing || !IMITATE_ON ? null : (
           <div className="flex min-w-0 items-center gap-1.5">
             <button
               type="button"

@@ -31,6 +31,10 @@ SITE = "https://qurannaba.com"
 CRF = "26"
 PRESET = "slow"
 AUDIO_BITRATE = "128k"
+# A ceiling for busy moving backgrounds (mist, sea, falling water), which CRF alone let reach
+# 2.8 Mbps; calm ones stay far below it and are untouched. About what social apps give 1080p.
+MAX_RATE = "1800k"
+BUFFER = "3600k"
 RENDER_TIMEOUT_S = 15 * 60
 
 image = (
@@ -109,7 +113,7 @@ def _reencode(master: bytes) -> tuple[bytes, float]:
             f.write(master)
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", src,
-             "-c:v", "libx264", "-preset", PRESET, "-crf", CRF, "-pix_fmt", "yuv420p", "-profile:v", "high",
+             "-c:v", "libx264", "-preset", PRESET, "-crf", CRF, "-maxrate", MAX_RATE, "-bufsize", BUFFER, "-pix_fmt", "yuv420p", "-profile:v", "high",
              "-c:a", "aac", "-b:a", AUDIO_BITRATE, "-movflags", "+faststart", dst],
             check=True,
         )

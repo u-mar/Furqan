@@ -184,12 +184,6 @@ export default function QariProfile() {
     }
   }, [recitations])
 
-  const sheikhIds = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const r of recitations ?? []) if (r.imitating) counts.set(r.imitating, (counts.get(r.imitating) ?? 0) + 1)
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
-  }, [recitations])
-
   // Your own "Only me" posts live behind the lock, not in the main tab. Others
   // never receive them, so this split only shows on your own profile.
   const publicRecitations = useMemo(() => recitations?.filter((r) => !r.isPrivate) ?? null, [recitations])
@@ -319,7 +313,6 @@ export default function QariProfile() {
             plays: recitations === null ? null : totals.plays,
             loved: recitations === null ? null : totals.loved,
           }}
-          sheikhIds={sheikhIds}
           bio={bio}
           onShare={() => void handleShare()}
           onEditPicture={() => setEditOpen(true)}
@@ -458,11 +451,7 @@ export default function QariProfile() {
               }
             />
           ) : isMe && privateRecitations && privateRecitations.length > 0 ? (
-            <EmptyState
-              Icon={Mic}
-              title={t('Nothing public yet')}
-              body={t('Your recitations are set to Only me. You will find them behind the lock.')}
-            />
+            <EmptyState title={t('Nothing public yet')} />
           ) : isMe ? (
             <EmptyState
               Icon={Mic}

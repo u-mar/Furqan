@@ -37,9 +37,9 @@ export default function EmptyState({
   body,
   action,
 }: {
-  Icon: LucideIcon
+  Icon?: LucideIcon
   title: string
-  body: string
+  body?: string
   action?: { label: string; href?: string; onClick?: () => void; Icon?: LucideIcon }
 }) {
   const ActionIcon = action?.Icon
@@ -48,11 +48,13 @@ export default function EmptyState({
 
   return (
     <div className="qari-enter home-card rounded-[18px] px-6 py-8 text-center">
-      <Arch Icon={Icon} />
-      <p className="home-serif mt-4 text-[1.1875rem] font-medium tracking-[-0.01em] text-[var(--home-heading)]">
+      {Icon ? <Arch Icon={Icon} /> : null}
+      <p
+        className={`home-serif ${Icon ? 'mt-4 ' : ''}text-[1.1875rem] font-medium tracking-[-0.01em] text-[var(--home-heading)]`}
+      >
         {title}
       </p>
-      <p className="mx-auto mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">{body}</p>
+      {body ? <p className="mx-auto mt-1.5 max-w-[30ch] text-sm leading-relaxed text-[var(--home-muted)]">{body}</p> : null}
       {action ? (
         action.href ? (
           <Link href={action.href} className={actionClass}>

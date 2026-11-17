@@ -21,6 +21,14 @@ export interface Sheikh {
   reciterId?: string
 }
 
+/**
+ * Whether Imitate is offered: switched off for now. Off, nothing in the app mentions it (the
+ * record screen's switch and picker, the "Imitating …" chips, the Imitations row on Qari), and new
+ * recitations are posted without a sheikh. Recitations already marked keep it, ready for when it
+ * comes back: switch this to true.
+ */
+export const IMITATE_ON = false
+
 export const SHEIKHS: Sheikh[] = [
   {
     id: 'abdirashid-sufi',

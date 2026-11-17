@@ -2630,6 +2630,40 @@ html.dark .auth-alert {
   transform: translateX(1.125rem);
 }
 
+/* All reciters, in the dark themes: pitch black like the page, each card set apart by a faint line. */
+html.dark .reciter-picker .home-card,
+html.dark .reciter-picker .ed-seg {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+/* Prayer and Qibla, like Home: white and grey, no coloured accent (hooks/useNeutralAccent.ts marks the
+   whole page while it is open, so its sheets match). The switch's knob turns dark to show on white. */
+html.dark.accent-neutral {
+  --home-sage: #ffffff;
+  --home-sage-deep: #ffffff;
+  --home-sage-dark: #ffffff;
+  --home-sage-soft: rgba(255, 255, 255, 0.12);
+}
+/* Its cards pitch black like Home's page, set apart only by a faint line. */
+html.dark.accent-neutral .pt-next,
+html.dark.accent-neutral .pt-day,
+html.dark.accent-neutral .pt-qibla {
+  background: #000000;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+/* Each prayer's icon and bell: black circles with a faint ring, not grey ones. */
+html.dark.accent-neutral .pt-row:not([data-state='now']) .pt-row__icon,
+html.dark.accent-neutral .pt-bell[aria-pressed='true'] {
+  background: #000000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+html.dark.accent-neutral .qari-switch[aria-checked='true'] .qari-switch__knob {
+  background: #000000;
+}
+
 /* --- Loading placeholders that shimmer instead of a blank screen --- */
 
 .qari-skeleton {
@@ -3518,10 +3552,8 @@ html.dark .set-row--danger {
   opacity: 0.4;
 }
 
-/* Nature mode and Prayer stay green in the pure-black theme, where the accent elsewhere is blue
-   (Prayer marks the whole page while it is open, so its sheets are green too: hooks/useGreenAccent.ts). */
-html.dark.black .nature-accent,
-html.dark.black.accent-green {
+/* Nature mode stays green in the pure-black theme, where the accent elsewhere is blue. */
+html.dark.black .nature-accent {
   --home-sage: #5cc4ab;
   --home-sage-deep: #3aa88f;
   --home-sage-dark: #9be0cd;
@@ -3870,6 +3902,39 @@ html.listen-video-on .bottom-nav {
   background: transparent;
   color: #ffffff;
   transition: transform 0.12s ease;
+}
+
+/* Translation mode's pause, in the middle of the controls: an outline circle, see-through. */
+.listen-video__play {
+  display: flex;
+  width: 4.25rem;
+  height: 4.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.65);
+  background: rgba(0, 0, 0, 0.12);
+  color: #ffffff;
+  transition: transform 0.12s ease;
+}
+.listen-video__play:active {
+  transform: scale(0.94);
+}
+/* The translation's language, beside the surah: a see-through pill. */
+.listen-video__chip {
+  display: inline-flex;
+  height: 1.875rem;
+  max-width: 45%;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3125rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 0 0.75rem;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 .listen-video__button.is-on {

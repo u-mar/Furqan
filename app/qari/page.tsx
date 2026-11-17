@@ -37,7 +37,7 @@ import {
 import { fetchDiscover, fetchFeed, fetchSheikhStats, peekDiscover, peekFeed, type Discover, type Recitation, forYouSeed } from '@/lib/qari'
 import { onPlayerError, stopPlayback } from '@/lib/qari-player'
 import { useQariView } from '@/lib/qari-view'
-import { findSheikh, matchSheikh, type Sheikh } from '@/lib/sheikhs'
+import { findSheikh, IMITATE_ON, matchSheikh, type Sheikh } from '@/lib/sheikhs'
 import { askToSignIn } from '@/lib/account-prompt'
 import { tapFeedback } from '@/lib/haptics'
 import type { AppUser } from '@/lib/auth'
@@ -511,7 +511,7 @@ function QariHomeContent() {
             </section>
           ) : null}
 
-          {sheikhs.length > 0 ? (
+          {IMITATE_ON && sheikhs.length > 0 ? (
             <section>
               <QariLabel action={<SeeAll href="/qari/sheikhs" />}>{t('Imitations')}</QariLabel>
               {sheikhs.length <= 2 ? (
@@ -627,7 +627,7 @@ function SearchResults({
   onOpen: (list: Recitation[], startId: string) => void
 }) {
   const t = useT()
-  const sheikh = useMemo(() => matchSheikh(query), [query])
+  const sheikh = useMemo(() => (IMITATE_ON ? matchSheikh(query) : null), [query])
   const viewerId = viewer?.id ?? null
   const [sort, setSort] = useState<'recent' | 'top'>('top')
   const [imitations, setImitations] = useState<Recitation[] | null>(null)

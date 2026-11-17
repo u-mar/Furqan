@@ -171,7 +171,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
       : t('No reciter matches that.')
 
   return (
-    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label={t('Choose a reciter')}>
+    <div className="reciter-picker qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label={t('Choose a reciter')}>
       <div className="shrink-0">
         <div className="mx-auto w-full max-w-lg px-4 pb-1 pt-[max(1rem,env(safe-area-inset-top))]">
           <header className="flex items-center gap-3">

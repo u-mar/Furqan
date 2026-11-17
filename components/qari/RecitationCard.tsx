@@ -17,7 +17,7 @@ import { useRecitationActions } from '@/hooks/useRecitationActions'
 import { tapFeedback } from '@/lib/haptics'
 import { compactNumber, formatDuration, prefetchRecitationAudio, timeAgoLong, type Recitation } from '@/lib/qari'
 import { seekPlayback, togglePlayback } from '@/lib/qari-player'
-import { findSheikh } from '@/lib/sheikhs'
+import { findSheikh, IMITATE_ON } from '@/lib/sheikhs'
 import { VIDEO_BACKGROUND_GROUPS, VIDEO_BACKGROUNDS } from '@/lib/qari-backgrounds'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
@@ -60,7 +60,6 @@ function RecitationCard({
   const t = useT()
   const player = useQariPlayer()
   const {
-    isOwner,
     canManage,
     shown,
     isPrivate,
@@ -86,7 +85,7 @@ function RecitationCard({
   const status = isCurrent ? player.status : 'idle'
   const duration = isCurrent && player.duration > 0 ? player.duration : recitation.durationSec
   const progress = isCurrent && duration > 0 ? Math.min(1, player.position / duration) : 0
-  const sheikh = findSheikh(recitation.imitating)
+  const sheikh = IMITATE_ON ? findSheikh(recitation.imitating) : null
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
 
   const toggle = useCallback(() => {

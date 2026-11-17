@@ -29,12 +29,14 @@ const APP_SHELL = ['/', '/read', '/listen', '/qari', '/prayer', '/prayer/qibla',
 
 /** The scripts and styles a page's HTML loads (Next's hashed files, which never change). */
 function staticAssetsIn(html) {
-  return [...new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || [])]
+  // Whole file names only: the page's streamed data can cut one in two ("/_next/static/m" … "edia/…").
+  return [...new Set(html.match(/\/_next\/static\/[^"'\s)\\]+\.[a-z0-9]{2,5}(?=["'\s)\\]|$)/g) || [])]
 }
 
-/** Saves the files a page needs that are not saved yet, a few at a time. */
+/** Saves the files a page needs that are not saved yet, a few at a time. True when all of them are saved. */
 async function saveAssets(urls) {
   const cache = await caches.open(STATIC_CACHE)
+  let all = true
   for (let i = 0; i < urls.length; i += 6) {
     await Promise.all(
       urls.slice(i, i + 6).map(async (url) => {
@@ -42,21 +44,53 @@ async function saveAssets(urls) {
           if (await cache.match(url)) return
           const response = await fetch(url)
           if (response.ok) await cache.put(url, response)
+          else all = false
         } catch {
-          // Fetched again the first time the page asks for it.
+          all = false
         }
       })
     )
   }
+  return all
 }
 
-/** Keeps a screen's HTML (under its path, whatever the query) and everything it loads. */
+/**
+ * Keeps a screen's HTML (under its path, whatever the query) and everything it loads: the scripts
+ * first, and the HTML only once every one of them is saved. Saved the other way round, a connection
+ * lost halfway left a page whose scripts were missing: opened offline, it showed but never came
+ * alive, and no button could be tapped. The copy saved before stays until a complete one replaces it.
+ */
 async function saveScreen(path, response) {
   const html = await response.clone().text()
+  if (!(await saveAssets(staticAssetsIn(html)))) return
   const cache = await caches.open(CACHE_VERSION)
   await cache.put(new URL(path, self.location.origin).href, response)
-  await saveAssets(staticAssetsIn(html))
 }
+
+/** fetch(), given up on after `ms`: a connection that answers nothing must not hold the app. */
+function fetchWithin(request, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms)
+    fetch(request).then(
+      (response) => {
+        clearTimeout(timer)
+        resolve(response)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
+
+/** The data Next fetches to move to another screen inside the app (or to prepare one). */
+function isScreenData(request, url) {
+  return request.headers.get('RSC') === '1' || url.searchParams.has('_rsc')
+}
+
+/** How long moving to another screen waits for the network before opening the saved copy instead. */
+const SCREEN_DATA_WAIT_MS = 5000
 
 async function saveAppShell() {
   await Promise.all(
@@ -78,17 +112,23 @@ function isNavigationRequest(request) {
   )
 }
 
+// The main screens are saved while installing, when the worker in charge still answers everything.
+// They used to be saved after taking over, and until every screen and script had downloaded no
+// request was answered at all: on a weak connection the app froze on opening, or showed
+// "No internet connection".
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE).catch(() => undefined))
+    Promise.all([
+      caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE).catch(() => undefined)),
+      saveAppShell(),
+    ]).then(() => self.skipWaiting())
   )
-  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    saveAppShell()
-      .then(() => caches.keys())
+    caches
+      .keys()
       .then((keys) =>
         // Only this worker's own earlier versions go. Everything people saved (the Quran text,
         // page fonts, translations, downloaded surahs, photos) sits in caches of its own and
@@ -118,6 +158,18 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname === '/sw.js') {
     event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Moving to another screen: offline, or with no answer within a few seconds, Next is told it
+  // failed and opens the screen as a page instead, which comes from the phone at once. Waiting on
+  // the network here is what made taps on Settings and the rest seem to do nothing.
+  if (isScreenData(event.request, url)) {
+    event.respondWith(
+      self.navigator.onLine === false
+        ? Response.error()
+        : fetchWithin(event.request, SCREEN_DATA_WAIT_MS).catch(() => Response.error())
+    )
     return
   }
 

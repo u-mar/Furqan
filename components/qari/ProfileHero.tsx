@@ -5,10 +5,8 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, Pencil, Share2, UserRoundPlus } from 'lucide-react'
 import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
-import { SheikhMonogram } from '@/components/qari/SheikhCards'
 import { tapFeedback } from '@/lib/haptics'
 import { compactNumber } from '@/lib/qari'
-import { findSheikh } from '@/lib/sheikhs'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -90,7 +88,7 @@ function Stat({ value, label }: { value: number | null; label: string }) {
 
 /**
  * Who this qari is, the way a short-video profile shows it: the picture,
- * @handle and name, three numbers, one clear button, and the sheikhs they imitate.
+ * @handle and name, three numbers, one clear button, and their bio.
  */
 export default function ProfileHero({
   username,
@@ -98,7 +96,6 @@ export default function ProfileHero({
   isMe,
   avatarVersion,
   stats,
-  sheikhIds,
   bio = '',
   actions,
   onShare,
@@ -109,7 +106,6 @@ export default function ProfileHero({
   isMe: boolean
   avatarVersion?: number
   stats: { followers: number | null; plays: number | null; loved: number | null }
-  sheikhIds: string[]
   /** A line they wrote about themselves; nothing shows when it is empty. */
   bio?: string
   /** The Follow or Edit profile button. */
@@ -118,7 +114,6 @@ export default function ProfileHero({
   onEditPicture: () => void
 }) {
   const t = useT()
-  const sheikhs = sheikhIds.map((id) => findSheikh(id)).filter((s): s is NonNullable<typeof s> => Boolean(s))
 
   return (
     <section className="qari-enter">
@@ -150,22 +145,6 @@ export default function ProfileHero({
 
       <p className="mt-3 truncate text-[0.9375rem] font-bold text-[var(--home-heading)]">{name}</p>
       {bio ? <p className="mt-0.5 whitespace-pre-line text-[0.84375rem] leading-snug text-[var(--home-heading)]">{bio}</p> : null}
-
-      {sheikhs.length > 0 ? (
-        <div className="qari-no-scrollbar -mx-4 mt-2.5 flex max-w-[calc(100%+2rem)] justify-start gap-2 overflow-x-auto px-4">
-          {sheikhs.map((sheikh) => (
-            <Link
-              key={sheikh.id}
-              href={`/qari/sheikh/${sheikh.id}`}
-              onClick={tapFeedback}
-              className="qari-press ed-focus flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--home-heading)_6%,transparent)] py-0.5 pl-0.5 pr-3 text-[12.5px] font-semibold text-[var(--home-heading)]"
-            >
-              <SheikhMonogram sheikh={sheikh} size={26} />
-              {sheikh.shortName}
-            </Link>
-          ))}
-        </div>
-      ) : null}
 
       <div className="mt-3.5 flex items-center gap-2">
         <div className="flex min-w-0 flex-1">{actions}</div>

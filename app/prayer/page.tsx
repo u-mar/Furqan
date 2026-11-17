@@ -18,7 +18,6 @@ import {
   Sunset,
   type LucideIcon,
 } from 'lucide-react'
-import LocationOffNote from '@/components/prayer/LocationOffNote'
 import Radio from '@/components/settings/Radio'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import Switch from '@/components/qari/Switch'
@@ -46,7 +45,7 @@ import {
 } from '@/lib/prayer'
 import { tapFeedback } from '@/lib/haptics'
 import { tr, useLanguage, useT } from '@/lib/i18n'
-import { useGreenAccent } from '@/hooks/useGreenAccent'
+import { useNeutralAccent } from '@/hooks/useNeutralAccent'
 
 /** Each prayer's icon — plain outline, one colour, not a small illustration. */
 const PRAYER_ICONS: Record<PrayerId, LucideIcon> = {
@@ -86,7 +85,7 @@ type Sheet = 'method' | null
  */
 export default function PrayerPage() {
   const t = useT()
-  useGreenAccent()
+  useNeutralAccent()
   const language = useLanguage()
   const { place, settings, ready } = usePrayerState()
   const clock = useNow(1000)
@@ -158,16 +157,27 @@ export default function PrayerPage() {
       >
         <PrayerHeader title={t('Prayer times')} subtitle={`${gregorian} · ${formatHijri(now)}`} />
 
-        <LocationOffNote status={location.status} place={place} onRetry={location.retry} />
-
         {/* What comes next */}
         <section className="pt-next mt-4" aria-labelledby="pt-next">
           <div className="flex items-center justify-between gap-3">
             <p className="pt-next__kicker">{t('Next prayer')}</p>
-            <span className="pt-next__place">
-              <MapPin className="h-3 w-3 shrink-0" strokeWidth={2.2} aria-hidden />
-              <span className="truncate">{placeName}</span>
-            </span>
+            {/* Where the times are for. With location off (but not blocked), a tap asks for it again. */}
+            {location.status === 'off' ? (
+              <button
+                type="button"
+                onClick={location.retry}
+                className="pt-next__place ed-focus"
+                aria-label={t('Use my location')}
+              >
+                <MapPin className="h-3 w-3 shrink-0" strokeWidth={2.2} aria-hidden />
+                <span className="truncate">{placeName}</span>
+              </button>
+            ) : (
+              <span className="pt-next__place">
+                <MapPin className="h-3 w-3 shrink-0" strokeWidth={2.2} aria-hidden />
+                <span className="truncate">{placeName}</span>
+              </span>
+            )}
           </div>
 
           <div className="mt-2.5 flex items-end justify-between gap-3">
@@ -281,11 +291,7 @@ export default function PrayerPage() {
               {t('Allow')}
             </button>
           </p>
-        ) : hasAdhan ? (
-          <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">
-            {appAdhan ? t('Sounds at each prayer, even when the app is closed.') : t('Plays at each prayer while the app is open.')}
-          </p>
-        ) : (
+        ) : hasAdhan ? null : (
           <p className="mx-2 mt-2.5 text-[0.75rem] leading-snug text-[var(--home-muted)]">{t('Adhan sound is coming soon.')}</p>
         )}
 

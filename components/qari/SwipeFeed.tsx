@@ -38,7 +38,7 @@ import {
   togglePlayback,
   type PlayerSnapshot,
 } from '@/lib/qari-player'
-import { findSheikh } from '@/lib/sheikhs'
+import { findSheikh, IMITATE_ON } from '@/lib/sheikhs'
 import {
   backgroundReel,
   clipSource,
@@ -608,7 +608,7 @@ const Slide = memo(function Slide({
   const hasTimeline = (recitation.verseTimeline ?? []).length > 0
   // A picture made on the Read screen: nothing to play, so no tap-to-play, hold or progress line.
   const isAyahCard = recitation.kind === 'ayah'
-  const sheikh = findSheikh(recitation.imitating)
+  const sheikh = IMITATE_ON ? findSheikh(recitation.imitating) : null
   const firstTag = recitation.hashtags[0]
   const profileHref = `/qari/${encodeURIComponent(recitation.userUsername)}`
   const startRecording = useStartRecording()
