@@ -221,7 +221,6 @@ export class StreamingMelExtractor {
   private drainFrames(): Float32Array[] {
     const out: Float32Array[] = []
     const win = new Float64Array(N_FFT)
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const start = this.framesEmitted * HOP_LENGTH
       const lastNeeded = start + WIN_PAD_LEFT + WIN_LENGTH - 1

@@ -2,7 +2,8 @@ import { tr } from '@/lib/i18n-core'
 
 export interface QariNotification {
   id: string
-  type: 'like' | 'follow' | 'milestone'
+  /** "verified" and "verify-declined": the admin decided on the reader's application to be verified. */
+  type: 'like' | 'follow' | 'milestone' | 'verified' | 'verify-declined'
   actorUsername: string
   actorName: string
   recitationId: string | null

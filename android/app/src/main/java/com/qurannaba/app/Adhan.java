@@ -2,6 +2,7 @@ package com.qurannaba.app;
 
 import android.Manifest;
 import android.app.AlarmManager;
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -26,23 +27,28 @@ import org.json.JSONObject;
  * (lib/native-adhan.ts) and hands them over (NabaAdhanPlugin); they are kept here, and Android is
  * asked to wake the app at the next one (AlarmManager, AdhanReceiver). A notification then sounds
  * the adhan: the full recording, and for Fajr its opening takbir only, since the recording is
- * not the Fajr adhan. Tapping the notification, swiping it away or its Stop button ends the sound.
- * Like any notification it stays quiet when the phone is on silent or Do Not Disturb.
+ * not the Fajr adhan. The app plays it itself (AdhanService) under a silent notification, since
+ * many phones drop a notification's own sound. Tapping the notification, swiping it away or its
+ * Stop button ends the sound. It stays quiet when the phone is on silent, vibrate or Do Not Disturb.
  */
 final class Adhan {
 
     static final String ACTION_SOUND = "com.qurannaba.app.ADHAN";
     static final String ACTION_STOP = "com.qurannaba.app.ADHAN_STOP";
     static final String EXTRA_AT = "at";
+    /** On the notification's tap: the Prayer screen opens and the adhan stops (MainActivity). */
+    static final String EXTRA_STOP = "com.qurannaba.app.ADHAN_STOP";
 
     /** Android keeps a channel's sound once it exists: a new recording needs new channel ids. */
     private static final String CHANNEL = "adhan-1";
     private static final String CHANNEL_FAJR = "adhan-fajr-1";
+    /** The notification while the app plays the adhan itself: no sound of its own, the app's is the sound. */
+    private static final String CHANNEL_PLAYING = "adhan-playing-1";
 
     private static final String PREFS = "naba-adhan";
     private static final String KEY_TIMES = "times";
     private static final String KEY_LABELS = "labels";
-    private static final int NOTIFICATION_ID = 7301;
+    static final int NOTIFICATION_ID = 7301;
     private static final int ALARM_REQUEST = 7302;
     private static final int OPEN_REQUEST = 7303;
     private static final int STOP_REQUEST = 7304;
@@ -68,6 +74,7 @@ final class Adhan {
     }
 
     static void stop(Context context) {
+        AdhanService.stop(context);
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID);
     }
 
@@ -109,7 +116,7 @@ final class Adhan {
         NotificationManagerCompat manager = NotificationManagerCompat.from(context);
         if (!manager.areNotificationsEnabled()) return false;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true;
-        for (String id : new String[] { CHANNEL, CHANNEL_FAJR }) {
+        for (String id : new String[] { CHANNEL, CHANNEL_FAJR, CHANNEL_PLAYING }) {
             NotificationChannel channel = manager.getNotificationChannel(id);
             if (channel != null && channel.getImportance() == NotificationManager.IMPORTANCE_NONE) return false;
         }
@@ -125,11 +132,13 @@ final class Adhan {
             if (time != null && time.optLong("at") == at) prayer = time;
         }
         long late = System.currentTimeMillis() - at;
-        if (prayer != null && late > -60_000L && late < LATE_MS) show(context, prayer);
+        if (prayer != null && late > -60_000L && late < LATE_MS) announce(context, prayer);
         scheduleNext(context);
     }
 
-    private static void show(Context context, JSONObject prayer) {
+    /** The adhan for this prayer: played by the app, or, where Android does not allow that, the notification's own sound. */
+    private static void announce(Context context, JSONObject prayer) {
+        // Without notifications there is no adhan: nothing would show what is playing or stop it.
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -137,8 +146,32 @@ final class Adhan {
             return;
         }
         makeChannels(context);
+        try {
+            AdhanService.start(context, prayer);
+        } catch (RuntimeException e) {
+            // Android 12 and newer let an alarm start the player only when it was set to the minute
+            // ("Alarms & reminders" allowed); otherwise the notification sounds it, as before.
+            show(context, prayer);
+        }
+    }
+
+    /** The notification shown while the app plays the adhan. */
+    static Notification playingNotification(Context context, JSONObject prayer) {
+        makeChannels(context);
+        return builder(context, prayer, CHANNEL_PLAYING).build();
+    }
+
+    private static void show(Context context, JSONObject prayer) {
         boolean fajr = "fajr".equals(prayer.optString("prayer"));
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, fajr ? CHANNEL_FAJR : CHANNEL)
+        NotificationCompat.Builder builder = builder(context, prayer, fajr ? CHANNEL_FAJR : CHANNEL);
+        // Android 7 has no channels: the sound goes on the notification itself.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setSound(soundUri(context, fajr), AudioManager.STREAM_NOTIFICATION);
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build());
+        NabaAdhanPlugin.sounded(prayer.optString("prayer"));
+    }
+
+    private static NotificationCompat.Builder builder(Context context, JSONObject prayer, String channel) {
+        return new NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_stat_naba)
             .setColor(ContextCompat.getColor(context, R.color.naba_gold))
             .setContentTitle(prayer.optString("title"))
@@ -150,11 +183,9 @@ final class Adhan {
             .setAutoCancel(true)
             .setTimeoutAfter(SHOWN_MS)
             .setContentIntent(openPrayer(context))
+            // Swiping it away ends the sound too.
+            .setDeleteIntent(stopIntent(context))
             .addAction(0, labels(context).optString("stop", "Stop"), stopIntent(context));
-        // Android 7 has no channels: the sound goes on the notification itself.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setSound(soundUri(context, fajr), AudioManager.STREAM_NOTIFICATION);
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build());
-        NabaAdhanPlugin.sounded(prayer.optString("prayer"));
     }
 
     /** The two sounds, as channels people can see and change in Android's settings for the app. */
@@ -170,13 +201,16 @@ final class Adhan {
         full.setSound(soundUri(context, false), audio);
         NotificationChannel fajr = new NotificationChannel(CHANNEL_FAJR, labels.optString("fajrChannel", "Fajr adhan"), NotificationManager.IMPORTANCE_HIGH);
         fajr.setSound(soundUri(context, true), audio);
+        NotificationChannel playing = new NotificationChannel(CHANNEL_PLAYING, labels.optString("channel", "Adhan"), NotificationManager.IMPORTANCE_HIGH);
+        playing.setSound(null, null);
         // Made once; afterwards this only renames them, to the app's language.
         manager.createNotificationChannel(full);
         manager.createNotificationChannel(fajr);
+        manager.createNotificationChannel(playing);
     }
 
     /** res/raw/adhan.mp3 and adhan_fajr.mp3, by name: a channel keeps this address across app updates. */
-    private static Uri soundUri(Context context, boolean fajr) {
+    static Uri soundUri(Context context, boolean fajr) {
         return new Uri.Builder()
             .scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
             .authority(context.getPackageName())
@@ -193,7 +227,7 @@ final class Adhan {
     /** Tapping the notification opens the Prayer screen (MainActivity.openLink). */
     private static PendingIntent openPrayer(Context context) {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://qurannaba.com/prayer"), context, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(EXTRA_STOP, true);
         return PendingIntent.getActivity(context, OPEN_REQUEST, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 

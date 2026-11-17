@@ -23,6 +23,7 @@ import { useStartRecording } from '@/components/qari/QariRecordFab'
 import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/components/qari/RecitationCard'
 import { SheikhCard, SheikhHeader } from '@/components/qari/SheikhCards'
 import RecitationGrid from '@/components/qari/RecitationGrid'
+import SearchSuggestions from '@/components/qari/SearchSuggestions'
 import SwipeFeed from '@/components/qari/SwipeFeed'
 import { useBlockedUsers } from '@/lib/qari-blocks'
 import {
@@ -60,6 +61,8 @@ function QariHomeContent() {
   // Which For You mix: kept for the session, drawn again on a refresh.
   const [seed, setSeed] = useState(() => (typeof window === 'undefined' ? '' : forYouSeed()))
   const [searchOpen, setSearchOpen] = useState(urlQuery.length > 0)
+  // While typing, suggestions show (as on TikTok); the results come once a search is chosen.
+  const [suggesting, setSuggesting] = useState(false)
   // A recitation opened full screen from a card, over the list. Closing it returns to the list.
   const [overlay, setOverlay] = useState<{ items: Recitation[]; startId: string } | null>(null)
   // Only a tap lets the browser start sound, so the swipe view plays at once only when one opened it.
@@ -78,14 +81,18 @@ function QariHomeContent() {
   useEffect(() => {
     setSearch(urlQuery)
     setQuery(urlQuery)
+    setSuggesting(false)
     if (urlQuery) setSearchOpen(true)
   }, [urlQuery])
 
-  /* Search fires once the typing settles, not on every key. */
-  useEffect(() => {
-    const id = window.setTimeout(() => setQuery(search.trim()), 300)
-    return () => window.clearTimeout(id)
-  }, [search])
+  /** Runs a search: what was typed, or a suggestion tapped. */
+  const runSearch = useCallback((term: string) => {
+    const next = term.trim()
+    if (!next) return
+    setSearch(next)
+    setQuery(next)
+    setSuggesting(false)
+  }, [])
 
   useEffect(() => onPlayerError(qariNotice), [])
 
@@ -226,6 +233,7 @@ function QariHomeContent() {
     if (searchOpen) {
       setSearch('')
       setQuery('')
+      setSuggesting(false)
     }
     setSearchOpen((open) => !open)
   }
@@ -363,13 +371,31 @@ function QariHomeContent() {
       value={search}
       onChange={(value) => {
         setSearch(value)
+        setSuggesting(true)
         if (!value) setQuery('')
       }}
+      onFocus={() => setSuggesting(true)}
+      onSubmit={() => runSearch(search)}
       placeholder={t('Search a qari, recitation or #tag')}
       label={t('Search recitations')}
-      autoFocus={!urlQuery}
+      // Only when the box first opens: once results show, the screen changes and the box is drawn
+      // again, and taking the focus then would bring the suggestions back over the results.
+      autoFocus={!urlQuery && !query}
     />
   ) : null
+
+  const showSuggestions = searchOpen && suggesting && search.trim().length > 0
+  const suggestionList = (
+    <SearchSuggestions
+      typed={search}
+      viewerId={viewerId}
+      onPick={runSearch}
+      onFill={(term) => {
+        setSearch(term)
+        setSuggesting(true)
+      }}
+    />
+  )
 
   const closeOverlay = (
     <button
@@ -436,6 +462,11 @@ function QariHomeContent() {
                 <div className="flex w-10 shrink-0 items-center justify-end">{searchBtn}</div>
               </div>
               {searchBar}
+              {showSuggestions ? (
+                <div className="pointer-events-auto mt-2 max-h-[70dvh] overflow-y-auto rounded-2xl bg-[var(--app-bg)] px-3 py-1 shadow-xl">
+                  {suggestionList}
+                </div>
+              ) : null}
             </div>
           </div>
         </>
@@ -447,7 +478,9 @@ function QariHomeContent() {
 
           {searchBar}
 
-      {searching ? (
+      {showSuggestions ? (
+        <div className="mt-2">{suggestionList}</div>
+      ) : searching ? (
         <SearchResults key={query} query={query} viewer={viewer} video={view === 'swipe'} onOpen={openSwipe} />
       ) : (
         <>

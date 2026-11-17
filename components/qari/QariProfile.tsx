@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Ban, ChevronLeft, Ellipsis, Heart, LayoutGrid, Lock, Mic } from 'lucide-react'
+import { Ban, ChevronLeft, Ellipsis, Heart, LayoutGrid, ListMusic, Lock, Mic } from 'lucide-react'
 import EditProfileSheet from '@/components/qari/EditProfileSheet'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
@@ -13,6 +13,8 @@ import RecitationCard, { RecitationCards, RecitationSkeletons } from '@/componen
 import RecitationGrid from '@/components/qari/RecitationGrid'
 import SwipeFeed from '@/components/qari/SwipeFeed'
 import UploadCard from '@/components/qari/UploadCard'
+import ComingSoonSheet from '@/components/qari/ComingSoonSheet'
+import VerifiedBadge from '@/components/qari/VerifiedBadge'
 import {
   QariScreen,
   qariNotice,
@@ -20,7 +22,13 @@ import {
 } from '@/components/qari/QariShell'
 import { tapFeedback } from '@/lib/haptics'
 import { cn } from '@/lib/cn'
-import { fetchFeed, fetchFollowState, fetchQariBio, peekFeed, type Recitation } from '@/lib/qari'
+import {
+  fetchFeed,
+  fetchFollowState,
+  fetchQariProfileInfo,
+  peekFeed,
+  type Recitation,
+} from '@/lib/qari'
 import { onPlayerError } from '@/lib/qari-player'
 import { dismissUpload, useUploads } from '@/lib/qari-upload'
 import { blockUser, unblockUser, useBlockedUsers } from '@/lib/qari-blocks'
@@ -30,6 +38,8 @@ import { APP_NAME } from '@/lib/app-brand'
 import { tr, useT } from '@/lib/i18n'
 
 type Tab = 'recitations' | 'private' | 'favourites'
+/** The playlist tab is shown, greyed, before playlists exist: it only explains what it will be. */
+type TabId = Tab | 'playlist'
 
 export default function QariProfile() {
   const t = useT()
@@ -133,18 +143,29 @@ export default function QariProfile() {
     if (tab === 'favourites') setFavourites(null)
   })
 
-  // The line they wrote about themselves.
+  // The line they wrote about themselves, and whether they are a verified reciter.
   const [bio, setBio] = useState('')
+  const [verified, setVerified] = useState(false)
   useEffect(() => {
     let cancelled = false
     setBio('')
-    void fetchQariBio(username).then((text) => {
-      if (!cancelled) setBio(text)
+    setVerified(false)
+    void fetchQariProfileInfo(username).then((info) => {
+      if (cancelled) return
+      setBio(info.bio)
+      setVerified(info.verified)
     })
     return () => {
       cancelled = true
     }
   }, [username])
+
+  // Both still to come: the playlist tab and "Get verified" only say what they will be.
+  const [soon, setSoon] = useState<'playlist' | 'verify' | null>(null)
+  const showSoon = useCallback((what: 'playlist' | 'verify') => {
+    tapFeedback()
+    setSoon(what)
+  }, [])
 
   const handleSaved = useCallback((changes: { name?: string; bio?: string; avatarChanged?: boolean }) => {
     if (changes.bio !== undefined) setBio(changes.bio)
@@ -240,13 +261,17 @@ export default function QariProfile() {
 
   // The admin sees a reciter's private recordings too (the server sends them), behind
   // the same lock, so one made private can be found and made public again.
-  const tabs: { id: Tab; label: string }[] = isMe
+  const tabs: { id: TabId; label: string }[] = isMe
     ? [
         { id: 'recitations', label: t('Recitations') },
+        { id: 'playlist', label: t('Playlist') },
         { id: 'private', label: t('Private') },
         { id: 'favourites', label: t('Favourites') },
       ]
-    : [{ id: 'recitations', label: t('Recitations') }]
+    : [
+        { id: 'recitations', label: t('Recitations') },
+        { id: 'playlist', label: t('Playlist') },
+      ]
 
   if (cardsOpen) {
     return (
@@ -299,6 +324,7 @@ export default function QariProfile() {
         avatarVersion={avatarVersion}
         showNotifications={isMe}
         findPeople={isMe}
+        verified={verified}
         extra={isMe ? null : <ProfileMenu blocked={isBlocked} username={username} onToggleBlock={() => void toggleBlock()} />}
       />
 
@@ -314,6 +340,20 @@ export default function QariProfile() {
             loved: recitations === null ? null : totals.loved,
           }}
           bio={bio}
+          verified={verified}
+          nameExtra={
+            isMe && !verified ? (
+              <button
+                type="button"
+                onClick={() => showSoon('verify')}
+                // Smaller than the name it sits beside: a tag, not a second title.
+                className="qari-press ed-focus ml-0.5 inline-flex shrink-0 items-center gap-[3px] rounded-full bg-[var(--qari-verified,#1d9bf0)] py-[1px] pl-1 pr-2 text-[10.5px] font-semibold leading-[1.45] text-white"
+              >
+                <VerifiedBadge className="text-[11px] [&>path:first-child]:fill-white [&>path:first-child]:stroke-white [&>path:last-child]:stroke-[var(--qari-verified,#1d9bf0)]" />
+                {t('Get verified')}
+              </button>
+            ) : null
+          }
           onShare={() => void handleShare()}
           onEditPicture={() => setEditOpen(true)}
           actions={
@@ -375,19 +415,28 @@ export default function QariProfile() {
               type="button"
               role="tab"
               aria-selected={tab === id}
+              aria-disabled={id === 'playlist' || undefined}
               aria-label={label}
               onClick={() => {
+                if (id === 'playlist') {
+                  showSoon('playlist')
+                  return
+                }
                 if (tab === id) return
                 tapFeedback()
                 setTab(id)
               }}
               className={cn(
                 'ed-focus relative flex h-11 flex-1 items-center justify-center text-[14.5px] font-medium transition-colors',
-                tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
+                tab === id ? 'text-[var(--home-heading)]' : 'text-[var(--home-muted)]',
+                // Greyed: there are no playlists yet.
+                id === 'playlist' && 'opacity-40'
               )}
             >
               {/* Icons, not words, as on TikTok: a grid for the recitations, a lock for the private ones, a heart for favourites. */}
-              {id === 'favourites' ? (
+              {id === 'playlist' ? (
+                <ListMusic className="h-5 w-5" strokeWidth={1.9} aria-hidden />
+              ) : id === 'favourites' ? (
                 <Heart className={cn('h-5 w-5', tab === id && 'fill-current')} strokeWidth={2} aria-hidden />
               ) : id === 'private' ? (
                 <Lock className="h-5 w-5" strokeWidth={tab === id ? 2.2 : 1.9} aria-hidden />
@@ -451,7 +500,10 @@ export default function QariProfile() {
               }
             />
           ) : isMe && privateRecitations && privateRecitations.length > 0 ? (
-            <EmptyState title={t('Nothing public yet')} />
+            // Just a line of text, no card: the lock above already holds the private ones.
+            <p className="qari-enter home-serif py-6 text-center text-base font-medium tracking-[-0.01em] text-[var(--home-heading)]">
+              {t('Nothing public yet')}
+            </p>
           ) : isMe ? (
             <EmptyState
               Icon={Mic}
@@ -483,6 +535,22 @@ export default function QariProfile() {
       </div>
 
       {isMe ? <DraftsSheet open={draftsOpen} onClose={() => setDraftsOpen(false)} /> : null}
+      <ComingSoonSheet
+        open={soon === 'playlist'}
+        icon={<ListMusic className="h-7 w-7 text-[var(--qari-verified,#1d9bf0)]" strokeWidth={1.9} />}
+        title={t('Playlists')}
+        body={t(
+          'Verified reciters will record whole surahs, or the full Quran, for people to listen to in Listen like the well-known reciters.'
+        )}
+        onClose={() => setSoon(null)}
+      />
+      <ComingSoonSheet
+        open={soon === 'verify'}
+        icon={<VerifiedBadge className="text-[2rem]" />}
+        title={t('Verification badge is coming soon')}
+        body={t('Verified reciters will get the blue badge beside their name, and a playlist of their recitations.')}
+        onClose={() => setSoon(null)}
+      />
       {isMe && viewer ? (
         <EditProfileSheet
           open={editOpen}

@@ -19,6 +19,7 @@ import { mayUploadRecordings } from '@/lib/qari-upload-access'
 import { isSheikhId, matchSheikh } from '@/lib/sheikhs'
 import { isVideoBackgroundId } from '@/lib/qari-backgrounds'
 import { blockedUsernamesFor } from '@/lib/qari-blocks-server'
+import { searchRecitationIds } from '@/lib/qari-search-server'
 import { isGuestId } from '@/lib/guest-id'
 import { warmRecitationCaptions } from '@/lib/part-translation-store'
 import { requestCloudVideo } from '@/lib/qari-cloud-video'
@@ -165,8 +166,16 @@ export async function GET(request: NextRequest) {
       ...(blocked.length ? { AND: [{ userUsername: { notIn: blocked } }] } : {}),
     }
 
+    // A plain search across Qari: close matches count too, ranked best first (lib/qari-search-server.ts).
+    const fuzzy = Boolean(query) && !tagQuery && !username && !likedBy && !onlyFollowing && !imitating
+
     let recitations
-    if (sort === 'foryou') {
+    if (fuzzy) {
+      const ids = (await searchRecitationIds(query!, { blocked, sheikhId: sheikhQuery?.id })).slice(skip, skip + take)
+      const rows = ids.length ? await prisma.recitation.findMany({ where: { id: { in: ids }, hidden: false, isPrivate: false } }) : []
+      const byId = new Map(rows.map((r) => [r.id, r]))
+      recitations = ids.map((id) => byId.get(id)).filter((r): r is (typeof rows)[number] => Boolean(r))
+    } else if (sort === 'foryou') {
       // A mix drawn by weight (lib/qari-foryou.ts): the pool's few fields first, then only the page's rows.
       const fields = { id: true, userUsername: true, likeCount: true, playCount: true, createdAt: true } as const
       const [newest, loved] = await Promise.all([

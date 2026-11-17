@@ -22,8 +22,8 @@ const PRECACHE = ['/quran-chapters.json', OFFLINE_PAGE]
 
 /**
  * The app's main screens. Saved with their scripts and styles when this worker
- * is installed, so from then on each opens at once from the phone, offline
- * too, while a fresh copy is fetched in the background for next time.
+ * is installed, so each can open from the phone when offline or on a slow
+ * connection (screenNetworkFirst); online, the newest copy opens.
  */
 const APP_SHELL = ['/', '/read', '/listen', '/qari', '/prayer', '/prayer/qibla', '/settings', '/halaqa']
 
@@ -149,10 +149,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
 
-  // A screen: from the phone at once when it is saved, refreshed in the background for next time;
-  // from the network (saved as it comes) when it is not.
+  // A screen: the newest from the network when it answers within a few seconds, so an update shows
+  // on the first open after it; the copy saved on the phone when offline or the network is slow.
   if (isNavigationRequest(event.request)) {
-    event.respondWith(screenFromPhoneFirst(event))
+    event.respondWith(screenNetworkFirst(event))
     return
   }
 
@@ -221,21 +221,44 @@ function pathnameCacheKey(request) {
   return url.origin + url.pathname
 }
 
-async function screenFromPhoneFirst(event) {
+/** How long opening a screen waits for the network before opening the copy saved on the phone. */
+const SCREEN_WAIT_MS = 3000
+
+/**
+ * A screen, newest first. It used to open from the phone's saved copy every time, with the new one
+ * fetched for the next open: after an update, every screen showed the previous design once (and a
+ * refresh showed it again). Now the network is asked first; only when it gives nothing within a few
+ * seconds, or the phone is offline, does the saved copy open, so a weak connection still never
+ * holds the app. A fresh copy that arrives late is still saved for next time.
+ */
+async function screenNetworkFirst(event) {
   const request = event.request
   const url = new URL(request.url)
-  const cached = (await caches.match(request)) || (await caches.match(pathnameCacheKey(request)))
-  const fresh = fetch(request).then(async (response) => {
-    if (response.ok && response.type === 'basic' && !response.redirected) {
-      await saveScreen(url.pathname, response.clone())
+  const fresh = fetch(request)
+  // Saved for next time (with its scripts) on the side: the page does not wait for that.
+  event.waitUntil(
+    fresh
+      .then((response) => {
+        if (response.ok && response.type === 'basic' && !response.redirected) {
+          return saveScreen(url.pathname, response.clone())
+        }
+      })
+      .catch(() => undefined)
+  )
+
+  if (self.navigator.onLine !== false) {
+    try {
+      return await Promise.race([
+        // A server error opens the saved copy too, rather than an error page.
+        fresh.then((response) => (response.status >= 500 ? Promise.reject(new Error('server')) : response)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('slow')), SCREEN_WAIT_MS)),
+      ])
+    } catch {
+      // Slow or failed: the saved copy below, if there is one.
     }
-    return response
-  })
-  if (cached) {
-    // The saved copy now; the new one (and any new scripts it needs) is kept for the next open.
-    event.waitUntil(fresh.catch(() => undefined))
-    return cached
   }
+  const cached = (await caches.match(request)) || (await caches.match(pathnameCacheKey(request)))
+  if (cached) return cached
   try {
     return await fresh
   } catch {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import { pageHasQcfData, qcfPageSampleGlyphs } from '@/lib/qcf-page'
 import type { Verse } from '@/types'
@@ -45,6 +45,31 @@ export interface ContinuousScrollViewProps {
   /** The ayah being recited, while something plays: the view scrolls to keep it on screen. */
   followVerseKey?: string | null
 }
+
+/**
+ * One page of the column. Memoised so that scrolling onto another page, which
+ * re-renders this view and the screen around it, does not render again every
+ * page already mounted: a mushaf page is costly to render, and that work held
+ * up the scroll each time a page was crossed.
+ */
+const FlowPage = memo(function FlowPage({
+  verses,
+  page,
+  renderPage,
+}: {
+  verses: Verse[]
+  page: number
+  renderPage: ContinuousScrollViewProps['renderPage']
+}) {
+  return (
+    <>
+      {renderPage(verses, page)}
+      <div className="mushaf-flow-divider" aria-hidden>
+        <span>{page}</span>
+      </div>
+    </>
+  )
+})
 
 /**
  * Every mushaf page keeps its own fixed, printed-page layout — the same "fit"
@@ -480,10 +505,7 @@ export default function ContinuousScrollView({
           }}
           data-page={page}
         >
-          {renderPage(dataRef.current.get(page) as Verse[], page)}
-          <div className="mushaf-flow-divider" aria-hidden>
-            <span>{page}</span>
-          </div>
+          <FlowPage verses={dataRef.current.get(page) as Verse[]} page={page} renderPage={renderPage} />
         </div>
       ))}
       {bottomSpacerHeight > 0 && <div style={{ height: zoomed(bottomSpacerHeight) }} aria-hidden />}

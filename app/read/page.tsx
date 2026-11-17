@@ -252,8 +252,10 @@ function ReadPageContent() {
 
   // Pre-render the surrounding pages so a gallery-style drag can peek at
   // them immediately, with no loading gap mid-swipe.
+  // Continuous scroll mounts its own neighbours and never shows these, so it skips the fetch and
+  // the extra render of the whole screen it would cost on every page scrolled past.
   useEffect(() => {
-    if (showTranslation) return
+    if (showTranslation || readingMode === 'continuous') return
     let cancelled = false
     void (async () => {
       const [prev, next] = await Promise.all([
@@ -266,7 +268,7 @@ function ReadPageContent() {
     return () => {
       cancelled = true
     }
-  }, [currentPage, showTranslation, fetchVersesForPage])
+  }, [currentPage, showTranslation, readingMode, fetchVersesForPage])
 
   useEffect(() => {
     let cancelled = false
@@ -479,7 +481,6 @@ function ReadPageContent() {
             : 1
       await loadPage(clampPage(saved || 1))
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPage])
 
   const goToSurah = async (surahId: number) => {
@@ -529,7 +530,6 @@ function ReadPageContent() {
     setSearchOpen(true)
   }
 
-  const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
   const chapterNamesById = useMemo(
@@ -927,7 +927,7 @@ function ReadPageContent() {
     prevHighlightedVerseKeyRef.current = highlightedVerseKey
     ayahChangeBlockTapUntilRef.current = Date.now() + 700
     if (!showTranslation) {
-      contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
+      if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0
       window.scrollTo(0, 0)
     }
   }, [playbackActive, highlightedVerseKey, showTranslation])
@@ -945,7 +945,10 @@ function ReadPageContent() {
         })
         setAyahMenuBookmarked(isBookmarked(verseKey))
       }
-      const verse = pageVerses.find((v) => v.verse_key === verseKey)
+      // Read from the ref, not state: depending on the page's verses would make this, and the
+      // long-press handler every mushaf page is given, change on each page turn, and in
+      // continuous scroll every page on screen would then render again mid-scroll.
+      const verse = pageVersesRef.current.find((v) => v.verse_key === verseKey)
       if (verse) {
         select(verse)
         return
@@ -955,7 +958,7 @@ function ReadPageContent() {
         .then(select)
         .catch(() => {})
     },
-    [pageVerses]
+    []
   )
 
   openAyahMenuRef.current = openAyahMenu

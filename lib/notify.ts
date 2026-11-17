@@ -139,3 +139,32 @@ export async function notifyMilestone(
     console.error('[notify] milestone failed:', err)
   }
 }
+
+/**
+ * Tell a reciter the admin has decided on their application to be verified: the badge is theirs,
+ * or not this time (they may apply again). Never throws: the decision stands either way.
+ */
+export async function notifyVerification(recipientUsername: string, recipientName: string, approved: boolean): Promise<void> {
+  try {
+    const recipient = recipientUsername.toLowerCase()
+    await prisma.notification.create({
+      data: {
+        recipientUsername: recipient,
+        type: approved ? 'verified' : 'verify-declined',
+        // There is no other actor: like a milestone, the reciter themselves.
+        actorUsername: recipient,
+        actorName: recipientName || recipient,
+      },
+    })
+    await sendPush(recipient, {
+      title: approved ? 'You are now a verified reciter' : 'Your verification request',
+      body: approved
+        ? 'Your badge is on your Qari profile.'
+        : 'It was not approved this time. You can apply again from your profile.',
+      url: `/qari/${encodeURIComponent(recipient)}`,
+      tag: `verification-${recipient}`,
+    })
+  } catch (err) {
+    console.error('[notify] verification failed:', err)
+  }
+}

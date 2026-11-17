@@ -35,6 +35,12 @@ model User {
   resetSentAt       DateTime?
   /// The admin has allowed this account to post recordings made outside the app.
   canUpload   Boolean?
+  /// A verified reciter: the badge beside their name on Qari, set by the admin after they apply.
+  verified    Boolean?
+  /// When they asked to be verified, and what they wrote about their recitation. Cleared once the
+  /// admin decides.
+  verifyRequestedAt DateTime?
+  verifyNote        String?
   /// Wrong PINs in a row. A 4-digit PIN has only 10,000 values, so without
   /// a limit any account falls to a script in minutes.
   failedPins  Int?
@@ -288,7 +294,7 @@ model Notification {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
   /// Lower-case username of the person being told.
   recipientUsername String
-  /// "like" | "follow" | "milestone"
+  /// "like" | "follow" | "milestone" | "verified" | "verify-declined" (the admin decided on a verification request)
   type              String
   /// For "milestone" this is the reciter's own name/username — there is no
   /// other actor, but the notification list still reads it from here.

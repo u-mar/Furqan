@@ -441,15 +441,56 @@ export async function renameQari(user: {
   return data.name
 }
 
-/** The line a qari wrote about themselves; empty when there is none. */
-export async function fetchQariBio(username: string): Promise<string> {
+/** The line a qari wrote about themselves (empty when there is none), and whether they are a verified reciter. */
+export async function fetchQariProfileInfo(username: string): Promise<{ bio: string; verified: boolean }> {
   try {
     const res = await fetch(`/api/qari/profile?username=${encodeURIComponent(username)}`, { cache: 'no-store' })
-    const data = (await res.json()) as { bio?: string }
-    return data.bio ?? ''
+    const data = (await res.json()) as { bio?: string; verified?: boolean }
+    return { bio: data.bio ?? '', verified: data.verified === true }
   } catch {
-    return ''
+    return { bio: '', verified: false }
   }
+}
+
+export interface QariSuggestions {
+  qaris: { username: string; name: string }[]
+  terms: string[]
+}
+
+/** What to offer while someone types a search (close matches too), as TikTok does. */
+export async function fetchSuggestions(query: string, viewerId: string | null, signal?: AbortSignal): Promise<QariSuggestions> {
+  const params = new URLSearchParams({ q: query })
+  if (viewerId) params.set('viewerId', viewerId)
+  const res = await fetch(`/api/qari/suggest?${params}`, { cache: 'no-store', signal })
+  if (!res.ok) return { qaris: [], terms: [] }
+  const data = (await res.json()) as Partial<QariSuggestions>
+  return { qaris: data.qaris ?? [], terms: data.terms ?? [] }
+}
+
+/** Where your own application to be verified stands. */
+export type VerificationState = 'verified' | 'requested' | 'none'
+
+export async function fetchVerificationState(user: { id: string; username: string }): Promise<VerificationState> {
+  try {
+    const query = `username=${encodeURIComponent(user.username)}&userId=${encodeURIComponent(user.id)}`
+    const res = await fetch(`/api/qari/verification?${query}`, { cache: 'no-store' })
+    const data = (await res.json()) as { state?: VerificationState }
+    return data.state ?? 'none'
+  } catch {
+    return 'none'
+  }
+}
+
+/** Applies to be verified, with a few words about the recitation, for the admin to read. */
+export async function applyForVerification(user: { id: string; username: string }, note: string): Promise<VerificationState> {
+  const res = await fetch('/api/qari/verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, userId: user.id, note }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { state?: VerificationState; error?: string }
+  if (!res.ok || !data.state) throw new Error(data.error || tr('Could not send that. Try again.'))
+  return data.state
 }
 
 export async function saveQariBio(user: { id: string; username: string }, bio: string): Promise<string> {

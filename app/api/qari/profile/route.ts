@@ -7,15 +7,15 @@ export const runtime = 'nodejs'
 const MAX_NAME = 40
 const MAX_BIO = 120
 
-/** GET /api/qari/profile?username= — what a profile shows beyond its recitations: the bio. */
+/** GET /api/qari/profile?username= — what a profile shows beyond its recitations: the bio, and whether they are verified. */
 export async function GET(request: NextRequest) {
   const username = new URL(request.url).searchParams.get('username')?.trim().toLowerCase() ?? ''
-  if (!username) return NextResponse.json({ bio: '' })
+  if (!username) return NextResponse.json({ bio: '', verified: false })
   try {
-    const user = await prisma.user.findUnique({ where: { username }, select: { bio: true } })
-    return NextResponse.json({ bio: user?.bio ?? '' })
+    const user = await prisma.user.findUnique({ where: { username }, select: { bio: true, verified: true } })
+    return NextResponse.json({ bio: user?.bio ?? '', verified: user?.verified === true })
   } catch {
-    return NextResponse.json({ bio: '' })
+    return NextResponse.json({ bio: '', verified: false })
   }
 }
 

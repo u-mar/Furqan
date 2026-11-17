@@ -53,6 +53,34 @@ export async function setUploadsOpen(open: boolean): Promise<void> {
 }
 
 /** Turns uploading on or off for one account, by its username. */
+export interface VerificationRequest {
+  username: string
+  name: string
+  note: string
+  requestedAt: string | null
+}
+
+/** Applications to be verified, oldest first, and the accounts already verified. */
+export async function listVerification(): Promise<{ requests: VerificationRequest[]; verified: Uploader[] }> {
+  const res = await fetch('/api/admin/verification', { credentials: 'include', cache: 'no-store' })
+  if (!res.ok) throw new Error('Could not load the list.')
+  const data = (await res.json()) as { requests?: VerificationRequest[]; verified?: Uploader[] }
+  return { requests: data.requests ?? [], verified: data.verified ?? [] }
+}
+
+/** Verifies an account, or takes its badge away; either way its application is settled. */
+export async function setVerified(username: string, verified: boolean): Promise<Uploader & { verified: boolean }> {
+  const res = await fetch('/api/admin/verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ username, verified }),
+  })
+  const data = (await res.json().catch(() => ({}))) as Uploader & { verified: boolean; error?: string }
+  if (!res.ok) throw new Error(data.error ?? 'Could not change that.')
+  return data
+}
+
 export async function setUploader(username: string, allowed: boolean): Promise<Uploader> {
   const res = await fetch('/api/admin/uploaders', {
     method: 'POST',

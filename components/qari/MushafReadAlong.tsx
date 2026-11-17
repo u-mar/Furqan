@@ -75,7 +75,6 @@ export default function MushafReadAlong({
     if (open) setPage(initialPage)
     // Only reset when the overlay opens, not on every initialPage change —
     // navigating inside it shouldn't get stomped by the caller's own state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {

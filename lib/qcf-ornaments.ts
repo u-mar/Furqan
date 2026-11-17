@@ -133,7 +133,7 @@ function readOrnament(el: HTMLElement, range: Range): Ornament | null {
   const node = el.firstChild
   if (!node || node.nodeType !== Node.TEXT_NODE) return null
   // Flowing text keeps a space inside the ornament's span, after the glyph.
-  const glyph = (node.nodeValue ?? '').replace(/[\s ]+$/, '')
+  const glyph = (node.nodeValue ?? '').replace(/[\s\u00A0]+$/, '')
   if (!glyph) return null
   const style = getComputedStyle(el)
   const fontSize = parseFloat(style.fontSize)

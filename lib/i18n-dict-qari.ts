@@ -639,4 +639,47 @@ export const QARI: Dict = {
     so: 'Mar kale taabo si aad fayl kale u doorato. Kan waa la tuurayaa.',
     ar: 'انقر مرة أخرى لاختيار ملف آخر. سيُحذف هذا الملف.',
   },
+  // Verified reciters, and the playlist that is coming for them.
+  'Verified reciter': { so: 'Qaari la xaqiijiyay', ar: 'قارئ موثّق' },
+  'Get verified': { so: 'Hel xaqiijin', ar: 'احصل على التوثيق' },
+  Playlist: { so: 'Liiska akhriska', ar: 'قائمة التلاوات' },
+  'You are a verified reciter': { so: 'Waxaad tahay qaari la xaqiijiyay', ar: 'أنت قارئ موثّق' },
+  'Become a verified reciter': { so: 'Noqo qaari la xaqiijiyay', ar: 'كن قارئًا موثّقًا' },
+  'Verified reciters get a badge and a Playlist: whole surahs, or the full Quran, in your voice, for people to listen to in Listen like the well-known reciters. Playlists are coming soon.': {
+    so: 'Qaariyada la xaqiijiyay waxay helayaan calaamad iyo Liis akhris: suurado dhan, ama Quraanka oo dhan, codkaaga, oo dadku ka dhegaystaan Dhegeyso sida qaariyada caanka ah. Liisaska akhrisku dhawaan ayay imanayaan.',
+    ar: 'يحصل القرّاء الموثّقون على شارة وقائمة تلاوات: سور كاملة أو القرآن كاملًا بصوتك، يستمع إليها الناس في قسم الاستماع مثل القرّاء المشهورين. قوائم التلاوات قادمة قريبًا.',
+  },
+  'Your application has been sent. We will listen to your recitations and let you know.': {
+    so: 'Codsigaaga waa la diray. Waan dhegaysan doonnaa tilaawooyinkaaga waana kuu soo sheegi doonnaa.',
+    ar: 'تم إرسال طلبك. سنستمع إلى تلاواتك ونخبرك بالنتيجة.',
+  },
+  'About your recitation': { so: 'Ku saabsan akhriskaaga', ar: 'عن تلاوتك' },
+  'Your riwayah, your teacher or ijazah, and which surahs you would like to record.': {
+    so: 'Riwaayaddaada, macallinkaaga ama ijaasadaada, iyo suuradaha aad jeclaan lahayd inaad duubto.',
+    ar: 'روايتك، وشيخك أو إجازتك، والسور التي تودّ تسجيلها.',
+  },
+  Apply: { so: 'Codso', ar: 'تقدّم بالطلب' },
+  'Could not send that. Try again.': { so: 'Lama diri karin. Isku day mar kale.', ar: 'تعذّر الإرسال. حاول مرة أخرى.' },
+  'You are now a verified reciter. Your badge is on your profile.': {
+    so: 'Hadda waxaad tahay qaari la xaqiijiyay. Calaamaddaadu waxay ku taal bogaaga.',
+    ar: 'أصبحت الآن قارئًا موثّقًا. شارتك تظهر في ملفك الشخصي.',
+  },
+  'Your verification request was not approved this time. You can apply again from your profile.': {
+    so: 'Codsigaaga xaqiijinta lama aqbalin markan. Mar kale ayaad ka codsan kartaa bogaaga.',
+    ar: 'لم تتم الموافقة على طلب التوثيق هذه المرة. يمكنك التقدّم مرة أخرى من ملفك الشخصي.',
+  },
+  'Coming soon': { so: 'Dhawaan', ar: 'قريبًا' },
+  Playlists: { so: 'Liisaska akhriska', ar: 'قوائم التلاوات' },
+  'Verified reciters will record whole surahs, or the full Quran, for people to listen to in Listen like the well-known reciters.': {
+    so: 'Qaariyada la xaqiijiyay waxay duubi doonaan suurado dhan, ama Quraanka oo dhan, si dadku uga dhegaystaan Dhegeyso sida qaariyada caanka ah.',
+    ar: 'سيسجّل القرّاء الموثّقون سورًا كاملة أو القرآن كاملًا، ليستمع إليها الناس في قسم الاستماع مثل القرّاء المشهورين.',
+  },
+  'Verification badge is coming soon': { so: 'Calaamadda xaqiijintu dhawaan ayay imanaysaa', ar: 'شارة التوثيق قادمة قريبًا' },
+  'Verified reciters will get the blue badge beside their name, and a playlist of their recitations.': {
+    so: 'Qaariyada la xaqiijiyay waxay heli doonaan calaamadda buluugga ah oo magacooda ag taal, iyo liis akhris oo tilaawooyinkooda ah.',
+    ar: 'سيحصل القرّاء الموثّقون على الشارة الزرقاء بجانب أسمائهم، وقائمة بتلاواتهم.',
+  },
+  Search: { so: 'Raadi', ar: 'بحث' },
+  Suggestions: { so: 'Soo-jeedin', ar: 'اقتراحات' },
+  'Put “{term}” in the search box': { so: 'Geli “{term}” sanduuqa raadinta', ar: 'ضع "{term}" في مربع البحث' },
 }

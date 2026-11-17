@@ -135,7 +135,6 @@ export default function HifdhMushafReveal({
 
   useEffect(() => {
     onWordCount?.(wordPositions.length)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wordPositions])
 
   const revealedPositions = useMemo(

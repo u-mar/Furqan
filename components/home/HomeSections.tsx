@@ -151,7 +151,7 @@ export function ListeningHero() {
   return (
     <section className="flex items-center gap-4" aria-label={t('Continue listening')}>
       <Link href={`/listen?reciter=${encodeURIComponent(reciterId)}`} className="home-press ed-focus shrink-0 rounded-full">
-        <ReciterAvatar reciter={reciter} size={112} />
+        <ReciterAvatar reciter={reciter} size={112} eager />
       </Link>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[0.875rem] text-[var(--home-muted)]">

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, BellOff, Heart, TrendingUp, UserPlus } from 'lucide-react'
+import { BadgeCheck, Bell, BellOff, Heart, TrendingUp, UserPlus } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -203,11 +203,21 @@ function ActivityRow({
   const t = useT()
   const like = n.type === 'like'
   const milestone = n.type === 'milestone'
-  const href = milestone || like ? `/qari/${encodeURIComponent(viewer.username)}` : `/qari/${encodeURIComponent(n.actorUsername)}`
+  const verification = n.type === 'verified' || n.type === 'verify-declined'
+  const href =
+    milestone || like || verification ? `/qari/${encodeURIComponent(viewer.username)}` : `/qari/${encodeURIComponent(n.actorUsername)}`
   return (
     <li className="flex items-center gap-3 px-1 py-2.5">
       <Link href={href} onClick={tapFeedback} className="ed-focus flex min-w-0 flex-1 items-center gap-3 rounded-xl">
-        {milestone ? (
+        {verification ? (
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--qari-verified,#1d9bf0)_14%,transparent)]">
+            <BadgeCheck
+              className="h-6 w-6 text-[var(--app-bg)]"
+              fill={n.type === 'verified' ? 'var(--qari-verified, #1d9bf0)' : 'var(--home-muted)'}
+              strokeWidth={2.1}
+            />
+          </span>
+        ) : milestone ? (
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]">
             <TrendingUp className="h-5 w-5" strokeWidth={2.1} />
           </span>
@@ -225,7 +235,11 @@ function ActivityRow({
           </span>
         )}
         <span className="min-w-0 flex-1 text-[0.9375rem] leading-snug text-[var(--home-heading)]">
-          {milestone ? (
+          {n.type === 'verified' ? (
+            t('You are now a verified reciter. Your badge is on your profile.')
+          ) : n.type === 'verify-declined' ? (
+            t('Your verification request was not approved this time. You can apply again from your profile.')
+          ) : milestone ? (
             n.milestoneKind === 'plays'
               ? t('“{title}” just passed {count} plays', { title: n.recitationTitle ?? t('Your recitation'), count: n.milestoneCount ?? 0 })
               : t('“{title}” just passed {count} likes', { title: n.recitationTitle ?? t('Your recitation'), count: n.milestoneCount ?? 0 })

@@ -156,6 +156,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        // Tapping the adhan's notification opens the Prayer screen and ends the adhan, as it always did.
+        if (intent != null && intent.getBooleanExtra(Adhan.EXTRA_STOP, false)) Adhan.stop(this);
         openLink(intent);
     }
 

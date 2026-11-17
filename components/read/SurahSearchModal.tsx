@@ -49,7 +49,6 @@ export default function SurahSearchModal({
     }
     const id = window.requestAnimationFrame(() => inputRef.current?.focus())
     return () => window.cancelAnimationFrame(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {

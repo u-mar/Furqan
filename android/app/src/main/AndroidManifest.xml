@@ -52,6 +52,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- The adhan played by the app itself, under its notification (AdhanService). -->
+        <service
+            android:name=".AdhanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <!-- Listen and Nature mode playing on with the phone locked (NabaPlaybackService), with a
              "Now playing" notification to pause or stop them. -->
         <service

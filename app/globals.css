@@ -1415,7 +1415,9 @@ html.dark .mushaf-reader-immersive {
 
 /* Spaced — generous margins, smaller script (the original look). */
 .mushaf-width-spaced .mushaf-root .mushaf-fit-grid {
-  --mushaf-line-fit: 0.86;
+  /* As in the first Play Store release. Lines are still fitted to this share of the
+     column and refitted if the phone enlarges the text, so letters stay inside it. */
+  --mushaf-line-fit: 0.92;
   padding-left: max(clamp(20px, 6vw, 42px), env(safe-area-inset-left, 0px));
   padding-right: max(clamp(22px, 6.5vw, 44px), env(safe-area-inset-right, 0px));
 }
@@ -4074,6 +4076,8 @@ html.listen-video-on .bottom-nav {
   --qari-deep: #12332e;
   --qari-gold: #9c7a2e;
   --qari-gold-hi: #d9b86a;
+  /* The verified reciter's badge: the blue people know from other apps, on either theme. */
+  --qari-verified: #1d9bf0;
   --qari-ivory: #f3ead6;
   --qari-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   --qari-grain-blend: multiply;

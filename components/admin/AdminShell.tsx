@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
+  BadgeCheck,
   ChevronLeft,
   LayoutDashboard,
   LogOut,
@@ -19,7 +20,7 @@ import { cn } from '@/lib/cn'
 import { logoutAdmin } from '@/lib/admin-api'
 import { APP_NAME } from '@/lib/app-brand'
 
-export type AdminSection = 'overview' | 'daily-verse' | 'feedback' | 'users' | 'uploaders' | 'popups' | 'reports'
+export type AdminSection = 'overview' | 'daily-verse' | 'feedback' | 'users' | 'uploaders' | 'verification' | 'popups' | 'reports'
 
 const NAV: { id: AdminSection; label: string; Icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
@@ -28,6 +29,7 @@ const NAV: { id: AdminSection; label: string; Icon: typeof LayoutDashboard }[] =
   { id: 'feedback', label: 'Feedback', Icon: MessageSquare },
   { id: 'users', label: 'Users', Icon: Users },
   { id: 'uploaders', label: 'Uploaders', Icon: Upload },
+  { id: 'verification', label: 'Verification', Icon: BadgeCheck },
   { id: 'popups', label: 'Popups', Icon: Megaphone },
 ]
 
@@ -38,6 +40,7 @@ const SECTION_TITLES: Record<AdminSection, string> = {
   feedback: 'Feedback inbox',
   users: 'Users & presence',
   uploaders: 'Uploaders',
+  verification: 'Verified reciters',
   popups: 'In-app popup',
 }
 

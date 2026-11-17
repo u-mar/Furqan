@@ -63,7 +63,7 @@ export function stripAyahRefFromLabel(label: string): string {
 
 function stripAyahEndFromPlainText(text: string): string {
   return text
-    .replace(/[\u06DD\u06DE\u06DF]?\s*[\u0660-\u0669\u06F0-\u06F9]+/gu, '')
+    .replace(/(?:\u06DD|\u06DE|\u06DF)?\s*[\u0660-\u0669\u06F0-\u06F9]+/gu, '')
     .replace(/\s+/g, ' ')
     .trim()
 }

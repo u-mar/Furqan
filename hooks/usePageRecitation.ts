@@ -393,7 +393,6 @@ export function usePageRecitation({
       if (usePreload && pre) {
         url = pre.url
       } else {
-        const folder = getReciterById(reciterRef.current).folder
         url = await getPlayableAyahAudioUrl(reciterRef.current, parsed.surah, parsed.ayah)
       }
 
@@ -720,7 +719,6 @@ export function usePageRecitation({
     playModeRef.current = 'page'
     playbackSessionRef.current = 0
     setState(idleState)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verses.map((v) => v.verse_key).join(',')])
 
   useEffect(() => {
@@ -732,7 +730,6 @@ export function usePageRecitation({
     clearPreload()
     timedRef.current = null
     void playIndex(indexRef.current, sessionRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId])
 
   /**

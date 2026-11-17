@@ -58,7 +58,6 @@ export default function SurahJuzPicker({
     else setQuery('')
     // Only sync on open/close, not on every initialTab change — switching
     // tabs inside the sheet shouldn't get stomped by the caller's own state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const filtered = useMemo(() => (chapters ? filterChapters(chapters, query) : []), [chapters, query])

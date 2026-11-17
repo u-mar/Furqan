@@ -64,7 +64,6 @@ export default function SabaqPage() {
     const onEnded = () => setPhase('yours')
     audio.addEventListener('ended', onEnded)
     return () => audio.removeEventListener('ended', onEnded)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, turnIndex, currentVerse?.verse_key])
 
   const advance = () => {

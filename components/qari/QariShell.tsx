@@ -88,6 +88,8 @@ export function QariLabel({
 export function QariSearch({
   value,
   onChange,
+  onSubmit,
+  onFocus,
   placeholder,
   label,
   className,
@@ -95,44 +97,66 @@ export function QariSearch({
 }: {
   value: string
   onChange: (value: string) => void
+  /** Searching for what is typed (the keyboard's search key, or the Search word at the end). */
+  onSubmit?: () => void
+  onFocus?: () => void
   placeholder: string
   label: string
   className?: string
   autoFocus?: boolean
 }) {
   const t = useT()
+  // As on TikTok: a flat grey field with the magnifier in it, and "Search" in words beside it.
   return (
-    <label
-      className={cn(
-        'home-card flex h-11 items-center gap-2.5 rounded-full px-4 focus-within:ring-2 focus-within:ring-[var(--home-sage)]',
-        className
-      )}
+    <form
+      role="search"
+      className={cn('flex items-center gap-3', className)}
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (!value.trim()) return
+        ;(document.activeElement as HTMLElement | null)?.blur()
+        onSubmit?.()
+      }}
     >
-      <Search className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
-      <input
-        type="search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        aria-label={label}
-        autoFocus={autoFocus}
-        enterKeyHint="search"
-        className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)] [&::-webkit-search-cancel-button]:hidden"
-      />
-      {value ? (
+      <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg bg-[color-mix(in_srgb,var(--home-heading)_8%,var(--app-bg))] px-3">
+        <Search className="h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2.1} aria-hidden />
+        <input
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          placeholder={placeholder}
+          aria-label={label}
+          autoFocus={autoFocus}
+          enterKeyHint="search"
+          autoComplete="off"
+          autoCorrect="off"
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--home-heading)] caret-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)] [&::-webkit-search-cancel-button]:hidden"
+        />
+        {value ? (
+          <button
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              onChange('')
+            }}
+            aria-label={t('Clear search')}
+            className="ed-focus -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_28%,transparent)] text-[var(--app-bg)]"
+          >
+            <X className="h-3 w-3" strokeWidth={3} />
+          </button>
+        ) : null}
+      </label>
+      {onSubmit ? (
         <button
-          type="button"
-          onClick={() => {
-            tapFeedback()
-            onChange('')
-          }}
-          aria-label={t('Clear search')}
-          className="ed-focus -mr-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[var(--home-muted)] hover:text-[var(--home-heading)]"
+          type="submit"
+          className="ed-focus shrink-0 text-[15px] font-semibold text-[var(--home-heading)] disabled:opacity-40"
+          disabled={!value.trim()}
         >
-          <X className="h-4 w-4" strokeWidth={2.2} />
+          {t('Search')}
         </button>
       ) : null}
-    </label>
+    </form>
   )
 }
 
