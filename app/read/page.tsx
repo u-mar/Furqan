@@ -90,6 +90,7 @@ import type { Chapter, Verse } from '@/types'
 import { tr, useT } from '@/lib/i18n'
 import { DOUBLE_TAP_MS } from '@/hooks/useLongPress'
 import { toastError } from '@/lib/toast'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
 /**
@@ -1154,15 +1155,13 @@ function ReadPageContent() {
   useEffect(() => {
     if (showTranslation) return
     const html = document.documentElement
-    const body = document.body
     const prevHtml = html.style.overflow
-    const prevBody = body.style.overflow
     html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     window.scrollTo(0, 0)
     return () => {
       html.style.overflow = prevHtml
-      body.style.overflow = prevBody
+      unlockScroll()
     }
   }, [showTranslation])
 

@@ -12,6 +12,7 @@ import { tapFeedback } from '@/lib/haptics'
 import { availableQiraat, getQiraat, RECITERS, type QiraatId, type Reciter } from '@/lib/reciters'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 interface ReciterPickerSheetProps {
   open: boolean
@@ -117,14 +118,13 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
 
   useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = previous
+      unlockScroll()
       window.removeEventListener('keydown', onKey)
     }
   }, [open, onClose])

@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import GoogleButton from '@/components/account/GoogleButton'
 import { tr, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 interface DeleteAccountSheetProps {
   open: boolean
@@ -37,10 +38,9 @@ export default function DeleteAccountSheet({ open, user, onClose, onDeleted }: D
     setPin('')
     setPassword('')
     setError('')
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     return () => {
-      document.body.style.overflow = previous
+      unlockScroll()
     }
   }, [open])
 

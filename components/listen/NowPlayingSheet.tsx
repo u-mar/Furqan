@@ -16,6 +16,7 @@ import { getQiraat, getReciterById } from '@/lib/reciters'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 const CLOSE_MS = 260
 /** Stops above the bottom tab bar, which Listen always shows, rather than covering it. */
@@ -64,15 +65,14 @@ export default function NowPlayingSheet({
     setDrag(0)
     setClosing(false)
     setArt(Math.round(Math.max(168, Math.min(264, window.innerHeight * 0.31))))
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     const onKey = (e: KeyboardEvent) => {
       // A sheet opened over the player closes first.
       if (e.key === 'Escape' && document.querySelectorAll('[role="dialog"]').length === 1) dismiss()
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = previous
+      unlockScroll()
       window.removeEventListener('keydown', onKey)
     }
   }, [open, dismiss])

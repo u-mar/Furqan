@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 interface SettingsSheetProps {
   open: boolean
@@ -29,14 +30,13 @@ export default function SettingsSheet({ open, title, description, onClose, child
 
   useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = previous
+      unlockScroll()
       window.removeEventListener('keydown', onKey)
     }
   }, [open])

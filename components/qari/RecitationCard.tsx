@@ -12,7 +12,7 @@ import ShareSheet from '@/components/qari/ShareSheet'
 import BackgroundGallery from '@/components/share/BackgroundGallery'
 import EditTitleSheet from '@/components/qari/EditTitleSheet'
 import Waveform from '@/components/qari/Waveform'
-import { useQariPlayer } from '@/hooks/useQariPlayer'
+import { useQariPlayerFor } from '@/hooks/useQariPlayer'
 import { useRecitationActions } from '@/hooks/useRecitationActions'
 import { tapFeedback } from '@/lib/haptics'
 import { compactNumber, formatDuration, prefetchRecitationAudio, timeAgoLong, type Recitation } from '@/lib/qari'
@@ -58,7 +58,8 @@ function RecitationCard({
   onOpen,
 }: RecitationCardProps) {
   const t = useT()
-  const player = useQariPlayer()
+  // Redraws with the player only while this is the recitation playing.
+  const player = useQariPlayerFor(recitation.id)
   const {
     canManage,
     shown,
