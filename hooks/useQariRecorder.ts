@@ -261,6 +261,10 @@ export function useQariRecorder(maxSeconds = 600) {
       const buffer = new Uint8Array(analyser.frequencyBinCount)
       let lastClip = -Infinity
       let lastVoice = 0
+      // The screen is redrawn about 15 times a second, which the meter still follows smoothly; every
+      // frame (60 a second, for up to ten minutes) wore phones down until recording stuttered.
+      let drawnAt = 0
+      let drawn = ''
       const tick = () => {
         const node = analyserRef.current
         if (!node) return
@@ -289,9 +293,14 @@ export function useQariRecorder(maxSeconds = 600) {
               ? 'quiet'
               : null
 
-        setState((s) =>
-          s.recording ? { ...s, level: held ? 0 : peak, elapsed: seconds, inputHint } : s
-        )
+        const changed = `${seconds}|${inputHint}|${held}`
+        if (changed !== drawn || now - drawnAt >= 66) {
+          drawn = changed
+          drawnAt = now
+          setState((s) =>
+            s.recording ? { ...s, level: held ? 0 : peak, elapsed: seconds, inputHint } : s
+          )
+        }
         if (seconds >= maxSeconds) {
           recorderRef.current?.stop()
           return

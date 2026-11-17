@@ -1,6 +1,8 @@
 'use client'
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useListenProgress } from '@/hooks/useListen'
+import { peekListenAudio } from '@/lib/listen-audio'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { loadAyah, peekAyah, viewerTranslation, type AyahView } from '@/lib/qari-ayah'
@@ -68,18 +70,15 @@ function AyahLine({ words, fontFamily }: { words: string[]; fontFamily: string }
   )
 }
 
-export default function VideoAyah({
-  timeline,
-  position,
-  durationSec,
-  paused,
-}: {
-  timeline: VerseTimelineEntry[]
-  position: number
-  durationSec: number
-  paused: boolean
-}) {
+export default function VideoAyah({ timeline, paused }: { timeline: VerseTimelineEntry[]; paused: boolean }) {
   const t = useT()
+  const { position: reported, duration: durationSec } = useListenProgress()
+  // While it plays: the audio's own clock, read every frame (the player reports its place only a few
+  // times a second, a quarter of a second late), but kept only when the ayah or phrase it falls in
+  // changes. Drawing the whole screen every frame for as long as it played wore phones down until
+  // the app stopped responding.
+  const [clock, setClock] = useState<number | null>(null)
+  const position = clock ?? reported
   const index = entryAt(timeline, position)
   const entry = index >= 0 ? timeline[index] : undefined
   const key = entry?.verseKey
@@ -135,6 +134,40 @@ export default function VideoAyah({
   partIndex = Math.min(partIndex, parts.length - 1)
   const part = parts[partIndex]
   const split = parts.length > 1
+
+  // What the frame clock below compares against, as of the latest drawing.
+  const latest = useRef({ timeline, ayah, parts, durationSec })
+  latest.current = { timeline, ayah, parts, durationSec }
+  useEffect(() => {
+    if (paused) {
+      setClock(null)
+      return
+    }
+    /** The ayah and phrase at `at`: the screen changes only when this does. */
+    const place = (at: number) => {
+      const now = latest.current
+      const i = entryAt(now.timeline, at)
+      const current = now.timeline[i]
+      if (!current || !now.ayah || now.ayah.verseKey !== current.verseKey) return String(i)
+      const endsAt = now.timeline[i + 1]?.atSeconds ?? now.durationSec
+      return `${i}:${partFor(now.parts, wordAt(current, endsAt, at, now.ayah.words.length))}`
+    }
+    let frame = 0
+    let shown = ''
+    const tick = () => {
+      const at = peekListenAudio()?.currentTime
+      if (at !== undefined) {
+        const here = place(at)
+        if (here !== shown) {
+          shown = here
+          setClock(at)
+        }
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [paused])
 
   const [phraseTexts, setPhraseTexts] = useState<Record<string, (string | null)[]>>({})
   useEffect(() => {

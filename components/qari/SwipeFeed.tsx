@@ -911,6 +911,7 @@ export default function SwipeFeed({
   onNotice,
   onShowList,
   empty,
+  onActiveChange,
 }: {
   items: Recitation[]
   loading?: boolean
@@ -932,6 +933,8 @@ export default function SwipeFeed({
   onShowList?: () => void
   /** Shown in place of the slides when there is nothing to show. */
   empty?: React.ReactNode
+  /** The recitation on screen, each time it changes (to come back to it later). */
+  onActiveChange?: (id: string) => void
 }) {
   const t = useT()
   const player = useQariPlayer()
@@ -965,6 +968,24 @@ export default function SwipeFeed({
       if (swipeViewsOpen === 0) document.documentElement.classList.remove('qari-swipe-open')
     }
   }, [])
+
+  // The list may arrive after this opened (coming back to Qari): then it moves to the chosen one.
+  const appliedStart = useRef(false)
+  useLayoutEffect(() => {
+    if (appliedStart.current || !startId || items.length === 0) return
+    appliedStart.current = true
+    const index = items.findIndex((r) => r.id === startId)
+    if (index < 0 || index === activeRef.current) return
+    activeRef.current = index
+    setActive(index)
+    const el = scrollerRef.current
+    if (el && el.clientHeight) el.scrollTop = index * el.clientHeight
+  }, [items, startId])
+
+  const activeId = items[clampedActive]?.id
+  useEffect(() => {
+    if (activeId) onActiveChange?.(activeId)
+  }, [activeId, onActiveChange])
 
   // Open on the chosen recitation, without animating there.
   useLayoutEffect(() => {

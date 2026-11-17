@@ -73,6 +73,8 @@ function QariHomeContent() {
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const loads = useRef(0)
+  // The recitation to open the feed on when coming back to Qari (see feedSpot).
+  const [returnTo, setReturnTo] = useState<string | null>(null)
 
   // Tapping a hashtag anywhere lands here as ?q=%23tag, even from this page.
   useEffect(() => {
@@ -144,6 +146,18 @@ function QariHomeContent() {
 
   useEffect(() => {
     if (searching) return
+    const spotKey = `${sort}:${sort === 'foryou' ? seed : ''}:${viewerId ?? ''}`
+    if (feedSpot && feedSpot.key === spotKey && Date.now() - feedSpot.at < FEED_SPOT_MS) {
+      // Back from a profile (or anywhere): the same list, on the same recitation, not a new copy.
+      setItems(feedSpot.items)
+      setHasMore(feedSpot.hasMore)
+      setLoading(false)
+      setReturnTo(feedSpot.id)
+      // It carries on where it was, as it does on TikTok (the tap that came back lets it play).
+      setSwipeAutoplay(true)
+      return
+    }
+    setReturnTo(null)
     const remembered = peekFeed({
       sort: sort === 'following' ? 'recent' : sort,
       following: sort === 'following',
@@ -185,6 +199,15 @@ function QariHomeContent() {
       setLoadingMore(false)
     }
   }, [items.length, seed, sort, viewerId])
+
+  const spotKey = `${sort}:${sort === 'foryou' ? seed : ''}:${viewerId ?? ''}`
+  const rememberSpot = useCallback(
+    (id: string) => {
+      if (searching || items.length === 0) return
+      feedSpot = { key: spotKey, items, hasMore, id, at: Date.now() }
+    },
+    [hasMore, items, searching, spotKey]
+  )
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((r) => r.id !== id))
@@ -304,6 +327,7 @@ function QariHomeContent() {
   /** A new For You mix, from the top, as TikTok does on a pull or a second tap of the tab. */
   const refreshForYou = useCallback(() => {
     tapFeedback()
+    feedSpot = null
     stopPlayback()
     setSwipeAutoplay(true)
     setLoading(true)
@@ -397,7 +421,8 @@ function QariHomeContent() {
             loadingMore={loadingMore}
             onLoadMore={loadMore}
             onRefresh={overlay ? undefined : sort === 'foryou' ? refreshForYou : () => void loadFeed()}
-            startId={overlay?.startId ?? null}
+            startId={overlay ? overlay.startId : returnTo}
+            onActiveChange={overlay ? undefined : rememberSpot}
             autoplay={swipeAutoplay}
             viewerId={viewerId}
             viewerUsername={viewer?.username ?? null}
@@ -745,6 +770,14 @@ function SearchResults({
     </div>
   )
 }
+
+/**
+ * Where the full-screen feed was: the list as loaded (with the pages swiped into) and the recitation
+ * on screen. Opening a profile and coming back used to start the feed again from the top, on a new
+ * copy of the list. Kept while the app is open, for a while.
+ */
+let feedSpot: { key: string; items: Recitation[]; hasMore: boolean; id: string; at: number } | null = null
+const FEED_SPOT_MS = 30 * 60 * 1000
 
 export default function QariHomePage() {
   return (

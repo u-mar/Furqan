@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import AuthFlow from '@/components/account/AuthFlow'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 interface AccountSheetProps {
   open: boolean
@@ -23,10 +24,9 @@ export default function AccountSheet({ open, onClose, onSuccess, reason }: Accou
   // The page underneath should not scroll while this covers it.
   useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     return () => {
-      document.body.style.overflow = previous
+      unlockScroll()
     }
   }, [open])
 

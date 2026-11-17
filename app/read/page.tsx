@@ -90,6 +90,7 @@ import type { Chapter, Verse } from '@/types'
 import { tr, useT } from '@/lib/i18n'
 import { DOUBLE_TAP_MS } from '@/hooks/useLongPress'
 import { toastError } from '@/lib/toast'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
 /**
@@ -479,7 +480,6 @@ function ReadPageContent() {
             : 1
       await loadPage(clampPage(saved || 1))
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPage])
 
   const goToSurah = async (surahId: number) => {
@@ -529,7 +529,6 @@ function ReadPageContent() {
     setSearchOpen(true)
   }
 
-  const pageVerseKeys = useMemo(() => new Set(pageVerses.map((v) => v.verse_key)), [pageVerses])
   const startVerseKey = pageVerses[0]?.verse_key || ''
   const currentSurahNum = Number(startVerseKey.split(':')[0] || 1)
   const chapterNamesById = useMemo(
@@ -927,7 +926,7 @@ function ReadPageContent() {
     prevHighlightedVerseKeyRef.current = highlightedVerseKey
     ayahChangeBlockTapUntilRef.current = Date.now() + 700
     if (!showTranslation) {
-      contentScrollRef.current && (contentScrollRef.current.scrollTop = 0)
+      if (contentScrollRef.current) contentScrollRef.current.scrollTop = 0
       window.scrollTo(0, 0)
     }
   }, [playbackActive, highlightedVerseKey, showTranslation])
@@ -1151,15 +1150,13 @@ function ReadPageContent() {
   useEffect(() => {
     if (showTranslation) return
     const html = document.documentElement
-    const body = document.body
     const prevHtml = html.style.overflow
-    const prevBody = body.style.overflow
     html.style.overflow = 'hidden'
-    body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     window.scrollTo(0, 0)
     return () => {
       html.style.overflow = prevHtml
-      body.style.overflow = prevBody
+      unlockScroll()
     }
   }, [showTranslation])
 

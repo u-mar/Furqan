@@ -9,7 +9,7 @@ import {
   hideOfflineSave,
   subscribeOfflineSave,
 } from '@/lib/offline-bootstrap'
-import { ensureOfflineHydrated, isOfflineReady } from '@/lib/local-quran-store'
+import { isOfflineReady } from '@/lib/local-quran-store'
 import { hasBundledQuran } from '@/lib/native-app'
 import { getAppSettings } from '@/lib/app-settings'
 import { forgetAsrModel } from '@/lib/asr/model-cache'
@@ -35,9 +35,10 @@ export default function OfflineBootstrap() {
     if (!bundled && !isOfflineReady() && !getAppSettings().offlineDownloaded) return
 
     let idle: number | undefined
-    const start = bundled
-      ? () => void ensureOfflineHydrated().then((ready) => (ready ? bootstrapOfflineReader() : false))
-      : () => void bootstrapOfflineReader()
+    // Not read into memory here: parsing the whole Quran (16 MB) froze the app for seconds, wherever
+    // it was, a few seconds after every launch. Read takes pages from the server online, and reads
+    // the app's own copy itself the first time it is opened offline.
+    const start = () => void bootstrapOfflineReader()
     const timer = window.setTimeout(() => {
       if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(start, { timeout: 4000 })
       else start()

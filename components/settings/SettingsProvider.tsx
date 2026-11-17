@@ -8,7 +8,6 @@ import {
   type AppSettings,
 } from '@/lib/app-settings'
 import { applyLanguageToDocument } from '@/lib/i18n'
-import { hydrateOfflineFromDisk, isOfflineReady } from '@/lib/local-quran-store'
 
 /*
  * Renders its children as they are from the very first render. It used to
@@ -31,23 +30,8 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
     const settings = getAppSettings()
     applyLanguageToDocument(settings.language)
 
-    /* Warm the offline Quran for the reader, but only once the first screen has
-       drawn and settled: parsing it freezes the page for a moment, and doing
-       that during load held up everything on Home. The reader still loads it
-       itself if it is opened before this runs. */
-    let warmTimer: number | undefined
-    let warmIdle: number | undefined
-    // Online, the reader takes pages from the server; the saved copy is only needed offline.
-    if (settings.offlineDownloaded && !isOfflineReady() && !navigator.onLine) {
-      warmTimer = window.setTimeout(() => {
-        const warm = () => void hydrateOfflineFromDisk().catch(() => {})
-        if (typeof window.requestIdleCallback === 'function') {
-          warmIdle = window.requestIdleCallback(warm, { timeout: 2000 })
-        } else {
-          warm()
-        }
-      }, 1500)
-    }
+    // The saved Quran is not read into memory here (a parse that froze the app for seconds a moment
+    // after launch, wherever it was): Read does it itself, the first time it is opened offline.
 
     const onChange = (e: Event) => {
       const detail = (e as CustomEvent<AppSettings>).detail
@@ -59,10 +43,6 @@ export default function SettingsProvider({ children }: { children: ReactNode }) 
 
     return () => {
       window.removeEventListener('app-settings-changed', onChange)
-      window.clearTimeout(warmTimer)
-      if (warmIdle !== undefined && typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(warmIdle)
-      }
     }
   }, [])
 

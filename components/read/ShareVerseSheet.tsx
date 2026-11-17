@@ -28,6 +28,7 @@ import { getWordTranslations } from '@/lib/word-translations'
 import { toast } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
 export interface ShareVerseTarget {
   verseKey: string
@@ -147,11 +148,10 @@ export default function ShareVerseSheet({
     }
     window.addEventListener('keydown', onKey)
     // The page underneath stays put while this one scrolls.
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlockScroll = lockPageScroll()
     return () => {
       window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = previous
+      unlockScroll()
     }
   }, [open, onClose])
 

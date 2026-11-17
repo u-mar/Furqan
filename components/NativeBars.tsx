@@ -53,6 +53,7 @@ export default function NativeBars() {
     document.body.style.overscrollBehaviorY = 'none'
     let cancelled = false
     let timer = 0
+    let stop = () => {}
     void import('@capacitor/core').then(({ registerPlugin }) => {
       if (cancelled) return
       const bars = registerPlugin<NabaBars>('NabaBars')
@@ -65,12 +66,39 @@ export default function NativeBars() {
           painted = ''
         })
       }
+      // Looked at again when something that could change the colour happens: a new screen, the theme,
+      // a sheet or panel opening or closing. It used to measure the page three times a second for as
+      // long as the app was open, each time making the phone lay the whole page out again (a stutter
+      // on heavy screens: the mushaf, Qari's videos, long lists).
+      let queued = 0
+      const soon = () => {
+        if (queued || document.hidden) return
+        queued = window.setTimeout(() => {
+          queued = 0
+          paint()
+        }, 120)
+      }
       paint()
-      timer = window.setInterval(paint, 300)
+      const observer = new MutationObserver(soon)
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+      observer.observe(document.body, { childList: true, attributes: true, attributeFilter: ['class', 'style'] })
+      const main = document.querySelector('main')?.parentElement
+      if (main) observer.observe(main, { childList: true })
+      window.addEventListener('popstate', soon)
+      document.addEventListener('visibilitychange', soon)
+      // Anything the above miss (a screen's own background changing), caught within a couple of seconds.
+      timer = window.setInterval(soon, 2000)
+      stop = () => {
+        observer.disconnect()
+        window.removeEventListener('popstate', soon)
+        document.removeEventListener('visibilitychange', soon)
+        window.clearTimeout(queued)
+      }
     })
     return () => {
       cancelled = true
       window.clearInterval(timer)
+      stop()
     }
   }, [])
 

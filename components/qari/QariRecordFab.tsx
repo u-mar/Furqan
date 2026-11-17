@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/cn'
 import { Mic } from 'lucide-react'
-import { useQariPlayer } from '@/hooks/useQariPlayer'
+import { useQariPlayerLoaded } from '@/hooks/useQariPlayer'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 import { askToSignIn } from '@/lib/account-prompt'
 import { getSignedInUser } from '@/lib/auth'
@@ -43,7 +43,7 @@ export default function QariRecordFab() {
   const startRecording = useStartRecording()
   // A playing recitation can dock its mini player just above the main bar —
   // clear of it, rather than sitting underneath.
-  const hasActivePlayer = Boolean(useQariPlayer().current)
+  const hasActivePlayer = useQariPlayerLoaded()
   const [hidden, setHidden] = useState(false)
 
   // Out of the way while scrolling down the list, back as soon as you scroll up.

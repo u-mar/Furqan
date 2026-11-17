@@ -6,6 +6,7 @@ import {
 } from '@/lib/local-quran-store'
 import { areTranslationsCached, downloadOfflineTranslations } from '@/lib/offline-translations'
 import { tr } from '@/lib/i18n-core'
+import { hasBundledQuran } from '@/lib/native-app'
 import { toast } from '@/lib/toast'
 
 let bootstrapPromise: Promise<boolean> | null = null
@@ -89,7 +90,8 @@ export async function bootstrapOfflineReader(): Promise<boolean> {
   if (typeof window === 'undefined') return false
   if (bootstrapPromise) return bootstrapPromise
 
-  if (isOfflineReady() || getAppSettings().offlineDownloaded) {
+  // The Play Store app carries the mushaf inside it (lib/native-app.ts): only a translation may be missing.
+  if (isOfflineReady() || getAppSettings().offlineDownloaded || hasBundledQuran()) {
     void keepSavedQuran()
     // The mushaf is saved; a translation chosen since (or one that failed before) still may not be.
     const editionId = navigator.onLine ? translationToSave() : null
