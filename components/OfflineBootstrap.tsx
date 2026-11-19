@@ -36,8 +36,8 @@ export default function OfflineBootstrap() {
 
     let idle: number | undefined
     // Not read into memory here: parsing the whole Quran (16 MB) froze the app for seconds, wherever
-    // it was, a few seconds after every launch. Read takes pages from the server online, and reads
-    // the app's own copy itself the first time it is opened offline.
+    // it was, a few seconds after every launch. Read reads it itself when it is opened (in the Play
+    // Store app always, on the website only offline), behind its own loading.
     const start = () => void bootstrapOfflineReader()
     const timer = window.setTimeout(() => {
       if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(start, { timeout: 4000 })

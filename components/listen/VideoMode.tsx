@@ -2,42 +2,55 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown, Languages, Loader2, Pause, Play, SkipBack, SkipForward } from 'lucide-react'
+import { Check, FastForward, Languages, ListMusic, Loader2, Pause, Play, Rewind } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { NatureChip } from '@/components/listen/NatureControls'
 import { SeekBar, SleepTopButton } from '@/components/listen/NowPlayingParts'
+import HeartButton from '@/components/listen/HeartButton'
+import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import VideoAyah from '@/components/listen/VideoAyah'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { setAppSettings } from '@/lib/app-settings'
 import { DEFAULT_TRANSLATION_EDITION, TRANSLATION_LANGUAGES, translationLanguageLabel } from '@/lib/translations'
 import { useListenState } from '@/hooks/useListen'
+import { useListenRate } from '@/hooks/useListenRate'
 import { tapFeedback } from '@/lib/haptics'
-import { playNeighbour, togglePlay } from '@/lib/listen-player'
+import { cycleListenRate, playNeighbour, togglePlay } from '@/lib/listen-player'
 import { LISTEN_VIDEO_BACKGROUND, listenTimeline, setListenVideo } from '@/lib/listen-video'
 import type { VerseTimelineEntry } from '@/lib/qari'
-import { getQiraat, getReciterById } from '@/lib/reciters'
+import { getReciterById } from '@/lib/reciters'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
 
 /**
  * Translation mode: the whole screen a slow nature clip, graded like the Qari videos, with the ayah
- * being recited and its translation in the middle. Nature mode and sleep stay at the top as in
- * Now playing, and the arrow there goes back to it. No player box: low on the screen, see-through
- * controls (previous, pause, next), then the surah with the translation's language, and the place
- * in the surah to drag.
+ * being recited and its translation in the middle. Laid out like a music player: the handle and
+ * Nature mode at the top (a tap on the handle goes back to Now playing); low on the screen the
+ * reciter and surah with the heart, then speed, previous, play, next and sleep, the place in the
+ * surah with the time left, and along the bottom the translation's language and the surah list.
  * For a reciter whose recording has no ayah timings, the surah's name stands in the middle.
  *
  * The tab bar hides while it is open (html.listen-video-on), so the clip covers the page and
- * the sheets opened from here (Nature mode, sleep) still come up over it.
+ * the sheets opened from here (Nature mode, sleep, the language) still come up over it.
  */
-export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: () => void; onOpenNature: () => void }) {
+export default function VideoMode({
+  onClose,
+  onOpenSleep,
+  onOpenNature,
+}: {
+  /** Closes Now playing, back to the list of surahs. */
+  onClose: () => void
+  onOpenSleep: () => void
+  onOpenNature: () => void
+}) {
   const t = useT()
   const { surah, reciterId, status, error } = useListenState()
   const playing = status === 'playing'
   const translationLanguage = useAppSettings().translationLanguage
   const [languageOpen, setLanguageOpen] = useState(false)
+  const rate = useListenRate()
   // undefined while it loads, null when this recording has none.
   const [timeline, setTimeline] = useState<{ key: string; entries: VerseTimelineEntry[] | null } | undefined>(undefined)
   const timelineKey = surah && reciterId ? `${reciterId}:${surah.id}` : ''
@@ -84,31 +97,28 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
       >
         <BackgroundCover background={LISTEN_VIDEO_BACKGROUND} moving paused={!playing} />
         <div className={cn('qari-mist', !playing && 'is-paused')} aria-hidden />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/25 to-black/80" aria-hidden />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/80" aria-hidden />
         {/* The darker edges of a film frame, as in the Qari videos. */}
         <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(0,0,0,0.5))]" aria-hidden />
 
-        <div className="relative mx-auto flex h-full w-full max-w-lg flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-          {/* Three columns, so Nature mode stays centred, as in Now playing. */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center">
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                exit()
-              }}
-              className="home-round ed-focus justify-self-start"
-              aria-label={t('Turn off translation mode')}
-            >
-              <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
-            </button>
+        <div className="relative mx-auto flex h-full w-full max-w-lg flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
+          {/* The handle: a tap goes back to Now playing. */}
+          <button
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              exit()
+            }}
+            className="ed-focus mx-auto flex h-7 w-24 items-center justify-center"
+            aria-label={t('Turn off translation mode')}
+          >
+            <span className="h-1 w-10 rounded-full bg-white/50" aria-hidden />
+          </button>
+          <div className="mt-2 flex justify-center">
             <NatureChip onOpen={onOpenNature} />
-            <span className="justify-self-end">
-              <SleepTopButton onOpen={onOpenSleep} />
-            </span>
           </div>
 
-          <div className="flex min-h-0 flex-1 items-center justify-center px-2">
+          <div className="flex min-h-0 flex-1 items-center justify-center px-1">
             {entries ? (
               <VideoAyah timeline={entries} paused={!playing} />
             ) : entries === null ? (
@@ -134,18 +144,41 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
             </p>
           ) : null}
 
-          {/* Low on the screen and see-through: previous, pause, next. */}
-          <div className="flex items-center justify-center gap-9">
+          {/* Who and what: the reciter, the surah, and the heart. */}
+          <div className="flex min-w-0 items-center gap-3.5">
+            <ReciterAvatar reciter={reciter} size={60} className="ring-2 ring-white/70" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[1.375rem] font-semibold leading-tight" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.45)' }}>
+                {surah.englishName}
+              </p>
+              <p className="mt-0.5 truncate text-[1rem] text-white/75">{reciter.name}</p>
+            </div>
+            <HeartButton reciter={reciter} size={44} iconSize={21} className="listen-video__heart" />
+          </div>
+
+          {/* Speed, previous, play, next, sleep. */}
+          <div className="mt-6 grid grid-cols-5 items-center">
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                cycleListenRate()
+              }}
+              className="ed-focus justify-self-start text-[0.9375rem] font-semibold tabular-nums text-white/85"
+              aria-label={t('Playback speed')}
+            >
+              {`${rate}×`}
+            </button>
             <button
               type="button"
               onClick={() => {
                 tapFeedback()
                 void playNeighbour(-1)
               }}
-              className="listen-video__button ed-focus"
+              className="listen-video__button ed-focus justify-self-center"
               aria-label={t('Previous surah')}
             >
-              <SkipBack className="h-[22px] w-[22px] fill-current rtl:-scale-x-100" strokeWidth={1.6} />
+              <Rewind className="h-8 w-8 fill-current rtl:-scale-x-100" strokeWidth={0} />
             </button>
             <button
               type="button"
@@ -153,15 +186,15 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
                 tapFeedback()
                 togglePlay()
               }}
-              className="listen-video__play ed-focus"
+              className="listen-video__button ed-focus h-16 w-16 justify-self-center"
               aria-label={playing || status === 'loading' ? t('Pause') : t('Play')}
             >
               {status === 'loading' ? (
-                <Loader2 className="h-7 w-7 animate-spin" strokeWidth={2} />
+                <Loader2 className="h-9 w-9 animate-spin" strokeWidth={2} />
               ) : playing ? (
-                <Pause className="h-7 w-7 fill-current" strokeWidth={0} />
+                <Pause className="h-11 w-11 fill-current" strokeWidth={0} />
               ) : (
-                <Play className="ml-1 h-7 w-7 fill-current" strokeWidth={0} />
+                <Play className="ml-1 h-11 w-11 fill-current" strokeWidth={0} />
               )}
             </button>
             <button
@@ -170,18 +203,20 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
                 tapFeedback()
                 void playNeighbour(1)
               }}
-              className="listen-video__button ed-focus"
+              className="listen-video__button ed-focus justify-self-center"
               aria-label={t('Next surah')}
             >
-              <SkipForward className="h-[22px] w-[22px] fill-current rtl:-scale-x-100" strokeWidth={1.6} />
+              <FastForward className="h-8 w-8 fill-current rtl:-scale-x-100" strokeWidth={0} />
             </button>
+            <span className="justify-self-end">
+              <SleepTopButton onOpen={onOpenSleep} className="listen-video__sleep" />
+            </span>
           </div>
 
-          <div className="mt-5 flex min-w-0 items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-[0.8125rem] text-white/85" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.5)' }}>
-              <span className="font-semibold text-white">{surah.englishName}</span> · {reciter.name} ·{' '}
-              {getQiraat(reciter.qiraat).short}
-            </p>
+          <SeekBar className="mt-4" remaining />
+
+          {/* Along the bottom: the translation's language, and the list of surahs. */}
+          <div className="mt-4 flex items-center justify-between">
             <button
               type="button"
               onClick={() => {
@@ -194,9 +229,19 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
               <Languages className="h-[15px] w-[15px] shrink-0" strokeWidth={2} />
               <span className="truncate">{t(translationLanguageLabel(translationLanguage))}</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                exit()
+                onClose()
+              }}
+              className="listen-video__button ed-focus"
+              aria-label={t('Surahs')}
+            >
+              <ListMusic className="h-6 w-6" strokeWidth={1.9} />
+            </button>
           </div>
-
-          <SeekBar className="mt-2" />
         </div>
       </div>
 
@@ -210,10 +255,7 @@ export default function VideoMode({ onOpenSleep, onOpenNature }: { onOpenSleep: 
                 type="button"
                 onClick={() => {
                   tapFeedback()
-                  setAppSettings({
-                    translationLanguage: lang,
-                    translationEditionId: DEFAULT_TRANSLATION_EDITION[lang],
-                  })
+                  setAppSettings({ translationLanguage: lang, translationEditionId: DEFAULT_TRANSLATION_EDITION[lang] })
                   setLanguageOpen(false)
                 }}
                 className="set-row w-full"

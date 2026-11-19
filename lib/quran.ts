@@ -1,3 +1,4 @@
+import { hasBundledQuran } from '@/lib/native-app'
 import type { Chapter, Verse } from '@/types'
 import {
   ensureOfflineHydrated,
@@ -116,9 +117,10 @@ export async function getVersesByPage(pageNumber: number): Promise<Verse[]> {
 
 async function tryLocalMushafPage(pageNumber: number): Promise<Verse[] | null> {
   // Online, a page comes from the server (a few kilobytes); the saved Quran is
-  // only read in (a parse that holds a slow phone still for seconds) offline.
+  // only read in (a parse that holds a slow phone still for seconds) offline,
+  // or in the Play Store app, which carries it and reads every page from it.
   const online = typeof navigator === 'undefined' || navigator.onLine
-  if (!isOfflineReady() && online) return null
+  if (!isOfflineReady() && online && !hasBundledQuran()) return null
   await ensureOfflineHydrated()
   const local = getLocalMushafPage(pageNumber)
   if (local?.length) {

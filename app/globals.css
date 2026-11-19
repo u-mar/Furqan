@@ -353,14 +353,15 @@ html.dark:not(.black):has(.mushaf-reader-immersive) {
      dots stay sharp even outdoors and on duller screens. Not pure black: the
      mushaf's strokes are bolder than most Quran fonts, and in pure black a full
      page reads heavy. */
-  --mushaf-read-bg: #fafafa;
+  /* A soft warm white: kinder than a cold grey-white over a long reading, without turning cream. */
+  --mushaf-read-bg: #fbf9f4;
   --mushaf-read-text: #262626;
   --mushaf-read-meta: #77736c;
   --mushaf-read-badge-bg: rgba(0, 0, 0, 0.06);
   --mushaf-read-badge-text: #4f4c47;
   --mushaf-read-card-bg: #ffffff;
   --mushaf-read-card-border: rgba(0, 0, 0, 0.1);
-  --mushaf-read-chrome-bg: rgba(250, 250, 250, 0.94);
+  --mushaf-read-chrome-bg: rgba(251, 249, 244, 0.94);
   --mushaf-read-chrome-border: rgba(0, 0, 0, 0.08);
   --mushaf-read-accent: #0d6b63;
   --mushaf-read-accent-soft: rgba(13, 107, 99, 0.13);
@@ -369,6 +370,10 @@ html.dark:not(.black):has(.mushaf-reader-immersive) {
   /* The frames of the ayah ornaments and surah banners: an old gold, deep
      enough that a hairline of it still shows on white. */
   --mushaf-ornament-gold: #a37f2a;
+  /* The ayah ornament, as in the King Fahd 1440 print: pink flourishes above and below the number,
+     the ring around it and the sides in slate grey. */
+  --mushaf-ornament-pink: #c9488e;
+  --mushaf-ornament-ring: #66727c;
   /* Deep verdigris ink card — a near-white popup would dissolve into this
      near-white page, so the popup goes dark and reads as ink on paper.
      Badge/meta tokens are re-tinted for legibility against it. */
@@ -1139,13 +1144,31 @@ html:not(.dark) .mushaf-qcf-segment--end[data-inked] {
      space back to the line. */
   padding-inline: 0.12em;
   margin-inline: -0.12em;
-  background-color: var(--mushaf-ornament-gold, #a37f2a);
-  background-image: radial-gradient(
-    ellipse 0.3786em 0.2558em at var(--ink-x) var(--ink-y),
-    var(--mushaf-read-text, #262626) 0,
-    var(--mushaf-read-text, #262626) 97%,
-    var(--mushaf-ornament-gold, #a37f2a) 100%
-  );
+  /* As in the King Fahd 1440 print: the number in ink; the ring right around it slate grey; beyond
+     the ring, the flourishes above and below pink and the sides grey (a cone of colour from the
+     number's centre). */
+  background-color: var(--mushaf-ornament-ring, #66727c);
+  background-image:
+    radial-gradient(
+      ellipse 0.3786em 0.2558em at var(--ink-x) var(--ink-y),
+      var(--mushaf-read-text, #262626) 0,
+      var(--mushaf-read-text, #262626) 97%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse 0.47em 0.35em at var(--ink-x) var(--ink-y),
+      var(--mushaf-ornament-ring, #66727c) 0,
+      var(--mushaf-ornament-ring, #66727c) 96%,
+      transparent 100%
+    ),
+    conic-gradient(
+      from -50deg at var(--ink-x) var(--ink-y),
+      var(--mushaf-ornament-pink, #c9488e) 0deg 92deg,
+      var(--mushaf-ornament-ring, #66727c) 104deg 166deg,
+      var(--mushaf-ornament-pink, #c9488e) 178deg 272deg,
+      var(--mushaf-ornament-ring, #66727c) 284deg 346deg,
+      var(--mushaf-ornament-pink, #c9488e) 358deg
+    );
   background-origin: content-box;
   background-repeat: no-repeat;
   -webkit-background-clip: text;
@@ -2640,6 +2663,14 @@ html.dark .reciter-picker .ed-seg {
   box-shadow: none;
 }
 
+/* Changing the theme on Read: the new one spreads out in a circle over the old (lib/theme-transition.ts),
+   instead of the browser's own cross-fade. */
+html.theme-reveal::view-transition-old(root),
+html.theme-reveal::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /* Prayer and Qibla, like Home: white and grey, no coloured accent (hooks/useNeutralAccent.ts marks the
    whole page while it is open, so its sheets match). The switch's knob turns dark to show on white. */
 html.dark.accent-neutral {
@@ -3937,6 +3968,14 @@ html.listen-video-on .bottom-nav {
   font-size: 0.78125rem;
   font-weight: 600;
   color: #ffffff;
+}
+
+/* The heart and the moon in translation mode: plain see-through circles, white. */
+.listen-video__heart,
+.listen-video .listen-video__sleep {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: none;
 }
 
 .listen-video__button.is-on {

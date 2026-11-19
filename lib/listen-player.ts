@@ -141,10 +141,66 @@ function isAbort(err: unknown): boolean {
   return err instanceof DOMException && err.name === 'AbortError'
 }
 
+/* ------------------------------------------------------------------ speed */
+
+/** The speeds offered, in the order a tap steps through them. */
+export const LISTEN_RATES = [1, 1.25, 1.5, 0.75] as const
+const RATE_KEY = 'naba_listen_rate'
+let rate: number = 1
+let rateRead = false
+const rateListeners = new Set<() => void>()
+
+function readRate(): number {
+  if (rateRead || typeof window === 'undefined') return rate
+  rateRead = true
+  try {
+    const saved = Number(localStorage.getItem(RATE_KEY))
+    if ((LISTEN_RATES as readonly number[]).includes(saved)) rate = saved
+  } catch {
+    // The usual speed.
+  }
+  return rate
+}
+
+/** How fast the recitation plays (1 is as recorded); remembered on the phone. */
+export function getListenRate(): number {
+  return readRate()
+}
+
+export function subscribeListenRate(listener: () => void): () => void {
+  rateListeners.add(listener)
+  return () => rateListeners.delete(listener)
+}
+
+/** On to the next speed (1 → 1.25 → 1.5 → 0.75 → 1). Returns the new one. */
+export function cycleListenRate(): number {
+  const list = LISTEN_RATES as readonly number[]
+  rate = list[(list.indexOf(readRate()) + 1) % list.length]
+  try {
+    localStorage.setItem(RATE_KEY, String(rate))
+  } catch {
+    // For this visit only.
+  }
+  const el = peekListenAudio()
+  if (el) applyRate(el)
+  rateListeners.forEach((listener) => listener())
+  return rate
+}
+
+/** A new recording starts at the browser's default speed, so the chosen one is put back each time. */
+function applyRate(el: HTMLAudioElement) {
+  const want = readRate()
+  el.defaultPlaybackRate = want
+  if (el.playbackRate !== want) el.playbackRate = want
+}
+
 function element(): HTMLAudioElement {
   const el = getListenAudio()
   if (wired) return el
   wired = true
+
+  el.addEventListener('loadedmetadata', () => applyRate(el))
+  el.addEventListener('play', () => applyRate(el))
 
   el.addEventListener('playing', () => {
     clearStallTimer()

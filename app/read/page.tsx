@@ -75,6 +75,8 @@ import {
   getVisualPageForVerse,
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
+import { hasBundledQuran } from '@/lib/native-app'
+import { revealTheme } from '@/lib/theme-transition'
 import { surahStartPage } from '@/lib/juz-pages'
 import { getVerseArabicText } from '@/lib/quran-display'
 import ShareVerseSheet, { type ShareVerseTarget } from '@/components/read/ShareVerseSheet'
@@ -94,12 +96,13 @@ import { lockPageScroll } from '@/lib/scroll-lock'
 
 /** What the dock's single Play button plays: Arabic recitation, the Somali voice, or each ayah in Arabic then Somali. */
 /**
- * Reads the Quran saved on the phone into memory (a parse that holds a slow
- * phone still for seconds) only when there is no connection to load the page
- * from; online, each page comes from the server, a few kilobytes at a time.
+ * Reads the Quran saved on the phone into memory (a parse that holds a slow phone still for a moment,
+ * so done here, behind Read's own loading, never at launch): in the Play Store app always, since it
+ * carries the mushaf inside it and every page then opens at once, scrolling with nothing to wait for;
+ * on the website only offline, since online each page comes from the server a few kilobytes at a time.
  */
-async function readSavedQuranIfOffline(): Promise<void> {
-  if (isOfflineReady() || navigator.onLine) return
+async function readSavedQuranIfNeeded(): Promise<void> {
+  if (isOfflineReady() || (navigator.onLine && !hasBundledQuran())) return
   const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
   await ensureOfflineHydrated().catch(() => {})
 }
@@ -196,10 +199,17 @@ function ReadPageContent() {
     theme,
   } = useAppSettings()
 
-  const cycleTheme = () => {
+  /** The next theme, spreading out in a circle from the button (lib/theme-transition.ts). */
+  const cycleTheme = (e?: React.MouseEvent<HTMLElement>) => {
     const next = THEME_MODES[(THEME_MODES.indexOf(theme) + 1) % THEME_MODES.length]
-    setAppSettings({ theme: next })
-    applyThemeToDocument(next)
+    const box = e?.currentTarget.getBoundingClientRect()
+    revealTheme(
+      () => {
+        applyThemeToDocument(next)
+        setAppSettings({ theme: next })
+      },
+      box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : undefined
+    )
   }
 
   const cycleReadingMode = () => {
@@ -219,7 +229,7 @@ function ReadPageContent() {
 
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
-    await readSavedQuranIfOffline()
+    await readSavedQuranIfNeeded()
     const instant = getLocalMushafPage(next)
     if (instant && instant.length > 0) return instant
     return getMushafPage(next)
@@ -274,7 +284,7 @@ function ReadPageContent() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      await readSavedQuranIfOffline()
+      await readSavedQuranIfNeeded()
       const index = await resolveBoundaryIndex()
       if (!cancelled) setBoundaryIndex(index)
     })()
@@ -300,7 +310,7 @@ function ReadPageContent() {
       const seq = ++pageLoadSeqRef.current
       setLoadError(null)
 
-      await readSavedQuranIfOffline()
+      await readSavedQuranIfNeeded()
       if (seq !== pageLoadSeqRef.current) return
 
       const instant = getLocalMushafPage(next)
@@ -473,7 +483,7 @@ function ReadPageContent() {
     if (initialLoadDone.current) return
     initialLoadDone.current = true
     void (async () => {
-      await readSavedQuranIfOffline()
+      await readSavedQuranIfNeeded()
       const saved =
         initialPage > 0
           ? initialPage

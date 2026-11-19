@@ -54,6 +54,8 @@ export const LISTEN: Dict = {
   'Continue listening': { so: 'Sii wad dhegaysiga', ar: 'تابع الاستماع' },
   'Ayah of the week': { so: 'Aayadda toddobaadka', ar: 'آية الأسبوع' },
   'Next surah': { so: 'Suuradda xigta', ar: 'السورة التالية' },
+  'Playback speed': { so: 'Xawaaraha dhageysiga', ar: 'سرعة التشغيل' },
+  'Surahs': { so: 'Suuradaha', ar: 'السور' },
   'Previous surah': { so: 'Suuradda hore', ar: 'السورة السابقة' },
   Admin: { so: 'Maamule', ar: 'المشرف' },
   'Sleep sounds': { so: 'Codadka hurdada', ar: 'أصوات النوم' },

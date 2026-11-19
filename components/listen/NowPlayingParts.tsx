@@ -18,7 +18,7 @@ const LIVE_SEEK_MS = 150
 /** Still this long after the last move, the slider goes back to showing the audio, even if no release was reported. */
 const SETTLE_MS = 800
 
-export function SeekBar({ className = 'mt-5 px-1' }: { className?: string }) {
+export function SeekBar({ className = 'mt-5 px-1', remaining = false }: { className?: string; remaining?: boolean }) {
   const t = useT()
   const { position, duration } = useListenProgress()
   const [scrub, setScrub] = useState<number | null>(null)
@@ -97,7 +97,8 @@ export function SeekBar({ className = 'mt-5 px-1' }: { className?: string }) {
       />
       <div className="mt-0.5 flex justify-between text-[0.78125rem] font-medium tabular-nums text-[var(--home-muted)]">
         <span>{formatClock(value)}</span>
-        <span>{duration ? formatClock(duration) : '--:--'}</span>
+        {/* The time left ("-29:02") where asked, else the whole length. */}
+        <span>{duration ? (remaining ? `-${formatClock(Math.max(0, duration - value))}` : formatClock(duration)) : '--:--'}</span>
       </div>
     </div>
   )
