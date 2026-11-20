@@ -283,15 +283,18 @@ function QcfPageComponent({
       cancelled = true
     }
   }, [colourWanted, pageNumber])
-  const drawFonts = colour ? `"${qcfColourFontFamily(pageNumber)}", "${qcfFamily}", serif` : `"${qcfFamily}", serif`
-  // The mushaf's lines take their font from this variable, ahead of any style of their own (app/mushaf-qcf.css).
-  const colourStyle = colour ? ({ '--mushaf-qcf-font-family': drawFonts } as CSSProperties) : undefined
+  // Only the ayah ornaments are drawn in the colour font (app/globals.css): its words are shaped for the
+  // 1441H print's own spacing, and set on these (1421H) lines some came out a tenth to a quarter short,
+  // leaving gaps. The words stay in qcfFamily, which fits these lines exactly.
+  const drawFonts = `"${qcfFamily}", serif`
+  const colourStyle = colour
+    ? ({ '--mushaf-qcf-ornament-font': `"${qcfColourFontFamily(pageNumber)}", "${qcfFamily}", serif` } as CSSProperties)
+    : undefined
   const startIndex = hifdhReveal
     ? verses.findIndex((verse) => verse.verse_key === hifdhReveal.startVerseKey)
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
-  // Fitted to the font the lines are drawn in: the colour font's letters run a few percent wider.
-  useFitQcfPageLines(pageRef, layout, colour ? qcfColourFontFamily(pageNumber) : qcfFamily)
+  useFitQcfPageLines(pageRef, layout, qcfFamily)
   useInkQcfOrnaments(pageRef, qcfFamily)
   const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
   // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by

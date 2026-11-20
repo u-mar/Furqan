@@ -9,7 +9,8 @@ type TransitionDocument = Document & {
   startViewTransition?: (update: () => void) => { ready: Promise<void>; finished: Promise<void> }
 }
 
-const DURATION_MS = 550
+/** Long enough to see the circle grow from the middle of the page to its corners. */
+const DURATION_MS = 750
 
 export function revealTheme(change: () => void, from?: { x: number; y: number }): void {
   if (typeof document === 'undefined') return change()

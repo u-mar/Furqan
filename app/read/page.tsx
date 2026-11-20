@@ -202,16 +202,15 @@ function ReadPageContent() {
     theme,
   } = useAppSettings()
 
-  /** The next theme, spreading out in a circle from the button (lib/theme-transition.ts). */
-  const cycleTheme = (e?: React.MouseEvent<HTMLElement>) => {
+  /** The next theme, a circle growing from the middle of the page until it covers it (lib/theme-transition.ts). */
+  const cycleTheme = () => {
     const next = THEME_MODES[(THEME_MODES.indexOf(theme) + 1) % THEME_MODES.length]
-    const box = e?.currentTarget.getBoundingClientRect()
     revealTheme(
       () => {
         applyThemeToDocument(next)
         setAppSettings({ theme: next })
       },
-      box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : undefined
+      { x: window.innerWidth / 2, y: window.innerHeight / 2 }
     )
   }
 

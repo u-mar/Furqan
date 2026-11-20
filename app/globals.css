@@ -1153,11 +1153,19 @@ html:not(.dark) .mushaf-qcf-segment--end[data-inked]:not([data-qcf-colour] *) {
   background-clip: text;
 }
 
-/* A page drawn in its colour (V4) font (components/mushaf/QcfPage.tsx): the ayah ornaments filled as
-   in the King Fahd 1440 print, the letters plain. The colours are the font palettes set up in
-   lib/mushaf-fonts.ts, one for each theme. The gold above is only for a page still in V2. */
+/* A page with its colour (V4) font loaded (components/mushaf/QcfPage.tsx): the ayah ornaments are drawn
+   in it, filled as in the King Fahd 1440 print; the words keep the page's own (V2) font, which fits its
+   lines. The colours are the font palettes set up in lib/mushaf-fonts.ts, one for each theme. The gold
+   above is only for a page whose colour font has not loaded. */
 [data-qcf-colour] {
   font-palette: --naba-light;
+}
+[data-qcf-colour] .mushaf-qcf-segment--end {
+  font-family: var(--mushaf-qcf-ornament-font) !important;
+}
+/* The coloured ornament is for the light page only: on dark and black it stays the page's own, plain. */
+html.dark [data-qcf-colour] .mushaf-qcf-segment--end {
+  font-family: var(--mushaf-qcf-font-family, inherit) !important;
 }
 html.dark [data-qcf-colour] {
   font-palette: --naba-dark;
