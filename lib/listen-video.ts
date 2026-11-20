@@ -11,17 +11,17 @@ import { getReciterById, listenTimingSource } from '@/lib/reciters'
  */
 
 /**
- * The scenes offered behind translation mode: the valley at sunset (the first, and the default), and
- * three by day under a blue sky. The one chosen is remembered on the phone.
+ * The scenes offered behind translation mode: the alpine valley by day (the first, and the default),
+ * the valley at sunset, and two more by day under a blue sky. The one chosen is remembered on the phone.
  */
 export const LISTEN_VIDEO_BACKGROUNDS: VideoBackground[] = [
-  'motion-valley-sunset',
   'motion-alpine-valley',
+  'motion-valley-sunset',
   'motion-lake-from-above',
   'motion-golden-meadow',
 ].map(findVideoBackground)
 
-/** The default scene, the valley at sunset. */
+/** The default scene, the alpine valley by day. */
 export const LISTEN_VIDEO_BACKGROUND: VideoBackground = LISTEN_VIDEO_BACKGROUNDS[0]
 
 const BACKGROUND_KEY = 'naba_listen_video_background'

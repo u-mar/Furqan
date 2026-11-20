@@ -9,8 +9,8 @@ type TransitionDocument = Document & {
   startViewTransition?: (update: () => void) => { ready: Promise<void>; finished: Promise<void> }
 }
 
-/** Long enough to see the circle grow from the middle of the page to its corners. */
-const DURATION_MS = 750
+/** Slow enough to watch the circle grow from the middle of the page out to its corners. */
+const DURATION_MS = 1500
 
 export function revealTheme(change: () => void, from?: { x: number; y: number }): void {
   if (typeof document === 'undefined') return change()
@@ -45,7 +45,7 @@ export function revealTheme(change: () => void, from?: { x: number; y: number })
       .then(() => {
         root.animate(
           { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-          { duration: DURATION_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
+          { duration: DURATION_MS, easing: 'cubic-bezier(0.45, 0.05, 0.35, 1)', pseudoElement: '::view-transition-new(root)' }
         )
       })
       .catch(() => {})

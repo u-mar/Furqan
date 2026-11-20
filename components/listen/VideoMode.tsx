@@ -16,7 +16,7 @@ import { DEFAULT_TRANSLATION_EDITION, TRANSLATION_LANGUAGES, translationLanguage
 import { useListenState } from '@/hooks/useListen'
 import { useListenRate } from '@/hooks/useListenRate'
 import { tapFeedback } from '@/lib/haptics'
-import { cycleListenRate, playNeighbour, togglePlay } from '@/lib/listen-player'
+import { cycleListenRate, seekBy, togglePlay } from '@/lib/listen-player'
 import {
   getListenVideoBackground,
   LISTEN_VIDEO_BACKGROUND,
@@ -43,6 +43,11 @@ import { useCloseOnBack } from '@/lib/native-back'
  * The tab bar hides while it is open (html.listen-video-on), so the clip covers the page and
  * the sheets opened from here (Nature mode, sleep, the language) still come up over it.
  */
+/** How far the ⏪ ⏩ buttons move, in seconds. */
+const SEEK_SECONDS = 10
+/** How long the controls stay up after the last touch while it plays. */
+const CONTROLS_STAY_MS = 4000
+
 export default function VideoMode({
   onClose,
   onOpenSleep,
@@ -67,6 +72,29 @@ export default function VideoMode({
 
   const exit = () => setListenVideo(false)
   useCloseOnBack(true, exit)
+
+  // While it plays, the controls fade after a few seconds of no touch, leaving the ayah and the scene;
+  // a tap on the screen brings them back (and a tap on a control keeps them up a while longer).
+  const [shown, setShown] = useState(true)
+  const [touchedAt, setTouchedAt] = useState(0)
+  useEffect(() => {
+    if (!playing || !shown) {
+      if (!playing) setShown(true)
+      return
+    }
+    const timer = window.setTimeout(() => setShown(false), CONTROLS_STAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [playing, shown, touchedAt])
+  const onScreenTap = (e: React.MouseEvent) => {
+    const onControl = (e.target as HTMLElement).closest('button, input, a')
+    if (onControl) {
+      setShown(true)
+      setTouchedAt(Date.now())
+      return
+    }
+    setShown((now) => !now)
+    setTouchedAt(Date.now())
+  }
 
   useEffect(() => {
     const root = document.documentElement
@@ -101,6 +129,7 @@ export default function VideoMode({
     <>
       <div
         className="listen-video fixed inset-0 z-[45] overflow-hidden bg-black text-white"
+        onClick={onScreenTap}
         role="dialog"
         aria-modal="true"
         aria-label={t('Translation mode')}
@@ -166,7 +195,9 @@ export default function VideoMode({
             <HeartButton reciter={reciter} size={44} iconSize={21} className="listen-video__heart" />
           </div>
 
-          {/* Speed, previous, play, next, sleep. */}
+          {/* The controls fade away while it plays, and come back with a tap on the screen. */}
+          <div className={cn('listen-video__controls', !shown && 'is-hidden')} aria-hidden={!shown}>
+          {/* Speed, 10 s back, play, 10 s on, sleep. */}
           <div className="mt-6 grid grid-cols-5 items-center">
             <button
               type="button"
@@ -183,10 +214,10 @@ export default function VideoMode({
               type="button"
               onClick={() => {
                 tapFeedback()
-                void playNeighbour(-1)
+                seekBy(-SEEK_SECONDS)
               }}
               className="listen-video__button ed-focus justify-self-center"
-              aria-label={t('Previous surah')}
+              aria-label={t('Back {seconds} seconds', { seconds: SEEK_SECONDS })}
             >
               <Rewind className="h-8 w-8 fill-current rtl:-scale-x-100" strokeWidth={0} />
             </button>
@@ -211,10 +242,10 @@ export default function VideoMode({
               type="button"
               onClick={() => {
                 tapFeedback()
-                void playNeighbour(1)
+                seekBy(SEEK_SECONDS)
               }}
               className="listen-video__button ed-focus justify-self-center"
-              aria-label={t('Next surah')}
+              aria-label={t('Forward {seconds} seconds', { seconds: SEEK_SECONDS })}
             >
               <FastForward className="h-8 w-8 fill-current rtl:-scale-x-100" strokeWidth={0} />
             </button>
@@ -262,6 +293,7 @@ export default function VideoMode({
             >
               <ListMusic className="h-6 w-6" strokeWidth={1.9} />
             </button>
+          </div>
           </div>
         </div>
       </div>

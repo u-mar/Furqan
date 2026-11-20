@@ -3967,6 +3967,16 @@ html.listen-video-on .bottom-nav {
   box-shadow: none;
 }
 
+/* Translation mode's controls: they fade away while it plays (components/listen/VideoMode.tsx). */
+.listen-video__controls {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.listen-video__controls.is-hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
 .listen-video__button.is-on {
   background: #ffffff;
   box-shadow: none;
