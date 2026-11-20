@@ -1,7 +1,8 @@
 'use client'
 
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
+import { isPageColourFontLoaded, loadPageColourFont, prefetchPageColourFonts, qcfColourFontFamily } from '@/lib/mushaf-fonts'
 import QcfLine, { QcfSegment } from '@/components/mushaf/QcfLine'
 import {
   buildQcfPageLayout,
@@ -264,11 +265,33 @@ function QcfPageComponent({
   )
   const qcfFamily = fontFamily ?? qcfPageFontFamily(pageNumber)
   const pageClass = qcfPageFontClass(pageNumber)
+  // The page in its colour (V4) font, with the filled ayah ornaments of the print, once it has loaded;
+  // the lines are still measured and fitted with qcfFamily, whose glyphs are the same.
+  // Only for the page's own font (not one a caller swaps in).
+  const colourWanted = fontFamily === undefined || fontFamily === qcfPageFontFamily(pageNumber)
+  const [colour, setColour] = useState(() => colourWanted && isPageColourFontLoaded(pageNumber))
+  useEffect(() => {
+    if (!colourWanted) return
+    let cancelled = false
+    setColour(isPageColourFontLoaded(pageNumber))
+    void loadPageColourFont(pageNumber).then((ok) => {
+      if (!cancelled && ok) setColour(true)
+      // Then the next and previous pages', so turning to them is instant.
+      if (ok) prefetchPageColourFonts(pageNumber, 2)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [colourWanted, pageNumber])
+  const drawFonts = colour ? `"${qcfColourFontFamily(pageNumber)}", "${qcfFamily}", serif` : `"${qcfFamily}", serif`
+  // The mushaf's lines take their font from this variable, ahead of any style of their own (app/mushaf-qcf.css).
+  const colourStyle = colour ? ({ '--mushaf-qcf-font-family': drawFonts } as CSSProperties) : undefined
   const startIndex = hifdhReveal
     ? verses.findIndex((verse) => verse.verse_key === hifdhReveal.startVerseKey)
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
-  useFitQcfPageLines(pageRef, layout, qcfFamily)
+  // Fitted to the font the lines are drawn in: the colour font's letters run a few percent wider.
+  useFitQcfPageLines(pageRef, layout, colour ? qcfColourFontFamily(pageNumber) : qcfFamily)
   useInkQcfOrnaments(pageRef, qcfFamily)
   const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
   // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by
@@ -290,8 +313,10 @@ function QcfPageComponent({
       <div
         ref={pageRef}
         className={cn('mushaf-qcf-page mushaf-qcf-page--flow', pageClass)}
+        style={colourStyle}
         data-page={pageNumber}
         data-qcf-font={qcfFamily}
+        data-qcf-colour={colour ? '' : undefined}
         dir="rtl"
         lang="ar"
         aria-label={t('Quran page {pageNumber}', { pageNumber })}
@@ -303,6 +328,7 @@ function QcfPageComponent({
                 key={`line-${block.line.lineNumber}`}
                 line={block.line}
                 qcfFontFamily={qcfFamily}
+                drawFonts={drawFonts}
                 highlightedVerseKey={highlightedVerseKey}
                 selectedVerseKey={selectedVerseKey}
                 onLineLongPress={onAyahLongPress}
@@ -313,7 +339,7 @@ function QcfPageComponent({
               <p
                 key={`text-${block.key}`}
                 className="mushaf-qcf-flow__text"
-                style={{ fontFamily: `"${qcfFamily}", serif` }}
+                style={{ fontFamily: drawFonts }}
               >
                 {block.segments.map((segment, index) => {
                   const next = block.segments[index + 1]
@@ -352,9 +378,12 @@ function QcfPageComponent({
         openingShift > 0 && 'mushaf-qcf-page--opening',
         pageClass
       )}
-      style={openingShift > 0 ? ({ '--mushaf-opening-shift': openingShift } as CSSProperties) : undefined}
+      style={
+        openingShift > 0 ? ({ ...colourStyle, '--mushaf-opening-shift': openingShift } as CSSProperties) : colourStyle
+      }
       data-page={pageNumber}
       data-qcf-font={qcfFamily}
+      data-qcf-colour={colour ? '' : undefined}
       dir="rtl"
       lang="ar"
       aria-label={t('Quran page {pageNumber}', { pageNumber })}
@@ -376,6 +405,7 @@ function QcfPageComponent({
               key={line.lineNumber}
               line={line}
               qcfFontFamily={qcfFamily}
+                drawFonts={drawFonts}
               highlightedVerseKey={highlightedVerseKey}
               selectedVerseKey={selectedVerseKey}
               onLineLongPress={onAyahLongPress}

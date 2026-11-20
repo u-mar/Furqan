@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, FastForward, Languages, ListMusic, Loader2, Pause, Play, Rewind } from 'lucide-react'
+import { Check, FastForward, Image as ImageIcon, Languages, ListMusic, Loader2, Pause, Play, Rewind } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { NatureChip } from '@/components/listen/NatureControls'
 import { SeekBar, SleepTopButton } from '@/components/listen/NowPlayingParts'
@@ -17,7 +17,15 @@ import { useListenState } from '@/hooks/useListen'
 import { useListenRate } from '@/hooks/useListenRate'
 import { tapFeedback } from '@/lib/haptics'
 import { cycleListenRate, playNeighbour, togglePlay } from '@/lib/listen-player'
-import { LISTEN_VIDEO_BACKGROUND, listenTimeline, setListenVideo } from '@/lib/listen-video'
+import {
+  getListenVideoBackground,
+  LISTEN_VIDEO_BACKGROUND,
+  LISTEN_VIDEO_BACKGROUNDS,
+  listenTimeline,
+  setListenVideo,
+  setListenVideoBackground,
+  subscribeListenVideoBackground,
+} from '@/lib/listen-video'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { getReciterById } from '@/lib/reciters'
 import { cn } from '@/lib/cn'
@@ -51,6 +59,8 @@ export default function VideoMode({
   const translationLanguage = useAppSettings().translationLanguage
   const [languageOpen, setLanguageOpen] = useState(false)
   const rate = useListenRate()
+  const [backgroundOpen, setBackgroundOpen] = useState(false)
+  const background = useSyncExternalStore(subscribeListenVideoBackground, getListenVideoBackground, () => LISTEN_VIDEO_BACKGROUND)
   // undefined while it loads, null when this recording has none.
   const [timeline, setTimeline] = useState<{ key: string; entries: VerseTimelineEntry[] | null } | undefined>(undefined)
   const timelineKey = surah && reciterId ? `${reciterId}:${surah.id}` : ''
@@ -95,7 +105,7 @@ export default function VideoMode({
         aria-modal="true"
         aria-label={t('Translation mode')}
       >
-        <BackgroundCover background={LISTEN_VIDEO_BACKGROUND} moving paused={!playing} />
+        <BackgroundCover key={background.id} background={background} moving paused={!playing} />
         <div className={cn('qari-mist', !playing && 'is-paused')} aria-hidden />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/80" aria-hidden />
         {/* The darker edges of a film frame, as in the Qari videos. */}
@@ -215,8 +225,8 @@ export default function VideoMode({
 
           <SeekBar className="mt-4" remaining />
 
-          {/* Along the bottom: the translation's language, and the list of surahs. */}
-          <div className="mt-4 flex items-center justify-between">
+          {/* Along the bottom: the translation's language, the scene behind, and the list of surahs. */}
+          <div className="mt-4 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => {
@@ -228,6 +238,17 @@ export default function VideoMode({
             >
               <Languages className="h-[15px] w-[15px] shrink-0" strokeWidth={2} />
               <span className="truncate">{t(translationLanguageLabel(translationLanguage))}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setBackgroundOpen(true)
+              }}
+              className="listen-video__button ed-focus ml-auto"
+              aria-label={t('Background')}
+            >
+              <ImageIcon className="h-[22px] w-[22px]" strokeWidth={1.9} />
             </button>
             <button
               type="button"
@@ -263,6 +284,41 @@ export default function VideoMode({
               >
                 <span className="set-row__label">{t(translationLanguageLabel(lang))}</span>
                 {on ? <Check className="h-[18px] w-[18px] shrink-0" strokeWidth={2.4} /> : null}
+              </button>
+            )
+          })}
+        </div>
+      </SettingsSheet>
+
+      <SettingsSheet open={backgroundOpen} title={t('Background')} onClose={() => setBackgroundOpen(false)}>
+        <div className="grid grid-cols-2 gap-2.5">
+          {LISTEN_VIDEO_BACKGROUNDS.map((scene) => {
+            const on = scene.id === background.id
+            return (
+              <button
+                key={scene.id}
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  setListenVideoBackground(scene.id)
+                  setBackgroundOpen(false)
+                }}
+                className={cn(
+                  'ed-focus relative aspect-[3/4] overflow-hidden rounded-2xl',
+                  on && 'ring-2 ring-[var(--home-heading)] ring-offset-2 ring-offset-[var(--app-bg)]'
+                )}
+                aria-pressed={on}
+                aria-label={t(scene.label)}
+              >
+                <img src={scene.thumb ?? scene.url ?? undefined} alt="" className="h-full w-full object-cover" loading="lazy" />
+                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-6 text-left text-[0.8125rem] font-semibold text-white">
+                  {t(scene.label)}
+                </span>
+                {on ? (
+                  <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-black">
+                    <Check className="h-4 w-4" strokeWidth={2.6} />
+                  </span>
+                ) : null}
               </button>
             )
           })}

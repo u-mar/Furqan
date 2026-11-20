@@ -3,11 +3,8 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import {
   Bird,
-  ChevronRight,
-  CircleCheck,
   CloudLightning,
   CloudRain,
-  Download,
   Flame,
   House,
   Leaf,
@@ -29,9 +26,7 @@ import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useListenState } from '@/hooks/useListen'
 import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
-import { DownloadRing } from '@/components/listen/DownloadButton'
 import {
-  NATURE_ALL_MB,
   NATURE_SOUNDS,
   getNatureOffline,
   getNatureState,
@@ -47,8 +42,6 @@ import {
   toggleNatureSound,
   type NatureId,
 } from '@/lib/nature-sounds'
-import { toastError, toastSuccess } from '@/lib/toast'
-import { tr } from '@/lib/i18n-core'
 import { useT } from '@/lib/i18n'
 
 const ICONS: Record<NatureId, LucideIcon> = {
@@ -155,12 +148,24 @@ export function NatureChip({ onOpen }: { onOpen: () => void }) {
 }
 
 /** Choose the sounds (up to three at once), set how loud, and reach the sleep timer. */
-export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onClose: () => void; onOpenSleep: () => void }) {
+export function NatureSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const { sounds, playing, volume } = useNature()
-  const { saved, online } = useNatureOffline()
-  const { sleep } = useListenState()
+  const { saved, saving, online } = useNatureOffline()
   const percent = Math.round(volume * 100)
+
+  // Every sound kept on the phone the first time this opens with a connection (about 23 MB, once),
+  // so Nature mode then works offline with nothing to do. Not while the phone asks to save data.
+  const allSaved = saved.size >= NATURE_SOUNDS.length
+  useEffect(() => {
+    if (!open || !online || allSaved || saving !== null) return
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+    if (connection?.saveData) return
+    void saveAllNatureSounds()
+  }, [open, online, allSaved, saving])
+  const on = sounds.length > 0
+  const latest = sounds[sounds.length - 1]
+  const StatusIcon = on && latest ? ICONS[latest] : Leaf
 
   return (
     <SettingsSheet
@@ -170,56 +175,80 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
       onClose={onClose}
     >
       <div className="nature-accent">
-        <div className="grid grid-cols-2 gap-2">
+        {/* What is playing now, large, with pause and the way to turn it all off beside it (as in Sleep mode). */}
+        <div className="sleep-status" data-on={on && playing ? 'true' : 'false'}>
+          <span className="sleep-status__moon" aria-hidden>
+            <StatusIcon className="h-6 w-6" strokeWidth={1.8} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[1.25rem] font-semibold leading-tight text-[var(--home-heading)]">
+              {on ? sounds.map(natureName).join(' · ') : t('Off')}
+            </span>
+            <span className="mt-0.5 block text-[0.8125rem] text-[var(--home-muted)]">
+              {on ? (playing ? t('Playing') : t('Paused')) : t('Choose up to three sounds')}
+            </span>
+          </span>
+          {on ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  toggleNature()
+                }}
+                aria-label={playing ? t('Pause') : t('Play')}
+                className="fx-press ed-focus flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] text-[var(--home-heading)]"
+              >
+                {playing ? (
+                  <Pause className="h-[16px] w-[16px] fill-current" strokeWidth={1.9} />
+                ) : (
+                  <Play className="ml-0.5 h-[16px] w-[16px] fill-current" strokeWidth={1.9} />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  stopNature()
+                }}
+                className="fx-press ed-focus h-10 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] px-4 text-[0.875rem] font-semibold text-[var(--home-heading)]"
+              >
+                {t('Turn off')}
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        {/* The sounds, as Sleep mode's choices: a tap adds one to the mix, or takes it out. */}
+        <div className="mt-3 grid grid-cols-4 gap-2">
           {NATURE_SOUNDS.map((sound) => {
             const Icon = ICONS[sound.id]
-            const on = sounds.includes(sound.id)
+            const chosen = sounds.includes(sound.id)
             return (
               <button
                 key={sound.id}
                 type="button"
-                aria-pressed={on}
+                role="checkbox"
+                aria-checked={chosen}
                 onClick={() => {
                   tapFeedback()
                   toggleNatureSound(sound.id)
                 }}
                 // Offline, a sound never kept cannot play: shown faded (a tap says why).
-                className={`nature-tile ed-focus${!online && !saved.has(sound.id) ? ' nature-tile--away' : ''}`}
+                className={`sleep-chip nature-chip ed-focus${!online && !saved.has(sound.id) ? ' nature-chip--away' : ''}`}
               >
-                <span className="nature-tile__dot" aria-hidden>
-                  <Icon className="h-5 w-5" strokeWidth={1.8} />
+                <Icon className="h-[22px] w-[22px]" strokeWidth={1.8} aria-hidden />
+                <span className="mt-1.5 line-clamp-2 px-1 text-center text-[0.6875rem] font-semibold leading-tight">
+                  {natureName(sound.id)}
                 </span>
-                <span className="nature-tile__label">{natureName(sound.id)}</span>
-                {on ? (
-                  <span className={`listen-eq ms-auto${playing ? '' : ' listen-eq--paused'}`} aria-hidden>
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                ) : null}
               </button>
             )
           })}
         </div>
 
-        {sounds.length ? (
+        {on ? (
           // Left to right in Arabic too: the slider's fill is drawn from the left.
-          <div dir="ltr" className="mt-5 flex items-center gap-3 rounded-2xl border border-[var(--home-rule)] py-2 pl-2 pr-3.5">
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                toggleNature()
-              }}
-              aria-label={playing ? t('Pause') : t('Play')}
-              className="ed-focus flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--home-heading)] text-[var(--app-bg)]"
-            >
-              {playing ? (
-                <Pause className="h-[17px] w-[17px] fill-current" strokeWidth={1.9} />
-              ) : (
-                <Play className="ml-0.5 h-[17px] w-[17px] fill-current" strokeWidth={1.9} />
-              )}
-            </button>
+          <div dir="ltr" className="sleep-status mt-3 !py-3">
             <Volume1 className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={1.9} aria-hidden />
             <input
               type="range"
@@ -236,104 +265,17 @@ export function NatureSheet({ open, onClose, onOpenSleep }: { open: boolean; onC
           </div>
         ) : null}
 
-        <div className="mt-3 overflow-hidden rounded-2xl border border-[var(--home-rule)]">
-          <button
-            type="button"
-            onClick={() => {
-              tapFeedback()
-              onOpenSleep()
-            }}
-            className="set-row"
-            style={{ paddingBlock: 9 }}
-          >
-            <span className="set-row__icon" aria-hidden>
-              <Moon className="h-[17px] w-[17px]" strokeWidth={1.9} />
-            </span>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block text-[0.9375rem] font-medium">{t('Sleep mode')}</span>
-              <span className="mt-px block text-[0.78125rem] tabular-nums text-[var(--home-muted)]">
-                {sleep ? <SleepLeft prefix={t('Stops in ')} fallback={t('Stops at the end of this surah')} /> : t('Off')}
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)] rtl:rotate-180" strokeWidth={2} aria-hidden />
-          </button>
-          <OfflineRow />
-        </div>
-        <p className="mx-1 mt-2.5 text-[0.78125rem] leading-relaxed text-[var(--home-muted)]">
+        <p className="mx-1 mt-3 text-[0.78125rem] leading-relaxed text-[var(--home-muted)]">
           {t('Mix up to three sounds. Sleep mode stops them with the recitation.')}{' '}
-          {t('A sound you play stays on this phone, so it plays offline too.')}
+          {saving !== null
+            ? t('Saving the sounds for offline · {percent}%', { percent: saving })
+            : allSaved
+              ? t('All the sounds are on this phone, so they play offline too.')
+              : t('A sound you play stays on this phone, so it plays offline too.')}
         </p>
+
       </div>
     </SettingsSheet>
-  )
-}
-
-/** Keep every sound on the phone at once, so Nature mode works with no connection. */
-function OfflineRow() {
-  const t = useT()
-  const { saved, saving, online } = useNatureOffline()
-  const total = NATURE_SOUNDS.length
-  const title = <span className="block text-[0.9375rem] font-medium">{t('Save for offline')}</span>
-  const note = (text: string) => (
-    <span className="mt-px block text-[0.78125rem] tabular-nums text-[var(--home-muted)]">{text}</span>
-  )
-
-  if (saved.size >= total) {
-    return (
-      <div className="set-row border-t border-[var(--home-rule)]" style={{ paddingBlock: 9 }}>
-        <span className="set-row__icon" aria-hidden>
-          <CircleCheck className="h-[17px] w-[17px] text-[var(--home-sage-deep)]" strokeWidth={2} />
-        </span>
-        <span className="min-w-0 flex-1 text-left">
-          {title}
-          {note(t('All {total} sounds are on this phone', { total }))}
-        </span>
-      </div>
-    )
-  }
-
-  if (saving !== null) {
-    return (
-      <div className="set-row border-t border-[var(--home-rule)]" style={{ paddingBlock: 4 }} role="status">
-        <span className="-ml-1.5 -mr-1.5 flex" aria-hidden>
-          <DownloadRing percent={saving} waiting={false} />
-        </span>
-        <span className="min-w-0 flex-1 text-left">
-          {title}
-          {note(t('Saving… {percent}%', { percent: saving }))}
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={!online}
-      onClick={() => {
-        tapFeedback()
-        void saveAllNatureSounds().then((ok) => {
-          if (ok) toastSuccess(tr('Nature sounds are saved for offline'))
-          else toastError(tr('The sounds could not be saved. Try again on Wi‑Fi.'))
-        })
-      }}
-      className="set-row border-t border-[var(--home-rule)]"
-      style={{ paddingBlock: 9 }}
-    >
-      <span className="set-row__icon" aria-hidden>
-        <Download className="h-[17px] w-[17px]" strokeWidth={1.9} />
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        {title}
-        {note(
-          !online
-            ? t('Connect to the internet to save them')
-            : saved.size
-              ? t('{saved} of {total} saved · tap to save the rest', { saved: saved.size, total })
-              : t('All {total} sounds · {size} MB', { total, size: NATURE_ALL_MB })
-        )}
-      </span>
-    </button>
   )
 }
 

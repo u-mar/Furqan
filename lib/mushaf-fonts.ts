@@ -44,6 +44,31 @@ function qcfFontFaceCss(page: number, srcUrl: string): string {
   return `@font-face{font-family:'${family}';src:url('${escapeCssUrl(srcUrl)}') format('woff2');font-weight:normal;font-style:normal;font-display:block;}`
 }
 
+/**
+ * The colours the V4 page fonts are drawn in, as in the King Fahd 1440 print: the letters in the
+ * reader's own ink (the font's tajweed colours all set to it), the ayah ornament's ring slate grey with
+ * a light grey inside and its flourishes pink. Palette 3 of the font is "plain letters, coloured
+ * ornaments"; 4 is the same on dark. Entries: 0–9, 13–15 letters; 10 ring; 11 flourishes; 12 fill.
+ * A palette is tied to one font family, so each page gets its own rules (V2 fonts ignore them).
+ */
+const PALETTES: { name: string; base: number; ink: string; ring: string; flourish: string; fill: string }[] = [
+  { name: '--naba-light', base: 3, ink: '#262626', ring: '#6b7780', flourish: '#e0157f', fill: '#e4e7ea' },
+  { name: '--naba-dark', base: 4, ink: '#e6e7e8', ring: '#9aa6ae', flourish: '#e8509b', fill: '#2a2f34' },
+  { name: '--naba-black', base: 4, ink: '#ece6da', ring: '#9aa6ae', flourish: '#e8509b', fill: '#1f2326' },
+]
+const palettedFamilies = new Set<string>()
+
+function ensurePalettes(family: string): void {
+  if (typeof document === 'undefined' || palettedFamilies.has(family)) return
+  palettedFamilies.add(family)
+  const style = document.createElement('style')
+  style.textContent = PALETTES.map(({ name, base, ink, ring, flourish, fill }) => {
+    const letters = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14, 15].map((i) => `${i} ${ink}`).join(', ')
+    return `@font-palette-values ${name}{font-family:'${family}';base-palette:${base};override-colors:${letters}, 10 ${ring}, 11 ${flourish}, 12 ${fill};}`
+  }).join('')
+  document.head.appendChild(style)
+}
+
 export function ensureQcfFontFace(page: number, srcUrl: string): void {
   if (typeof document === 'undefined' || injectedFaces.has(page)) return
   const style = document.createElement('style')
@@ -297,4 +322,61 @@ export function isPageFontLoaded(page: number): boolean {
 
 export function clearPageFontLoaded(page: number): void {
   loadedPages.delete(page)
+}
+
+
+/* ------------------------------------------------------------ colour ornaments (Read) */
+
+/**
+ * Read draws each page in the King Fahd Complex's later (V4) print of the same page fonts, whose ayah
+ * ornaments are filled in colour, in front of the V2 font it measures and fits the lines with: the
+ * glyph codes are the same, so nothing moves, and until (or unless) the V4 font arrives the page shows
+ * in V2 as before. Only Read: pictures and videos drawn on a canvas cannot pick the colours (below),
+ * and would show the font's own tajweed colours on the letters.
+ */
+const QCF_COLOUR_FONT_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v4/colrv1/woff2'
+const colourLoaded = new Set<number>()
+const colourLoading = new Map<number, Promise<boolean>>()
+
+/** The colour (V4) font's family for a page, e.g. QCFC_P3. */
+export function qcfColourFontFamily(page: number): string {
+  return `QCFC_P${page}`
+}
+
+export function isPageColourFontLoaded(page: number): boolean {
+  return colourLoaded.has(page)
+}
+
+/**
+ * The colour fonts of the pages either side, fetched ahead so turning or scrolling to them shows
+ * them at once, rather than first in V2 and then again as the colour font arrives.
+ */
+export function prefetchPageColourFonts(center: number, radius = 2): void {
+  for (let step = 1; step <= radius; step++) {
+    for (const page of [center + step, center - step]) {
+      if (page >= 1 && page <= 604 && !colourLoaded.has(page)) void loadPageColourFont(page)
+    }
+  }
+}
+
+/** Loads a page's colour font (online only); true once it can be drawn. */
+export function loadPageColourFont(page: number): Promise<boolean> {
+  if (typeof document === 'undefined' || page < 1 || page > 604) return Promise.resolve(false)
+  if (colourLoaded.has(page)) return Promise.resolve(true)
+  const pending = colourLoading.get(page)
+  if (pending) return pending
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve(false)
+  const family = qcfColourFontFamily(page)
+  ensurePalettes(family)
+  const task = new FontFace(family, `url(${QCF_COLOUR_FONT_BASE}/p${page}.woff2) format('woff2')`, { display: 'swap' })
+    .load()
+    .then((face) => {
+      document.fonts.add(face)
+      colourLoaded.add(page)
+      return true
+    })
+    .catch(() => false)
+    .finally(() => colourLoading.delete(page))
+  colourLoading.set(page, task)
+  return task
 }

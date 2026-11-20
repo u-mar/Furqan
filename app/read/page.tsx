@@ -76,6 +76,7 @@ import {
 } from '@/lib/quran'
 import { getLocalMushafPage, isOfflineReady, prefetchMushafPages } from '@/lib/local-quran-store'
 import { hasBundledQuran } from '@/lib/native-app'
+import { readStoredPage, storedPagesComplete } from '@/lib/quran-page-store'
 import { revealTheme } from '@/lib/theme-transition'
 import { surahStartPage } from '@/lib/juz-pages'
 import { getVerseArabicText } from '@/lib/quran-display'
@@ -103,6 +104,8 @@ import { lockPageScroll } from '@/lib/scroll-lock'
  */
 async function readSavedQuranIfNeeded(): Promise<void> {
   if (isOfflineReady() || (navigator.onLine && !hasBundledQuran())) return
+  // Every page already kept on its own (lib/quran-page-store.ts): each is read as it is opened.
+  if (await storedPagesComplete()) return
   const { ensureOfflineHydrated } = await import('@/lib/local-quran-store')
   await ensureOfflineHydrated().catch(() => {})
 }
@@ -230,7 +233,7 @@ function ReadPageContent() {
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
     await readSavedQuranIfNeeded()
-    const instant = getLocalMushafPage(next)
+    const instant = getLocalMushafPage(next) ?? (await readStoredPage(next))
     if (instant && instant.length > 0) return instant
     return getMushafPage(next)
   }, [])
@@ -313,7 +316,7 @@ function ReadPageContent() {
       await readSavedQuranIfNeeded()
       if (seq !== pageLoadSeqRef.current) return
 
-      const instant = getLocalMushafPage(next)
+      const instant = getLocalMushafPage(next) ?? (await readStoredPage(next))
       if (instant && instant.length > 0) {
         if (seq !== pageLoadSeqRef.current) return
         applyPage(next, instant)

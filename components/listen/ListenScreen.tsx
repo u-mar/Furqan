@@ -388,10 +388,6 @@ export default function ListenScreen() {
       <NatureSheet
         open={natureOpen}
         onClose={() => setNatureOpen(false)}
-        onOpenSleep={() => {
-          setNatureOpen(false)
-          setSleepOpen(true)
-        }}
       />
       <SleepSheet open={sleepOpen} onClose={() => setSleepOpen(false)} />
       <ReciterPickerSheet

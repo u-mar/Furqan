@@ -116,6 +116,8 @@ function QcfLineGlyphs({
 export interface QcfLineProps {
   line: QcfPageLine
   qcfFontFamily: string
+  /** The fonts to draw with, front first (the colour font, then this page's own); its own alone by default. */
+  drawFonts?: string
   highlightedVerseKey?: string | null
   selectedVerseKey?: string | null
   onLineLongPress?: (verseKey: string) => void
@@ -130,6 +132,7 @@ export interface QcfLineProps {
 function QcfLineComponent({
   line,
   qcfFontFamily,
+  drawFonts,
   highlightedVerseKey,
   selectedVerseKey,
   onLineLongPress,
@@ -141,7 +144,7 @@ function QcfLineComponent({
   isSegmentHidden,
 }: QcfLineProps) {
   const t = useT()
-  const glyphStyle = { fontFamily: `"${qcfFontFamily}", serif` } as const
+  const glyphStyle = { fontFamily: drawFonts ?? `"${qcfFontFamily}", serif` } as const
   const segmentLongPress =
     onLineLongPress && line.kind !== 'empty' && line.kind !== 'surah-header'
       ? onLineLongPress

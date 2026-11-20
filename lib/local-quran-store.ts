@@ -1,3 +1,4 @@
+import { storeAllPages } from '@/lib/quran-page-store'
 import type { Chapter, Verse, VerseWord } from '@/types'
 import { cacheAllMushafFonts, clearOfflineFontsCachedFlag, verifyMushafFontsCached } from '@/lib/offline-font-cache'
 import { tr } from '@/lib/i18n-core'
@@ -133,6 +134,8 @@ function ingestQuranData(data: QuranDataFile): void {
   pageIndex = buildPageIndex(verses)
   hotCache.clear()
   prefetchMushafPages(1, 3)
+  // Each page kept on its own too, so next time Read opens a page without reading in all of this.
+  storeAllPages(pageIndex)
 }
 
 function report(

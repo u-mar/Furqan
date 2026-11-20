@@ -10,8 +10,51 @@ import { getReciterById, listenTimingSource } from '@/lib/reciters'
  * the app is open (a phone on mobile data should not start streaming video by itself).
  */
 
-/** The scene behind every surah for now: the valley at sunset, from Mountain meadows. */
-export const LISTEN_VIDEO_BACKGROUND: VideoBackground = findVideoBackground('motion-valley-sunset')
+/**
+ * The scenes offered behind translation mode: the valley at sunset (the first, and the default), and
+ * three by day under a blue sky. The one chosen is remembered on the phone.
+ */
+export const LISTEN_VIDEO_BACKGROUNDS: VideoBackground[] = [
+  'motion-valley-sunset',
+  'motion-alpine-valley',
+  'motion-lake-from-above',
+  'motion-golden-meadow',
+].map(findVideoBackground)
+
+/** The default scene, the valley at sunset. */
+export const LISTEN_VIDEO_BACKGROUND: VideoBackground = LISTEN_VIDEO_BACKGROUNDS[0]
+
+const BACKGROUND_KEY = 'naba_listen_video_background'
+let backgroundId: string | null = null
+const backgroundListeners = new Set<() => void>()
+
+/** The scene chosen for translation mode (the default until one is). */
+export function getListenVideoBackground(): VideoBackground {
+  if (backgroundId === null) {
+    try {
+      backgroundId = localStorage.getItem(BACKGROUND_KEY) ?? ''
+    } catch {
+      backgroundId = ''
+    }
+  }
+  return LISTEN_VIDEO_BACKGROUNDS.find((b) => b.id === backgroundId) ?? LISTEN_VIDEO_BACKGROUND
+}
+
+export function setListenVideoBackground(id: string): void {
+  if (!LISTEN_VIDEO_BACKGROUNDS.some((b) => b.id === id)) return
+  backgroundId = id
+  try {
+    localStorage.setItem(BACKGROUND_KEY, id)
+  } catch {
+    // For this visit only.
+  }
+  backgroundListeners.forEach((listener) => listener())
+}
+
+export function subscribeListenVideoBackground(listener: () => void): () => void {
+  backgroundListeners.add(listener)
+  return () => backgroundListeners.delete(listener)
+}
 
 let on = false
 const listeners = new Set<() => void>()
