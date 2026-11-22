@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
+import { useAppSettings } from '@/hooks/useAppSettings'
 import { isPageColourFontLoaded, loadPageColourFont, prefetchPageColourFonts, qcfColourFontFamily } from '@/lib/mushaf-fonts'
 import QcfLine, { QcfSegment } from '@/components/mushaf/QcfLine'
 import {
@@ -167,14 +168,14 @@ function useFitQcfPageLines(
  * ones (another page's lines, an ayah revealed in Hifdh), and when a font they
  * are drawn in arrives. Those already done are skipped, so this costs little.
  */
-function useInkQcfOrnaments(pageRef: React.RefObject<HTMLElement | null>, fontFamily: string) {
+function useInkQcfOrnaments(pageRef: React.RefObject<HTMLElement | null>, fontFamily: string, enabled: boolean) {
   useLayoutEffect(() => {
-    if (pageRef.current) inkQcfOrnaments(pageRef.current)
+    if (enabled && pageRef.current) inkQcfOrnaments(pageRef.current)
   })
 
   useEffect(() => {
     const fonts = typeof document !== 'undefined' ? document.fonts : undefined
-    if (!fonts) return
+    if (!fonts || !enabled) return
     let cancelled = false
     const ink = () => {
       if (!cancelled && pageRef.current) inkQcfOrnaments(pageRef.current)
@@ -185,7 +186,7 @@ function useInkQcfOrnaments(pageRef: React.RefObject<HTMLElement | null>, fontFa
     return () => {
       cancelled = true
     }
-  }, [pageRef, fontFamily])
+  }, [pageRef, fontFamily, enabled])
 }
 
 type FlowBlock =
@@ -295,7 +296,10 @@ function QcfPageComponent({
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
   useFitQcfPageLines(pageRef, layout, qcfFamily)
-  useInkQcfOrnaments(pageRef, qcfFamily)
+  // Measuring each ornament (drawn off-screen and read pixel by pixel) is only for the light page's
+  // gold ornaments in V2: not on dark or black, nor once the colour ornaments are drawn.
+  const darkPage = useAppSettings().theme !== 'light'
+  useInkQcfOrnaments(pageRef, qcfFamily, !darkPage && !colour)
   const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
   // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by
   // design: in print their lines sit in the middle of the page, not at its top.

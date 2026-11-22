@@ -39,6 +39,14 @@ const COMMIT_VELOCITY = 0.5 // px/ms
 const DEAD_ZONE = 6
 const SETTLE_MS = 240
 const PANEL = 'mushaf-turn-panel mushaf-sheet absolute h-full w-full'
+/**
+ * Where each panel sits. Vertical (dragging up advances): next below, prev above. Horizontal, the
+ * book-flip convention: next to the left, prev to the right, so a rightward drag reveals it.
+ */
+const PLACE = {
+  y: { next: 'inset-x-0 top-full', current: 'inset-0', prev: 'inset-x-0 bottom-full' },
+  x: { next: 'inset-y-0 right-full', current: 'inset-0', prev: 'inset-y-0 left-full' },
+} as const
 
 /**
  * Gallery/photo-style page swipe: the incoming page follows the finger in
@@ -174,6 +182,12 @@ export default function GallerySwipeView({
     }
   }, [next, prev, onCommitNext, onCommitPrev, setTransform, vertical])
 
+  const panels = [
+    next ? { page: pageKey + 1, node: next, role: 'next' as const } : null,
+    { page: pageKey, node: current, role: 'current' as const },
+    prev ? { page: pageKey - 1, node: prev, role: 'prev' as const } : null,
+  ].filter((panel): panel is NonNullable<typeof panel> => panel !== null)
+
   return (
     <div
       ref={containerRef}
@@ -192,22 +206,14 @@ export default function GallerySwipeView({
         onTouchEnd={finishGesture}
         onTouchCancel={finishGesture}
       >
-        {vertical ? (
-          <>
-            {/* Dragging up advances — next sits below, prev above. */}
-            {next ? <div className={`${PANEL} inset-x-0 top-full`}>{next}</div> : null}
-            <div className={`${PANEL} inset-0`}>{current}</div>
-            {prev ? <div className={`${PANEL} inset-x-0 bottom-full`}>{prev}</div> : null}
-          </>
-        ) : (
-          <>
-            {/* Book-flip convention: next sits to the left, prev to the right — a
-                rightward drag reveals it, following the finger naturally. */}
-            {next ? <div className={`${PANEL} inset-y-0 right-full`}>{next}</div> : null}
-            <div className={`${PANEL} inset-0`}>{current}</div>
-            {prev ? <div className={`${PANEL} inset-y-0 left-full`}>{prev}</div> : null}
-          </>
-        )}
+        {/* One list keyed by page number: turning a page only moves the panels, so the page turned to
+            (already built as the neighbour, its lines fitted) is kept, not built again from scratch,
+            and only the new neighbour is built. In three fixed slots every turn rebuilt all three. */}
+        {panels.map((panel) => (
+          <div key={panel.page} className={`${PANEL} ${PLACE[vertical ? 'y' : 'x'][panel.role]}`}>
+            {panel.node}
+          </div>
+        ))}
       </div>
     </div>
   )

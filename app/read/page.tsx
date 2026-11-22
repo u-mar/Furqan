@@ -102,6 +102,27 @@ import { lockPageScroll } from '@/lib/scroll-lock'
  * carries the mushaf inside it and every page then opens at once, scrolling with nothing to wait for;
  * on the website only offline, since online each page comes from the server a few kilobytes at a time.
  */
+/**
+ * The pages read lately and the few either side, kept in memory for the visit, so turning to one is
+ * immediate: no waiting for it to load, and its neighbours are there for the next flick at once. It used
+ * to load each page, and only then its neighbours, on every turn; a quick second flick found no page.
+ */
+const pageCache = new Map<number, Verse[]>()
+const PAGE_CACHE_SIZE = 24
+/** How many pages ahead and behind are loaded into the cache. */
+const PAGE_LOOKAHEAD = 3
+
+function rememberPage(page: number, verses: Verse[]): void {
+  if (!verses.length) return
+  pageCache.delete(page)
+  pageCache.set(page, verses)
+  while (pageCache.size > PAGE_CACHE_SIZE) {
+    const oldest = pageCache.keys().next().value
+    if (oldest === undefined) break
+    pageCache.delete(oldest)
+  }
+}
+
 async function readSavedQuranIfNeeded(): Promise<void> {
   if (isOfflineReady() || (navigator.onLine && !hasBundledQuran())) return
   // Every page already kept on its own (lib/quran-page-store.ts): each is read as it is opened.
@@ -231,11 +252,17 @@ function ReadPageContent() {
 
   const fetchVersesForPage = useCallback(async (page: number): Promise<Verse[]> => {
     const next = clampPage(page)
+    const cached = pageCache.get(next)
+    if (cached) return cached
     await readSavedQuranIfNeeded()
     const instant = getLocalMushafPage(next) ?? (await readStoredPage(next))
-    if (instant && instant.length > 0) return instant
-    return getMushafPage(next)
+    const verses = instant && instant.length > 0 ? instant : await getMushafPage(next)
+    rememberPage(next, verses)
+    return verses
   }, [])
+
+  const fetchVersesForPageRef = useRef(fetchVersesForPage)
+  fetchVersesForPageRef.current = fetchVersesForPage
 
   const applyPage = useCallback((page: number, verses: Verse[]) => {
     pageVersesRef.current = verses
@@ -255,6 +282,15 @@ function ReadPageContent() {
       window.history.replaceState(window.history.state, '', url)
     }
     prefetchMushafPages(page, 3)
+    rememberPage(page, verses)
+    // The next few pages each way, quietly, so the following flicks are immediate too.
+    for (let step = 1; step <= PAGE_LOOKAHEAD; step++) {
+      for (const near of [page + step, page - step]) {
+        if (near >= 1 && near <= TOTAL_MUSHAF_PAGES && !pageCache.has(near)) {
+          void fetchVersesForPageRef.current(near).catch(() => {})
+        }
+      }
+    }
   }, [])
 
   const [neighborVerses, setNeighborVerses] = useState<{
@@ -311,6 +347,15 @@ function ReadPageContent() {
       const next = clampPage(page)
       const seq = ++pageLoadSeqRef.current
       setLoadError(null)
+
+      // Already loaded (the page turned to is usually one of the neighbours): shown at once.
+      const cached = pageCache.get(next)
+      if (cached) {
+        applyPage(next, cached)
+        setLoading(false)
+        setPageLoading(false)
+        return
+      }
 
       await readSavedQuranIfNeeded()
       if (seq !== pageLoadSeqRef.current) return
@@ -1060,6 +1105,33 @@ function ReadPageContent() {
   const pickedOther = Boolean(ayahMenu && nowPlayingKey && ayahMenu.verseKey !== nowPlayingKey && !audioPlaying)
   const shownHighlightKey = pickedOther ? null : highlightedVerseKey
 
+  // A page turn shows the page turned to first (already built as the neighbour), and builds the new
+  // neighbour a moment later, once it is on screen: building a page (fitting its lines) inside the
+  // turn held it up. Pages already built stay as they are.
+  const [neighboursFor, setNeighboursFor] = useState(0)
+  useEffect(() => {
+    let timer = 0
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => setNeighboursFor(currentPage), 0)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(timer)
+    }
+  }, [currentPage])
+  const builtPagesRef = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    // What the swiper now has built: the current page and whichever neighbours it was given.
+    const built = new Set<number>([currentPage])
+    if (neighboursFor === currentPage) {
+      if (currentPage > 1) built.add(currentPage - 1)
+      if (currentPage < TOTAL_MUSHAF_PAGES) built.add(currentPage + 1)
+    } else {
+      for (const page of builtPagesRef.current) if (Math.abs(page - currentPage) === 1) built.add(page)
+    }
+    builtPagesRef.current = built
+  })
+
   const renderMushafPage = useCallback(
     (verses: Verse[], pageNum: number) => {
       const keys = new Set(verses.map((v) => v.verse_key))
@@ -1354,16 +1426,18 @@ function ReadPageContent() {
             vertical={readingMode === 'vertical'}
             pageKey={currentPage}
             current={renderMushafPage(pageVerses, currentPage)}
-            prev={
-              neighborVerses.page === currentPage && neighborVerses.prev
-                ? renderMushafPage(neighborVerses.prev, currentPage - 1)
-                : null
-            }
-            next={
-              neighborVerses.page === currentPage && neighborVerses.next
-                ? renderMushafPage(neighborVerses.next, currentPage + 1)
-                : null
-            }
+            prev={(() => {
+              const page = currentPage - 1
+              if (neighboursFor !== currentPage && !builtPagesRef.current.has(page)) return null
+              const verses = pageCache.get(page) ?? (neighborVerses.page === currentPage ? neighborVerses.prev : null)
+              return verses ? renderMushafPage(verses, page) : null
+            })()}
+            next={(() => {
+              const page = currentPage + 1
+              if (neighboursFor !== currentPage && !builtPagesRef.current.has(page)) return null
+              const verses = pageCache.get(page) ?? (neighborVerses.page === currentPage ? neighborVerses.next : null)
+              return verses ? renderMushafPage(verses, page) : null
+            })()}
             onCommitNext={goNextPage}
             onCommitPrev={goPrevPage}
             onDragStart={() => {
