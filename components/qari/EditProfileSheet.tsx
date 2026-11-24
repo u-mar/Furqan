@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, Trash2, X } from 'lucide-react'
 import QariAvatar, { removeAvatar, uploadAvatar } from '@/components/qari/QariAvatar'
+import AvatarCropper from '@/components/qari/AvatarCropper'
 import { renameQari, saveQariBio } from '@/lib/qari'
 import { renameLocalUser, setSignedInUser, type AppUser } from '@/lib/auth'
 import { tr, useT } from '@/lib/i18n'
@@ -46,6 +47,8 @@ export default function EditProfileSheet({
   const [saving, setSaving] = useState(false)
   const [busyPhoto, setBusyPhoto] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  /** A photo just picked, being cropped before it is saved. */
+  const [picked, setPicked] = useState<File | null>(null)
 
   // Reopening should show what is stored now, not the last thing typed.
   useEffect(() => {
@@ -53,10 +56,11 @@ export default function EditProfileSheet({
   }, [open, viewer.name])
 
   const handlePhoto = useCallback(
-    async (file: File) => {
+    async (picture: Blob) => {
+      setPicked(null)
       setBusyPhoto(true)
       try {
-        await uploadAvatar(file, viewer)
+        await uploadAvatar(picture, viewer)
         onSaved({ avatarChanged: true })
         onNotice(tr('Profile picture updated.'))
       } catch (err) {
@@ -202,9 +206,10 @@ export default function EditProfileSheet({
           onChange={(e) => {
             const file = e.target.files?.[0]
             e.target.value = ''
-            if (file) void handlePhoto(file)
+            if (file) setPicked(file)
           }}
         />
+        <AvatarCropper file={picked} onCancel={() => setPicked(null)} onDone={(picture) => void handlePhoto(picture)} />
 
         {/* Name */}
         <label

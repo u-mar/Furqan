@@ -331,6 +331,11 @@ export const QARI: Dict = {
   'Could not save that name.': { so: 'Magacaas lama keydin karin.', ar: 'تعذّر حفظ الاسم.' },
   'Change profile picture': { so: 'Bedel sawirka bogga', ar: 'تغيير صورة الملف الشخصي' },
   'Change photo': { so: 'Bedel sawirka', ar: 'تغيير الصورة' },
+  'Move and zoom': { so: 'Dhaqaaji oo weynee', ar: 'حرّك وكبّر' },
+  'Drag to move, pinch to zoom': { so: 'Jiid si aad u dhaqaajiso, labo farood ku weynee', ar: 'اسحب للتحريك، وقرّب بإصبعين للتكبير' },
+  'Zoom': { so: 'Weyneyn', ar: 'تكبير' },
+  'Could not open that picture. Try another photo.': { so: 'Sawirkaas lama furi karin. Isku day sawir kale.', ar: 'تعذّر فتح هذه الصورة. جرّب صورة أخرى.' },
+  'Profile picture of {name}': { so: 'Sawirka astaanta ee {name}', ar: 'صورة الملف الشخصي لـ {name}' },
   'Remove photo': { so: 'Ka saar sawirka', ar: 'إزالة الصورة' },
   'JPEG, PNG or WebP.': { so: 'JPEG, PNG ama WebP.', ar: 'JPEG أو PNG أو WebP.' },
   'Shown on everything you publish. Your handle @{username} stays the same — links to your profile keep working.': {

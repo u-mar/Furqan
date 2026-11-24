@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, Pencil, Share2, UserRoundPlus } from 'lucide-react'
 import NotificationsBell from '@/components/qari/NotificationsBell'
 import QariAvatar from '@/components/qari/QariAvatar'
+import AvatarViewer from '@/components/qari/AvatarViewer'
 import VerifiedBadge from '@/components/qari/VerifiedBadge'
 import { tapFeedback } from '@/lib/haptics'
 import { compactNumber } from '@/lib/qari'
@@ -125,13 +126,41 @@ export default function ProfileHero({
   onEditPicture: () => void
 }) {
   const t = useT()
+  const [hasPicture, setHasPicture] = useState(false)
+  const [viewing, setViewing] = useState(false)
 
   return (
     <section className="qari-enter">
       {/* The picture on the left with the numbers beside it, so the recitations start higher up. */}
       <div className="flex items-center gap-4">
       <div className="relative shrink-0">
-        <QariAvatar username={username} name={name} size={84} version={avatarVersion} />
+        {/* Tapped, the picture shows large; on your own profile with none yet, choosing one starts. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!hasPicture && !isMe) return
+            tapFeedback()
+            if (hasPicture) setViewing(true)
+            else onEditPicture()
+          }}
+          aria-label={hasPicture ? t('Profile picture of {name}', { name }) : isMe ? t('Edit profile picture') : undefined}
+          className={cn('ed-focus block rounded-full', (hasPicture || isMe) && 'qari-press')}
+        >
+          <QariAvatar
+            username={username}
+            name={name}
+            size={84}
+            version={avatarVersion}
+            onPictureChange={setHasPicture}
+          />
+        </button>
+        <AvatarViewer
+          open={viewing}
+          username={username}
+          name={name}
+          version={avatarVersion}
+          onClose={() => setViewing(false)}
+        />
         {isMe ? (
           <button
             type="button"

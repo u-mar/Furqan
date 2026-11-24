@@ -152,11 +152,12 @@ export async function prepareAvatar(file: File, size = 256): Promise<Blob> {
   })
 }
 
+/** `picture` is either a photo as picked (cut to its centre square here) or one already cropped (AvatarCropper). */
 export async function uploadAvatar(
-  file: File,
+  picture: File | Blob,
   user: { id: string; username: string }
 ): Promise<void> {
-  const blob = await prepareAvatar(file)
+  const blob = picture instanceof File ? await prepareAvatar(picture, 640) : picture
   const form = new FormData()
   form.append('image', blob, 'avatar.jpg')
   form.append('username', user.username)
