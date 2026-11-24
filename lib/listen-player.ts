@@ -141,6 +141,52 @@ function isAbort(err: unknown): boolean {
   return err instanceof DOMException && err.name === 'AbortError'
 }
 
+/* ------------------------------------------------------------------ volume */
+
+/**
+ * How loud the recitation plays against the nature sounds under it (0 to 1; the phone's own volume
+ * still sets the overall level). Remembered on the phone. The sleep timer fades from it.
+ */
+const VOLUME_KEY = 'naba_listen_volume'
+let volume = 1
+let volumeRead = false
+const volumeListeners = new Set<() => void>()
+
+function readVolume(): number {
+  if (volumeRead || typeof window === 'undefined') return volume
+  volumeRead = true
+  try {
+    const saved = Number(localStorage.getItem(VOLUME_KEY))
+    if (localStorage.getItem(VOLUME_KEY) !== null && saved >= 0 && saved <= 1) volume = saved
+  } catch {
+    // Full volume.
+  }
+  return volume
+}
+
+export function getListenVolume(): number {
+  return readVolume()
+}
+
+export function subscribeListenVolume(listener: () => void): () => void {
+  volumeListeners.add(listener)
+  return () => volumeListeners.delete(listener)
+}
+
+export function setListenVolume(next: number): void {
+  volume = Math.max(0, Math.min(1, next))
+  volumeRead = true
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume))
+  } catch {
+    // For this visit only.
+  }
+  const el = peekListenAudio()
+  // Not while the sleep timer is fading it out: the fade takes it from here.
+  if (el && !state.sleep) restoreVolume(el)
+  volumeListeners.forEach((listener) => listener())
+}
+
 /* ------------------------------------------------------------------ speed */
 
 /** The speeds offered, in the order a tap steps through them. */
@@ -200,7 +246,10 @@ function element(): HTMLAudioElement {
   wired = true
 
   el.addEventListener('loadedmetadata', () => applyRate(el))
-  el.addEventListener('play', () => applyRate(el))
+  el.addEventListener('play', () => {
+    applyRate(el)
+    if (!state.sleep) restoreVolume(el)
+  })
 
   el.addEventListener('playing', () => {
     clearStallTimer()
@@ -621,7 +670,7 @@ function checkSleep(): void {
     return
   }
   const left = Math.max(0, 1 - over / FADE_MS)
-  if (recitation) recitation.volume = left
+  if (recitation) recitation.volume = left * readVolume()
   setNatureFade(left)
 }
 
@@ -642,7 +691,8 @@ function canFade(el: HTMLAudioElement): boolean {
 
 function restoreVolume(el: HTMLAudioElement) {
   try {
-    if (el.volume !== 1) el.volume = 1
+    const want = readVolume()
+    if (el.volume !== want) el.volume = want
   } catch {
     // Read-only here; nothing was faded.
   }

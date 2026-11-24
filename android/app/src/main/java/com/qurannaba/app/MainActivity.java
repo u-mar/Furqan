@@ -92,11 +92,15 @@ public class MainActivity extends BridgeActivity {
         Bridge bridge = getBridge();
         if (bridge == null) return;
         BundledQuran quran = new BundledQuran(getAssets());
+        // Offline with nothing saved yet (the first launch): the screens the app carries (AppShell).
+        // Only for the page itself; the site's service worker, once there, keeps its own copy.
+        AppShell shell = new AppShell(this);
         bridge.setWebViewClient(
             new BridgeWebViewClient(bridge) {
                 @Override
                 public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                     WebResourceResponse own = quran.serve(request);
+                    if (own == null) own = shell.serve(request);
                     return own != null ? own : super.shouldInterceptRequest(view, request);
                 }
             }

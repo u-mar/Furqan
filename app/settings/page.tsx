@@ -18,6 +18,7 @@ import {
   LogOut,
   Lightbulb,
   ShieldCheck,
+  Star,
   Trash,
   UserRound,
   UserX,
@@ -90,6 +91,14 @@ function RowIcon({ icon: Icon, tone }: { icon: LucideIcon; tone?: 'neutral' | 'd
       <Icon strokeWidth={1.8} />
     </span>
   )
+}
+
+/** Naba on Google Play. In the app, the Play Store app opens on it (ready to rate); on the website, the page. */
+const PLAY_PACKAGE = 'com.qurannaba.app'
+function openPlayListing() {
+  const native = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()
+  if (native) window.location.href = `market://details?id=${PLAY_PACKAGE}`
+  else window.open(`https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`, '_blank', 'noopener')
 }
 
 function RowChevron() {
@@ -331,6 +340,12 @@ export default function SettingsPage() {
           <button type="button" className="set-row" onClick={() => setSheet('feedback')}>
             <RowIcon icon={Lightbulb} />
             <span className="set-row__label">{t('Send feedback')}</span>
+            <RowChevron />
+          </button>
+          <Divider />
+          <button type="button" className="set-row" onClick={openPlayListing}>
+            <RowIcon icon={Star} />
+            <span className="set-row__label">{t('Rate Naba')}</span>
             <RowChevron />
           </button>
         </div>

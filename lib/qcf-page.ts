@@ -37,7 +37,9 @@ function mergeAdjacentSegments(segments: QcfPageSegment[], neverMergeVerseKeys?:
     // A verse in `neverMergeVerseKeys` also stays word-by-word (Hifdh Test's
     // per-word reveal needs one segment per word to reveal them one at a time).
     if (last && last.verseKey === seg.verseKey && !last.isEnd && !seg.isEnd && !keepSeparate) {
-      last.text += seg.text
+      // A space between the words, as in the font: a full line is spread to its width by widening
+      // these (QcfPage's fit), as the printed page spreads its words.
+      last.text += ' ' + seg.text
       last.position = undefined
     } else {
       merged.push({ verseKey: seg.verseKey, text: seg.text, isEnd: seg.isEnd, position: seg.position })

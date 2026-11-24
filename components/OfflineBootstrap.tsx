@@ -13,6 +13,7 @@ import { isOfflineReady } from '@/lib/local-quran-store'
 import { hasBundledQuran } from '@/lib/native-app'
 import { getAppSettings } from '@/lib/app-settings'
 import { forgetAsrModel } from '@/lib/asr/model-cache'
+import { upgradeSavedMushafFonts } from '@/lib/offline-font-cache'
 import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { useT } from '@/lib/i18n'
 
@@ -38,7 +39,11 @@ export default function OfflineBootstrap() {
     // Not read into memory here: parsing the whole Quran (16 MB) froze the app for seconds, wherever
     // it was, a few seconds after every launch. Read reads it itself when it is opened (in the Play
     // Store app always, on the website only offline), behind its own loading.
-    const start = () => void bootstrapOfflineReader()
+    const start = () => {
+      void bootstrapOfflineReader()
+      // A mushaf saved on the website with the earlier (V2) fonts gets the V4 ones in their place.
+      void upgradeSavedMushafFonts()
+    }
     const timer = window.setTimeout(() => {
       if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(start, { timeout: 4000 })
       else start()

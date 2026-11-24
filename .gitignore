@@ -47,3 +47,6 @@ public/models/asr/model.q8.onnx
 public/models/asr/qari-offline.onnx
 public/models/asr/*.npz
 public/models/asr/tokenizer.model
+
+# Written by scripts/sw-precache-list.js on every build
+public/sw-precache.json

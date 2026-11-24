@@ -16,7 +16,8 @@ const https = require('https')
 const http = require('http')
 
 const QURAN_API_BASE = 'https://api.quran.com/api/v4'
-const QCF_FONT_CDN_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2'
+// Naba's V4 page fonts (lib/qcf-font-cdn.ts, made by scripts/make-qcf-v4.py).
+const QCF_FONT_CDN_BASE = 'https://audio.qurannaba.com/qcf5'
 const SURAH_NAME_FONT_URL =
   'https://static-cdn.tarteel.ai/qul/fonts/surah-names/surah-header/QCF_SurahHeader_COLOR-Regular.ttf'
 const TOTAL_PAGES = 604

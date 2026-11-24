@@ -133,6 +133,12 @@ html.dark .mushaf-qcf-flow__text {
   -webkit-text-stroke-width: 0.009em;
 }
 
+/* The ayah ornament is a colour glyph (lib/mushaf-fonts.ts), which a stroke would draw as an outline only. */
+.mushaf-qcf-line__glyphs .mushaf-qcf-segment--end,
+.mushaf-qcf-flow__text .mushaf-qcf-segment--end {
+  -webkit-text-stroke-width: 0;
+}
+
 /* Continuous scroll — words flow as paragraphs instead of keeping the
    15 printed lines, so the script can be far larger than a full mushaf line
    allows at phone width. Surah banners and the basmalah stay centred blocks. */

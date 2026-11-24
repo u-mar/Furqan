@@ -47,6 +47,7 @@ export const MISC: Dict = {
     ar: 'الموقع محظور، لذا يُستخدم موقع {place}. اسمح به من إعدادات هاتفك.',
   },
   'Tap to change': { so: 'Taabo si aad u bedesho', ar: 'انقر للتغيير' },
+  'Rate Naba': { so: 'Qiimee Naba', ar: 'قيّم نبأ' },
   'Use my location': { so: 'Isticmaal goobtayda', ar: 'استخدم موقعي' },
   'Finding you…': { so: 'Waa la helayaa goobtaada…', ar: 'جارٍ تحديد موقعك…' },
   'Or choose a city': { so: 'Ama dooro magaalo', ar: 'أو اختر مدينة' },

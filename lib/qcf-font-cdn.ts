@@ -1,5 +1,9 @@
-/** Madani mushaf QCF v2 — one WOFF2 file per page (1–604). */
-export const QCF_FONT_CDN_BASE = 'https://verses.quran.foundation/fonts/quran/hafs/v2/woff2'
+/**
+ * The mushaf's page fonts, one WOFF2 per page (1–604): the King Fahd Complex's V4 (1441H) fonts with
+ * the letters in the text's own colour and only the ayah ornaments coloured, made by
+ * scripts/make-qcf-v4.py and kept on Naba's own storage. The same files are in public/qcf for the app.
+ */
+export const QCF_FONT_CDN_BASE = 'https://audio.qurannaba.com/qcf5'
 
 /** Calligraphic "سورة …" titles, one ligature per surah (text `surah011`). */
 export const SURAH_TITLE_FONT_URL = 'https://static-cdn.tarteel.ai/qul/fonts/surah-names/v2/surah-name-v2.ttf'

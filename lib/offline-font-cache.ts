@@ -7,15 +7,21 @@ import {
 import { tr } from '@/lib/i18n-core'
 import { hasBundledQuran } from '@/lib/native-app'
 
-/** Must match `public/sw.js` QCF_FONT_CACHE and download script cache keys. */
-export const QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
+/**
+ * Must match `public/sw.js` QCF_FONT_CACHE. Named for the V4 fonts: the V2 ones saved before
+ * (muyassar-qcf-fonts-v2) are replaced by upgradeSavedMushafFonts.
+ */
+export const QCF_FONT_CACHE_NAME = 'naba-qcf-fonts-v4'
+const OLD_QCF_FONT_CACHE_NAME = 'muyassar-qcf-fonts-v2'
+const SAVED_FLAG = 'naba_qcf_v4_saved'
+const OLD_SAVED_FLAG = 'muyassar_fonts_cached'
 const CACHE_NAME = QCF_FONT_CACHE_NAME
 const SURAH_CACHE_KEY = '/fonts/surah-header-color.woff2'
 
 export function areOfflineFontsCached(): boolean {
   if (typeof window === 'undefined') return false
   try {
-    return localStorage.getItem('muyassar_fonts_cached') === '1'
+    return localStorage.getItem(SAVED_FLAG) === '1'
   } catch {
     return false
   }
@@ -23,7 +29,7 @@ export function areOfflineFontsCached(): boolean {
 
 export function markOfflineFontsCached(): void {
   try {
-    localStorage.setItem('muyassar_fonts_cached', '1')
+    localStorage.setItem(SAVED_FLAG, '1')
   } catch {
     /* ignore */
   }
@@ -31,7 +37,7 @@ export function markOfflineFontsCached(): void {
 
 export function clearOfflineFontsCachedFlag(): void {
   try {
-    localStorage.removeItem('muyassar_fonts_cached')
+    localStorage.removeItem(SAVED_FLAG)
   } catch {
     /* ignore */
   }
@@ -74,9 +80,18 @@ export async function resolveQcfFontUrl(page: number): Promise<string> {
   return qcfCdnFontUrl(page)
 }
 
+/** A development server: it has the fonts in public/qcf, and Naba's storage serves only qurannaba.com. */
+function isDevHost(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost')
+}
+
 /** URLs to try in order: local/SW paths when offline or fonts were downloaded, then CDN when online. */
 export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]> {
-  if (hasBundledQuran() && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) return [qcfLocalFontUrl(page)]
+  if ((hasBundledQuran() || isDevHost()) && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) {
+    return [qcfLocalFontUrl(page)]
+  }
   const cdn = qcfCdnFontUrl(page)
   const local = qcfLocalFontUrl(page)
   const legacy = qcfLegacyLocalFontUrl(page)
@@ -181,4 +196,33 @@ export async function cacheAllMushafFonts(
 
   markOfflineFontsCached()
   onProgress?.({ done: total, total, percent: 100 })
+}
+
+/**
+ * Someone who saved the mushaf for offline before the V4 fonts has the V2 ones saved: once online,
+ * the V4 fonts are saved in their place, quietly, and the V2 ones then let go. Until then the
+ * service worker still answers from the V2 copy when offline.
+ */
+let upgrading = false
+export async function upgradeSavedMushafFonts(): Promise<void> {
+  if (upgrading || typeof window === 'undefined' || typeof caches === 'undefined') return
+  if (hasBundledQuran() || !navigator.onLine) return
+  try {
+    if (localStorage.getItem(OLD_SAVED_FLAG) !== '1' || areOfflineFontsCached()) return
+  } catch {
+    return
+  }
+  upgrading = true
+  try {
+    await cacheAllMushafFonts()
+    if (await verifyMushafFontsCached()) {
+      markOfflineFontsCached()
+      localStorage.removeItem(OLD_SAVED_FLAG)
+      await caches.delete(OLD_QCF_FONT_CACHE_NAME)
+    }
+  } catch {
+    // Tried again on a later launch.
+  } finally {
+    upgrading = false
+  }
 }

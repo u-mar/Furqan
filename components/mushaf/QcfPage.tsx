@@ -1,9 +1,7 @@
 'use client'
 
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { cn } from '@/lib/cn'
-import { useAppSettings } from '@/hooks/useAppSettings'
-import { isPageColourFontLoaded, loadPageColourFont, prefetchPageColourFonts, qcfColourFontFamily } from '@/lib/mushaf-fonts'
 import QcfLine, { QcfSegment } from '@/components/mushaf/QcfLine'
 import {
   buildQcfPageLayout,
@@ -14,7 +12,7 @@ import {
 } from '@/lib/qcf-page'
 import { getQcfLineRevealState } from '@/lib/qcf-reveal'
 import { alignQcfBaselines } from '@/lib/qcf-baseline'
-import { inkQcfOrnaments } from '@/lib/qcf-ornaments'
+import { isShortMushafLine } from '@/lib/mushaf-short-lines'
 import type { Verse } from '@/types'
 import { useT } from '@/lib/i18n'
 
@@ -54,7 +52,8 @@ function narrowestFit(grid: HTMLElement, inners: HTMLElement[]): number {
 function useFitQcfPageLines(
   containerRef: React.RefObject<HTMLElement | null>,
   layout: QcfPageLayout,
-  fontFamily: string
+  fontFamily: string,
+  pageNumber: number
 ) {
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -68,8 +67,11 @@ function useFitQcfPageLines(
       const inners = glyphs()
       if (inners.length === 0) return
 
-      // A previous shrink would otherwise be measured as "already fits".
-      for (const inner of inners) inner.style.fontSize = ''
+      // A previous shrink or spread would otherwise be measured as "already fits".
+      for (const inner of inners) {
+        inner.style.fontSize = ''
+        inner.style.wordSpacing = ''
+      }
 
       let basePx = 0
       for (const inner of inners) {
@@ -95,6 +97,8 @@ function useFitQcfPageLines(
         for (const inner of inners) inner.style.fontSize = `${size}px`
         if (size === MIN_SCRIPT_PX) break
       }
+
+      spreadFullLines(grid, inners, pageNumber)
 
       // Each page font puts its letters at its own height; even them out (see lib/qcf-baseline.ts).
       alignQcfBaselines(
@@ -159,34 +163,40 @@ function useFitQcfPageLines(
       fonts?.removeEventListener?.('loadingdone', onFontsLoaded)
     }
     // A family swap keeps the same layout but changes every glyph width, so it has to trigger a re-fit too.
-  }, [containerRef, layout, fontFamily])
+  }, [containerRef, layout, fontFamily, pageNumber])
 }
 
 /**
- * The ayah ornaments and surah banners are inked once they can be measured
- * (see lib/qcf-ornaments.ts): after any render, since a render can bring new
- * ones (another page's lines, an ayah revealed in Hifdh), and when a font they
- * are drawn in arrives. Those already done are skipped, so this costs little.
+ * As in print, a full line reaches from one side of the column to the other: the room left once the
+ * page is sized goes into the spaces between its words. A line the print leaves short (a surah's last
+ * line, see lib/mushaf-short-lines.ts) and the basmalah stay as they are, centred.
  */
-function useInkQcfOrnaments(pageRef: React.RefObject<HTMLElement | null>, fontFamily: string, enabled: boolean) {
-  useLayoutEffect(() => {
-    if (enabled && pageRef.current) inkQcfOrnaments(pageRef.current)
+function spreadFullLines(grid: HTMLElement, inners: HTMLElement[], pageNumber: number): void {
+  // The two opening pages have a few words to a line, set in print with long stretched letters; spaces
+  // that wide would leave holes, so their lines stay centred.
+  if (pageNumber <= 2) return
+  const fitVar = parseFloat(getComputedStyle(grid).getPropertyValue('--mushaf-line-fit'))
+  const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
+  const full = inners.flatMap((inner) => {
+    const lineEl = inner.closest<HTMLElement>('.mushaf-qcf-line')
+    if (!lineEl || lineEl.classList.contains('mushaf-qcf-line--basmalah')) return []
+    if (isShortMushafLine(pageNumber, Number(lineEl.dataset.line))) return []
+    const gaps = (inner.textContent?.match(/ /g) ?? []).length
+    if (gaps === 0) return []
+    const cs = getComputedStyle(lineEl)
+    const inset = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+    // A pixel short of the column, so the line never measures as too wide and is fitted again.
+    return [{ inner, gaps, column: (grid.clientWidth - inset) * fitFactor - 1, natural: inner.scrollWidth }]
   })
-
-  useEffect(() => {
-    const fonts = typeof document !== 'undefined' ? document.fonts : undefined
-    if (!fonts || !enabled) return
-    let cancelled = false
-    const ink = () => {
-      if (!cancelled && pageRef.current) inkQcfOrnaments(pageRef.current)
-    }
-    const family = fontFamily.replace(/["']/g, '').trim()
-    fonts.load(`16px "${family}"`).then(ink).catch(() => {})
-    fonts.load('16px "SurahNameV2"').then(ink).catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [pageRef, fontFamily, enabled])
+  for (const { inner, gaps, column, natural } of full) {
+    const room = column - natural
+    if (room <= 0) continue
+    const fontPx = parseFloat(getComputedStyle(inner).fontSize) || 16
+    const extra = room / gaps
+    // Far more than a line ever needs means this is not a full line after all: leave it centred.
+    if (extra > fontPx * 1.2) continue
+    inner.style.wordSpacing = `${extra}px`
+  }
 }
 
 type FlowBlock =
@@ -266,40 +276,12 @@ function QcfPageComponent({
   )
   const qcfFamily = fontFamily ?? qcfPageFontFamily(pageNumber)
   const pageClass = qcfPageFontClass(pageNumber)
-  // The page in its colour (V4) font, with the filled ayah ornaments of the print, once it has loaded;
-  // the lines are still measured and fitted with qcfFamily, whose glyphs are the same.
-  // Only for the page's own font (not one a caller swaps in).
-  const colourWanted = fontFamily === undefined || fontFamily === qcfPageFontFamily(pageNumber)
-  const [colour, setColour] = useState(() => colourWanted && isPageColourFontLoaded(pageNumber))
-  useEffect(() => {
-    if (!colourWanted) return
-    let cancelled = false
-    setColour(isPageColourFontLoaded(pageNumber))
-    void loadPageColourFont(pageNumber).then((ok) => {
-      if (!cancelled && ok) setColour(true)
-      // Then the next and previous pages', so turning to them is instant.
-      if (ok) prefetchPageColourFonts(pageNumber, 2)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [colourWanted, pageNumber])
-  // Only the ayah ornaments are drawn in the colour font (app/globals.css): its words are shaped for the
-  // 1441H print's own spacing, and set on these (1421H) lines some came out a tenth to a quarter short,
-  // leaving gaps. The words stay in qcfFamily, which fits these lines exactly.
   const drawFonts = `"${qcfFamily}", serif`
-  const colourStyle = colour
-    ? ({ '--mushaf-qcf-ornament-font': `"${qcfColourFontFamily(pageNumber)}", "${qcfFamily}", serif` } as CSSProperties)
-    : undefined
   const startIndex = hifdhReveal
     ? verses.findIndex((verse) => verse.verse_key === hifdhReveal.startVerseKey)
     : -1
   const pageRef = useRef<HTMLDivElement>(null)
-  useFitQcfPageLines(pageRef, layout, qcfFamily)
-  // Measuring each ornament (drawn off-screen and read pixel by pixel) is only for the light page's
-  // gold ornaments in V2: not on dark or black, nor once the colour ornaments are drawn.
-  const darkPage = useAppSettings().theme !== 'light'
-  useInkQcfOrnaments(pageRef, qcfFamily, !darkPage && !colour)
+  useFitQcfPageLines(pageRef, layout, qcfFamily, pageNumber)
   const blocks = useMemo(() => (flow ? flowBlocks(layout) : []), [flow, layout])
   // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by
   // design: in print their lines sit in the middle of the page, not at its top.
@@ -320,10 +302,8 @@ function QcfPageComponent({
       <div
         ref={pageRef}
         className={cn('mushaf-qcf-page mushaf-qcf-page--flow', pageClass)}
-        style={colourStyle}
         data-page={pageNumber}
         data-qcf-font={qcfFamily}
-        data-qcf-colour={colour ? '' : undefined}
         dir="rtl"
         lang="ar"
         aria-label={t('Quran page {pageNumber}', { pageNumber })}
@@ -386,11 +366,10 @@ function QcfPageComponent({
         pageClass
       )}
       style={
-        openingShift > 0 ? ({ ...colourStyle, '--mushaf-opening-shift': openingShift } as CSSProperties) : colourStyle
+        openingShift > 0 ? ({ '--mushaf-opening-shift': openingShift } as CSSProperties) : undefined
       }
       data-page={pageNumber}
       data-qcf-font={qcfFamily}
-      data-qcf-colour={colour ? '' : undefined}
       dir="rtl"
       lang="ar"
       aria-label={t('Quran page {pageNumber}', { pageNumber })}
@@ -412,7 +391,7 @@ function QcfPageComponent({
               key={line.lineNumber}
               line={line}
               qcfFontFamily={qcfFamily}
-                drawFonts={drawFonts}
+              drawFonts={drawFonts}
               highlightedVerseKey={highlightedVerseKey}
               selectedVerseKey={selectedVerseKey}
               onLineLongPress={onAyahLongPress}

@@ -1,7 +1,9 @@
 const CACHE_VERSION = 'al-quran-v12'
 const STATIC_CACHE = 'al-quran-static-v12'
 /** Must match lib/offline-font-cache.ts QCF_FONT_CACHE_NAME */
-const QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
+const QCF_FONT_CACHE = 'naba-qcf-fonts-v4'
+// The V2 page fonts saved before the V4 ones; still answered offline until the page replaces them.
+const OLD_QCF_FONT_CACHE = 'muyassar-qcf-fonts-v2'
 const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
 /** Reciter portraits, bundled locally under /reciters/ — small, rarely
  *  change, so a dedicated stable cache keeps them offline across app updates
@@ -92,6 +94,35 @@ function isScreenData(request, url) {
 /** How long moving to another screen waits for the network before opening the saved copy instead. */
 const SCREEN_DATA_WAIT_MS = 5000
 
+/**
+ * Every script and stylesheet of the current build (public/sw-precache.json, written at build time),
+ * kept on the phone, so every screen and every sheet works offline, not only the parts already opened
+ * online. Looked at again now and then, since a new build does not change this file: only what is not
+ * kept yet is downloaded.
+ */
+const PRECACHE_LIST = '/sw-precache.json'
+const PRECACHE_EVERY_MS = 6 * 60 * 60 * 1000
+let precachedAt = 0
+
+async function saveAllCode() {
+  try {
+    const response = await fetch(PRECACHE_LIST, { cache: 'no-cache' })
+    if (!response.ok) return
+    const { files } = await response.json()
+    if (Array.isArray(files) && files.length) await saveAssets(files.filter((f) => typeof f === 'string' && f.startsWith('/_next/static/')))
+    precachedAt = Date.now()
+  } catch {
+    // Offline or no list: tried again later.
+  }
+}
+
+/** saveAllCode, at most every few hours, in the background. */
+function refreshAllCode(event) {
+  if (Date.now() - precachedAt < PRECACHE_EVERY_MS) return
+  precachedAt = Date.now()
+  event.waitUntil(saveAllCode())
+}
+
 async function saveAppShell() {
   await Promise.all(
     APP_SHELL.map(async (path) => {
@@ -121,6 +152,7 @@ self.addEventListener('install', (event) => {
     Promise.all([
       caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE).catch(() => undefined)),
       saveAppShell(),
+      saveAllCode(),
     ]).then(() => self.skipWaiting())
   )
 })
@@ -153,6 +185,8 @@ self.addEventListener('fetch', (event) => {
   // on the first open after it; the copy saved on the phone when offline or the network is slow.
   if (isNavigationRequest(event.request)) {
     event.respondWith(screenNetworkFirst(event))
+    // A new build's code, kept while online (a new deploy does not change this worker).
+    if (self.navigator.onLine !== false) refreshAllCode(event)
     return
   }
 
@@ -299,18 +333,20 @@ async function qcfFontCacheFirst(request) {
   const hit = await qcfCache.match(request)
   if (hit) return hit
 
-  const url = new URL(request.url)
-  const legacyPath = url.pathname.replace(/^\/qcf\//, '/fonts/qcf/')
-  if (legacyPath !== url.pathname) {
-    const legacyHit = await qcfCache.match(legacyPath)
-    if (legacyHit) return legacyHit
-  }
-
   try {
     const response = await fetch(request)
     if (response.ok) return response
   } catch {
     /* offline and not in download cache */
+  }
+
+  // Offline with only the earlier (V2) fonts saved: those rather than none.
+  if (await caches.has(OLD_QCF_FONT_CACHE)) {
+    const oldCache = await caches.open(OLD_QCF_FONT_CACHE)
+    const url = new URL(request.url)
+    const oldHit =
+      (await oldCache.match(url.pathname)) || (await oldCache.match(url.pathname.replace(/^\/qcf\//, '/fonts/qcf/')))
+    if (oldHit) return oldHit
   }
 
   return new Response('QCF font not cached', { status: 404, statusText: 'Not Found' })

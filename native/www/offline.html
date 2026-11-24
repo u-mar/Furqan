@@ -48,6 +48,16 @@
       p[dir='rtl'] {
         font-size: 1.05rem;
       }
+      #offline {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+      }
+      #offline[hidden],
+      #opening[hidden] {
+        display: none;
+      }
       button {
         margin-top: 12px;
         height: 48px;
@@ -79,11 +89,42 @@
           <rect x="40" y="42" width="15" height="5" rx="1.5" />
         </g>
       </svg>
-      <h1>No internet connection</h1>
-      <p>Connect once to open Naba. After that it works offline too.</p>
-      <p>Ku xidh internetka hal mar si aad u furto Naba. Kadib wuxuu shaqeeyaa xitaa adigoo aan internet haysan.</p>
-      <p dir="rtl" lang="ar">اتصل بالإنترنت مرة واحدة لفتح نبأ. بعد ذلك يعمل دون اتصال أيضًا.</p>
-      <button type="button" onclick="location.replace('https://qurannaba.com/')">Try again</button>
+      <!-- First: a moment of "Opening Naba…" while it tries again by itself (see the script below). -->
+      <p id="opening">Opening Naba…</p>
+      <div id="offline" hidden>
+        <h1>No internet connection</h1>
+        <p>Connect once to open Naba. After that it works offline too.</p>
+        <p>Ku xidh internetka hal mar si aad u furto Naba. Kadib wuxuu shaqeeyaa xitaa adigoo aan internet haysan.</p>
+        <p dir="rtl" lang="ar">اتصل بالإنترنت مرة واحدة لفتح نبأ. بعد ذلك يعمل دون اتصال أيضًا.</p>
+        <button type="button" id="retry">Try again</button>
+      </div>
     </main>
+    <script>
+      /*
+       * The app's first load of the site can fail with no connection even when the phone has Naba
+       * saved (opened online before): a second try is answered from that saved copy. So this page
+       * tries again by itself at once, and shows the message only if that try fails too (within a few
+       * seconds it is back here), as on a first launch that has never been online.
+       */
+      var KEY = 'naba-offline-retry'
+      var SITE = 'https://qurannaba.com/'
+      function retry() {
+        try {
+          localStorage.setItem(KEY, String(Date.now()))
+        } catch (e) {}
+        location.replace(SITE)
+      }
+      var last = 0
+      try {
+        last = Number(localStorage.getItem(KEY) || 0)
+      } catch (e) {}
+      if (Date.now() - last > 8000) {
+        setTimeout(retry, 150)
+      } else {
+        document.getElementById('opening').hidden = true
+        document.getElementById('offline').hidden = false
+      }
+      document.getElementById('retry').addEventListener('click', retry)
+    </script>
   </body>
 </html>

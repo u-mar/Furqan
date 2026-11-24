@@ -369,7 +369,6 @@ html.dark:not(.black):has(.mushaf-reader-immersive) {
   --mushaf-read-highlight-border: rgba(13, 107, 99, 0.32);
   /* The frames of the ayah ornaments and surah banners: an old gold, deep
      enough that a hairline of it still shows on white. */
-  --mushaf-ornament-gold: #a37f2a;
   /* Deep verdigris ink card — a near-white popup would dissolve into this
      near-white page, so the popup goes dark and reads as ink on paper.
      Badge/meta tokens are re-tinted for legibility against it. */
@@ -1120,57 +1119,22 @@ html.dark .mushaf-fit-line {
 
 /* Light theme only — a deep forest green for the verse-number ornament (ring
    and number are one glyph, so both take it), distinct from the ink but soft
-   enough not to pull focus while reading. */
-html:not(.dark) .mushaf-ayah-end,
-html:not(.dark) .mushaf-qcf-segment--end {
+   enough not to pull focus while reading. The mushaf's own ornaments (QCF) draw
+   their ring and flourishes in colours of their own (lib/mushaf-fonts.ts), with
+   the number in the ink. */
+html:not(.dark) .mushaf-ayah-end {
   color: #1a5336;
 }
 
-/* On the mushaf page, as in print: the ornament's frame is gold and the number
-   inside it is ink. They are one glyph, so the two colours are a background
-   clipped to the glyph: ink within the ring the number sits in, gold beyond
-   it. Where that ring is (--ink-x, --ink-y) is measured for each ornament by
-   lib/qcf-ornaments.ts, which sets data-inked; until then it keeps the single
-   colour above. The ring is the frame's own inner edge (0.373 by 0.252 em),
-   so a three-digit number, which all but touches it, stays wholly ink. */
-html:not(.dark) .mushaf-qcf-segment--end[data-inked]:not([data-qcf-colour] *) {
-  color: transparent;
-  /* The ornament overhangs its own advance on some pages, and nothing is
-     painted outside the box: the padding makes room, the margin gives the
-     space back to the line. */
-  padding-inline: 0.12em;
-  margin-inline: -0.12em;
-  background-color: var(--mushaf-ornament-gold, #a37f2a);
-  background-image: radial-gradient(
-    ellipse 0.3786em 0.2558em at var(--ink-x) var(--ink-y),
-    var(--mushaf-read-text, #262626) 0,
-    var(--mushaf-read-text, #262626) 97%,
-    var(--mushaf-ornament-gold, #a37f2a) 100%
-  );
-  background-origin: content-box;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-/* A page with its colour (V4) font loaded (components/mushaf/QcfPage.tsx): the ayah ornaments are drawn
-   in it, filled as in the King Fahd 1440 print; the words keep the page's own (V2) font, which fits its
-   lines. The colours are the font palettes set up in lib/mushaf-fonts.ts, one for each theme. The gold
-   above is only for a page whose colour font has not loaded. */
-[data-qcf-colour] {
+/* Read's light page fills the ornament light grey, as in print; elsewhere (white words over a photo
+   or video) its fill stays clear. On dark and black it is plain, in the ink. Palettes: lib/mushaf-fonts.ts. */
+html:not(.dark) .mushaf-qcf-page {
   font-palette: --naba-light;
 }
-[data-qcf-colour] .mushaf-qcf-segment--end {
-  font-family: var(--mushaf-qcf-ornament-font) !important;
-}
-/* The coloured ornament is for the light page only: on dark and black it stays the page's own, plain. */
-html.dark [data-qcf-colour] .mushaf-qcf-segment--end {
-  font-family: var(--mushaf-qcf-font-family, inherit) !important;
-}
-html.dark [data-qcf-colour] {
+html.dark body {
   font-palette: --naba-dark;
 }
-html.dark.black [data-qcf-colour] {
+html.dark.black body {
   font-palette: --naba-black;
 }
 
@@ -3969,11 +3933,14 @@ html.listen-video-on .bottom-nav {
 
 /* Translation mode's controls: they fade away while it plays (components/listen/VideoMode.tsx). */
 .listen-video__controls {
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.4s ease, opacity 0.3s ease;
 }
+/* Folded away: no height left, so the reciter above slides down into its place. */
 .listen-video__controls.is-hidden {
+  grid-template-rows: 0fr;
   opacity: 0;
-  transform: translateY(8px);
   pointer-events: none;
 }
 

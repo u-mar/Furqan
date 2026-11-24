@@ -98,7 +98,9 @@ function QcfLineGlyphs({
         {segments.map((segment, index) => (
           <QcfSegment
             key={`${segment.verseKey}-${index}`}
-            segment={segment}
+            // The space after each word sits inside its span, so a recited ayah's highlight runs
+            // unbroken; the page's fit widens these spaces to spread a full line to its width.
+            segment={index < segments.length - 1 ? { ...segment, text: segment.text + ' ' } : segment}
             index={index}
             highlightedVerseKey={highlightedVerseKey}
             selectedVerseKey={selectedVerseKey}
@@ -171,8 +173,6 @@ function QcfLineComponent({
 
   const content =
     line.kind === 'surah-header' ? (
-      // The glyph has a span of its own so its ink can be found and its name
-      // inked apart from its frame (see lib/qcf-ornaments.ts).
       <span className="mushaf-qcf-line__surah-name">
         <span className="mushaf-qcf-line__surah-glyph">{line.text}</span>
       </span>

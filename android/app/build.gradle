@@ -14,8 +14,8 @@ android {
         applicationId "com.qurannaba.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.2"
+        versionCode 7
+        versionName "1.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -99,6 +99,16 @@ def copyBundledQuran = tasks.register('copyBundledQuran') {
 }
 android.sourceSets.main.assets.srcDirs += bundledQuranDir
 preBuild.dependsOn copyBundledQuran
+
+// The app's main screens for opening offline on a first launch (AppShell.java), saved from the live
+// site by `node scripts/snapshot-app-shell.mjs` before building. Without it the app still builds; it
+// then needs a connection the first time it opens.
+def appShellDir = new File(System.getProperty('user.home'), '.naba-build/app-shell')
+if (new File(appShellDir, 'appshell/manifest.json').exists()) {
+    android.sourceSets.main.assets.srcDirs += appShellDir
+} else {
+    logger.warn('No app shell in ~/.naba-build/app-shell: run node scripts/snapshot-app-shell.mjs to let the app open offline on a first launch.')
+}
 
 try {
     def servicesJSON = file('google-services.json')

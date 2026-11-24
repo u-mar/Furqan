@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, FastForward, Image as ImageIcon, Languages, ListMusic, Loader2, Pause, Play, Rewind } from 'lucide-react'
+import { Check, FastForward, Image as ImageIcon, Languages, ListMusic, Loader2, Pause, Play, Rewind, Volume1, Volume2 } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
-import { NatureChip } from '@/components/listen/NatureControls'
+import { NatureChip, useNature } from '@/components/listen/NatureControls'
 import { SeekBar, SleepTopButton } from '@/components/listen/NowPlayingParts'
 import HeartButton from '@/components/listen/HeartButton'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
@@ -15,8 +15,10 @@ import { setAppSettings } from '@/lib/app-settings'
 import { DEFAULT_TRANSLATION_EDITION, TRANSLATION_LANGUAGES, translationLanguageLabel } from '@/lib/translations'
 import { useListenState } from '@/hooks/useListen'
 import { useListenRate } from '@/hooks/useListenRate'
+import { useListenVolume } from '@/hooks/useListenVolume'
 import { tapFeedback } from '@/lib/haptics'
-import { cycleListenRate, seekBy, togglePlay } from '@/lib/listen-player'
+import { cycleListenRate, seekBy, setListenVolume, togglePlay } from '@/lib/listen-player'
+import { natureName, setNatureVolume } from '@/lib/nature-sounds'
 import {
   getListenVideoBackground,
   LISTEN_VIDEO_BACKGROUND,
@@ -65,6 +67,9 @@ export default function VideoMode({
   const [languageOpen, setLanguageOpen] = useState(false)
   const rate = useListenRate()
   const [backgroundOpen, setBackgroundOpen] = useState(false)
+  const [volumeOpen, setVolumeOpen] = useState(false)
+  const listenVolume = useListenVolume()
+  const nature = useNature()
   const background = useSyncExternalStore(subscribeListenVideoBackground, getListenVideoBackground, () => LISTEN_VIDEO_BACKGROUND)
   // undefined while it loads, null when this recording has none.
   const [timeline, setTimeline] = useState<{ key: string; entries: VerseTimelineEntry[] | null } | undefined>(undefined)
@@ -195,10 +200,12 @@ export default function VideoMode({
             <HeartButton reciter={reciter} size={44} iconSize={21} className="listen-video__heart" />
           </div>
 
-          {/* The controls fade away while it plays, and come back with a tap on the screen. */}
+          {/* Speed, 10 s back, play, 10 s on, sleep: these fold away while it plays (the reciter above
+              slides down into their place) and come back with a tap on the screen. The place in the
+              surah and the buttons below stay. */}
           <div className={cn('listen-video__controls', !shown && 'is-hidden')} aria-hidden={!shown}>
-          {/* Speed, 10 s back, play, 10 s on, sleep. */}
-          <div className="mt-6 grid grid-cols-5 items-center">
+            <div className="min-h-0 overflow-hidden">
+          <div className="grid grid-cols-5 items-center pt-6">
             <button
               type="button"
               onClick={() => {
@@ -253,6 +260,8 @@ export default function VideoMode({
               <SleepTopButton onOpen={onOpenSleep} className="listen-video__sleep" />
             </span>
           </div>
+            </div>
+          </div>
 
           <SeekBar className="mt-4" remaining />
 
@@ -274,9 +283,20 @@ export default function VideoMode({
               type="button"
               onClick={() => {
                 tapFeedback()
-                setBackgroundOpen(true)
+                setVolumeOpen(true)
               }}
               className="listen-video__button ed-focus ml-auto"
+              aria-label={t('Volume')}
+            >
+              <Volume2 className="h-[22px] w-[22px]" strokeWidth={1.9} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setBackgroundOpen(true)
+              }}
+              className="listen-video__button ed-focus"
               aria-label={t('Background')}
             >
               <ImageIcon className="h-[22px] w-[22px]" strokeWidth={1.9} />
@@ -293,7 +313,6 @@ export default function VideoMode({
             >
               <ListMusic className="h-6 w-6" strokeWidth={1.9} />
             </button>
-          </div>
           </div>
         </div>
       </div>
@@ -319,6 +338,23 @@ export default function VideoMode({
               </button>
             )
           })}
+        </div>
+      </SettingsSheet>
+
+      <SettingsSheet open={volumeOpen} title={t('Volume')} onClose={() => setVolumeOpen(false)}>
+        <div className="flex flex-col gap-3">
+          <VolumeRow
+            label={t('Recitation')}
+            note={reciter.name}
+            value={listenVolume}
+            onChange={setListenVolume}
+          />
+          <VolumeRow
+            label={t('Nature mode')}
+            note={nature.sounds.length ? nature.sounds.map(natureName).join(' · ') : t('Off')}
+            value={nature.volume}
+            onChange={setNatureVolume}
+          />
         </div>
       </SettingsSheet>
 
@@ -358,5 +394,44 @@ export default function VideoMode({
       </SettingsSheet>
     </>,
     document.body
+  )
+}
+
+/** One labelled volume slider in the Volume sheet: a name, what it is now, and the slider. */
+function VolumeRow({
+  label,
+  note,
+  value,
+  onChange,
+}: {
+  label: string
+  note: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  const percent = Math.round(value * 100)
+  return (
+    <div className="sleep-status flex-col !items-stretch !gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[0.9375rem] font-semibold text-[var(--home-heading)]">{label}</span>
+        <span className="min-w-0 truncate text-[0.78125rem] text-[var(--home-muted)]">{note}</span>
+      </div>
+      {/* Left to right in Arabic too: the slider's fill is drawn from the left. */}
+      <div dir="ltr" className="flex items-center gap-3">
+        <Volume1 className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={1.9} aria-hidden />
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={percent}
+          onChange={(e) => onChange(Number(e.target.value) / 100)}
+          aria-label={label}
+          className="listen-seek min-w-0 flex-1"
+          style={{ ['--fill' as string]: `${percent}%` }}
+        />
+        <Volume2 className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={1.9} aria-hidden />
+      </div>
+    </div>
   )
 }
