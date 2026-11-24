@@ -40,5 +40,15 @@ export function hasBundledQuran(): boolean {
   return typeof navigator !== 'undefined' && /\bNabaQuran\//.test(navigator.userAgent)
 }
 
+/**
+ * Whether the fonts the app carries are the V4 mushaf's (app 1.3 on, "NabaQuran/2"). The apps before
+ * carry the V2 fonts ("NabaQuran/1"): online they take the V4 ones from the site instead, so the
+ * mushaf looks the same before they are updated, and their own only offline.
+ */
+export function hasBundledV4Fonts(): boolean {
+  const version = typeof navigator !== 'undefined' ? /\bNabaQuran\/(\d+)/.exec(navigator.userAgent) : null
+  return Boolean(version && Number(version[1]) >= 2)
+}
+
 /** The translations the app carries, read from /bundled/translations/<id>.json. */
 export const BUNDLED_TRANSLATIONS: readonly string[] = ['en.sahih', 'so.abduh']

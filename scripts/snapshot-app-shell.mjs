@@ -27,7 +27,7 @@ const SCREENS = {
 /** Small data the screens read at once. */
 const EXTRA = ['/quran-chapters.json']
 // Asked for as the app asks, so the site answers exactly as it does in the app.
-const HEADERS = { 'user-agent': 'Mozilla/5.0 (Linux; Android 14) NabaAndroid NabaQuran/1' }
+const HEADERS = { 'user-agent': 'Mozilla/5.0 (Linux; Android 14) NabaAndroid NabaQuran/2' }
 
 async function get(url) {
   const res = await fetch(url, { headers: HEADERS })

@@ -5,7 +5,7 @@ import {
   TOTAL_MUSHAF_FONT_PAGES,
 } from '@/lib/qcf-font-cdn'
 import { tr } from '@/lib/i18n-core'
-import { hasBundledQuran } from '@/lib/native-app'
+import { hasBundledQuran, hasBundledV4Fonts } from '@/lib/native-app'
 
 /**
  * Must match `public/sw.js` QCF_FONT_CACHE. Named for the V4 fonts: the V2 ones saved before
@@ -70,8 +70,9 @@ function isOfflineBrowser(): boolean {
 
 export async function resolveQcfFontUrl(page: number): Promise<string> {
   if (page < 1 || page > TOTAL_MUSHAF_FONT_PAGES) return qcfCdnFontUrl(page)
-  // The Play Store app has every page's font inside it.
-  if (hasBundledQuran()) return qcfLocalFontUrl(page)
+  // The Play Store app has every page's font inside it (an app from before V4: only offline).
+  if (hasBundledV4Fonts() || (hasBundledQuran() && isOfflineBrowser())) return qcfLocalFontUrl(page)
+  if (hasBundledQuran()) return qcfCdnFontUrl(page)
 
   if (areOfflineFontsCached() || isOfflineBrowser() || (await qcfFontInCache(page))) {
     return qcfLocalFontUrl(page)
@@ -89,8 +90,13 @@ function isDevHost(): boolean {
 
 /** URLs to try in order: local/SW paths when offline or fonts were downloaded, then CDN when online. */
 export async function resolveQcfFontUrlsForLoad(page: number): Promise<string[]> {
-  if ((hasBundledQuran() || isDevHost()) && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) {
+  if ((hasBundledV4Fonts() || isDevHost()) && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) {
     return [qcfLocalFontUrl(page)]
+  }
+  // An app from before V4 carries the V2 fonts: the V4 ones from the site while online, its own
+  // (V2) only when that fails or there is no connection.
+  if (hasBundledQuran() && page >= 1 && page <= TOTAL_MUSHAF_FONT_PAGES) {
+    return isOfflineBrowser() ? [qcfLocalFontUrl(page)] : [qcfCdnFontUrl(page), qcfLocalFontUrl(page)]
   }
   const cdn = qcfCdnFontUrl(page)
   const local = qcfLocalFontUrl(page)

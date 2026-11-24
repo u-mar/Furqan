@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
   backgroundColor: '#000000',
   // Lets the site tell the app from a browser (see components/OfflineBootstrap.tsx), and that this
   // app carries the mushaf inside it (NabaQuran: android/…/BundledQuran.java, lib/native-app.ts).
-  appendUserAgent: 'NabaAndroid NabaQuran/1',
+  appendUserAgent: 'NabaAndroid NabaQuran/2',
   server: {
     url: 'https://qurannaba.com',
     errorPath: 'offline.html',
