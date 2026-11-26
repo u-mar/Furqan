@@ -1,6 +1,6 @@
 'use client'
 
-import { findVideoBackground, type VideoBackground } from '@/lib/qari-backgrounds'
+import type { VideoBackground } from '@/lib/qari-backgrounds'
 import type { VerseTimelineEntry } from '@/lib/qari'
 import { getReciterById, listenTimingSource } from '@/lib/reciters'
 
@@ -10,16 +10,28 @@ import { getReciterById, listenTimingSource } from '@/lib/reciters'
  * the app is open (a phone on mobile data should not start streaming video by itself).
  */
 
+/** Where translation mode's pictures are kept (scripts/upload-listen-scenes.mjs). */
+const SCENES_BASE = 'https://audio.qurannaba.com/scenes'
+
 /**
- * The scenes offered behind translation mode: the alpine valley by day (the first, and the default),
- * the valley at sunset, and two more by day under a blue sky. The one chosen is remembered on the phone.
+ * The pictures offered behind translation mode, still (no moving clip, so nothing streams but the
+ * recitation): the alpine valley by day (the first, and the default; a frame of its clip), a blue
+ * sky with white clouds, and a lone boat on a grey sea under rain clouds (both from Pexels). The one
+ * chosen is remembered on the phone; a scene chosen before these, now gone, falls back to the valley.
  */
-export const LISTEN_VIDEO_BACKGROUNDS: VideoBackground[] = [
-  'motion-alpine-valley',
-  'motion-valley-sunset',
-  'motion-lake-from-above',
-  'motion-golden-meadow',
-].map(findVideoBackground)
+export const LISTEN_VIDEO_BACKGROUNDS: VideoBackground[] = (
+  [
+    ['alpine-valley', 'Alpine valley'],
+    ['blue-sky', 'Blue sky'],
+    ['boat-in-the-rain', 'Boat in the rain'],
+  ] as const
+).map(([id, label]) => ({
+  id: `scene-${id}`,
+  label,
+  url: `${SCENES_BASE}/${id}.jpg`,
+  thumb: `${SCENES_BASE}/thumbs/${id}.jpg`,
+  group: 'Translation mode',
+}))
 
 /** The default scene, the alpine valley by day. */
 export const LISTEN_VIDEO_BACKGROUND: VideoBackground = LISTEN_VIDEO_BACKGROUNDS[0]

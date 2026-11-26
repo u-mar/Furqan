@@ -136,8 +136,8 @@ export default function VideoMode({
         aria-modal="true"
         aria-label={t('Translation mode')}
       >
-        <BackgroundCover key={background.id} background={background} moving paused={!playing} />
-        <div className={cn('qari-mist', !playing && 'is-paused')} aria-hidden />
+        {/* A still picture (lib/listen-video.ts), darkened top and bottom so the words stay readable. */}
+        <BackgroundCover key={background.id} background={background} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/80" aria-hidden />
         {/* The darker edges of a film frame, as in the Qari videos. */}
         <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(0,0,0,0.5))]" aria-hidden />

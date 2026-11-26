@@ -408,6 +408,8 @@ export const MISC: Dict = {
   'River gorge': { so: 'Togga webiga', ar: 'مضيق النهر' },
   'Sunbeam valley': { so: 'Dooxo iftiin qorraxeed', ar: 'وادي أشعة الشمس' },
   'Alpine valley': { so: 'Dooxada buuraha', ar: 'وادٍ جبلي' },
+  'Blue sky': { so: 'Samo buluug ah', ar: 'سماء زرقاء' },
+  'Boat in the rain': { so: 'Doon roobka dhexdiisa', ar: 'قارب تحت المطر' },
   'Dusk ridges': { so: 'Buuro fiidkii', ar: 'تلال الغسق' },
   'Pink hills': { so: 'Buuro casaan ah', ar: 'تلال وردية' },
   'Mountain huts': { so: 'Guryo buur ku yaal', ar: 'أكواخ جبلية' },
