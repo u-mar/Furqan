@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown, Languages } from 'lucide-react'
+import { ChevronDown, Languages, Volume2 } from 'lucide-react'
 import { NatureChip } from '@/components/listen/NatureControls'
 import { SeekBar, SleepTopButton } from '@/components/listen/NowPlayingParts'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import { PlayPauseButton, SkipButton } from '@/components/listen/PlayerControls'
 import VideoMode from '@/components/listen/VideoMode'
+import VolumeSheet from '@/components/listen/VolumeSheet'
+import { useListenRate } from '@/hooks/useListenRate'
 import { useListenState } from '@/hooks/useListen'
 import { tapFeedback } from '@/lib/haptics'
-import { SKIP_SECONDS } from '@/lib/listen-player'
+import { SKIP_SECONDS, cycleListenRate } from '@/lib/listen-player'
 import { isListenVideoOn, setListenVideo, subscribeListenVideo } from '@/lib/listen-video'
 import { getQiraat, getReciterById } from '@/lib/reciters'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
@@ -84,6 +86,8 @@ export default function NowPlayingSheet({
 
   if (!open || !surah || !reciterId || typeof document === 'undefined') return null
   const reciter = getReciterById(reciterId)
+  const rate = useListenRate()
+  const [volumeOpen, setVolumeOpen] = useState(false)
 
   const grab = (e: ReactPointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return
@@ -161,9 +165,7 @@ export default function NowPlayingSheet({
                 <ChevronDown className="h-5 w-5" strokeWidth={1.9} />
               </button>
               <NatureChip onOpen={onOpenNature} />
-              <span className="justify-self-end">
-                <SleepTopButton onOpen={onOpenSleep} />
-              </span>
+              <span aria-hidden />
             </div>
 
             <div className="mt-6 flex justify-center">
@@ -196,13 +198,28 @@ export default function NowPlayingSheet({
 
           <SeekBar />
 
-          <div className="mt-2.5 flex items-center justify-center gap-6">
-            <SkipButton seconds={-SKIP_SECONDS} size={58} raised />
-            <PlayPauseButton status={status} size={78} className="shadow-[0_16px_32px_-14px_rgba(0,0,0,0.55)]" />
-            <SkipButton seconds={SKIP_SECONDS} size={58} raised />
+          {/* Speed, back, play, on, sleep: in the same places as in translation mode. */}
+          <div className="mt-2.5 grid grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                cycleListenRate()
+              }}
+              className="ed-focus justify-self-start rounded-full px-1 text-[0.9375rem] font-semibold tabular-nums text-[var(--home-heading)]"
+              aria-label={t('Playback speed')}
+            >
+              {`${rate}×`}
+            </button>
+            <SkipButton seconds={-SKIP_SECONDS} size={54} raised />
+            <PlayPauseButton status={status} size={74} className="shadow-[0_16px_32px_-14px_rgba(0,0,0,0.55)]" />
+            <SkipButton seconds={SKIP_SECONDS} size={54} raised />
+            <span className="justify-self-end">
+              <SleepTopButton onOpen={onOpenSleep} />
+            </span>
           </div>
 
-          <div className="mt-7 flex justify-center">
+          <div className="mt-7 flex items-center justify-center gap-2.5">
             <button
               type="button"
               onClick={() => {
@@ -214,10 +231,22 @@ export default function NowPlayingSheet({
               <Languages className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
               {t('Translation mode')}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setVolumeOpen(true)
+              }}
+              className="fx-press ed-focus inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--home-card-bg)] text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
+              aria-label={t('Volume')}
+            >
+              <Volume2 className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            </button>
           </div>
         </div>
       </div>
       {/* Full screen over everything, the tab bar too (it portals itself to the page). */}
+      <VolumeSheet open={volumeOpen} reciterName={reciter.name} onClose={() => setVolumeOpen(false)} />
       {video ? <VideoMode onClose={onClose} onOpenSleep={onOpenSleep} onOpenNature={onOpenNature} /> : null}
     </div>,
     document.body

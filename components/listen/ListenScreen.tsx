@@ -245,17 +245,24 @@ export default function ListenScreen() {
                     type="button"
                     onClick={() => selectReciter(r.id)}
                     aria-pressed={active}
-                    className="ed-focus fx-press flex w-[5rem] shrink-0 flex-col items-center gap-1.5 rounded-xl pt-0.5 text-center"
+                    className={cn(
+                      'ed-focus fx-press flex w-[5.25rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl px-1 pb-2 pt-1.5 text-center transition-colors',
+                      active && 'bg-[var(--home-card-bg)]'
+                    )}
                   >
-                    <ReciterAvatar reciter={r} size={60} ring={active} />
+                    <ReciterAvatar reciter={r} size={56} />
                     <span
                       className={cn(
-                        'line-clamp-2 text-[0.75rem] leading-snug text-[var(--home-heading)]',
-                        active ? 'font-bold' : 'font-medium'
+                        'line-clamp-2 text-[0.75rem] leading-snug',
+                        active ? 'font-semibold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
                       )}
                     >
                       {r.name}
                     </span>
+                    <span
+                      className={cn('h-[3px] w-4 rounded-full bg-[var(--home-sage)] transition-opacity', active ? 'opacity-100' : 'opacity-0')}
+                      aria-hidden
+                    />
                   </button>
                 )
               })}
@@ -423,28 +430,22 @@ function ReciterCard({
             {reciter.name}
           </span>
           <span className="block truncate text-[0.75rem] text-[var(--home-muted)]">
-            {getQiraat(reciter.qiraat).short} · {reciter.style}
+            {narrations.length > 1 ? reciter.style : `${getQiraat(reciter.qiraat).short} · ${reciter.style}`}
           </span>
         </button>
         <HeartButton reciter={reciter} className="-mr-1 self-start" />
       </div>
 
       {narrations.length > 1 ? (
-        <div className="mt-3 border-t border-[var(--home-rule)] pt-2.5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <p className="text-[0.8125rem] font-semibold text-[var(--home-heading)]">{t('Narration')}</p>
-            <p className="text-[0.75rem] text-[var(--home-muted)]">{t('{count} available', { count: narrations.length })}</p>
-          </div>
+        <div className="mt-2.5">
           <div
             ref={rail}
-            className="qari-no-scrollbar -mx-3 flex snap-x gap-1.5 overflow-x-auto px-3 pb-0.5"
+            className="qari-no-scrollbar -mx-3 flex gap-4 overflow-x-auto border-b border-[var(--home-rule)] px-3"
             role="radiogroup"
             aria-label={t('Narration')}
           >
             {narrations.map((variant) => {
-              const info = getQiraat(variant.qiraat)
               const on = variant.qiraat === reciter.qiraat
-              const via = info.label.includes(" 'an ") ? `'an ${info.label.split(" 'an ")[1]}` : info.label
               return (
                 <button
                   key={variant.id}
@@ -458,18 +459,23 @@ function ReciterCard({
                     }
                   }}
                   className={cn(
-                    'fx-press ed-focus relative min-w-[4.75rem] shrink-0 snap-start rounded-xl px-3 py-1.5 text-left transition-colors',
-                    on ? 'ed-ink' : 'border border-[var(--home-rule-strong)] text-[var(--home-heading)] hover:bg-[var(--home-track)]'
+                    'ed-focus relative shrink-0 whitespace-nowrap pb-1.5 pt-1 text-[0.8125rem] transition-colors',
+                    on ? 'font-semibold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
                   )}
                 >
-                  <span className="block text-[0.8125rem] font-semibold leading-tight">{info.short}</span>
-                  <span className={cn('block whitespace-nowrap text-[0.6875rem] leading-tight', on ? 'opacity-70' : 'text-[var(--home-muted)]')}>
-                    {via}
-                  </span>
+                  {getQiraat(variant.qiraat).short}
+                  <span
+                    className={cn(
+                      'absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-[var(--home-sage)] transition-opacity',
+                      on ? 'opacity-100' : 'opacity-0'
+                    )}
+                    aria-hidden
+                  />
                 </button>
               )
             })}
           </div>
+          <p className="mt-1.5 text-[0.75rem] text-[var(--home-muted)]">{getQiraat(reciter.qiraat).label}</p>
         </div>
       ) : null}
     </section>
