@@ -20,6 +20,23 @@ import { useT } from '@/lib/i18n'
 const MIN_SCRIPT_PX = 11
 
 /**
+ * How wide a full line of the V4 page fonts is, in em of the script (its words joined with the
+ * font's space, and the glyph span's own padding): 17.5em, wider than about 95% of the 8,807 lines.
+ * Every page's script is sized so a line this wide fills the column, so all pages share one size.
+ */
+const SHARED_LINE_EM = 17.66
+
+/** The width a line's script may take: the page's width, less the line's own inset, times the page-width setting's share. */
+function lineColumn(grid: HTMLElement, inner: HTMLElement): number {
+  const fitVar = parseFloat(getComputedStyle(grid).getPropertyValue('--mushaf-line-fit'))
+  const fitFactor = Number.isFinite(fitVar) && fitVar > 0 ? fitVar : 0.92
+  const lineEl = inner.closest<HTMLElement>('.mushaf-qcf-line')
+  const lineCs = lineEl ? getComputedStyle(lineEl) : null
+  const inset = lineCs ? (parseFloat(lineCs.paddingLeft) || 0) + (parseFloat(lineCs.paddingRight) || 0) : 0
+  return (grid.clientWidth - inset) * fitFactor
+}
+
+/**
  * How much the widest line on the page has to shrink to fit (1 when every
  * line already fits): its column is the page's width, less the line's own
  * inset, times the page-width setting's share (--mushaf-line-fit, Full or
@@ -41,13 +58,10 @@ function narrowestFit(grid: HTMLElement, inners: HTMLElement[]): number {
 }
 
 /**
- * Every content line on a page has to land on the same final font size.
- * Each line's QCF glyphs need different widths to say the same thing (an
- * ayah with more words needs to be smaller than one with few), so fitting
- * each line to its own column width independently left some lines shrunk
- * and others at full size — the same script looking like different sizes on
- * one page. This measures every content line first, then shrinks all of
- * them by whichever line needed it most.
+ * Every page's script lands on the same size (SHARED_LINE_EM), and only a line
+ * too long for it is drawn a little smaller on its own. Shrinking a whole page
+ * by its widest line made some pages (414, 417, 341…) clearly smaller than the
+ * rest with the V4 fonts.
  */
 function useFitQcfPageLines(
   containerRef: React.RefObject<HTMLElement | null>,
@@ -83,19 +97,35 @@ function useFitQcfPageLines(
       }
       if (!basePx) return
 
-      // Shrink every line by the widest one's need, then measure again: the
-      // phone can still make the text bigger than the size asked for (Android
-      // applies its own font-size setting inside the app), and a line left too
-      // wide has its letters cut at the screen's edge. Each pass scales the
-      // size actually set by what the lines then measure, so it settles in one
-      // or two passes whatever the phone does.
-      let size = basePx
-      for (let pass = 0; pass < 4; pass++) {
-        const ratio = narrowestFit(grid, inners)
-        if (ratio >= 1) break
-        size = Math.max(MIN_SCRIPT_PX, size * ratio * 0.995)
+      // One size for every page: as wide as a full line of the V4 script (SHARED_LINE_EM) fits the
+      // column. Sizing each page by its own widest line made pages differ (most 18–19px on a phone,
+      // page 414 at 14), since the V4 words are stretched for the 1441H print's lines and some of
+      // these (1421H) lines come out far longer than the rest. Measured again in case the phone draws
+      // the text bigger than asked (Android applies its own text size inside the app): when even the
+      // page's typical line does not fit, the shared size comes down by that much.
+      const column = lineColumn(grid, inners[0])
+      let size = Math.max(MIN_SCRIPT_PX, Math.min(basePx, column / SHARED_LINE_EM))
+      for (let pass = 0; pass < 3; pass++) {
         for (const inner of inners) inner.style.fontSize = `${size}px`
-        if (size === MIN_SCRIPT_PX) break
+        const ratios = inners.map((inner) => lineColumn(grid, inner) / Math.max(1, inner.scrollWidth)).sort((a, b) => a - b)
+        const typical = ratios[Math.floor(ratios.length / 2)]
+        if (!(typical < 1) || size === MIN_SCRIPT_PX) break
+        size = Math.max(MIN_SCRIPT_PX, size * typical * 0.995)
+      }
+      // The few lines longer than that (about one in twenty) get their own, smaller size, rather than
+      // the whole page shrinking for them.
+      for (let pass = 0; pass < 2; pass++) {
+        let changed = false
+        for (const inner of inners) {
+          const room = lineColumn(grid, inner)
+          const width = inner.scrollWidth
+          if (room > 0 && width > room) {
+            const own = parseFloat(inner.style.fontSize) || size
+            inner.style.fontSize = `${Math.max(MIN_SCRIPT_PX, own * (room / width) * 0.995)}px`
+            changed = true
+          }
+        }
+        if (!changed) break
       }
 
       spreadFullLines(grid, inners, pageNumber)
@@ -374,7 +404,12 @@ function QcfPageComponent({
       lang="ar"
       aria-label={t('Quran page {pageNumber}', { pageNumber })}
     >
-      <div className="mushaf-fit-grid mushaf-qcf-page-content">
+      <div
+        className="mushaf-fit-grid mushaf-qcf-page-content"
+        // A surah's title shown above line 1 (lib/mushaf-engine/build-page-lines.ts): a sixteenth,
+        // slightly shorter row, the fifteen lines making room for it.
+        style={layout.lines.length > 15 ? { gridTemplateRows: 'minmax(0, 0.9fr) repeat(15, minmax(0, 1fr))' } : undefined}
+      >
         {layout.lines.map((line) => {
           const revealState = hifdhReveal
             ? getQcfLineRevealState(line, {

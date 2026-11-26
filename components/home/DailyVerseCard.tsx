@@ -355,7 +355,7 @@ export default function DailyVerseCard() {
       {!ready ? (
         verseFailed ? (
           <>
-            <p className="home-date">{t('Ayah of the week')}</p>
+            <p className="home-date home-date--small">{t('Ayah of the week')}</p>
             <p className="mt-3 text-[0.875rem] text-[var(--home-muted)]">{t("This week's verse will show when you're back online.")}</p>
           </>
         ) : (
@@ -365,7 +365,7 @@ export default function DailyVerseCard() {
         <div className="home-fade">
           <Link href={`/read?page=${page}`} className="ed-focus block rounded-lg">
             {/* "Surah" left off, so the line fits a narrow phone; it may wrap rather than be cut. */}
-            <span className="home-date block">
+            <span className="home-date home-date--small block">
               {t('Ayah of the week')} · {surahLabel.replace(/^surah\s+/i, '')} {config.verseKey}
             </span>
           </Link>
@@ -393,7 +393,7 @@ export default function DailyVerseCard() {
               type="button"
               onClick={togglePlay}
               aria-pressed={playing}
-              className="fx-press ed-focus inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[0.9375rem] font-semibold text-black"
+              className="fx-press ed-focus inline-flex h-8 items-center gap-1.5 rounded-full bg-white px-3 text-[0.8125rem] font-semibold text-black"
             >
               {playing ? (
                 <Pause className="h-[15px] w-[15px] fill-current" strokeWidth={0} />

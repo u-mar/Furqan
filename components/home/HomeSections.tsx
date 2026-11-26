@@ -63,23 +63,22 @@ function useFirstName(): string | null {
   return name
 }
 
-/** Today's date, the salam and the name, large; Settings on the right. */
+/** Today's date, and the salam with the name on one line; Settings on the right. */
 export function HomeTopBar() {
   const t = useT()
   const language = useLanguage()
   const clock = useNow(60_000)
   const name = useFirstName()
   return (
-    <header className="flex items-start justify-between gap-3">
+    <header className="flex items-center justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <p className="home-date truncate">{clock ? longDate(clock, language) : ' '}</p>
-        <p className="mt-1.5 text-[1rem] font-medium text-[var(--home-muted)]">{t('Assalamu alaikum,')}</p>
-        <h1 className="mt-0.5 truncate text-[2.125rem] font-extrabold leading-[1.15] tracking-[-0.02em] text-[var(--home-heading)]">
-          {name === null ? ' ' : name || t('Guest')}
+        <p className="home-date home-date--small truncate">{clock ? longDate(clock, language) : ' '}</p>
+        <h1 className="mt-1 truncate text-[1.25rem] font-bold leading-tight tracking-[-0.01em] text-[var(--home-heading)]">
+          {t('Assalamu alaikum,')} {name === null ? ' ' : name || t('Guest')}
         </h1>
       </div>
-      <Link href="/settings" className="home-outline-round ed-focus mt-1 h-12 w-12" aria-label={t('Open settings')}>
-        <Settings className="h-[21px] w-[21px]" strokeWidth={1.9} aria-hidden />
+      <Link href="/settings" className="home-outline-round ed-focus h-10 w-10" aria-label={t('Open settings')}>
+        <Settings className="h-[18px] w-[18px]" strokeWidth={1.9} aria-hidden />
       </Link>
     </header>
   )
@@ -123,7 +122,8 @@ export function ListeningHero() {
     }
   }, [listen.surah, surahId])
 
-  if (!ready) return <div className="h-[8.5rem] animate-pulse rounded-[1.375rem] bg-[var(--home-card-bg)]" aria-hidden />
+  // Holds its place while the favourites are read, with nothing drawn in it.
+  if (!ready) return <div className="h-14" aria-hidden />
 
   const playing = Boolean(listen.surah) && (listen.status === 'playing' || listen.status === 'loading')
   const busy = starting || listen.status === 'loading'
@@ -149,39 +149,40 @@ export function ListeningHero() {
   }
 
   return (
-    <section className="flex items-center gap-4" aria-label={t('Continue listening')}>
+    <section className="flex items-center gap-3" aria-label={t('Continue listening')}>
       <Link href={`/listen?reciter=${encodeURIComponent(reciterId)}`} className="home-press ed-focus shrink-0 rounded-full">
-        <ReciterAvatar reciter={reciter} size={112} eager />
+        <ReciterAvatar reciter={reciter} size={56} eager />
       </Link>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.875rem] text-[var(--home-muted)]">
+        <p className="truncate text-[0.75rem] text-[var(--home-muted)]">
           {favoriteIds.includes(reciterId) ? t('From your favourites') : t('Your reciter')}
         </p>
-        <p className="line-clamp-2 text-[1.25rem] font-bold leading-tight tracking-[-0.01em] text-[var(--home-heading)]">{reciter.name}</p>
-        {surahName ? <p className="mt-0.5 truncate text-[0.8125rem] text-[var(--home-muted)]">{surahName}</p> : null}
-        <button
-          type="button"
-          onClick={() => void go()}
-          className="fx-press ed-focus mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.875rem] font-semibold text-black"
-        >
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.4} aria-hidden />
-          ) : playing ? (
-            <Pause className="h-4 w-4 fill-current" strokeWidth={0} aria-hidden />
-          ) : (
-            <Play className="h-4 w-4 fill-current" strokeWidth={0} aria-hidden />
-          )}
-          {playing ? t('Pause') : t('Continue listening')}
-        </button>
+        <p className="truncate text-[0.9375rem] font-semibold leading-snug text-[var(--home-heading)]">{reciter.name}</p>
+        {surahName ? <p className="truncate text-[0.75rem] text-[var(--home-muted)]">{surahName}</p> : null}
       </div>
+      <button
+        type="button"
+        onClick={() => void go()}
+        aria-label={playing ? t('Pause') : t('Continue listening')}
+        className="fx-press ed-focus inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-white px-3 text-[0.8125rem] font-semibold text-black"
+      >
+        {busy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.4} aria-hidden />
+        ) : playing ? (
+          <Pause className="h-3.5 w-3.5 fill-current" strokeWidth={0} aria-hidden />
+        ) : (
+          <Play className="h-3.5 w-3.5 fill-current" strokeWidth={0} aria-hidden />
+        )}
+        {playing ? t('Pause') : t('Continue')}
+      </button>
     </section>
   )
 }
 
 /**
- * The next prayer in big type, like the date and name at the top: a small
- * spaced line with how long until it, the prayer and its time large, and the
- * day's other four in one quiet row beneath. Opens all the times.
+ * The next prayer in big type: a small spaced line with how long until it,
+ * the prayer and its time large, and the day's other four in one quiet row
+ * beneath. Opens all the times.
  */
 export function NextPrayerCard() {
   const t = useT()
@@ -195,7 +196,8 @@ export function NextPrayerCard() {
     [ready, clock, place, settings]
   )
 
-  if (!state || !clock) return <div className="h-[8.5rem] animate-pulse rounded-2xl bg-[var(--home-card-bg)]" aria-hidden />
+  // Until the times are worked out (a moment), its place is kept, empty.
+  if (!state || !clock) return <div className="h-[8.5rem]" aria-hidden />
 
   const left = minutesUntil(state.next.at, clock)
   const timeLeft = left >= 60 ? t('{h}h {m}m', { h: Math.floor(left / 60), m: left % 60 }) : t('{m}m', { m: left })
@@ -241,11 +243,11 @@ export function SectionTitle({
   star?: boolean
   more?: { label: string } & ({ href: string } | { onClick: () => void })
 }) {
-  const moreClass = 'ed-focus shrink-0 rounded-md text-[0.875rem] font-medium text-[var(--home-sage)]'
+  const moreClass = 'ed-focus shrink-0 rounded-md text-[0.8125rem] font-medium text-[var(--home-sage)]'
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 px-1">
-      <h2 className="flex items-center gap-2 text-[1.125rem] font-bold tracking-[-0.01em] text-[var(--home-heading)]">
-        {star ? <Star className="home-star h-4 w-4 fill-current" strokeWidth={0} aria-hidden /> : null}
+    <div className="mb-2 flex items-center justify-between gap-3 px-1">
+      <h2 className="flex items-center gap-1.5 text-[0.9375rem] font-semibold tracking-[-0.01em] text-[var(--home-heading)]">
+        {star ? <Star className="home-star h-3.5 w-3.5 fill-current" strokeWidth={0} aria-hidden /> : null}
         {children}
       </h2>
       {more ? (
@@ -263,32 +265,39 @@ export function SectionTitle({
   )
 }
 
-/** A round shortcut with its name below. `filled`: the picture is the whole circle (the qibla dial). */
-function Shortcut({ href, picture, label, filled }: { href: string; picture: ReactNode; label: string; filled?: boolean }) {
+/** A shortcut tile: its name at the top, its picture tucked into the bottom corner. */
+function Shortcut({ href, picture, label }: { href: string; picture: ReactNode; label: string }) {
   return (
-    <Link href={href} className="home-press ed-focus flex w-[5.25rem] shrink-0 flex-col items-center gap-2 rounded-2xl text-center">
-      <span className={`flex h-[5rem] w-[5rem] items-center justify-center rounded-full ${filled ? '' : 'bg-[var(--home-card-bg)]'}`}>
+    <Link
+      href={href}
+      className="home-press ed-focus relative block h-[4.75rem] overflow-hidden rounded-2xl bg-[var(--home-card-bg)] px-2.5 py-2"
+    >
+      <span className="relative z-[1] block text-[0.8125rem] font-medium leading-tight text-[var(--home-heading)]">{label}</span>
+      <span className="pointer-events-none absolute bottom-0 end-0 flex items-end justify-end" aria-hidden>
         {picture}
       </span>
-      <span className="text-[0.875rem] font-medium leading-tight text-[var(--home-heading)]">{label}</span>
     </Link>
   )
 }
 
-/** Qibla, the prayer times and Halaqa, each with its own picture. */
+/** Qibla, the prayer times and Halaqa, each a tile with its own picture. */
 export function QuickAccess() {
   const t = useT()
   return (
     <section aria-label={t('Quick access')}>
       <SectionTitle star>{t('Quick access')}</SectionTitle>
-      <nav className="flex justify-between gap-3 px-1">
-        <Shortcut href="/prayer/qibla" picture={<QiblaGlyph className="h-full w-full" />} label={t('Qibla')} filled />
+      <nav className="grid grid-cols-3 gap-2">
+        <Shortcut
+          href="/prayer/qibla"
+          picture={<QiblaGlyph className="-mb-3 -me-3 h-[3.75rem] w-[3.75rem]" />}
+          label={t('Qibla')}
+        />
         <Shortcut
           href="/prayer"
-          picture={<img src="/icons/prayer-dua.png" alt="" className="h-[3.875rem] w-[3.875rem]" draggable={false} />}
+          picture={<img src="/icons/prayer-dua.png" alt="" className="-mb-1 -me-0.5 h-[3.25rem] w-[3.25rem]" draggable={false} />}
           label={t('Prayer times')}
         />
-        <Shortcut href="/halaqa" picture={<HalaqaGlyph className="h-10 w-10" />} label={t('Halaqa')} />
+        <Shortcut href="/halaqa" picture={<HalaqaGlyph className="mb-1.5 me-1.5 h-10 w-10" />} label={t('Halaqa')} />
       </nav>
     </section>
   )
@@ -308,20 +317,20 @@ export function FavouriteSheikhs() {
       <SectionTitle star more={{ href: '/listen?reciters=1', label: t('See all') }}>
         {t('Your favourites')}
       </SectionTitle>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {ready
           ? sheikhs.map((reciter) => (
               <Link
                 key={reciter.id}
                 href={`/listen?reciter=${encodeURIComponent(reciter.id)}`}
-                className="home-press ed-focus flex flex-col items-center gap-2 rounded-2xl text-center"
+                className="home-press ed-focus flex flex-col items-center gap-1.5 rounded-2xl text-center"
               >
-                <ReciterAvatar reciter={reciter} size={88} />
-                <span className="line-clamp-2 text-[0.875rem] font-medium leading-snug text-[var(--home-heading)]">{reciter.name}</span>
+                <ReciterAvatar reciter={reciter} size={60} />
+                <span className="line-clamp-2 text-[0.75rem] font-medium leading-snug text-[var(--home-heading)]">{reciter.name}</span>
               </Link>
             ))
           : Array.from({ length: 3 }, (_, i) => (
-              <span key={i} className="mx-auto h-[5.5rem] w-[5.5rem] animate-pulse rounded-full bg-[var(--home-card-bg)]" aria-hidden />
+              <span key={i} className="mx-auto h-[3.75rem] w-[3.75rem] rounded-full bg-[var(--home-card-bg)]" aria-hidden />
             ))}
       </div>
     </section>

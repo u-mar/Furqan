@@ -86,7 +86,7 @@ export function HalaqaHeader({
         <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
       </Link>
       <div className="min-w-0 flex-1">
-        <h1 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
+        <h1 className="home-serif truncate text-[1.375rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
           {title}
         </h1>
         {sub ? <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">{sub}</p> : null}
@@ -98,15 +98,16 @@ export function HalaqaHeader({
 
 export function SectionLabel({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
-    <div className="mx-1 mb-2 mt-[22px] flex items-center justify-between gap-3">
+    <div className="mx-1 mb-1.5 mt-[18px] flex items-center justify-between gap-3">
       <h2 className="home-label">{children}</h2>
       {right}
     </div>
   )
 }
 
+/** The room something still loading will take, kept empty: no grey pulsing shapes while it loads. */
 export function Skeleton({ className }: { className: string }) {
-  return <div className={`qari-skeleton ${className}`} aria-hidden />
+  return <div className={className} aria-hidden />
 }
 
 /** Blocks that arrive together rise in one after another; `order` sets the beat. */

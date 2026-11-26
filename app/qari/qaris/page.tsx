@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronRight, SearchX, Send, UsersRound } from 'lucide-react'
+import { Link2, MessageCircle, MessageSquareText, MoreHorizontal, SearchX, UsersRound, type LucideIcon } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -63,17 +63,25 @@ export default function QarisPage() {
   /** The app's link, through the phone's own share sheet (copied where there is none). */
   const invite = useCallback(async () => {
     tapFeedback()
-    const url = 'https://qurannaba.com/qari'
-    const text = tr('Listen to recitations and share your own on {name}.', { name: APP_NAME })
     try {
       if (navigator.share) {
-        await navigator.share({ title: APP_NAME, text, url })
+        await navigator.share({ title: APP_NAME, text: inviteText(), url: INVITE_URL })
         return
       }
-      await navigator.clipboard.writeText(`${text}\n${url}`)
+      await navigator.clipboard.writeText(`${inviteText()}\n${INVITE_URL}`)
       qariNotice(tr('Link copied.'))
     } catch {
       // Closed without sharing.
+    }
+  }, [])
+
+  const copyInvite = useCallback(async () => {
+    tapFeedback()
+    try {
+      await navigator.clipboard.writeText(`${inviteText()}\n${INVITE_URL}`)
+      qariNotice(tr('Link copied.'))
+    } catch {
+      qariNotice(tr('Could not copy the link.'))
     }
   }, [])
 
@@ -118,16 +126,27 @@ export default function QarisPage() {
       </div>
 
       {tab === 'all' && !query ? (
-        <button type="button" onClick={() => void invite()} className="qari-press ed-focus mt-3 flex w-full items-center gap-3 rounded-2xl py-1.5 text-left">
-          <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[var(--home-sage)] text-[var(--qari-on-teal)]">
-            <Send className="h-[22px] w-[22px]" strokeWidth={2} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-semibold text-[var(--home-heading)]">{t('Invite friends')}</span>
-            <span className="mt-px block text-[12.5px] text-[var(--home-muted)]">{t('Share {name} with someone who recites', { name: APP_NAME })}</span>
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--home-muted)] rtl:rotate-180" strokeWidth={2} aria-hidden />
-        </button>
+        // The link to the app, one tap from the apps people send it with most, as on TikTok.
+        <section className="mt-4" aria-label={t('Invite friends')}>
+          <h2 className="mb-2.5 text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Invite friends')}</h2>
+          <div className="flex justify-between gap-2">
+            <InviteTarget
+              icon={MessageCircle}
+              tone="#25d366"
+              label="WhatsApp"
+              href={`https://wa.me/?text=${encodeURIComponent(`${inviteText()}\n${INVITE_URL}`)}`}
+            />
+            <InviteTarget
+              icon={MessageSquareText}
+              tone="#1d9bf0"
+              label={t('SMS')}
+              href={`sms:?body=${encodeURIComponent(`${inviteText()} ${INVITE_URL}`)}`}
+            />
+            <InviteTarget icon={Link2} label={t('Copy link')} onClick={() => void copyInvite()} />
+            <InviteTarget icon={MoreHorizontal} label={t('More')} onClick={() => void invite()} />
+          </div>
+          <h2 className="mt-5 text-[0.9375rem] font-semibold text-[var(--home-heading)]">{t('Suggested qaris')}</h2>
+        </section>
       ) : null}
 
       <div className="mt-3">
@@ -207,5 +226,48 @@ export default function QarisPage() {
         )}
       </div>
     </QariScreen>
+  )
+}
+
+const INVITE_URL = 'https://qurannaba.com/qari'
+
+function inviteText(): string {
+  return tr('Listen to recitations and share your own on {name}.', { name: APP_NAME })
+}
+
+/** One way to send the invite: a round button in that app's colour (or the page's), its name beneath. */
+function InviteTarget({
+  icon: Icon,
+  label,
+  tone,
+  href,
+  onClick,
+}: {
+  icon: LucideIcon
+  label: string
+  tone?: string
+  href?: string
+  onClick?: () => void
+}) {
+  const body = (
+    <>
+      <span
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_9%,transparent)] text-[var(--home-heading)]"
+        style={tone ? { background: tone, color: '#ffffff' } : undefined}
+      >
+        <Icon className="h-[22px] w-[22px]" strokeWidth={1.9} />
+      </span>
+      <span className="text-[0.75rem] font-medium text-[var(--home-heading)]">{label}</span>
+    </>
+  )
+  const className = 'qari-press ed-focus flex w-[4.25rem] flex-col items-center gap-1.5 rounded-xl'
+  return href ? (
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className} onClick={() => tapFeedback()}>
+      {body}
+    </a>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
   )
 }

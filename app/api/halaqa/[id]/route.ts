@@ -314,7 +314,7 @@ export async function POST(request: NextRequest, context: Context) {
         const remindKeys = keys.filter((key) => !readSet.has(key))
         // In the language each phone uses Naba in.
         await sendHalaqaPush(remindKeys, (language) => ({
-          title: translate(language, '{name} sent a reminder', { name: me.name }),
+          title: translate(language, '{name} is reminding you to read the Quran', { name: me.name }),
           body: translate(language, 'Have you read today in {halaqa}?', { halaqa: halaqa.name }),
           url: `/halaqa/${halaqa.id}`,
           tag: `halaqa-remind-${halaqa.id}`,

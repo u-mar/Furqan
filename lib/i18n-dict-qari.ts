@@ -70,6 +70,8 @@ export const QARI: Dict = {
   'Hear about likes and new followers even when the app is closed.': { so: 'Ogow jacaylka iyo raacayaasha cusub xitaa marka app-ku xidhan yahay.', ar: 'اعرف بالإعجابات والمتابعين الجدد حتى عندما يكون التطبيق مغلقًا.' },
   Suggested: { so: 'La soo jeediyay', ar: 'مقترحون' },
   'Invite friends': { so: 'Casuun saaxiibbo', ar: 'ادعُ أصدقاءك' },
+  'Suggested qaris': { so: 'Qaariyo laguu soo jeediyay', ar: 'قرّاء مقترحون' },
+  SMS: { so: 'Fariin', ar: 'رسالة نصية' },
   'Share {name} with someone who recites': { so: 'La wadaag {name} qof wax akhriya', ar: 'شارك {name} مع من يتلو' },
   'Listen to recitations and share your own on {name}.': { so: 'Dhegayso tilaawado oo wadaag taada {name}.', ar: 'استمع إلى التلاوات وشارك تلاوتك على {name}.' },
   'Kept on this phone only. Tap one to finish and post it.': { so: 'Telefoonkan oo keliya ayay ku jiraan. Taabo mid si aad u dhammaystirto oo u daabacdo.', ar: 'محفوظة على هذا الهاتف فقط. اضغط على واحدة لإكمالها ونشرها.' },

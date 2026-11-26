@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { BadgeCheck, Bell, BellOff, Heart, TrendingUp, UserPlus } from 'lucide-react'
+import { BadgeCheck, Bell, Heart, TrendingUp, UserPlus } from 'lucide-react'
 import EmptyState from '@/components/qari/EmptyState'
 import FollowButton from '@/components/qari/FollowButton'
 import QariAvatar from '@/components/qari/QariAvatar'
@@ -12,7 +12,7 @@ import type { AppUser } from '@/lib/auth'
 import { tapFeedback } from '@/lib/haptics'
 import { fetchFollowState, timeAgo } from '@/lib/qari'
 import { fetchNotifications, markNotificationsRead, type QariNotification } from '@/lib/qari-notifications'
-import { disablePush, enablePush, pushState, syncPush, type PushState } from '@/lib/push-client'
+import { pushState, syncPush } from '@/lib/push-client'
 import { cn } from '@/lib/cn'
 import { useT } from '@/lib/i18n'
 
@@ -21,8 +21,6 @@ export default function NotificationsPage() {
   const viewer = useViewer()
   const [items, setItems] = useState<QariNotification[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [push, setPush] = useState<PushState | null>(null)
-  const [pushBusy, setPushBusy] = useState(false)
 
   const id = viewer?.id
   const username = viewer?.username
@@ -45,25 +43,13 @@ export default function NotificationsPage() {
     }
   }, [id, username])
 
-  // Whether this phone gets them when the app is closed; where it already does, keep the server's copy of the phone fresh.
+  // Where this phone already gets them when the app is closed, keep the server's copy of the phone fresh.
   useEffect(() => {
     if (!id || !username) return
     void pushState().then((state) => {
-      setPush(state)
       if (state === 'on') void syncPush({ id, username })
     })
   }, [id, username])
-
-  const togglePush = async () => {
-    if (!id || !username || pushBusy) return
-    tapFeedback()
-    setPushBusy(true)
-    try {
-      setPush(push === 'on' ? await disablePush({ id, username }) : await enablePush({ id, username }))
-    } finally {
-      setPushBusy(false)
-    }
-  }
 
   // As an activity page lists them: what is new, then by how long ago.
   const sections = useMemo(() => {
@@ -99,41 +85,6 @@ export default function NotificationsPage() {
   return (
     <QariScreen>
       <QariHeader title={t('Notifications')} />
-
-      {viewer && push && push !== 'unconfigured' ? (
-        <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[color-mix(in_srgb,var(--home-heading)_5%,transparent)] px-3.5 py-3">
-          <span className="set-row__icon" aria-hidden>
-            {push === 'on' ? <Bell className="h-[17px] w-[17px]" strokeWidth={1.9} /> : <BellOff className="h-[17px] w-[17px]" strokeWidth={1.9} />}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[0.9375rem] font-semibold text-[var(--home-heading)]">
-              {push === 'on' ? t('Notifications are on for this phone') : t('Get notified on this phone')}
-            </span>
-            <span className="block text-[0.78125rem] leading-snug text-[var(--home-muted)]">
-              {push === 'needs-install'
-                ? t('On iPhone, first add this app to your Home Screen (Share, then Add to Home Screen), then open it from there.')
-                : push === 'blocked'
-                  ? t('Notifications are blocked. Allow them for this app in your phone’s settings.')
-                  : push === 'unsupported'
-                    ? t('This browser cannot show notifications when it is closed.')
-                    : t('Hear about likes and new followers even when the app is closed.')}
-            </span>
-          </span>
-          {push === 'off' || push === 'on' ? (
-            <button
-              type="button"
-              onClick={() => void togglePush()}
-              disabled={pushBusy}
-              className={cn(
-                'qari-press ed-focus h-9 shrink-0 rounded-full px-4 text-[0.8125rem] font-semibold disabled:opacity-60',
-                push === 'on' ? 'border border-[var(--home-rule-strong)] text-[var(--home-heading)]' : 'ed-ink'
-              )}
-            >
-              {push === 'on' ? t('Turn off') : t('Turn on')}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
 
       <div className="mt-4 pb-6">
         {!viewer ? (

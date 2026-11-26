@@ -34,11 +34,18 @@ function collectPageWords(verses: Verse[], pageNumber: number): Array<VerseWord 
   return items
 }
 
+/**
+ * Marks each surah's title and basmalah on the lines above its first ayah. Returns the surah whose
+ * title has no line left above it on this page (its basmalah is line 1, its first ayah line 2): the
+ * print puts that title at the foot of the page before, which read as the surah starting a page
+ * early, so it is shown above this page's first line instead.
+ */
 function markSurahDecorations(
   verses: Verse[],
   pageNumber: number,
   lineKinds: Map<number, Pick<MushafLineModel, 'kind' | 'chapterNumber'>>
-): void {
+): number | null {
+  let leadingTitle: number | null = null
   for (const verse of sortVersesByKey(verses)) {
     const chapter = Number(verse.verse_key.split(':')[0])
     const ayah = Number(verse.verse_key.split(':')[1])
@@ -58,11 +65,14 @@ function markSurahDecorations(
 
     if (headerLine >= 1) {
       lineKinds.set(headerLine, { kind: 'surah-header', chapterNumber: chapter })
+    } else if (headerLine === 0) {
+      leadingTitle = chapter
     }
     if (hasBasmalah && basmalahLine >= 1) {
       lineKinds.set(basmalahLine, { kind: 'basmalah', chapterNumber: chapter })
     }
   }
+  return leadingTitle
 }
 
 function segmentFromWord(word: VerseWord & { verseKey: string }): MushafLineSegment | null {
@@ -132,7 +142,7 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
   const lineSegments = new Map<number, MushafLineSegment[]>()
   const lineKinds = new Map<number, Pick<MushafLineModel, 'kind' | 'chapterNumber'>>()
 
-  markSurahDecorations(verses, pageNumber, lineKinds)
+  const leadingTitle = markSurahDecorations(verses, pageNumber, lineKinds)
 
   for (const word of pageWords) {
     const segment = segmentFromWord(word)
@@ -158,35 +168,13 @@ export function buildMushafPageModel(verses: Verse[], pageNumber: number): Musha
     lines.push(buildLineModel(lineNumber, segments, decoration))
   }
 
-  // The two opening pages (Al-Fatihah, the start of Al-Baqarah) are short by design and sit in the middle.
-  if (pageNumber > 2) markNextSurahOpening(lines, pageWords)
+  // A surah whose title the print puts at the foot of the page before: shown here, above its basmalah
+  // (a sixteenth row, line 0), and that foot left empty. 18 surahs open this way, An-Nisa on page 77 first.
+  if (leadingTitle !== null) {
+    lines.unshift({ lineNumber: 0, kind: 'surah-header', glyphs: '', verseKeys: [], segments: [], chapterNumber: leadingTitle })
+  }
 
   return { pageNumber, lines }
-}
-
-/**
- * When a surah ends a line or two short of the page's foot, the printed mushaf
- * puts the next surah's title there (and its basmalah, if both fit) while its
- * first ayah starts overleaf, as on pages 76, 207 and 584. The words of this
- * page alone leave those lines empty, which made the page look raised.
- */
-function markNextSurahOpening(
-  lines: MushafLineModel[],
-  pageWords: Array<VerseWord & { verseKey: string }>
-): void {
-  const lastWord = pageWords[pageWords.length - 1]
-  if (!lastWord) return
-  const chapter = Number(lastWord.verseKey.split(':')[0]) + 1
-  if (!(chapter <= 114)) return
-
-  let first = lines.length
-  while (first > 0 && lines[first - 1].kind === 'empty') first -= 1
-  if (first === lines.length || first === 0 || lines[first - 1].kind !== 'content') return
-
-  lines[first] = { ...lines[first], kind: 'surah-header', chapterNumber: chapter }
-  if (first + 1 < lines.length && surahHasOpeningBasmalah(chapter)) {
-    lines[first + 1] = { ...lines[first + 1], kind: 'basmalah', chapterNumber: chapter }
-  }
 }
 
 export function surahHeaderToken(chapterNumber: number): string {

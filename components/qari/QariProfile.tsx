@@ -88,6 +88,13 @@ export default function QariProfile() {
     return () => window.clearTimeout(id)
   }, [myUploads])
 
+  /**
+   * Whether the list is the server's answer, not the copy kept from last time. An empty profile says
+   * so only then: the copy can be out of date (it lacks the private ones, say), and for a moment it
+   * showed the wrong message ("No recitations yet") before the right one.
+   */
+  const [fresh, setFresh] = useState(false)
+
   const loadRecitations = useCallback(async () => {
     if (!username) return
     setFailed(false)
@@ -97,10 +104,13 @@ export default function QariProfile() {
     } catch {
       setFailed(true)
       setRecitations([])
+    } finally {
+      setFresh(true)
     }
   }, [username, viewerId])
 
   useEffect(() => {
+    setFresh(false)
     setRecitations(username ? (peekFeed({ user: username, viewerId, take: 50 })?.items ?? null) : null)
     void loadRecitations()
   }, [loadRecitations])
@@ -482,7 +492,7 @@ export default function QariProfile() {
         ) : videoView && shown && (shown.length > 0 || draftsTile) ? (
           <RecitationGrid flush first={draftsTile} items={shown} onOpen={(startId) => setCardsOpen({ items: shown, startId, autoplay: true })} />
         ) : list.length === 0 ? (
-          (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 ? null : tab === 'favourites' ? (
+          (tab === 'recitations' && myUploads.length > 0) || ayahCards.length > 0 || (tab !== 'favourites' && !fresh) ? null : tab === 'favourites' ? (
             <EmptyState
               Icon={Heart}
               title={t('Nothing saved yet')}

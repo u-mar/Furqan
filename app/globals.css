@@ -1513,6 +1513,17 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
   unicode-bidi: isolate;
 }
 
+/* The translation page sits in the mushaf's page font (.mushaf-root), which has no Latin letters, so
+   its words always showed in the phone's plain serif. The V4 page fonts do have a space, a hairline
+   one, and it ran the words together ("Indeed,thosewho…"): the words, the translator and the ayah
+   number are given that plain serif outright. */
+.mushaf-root .mushaf-translation-text,
+.mushaf-root .mushaf-tr-translator,
+.mushaf-root .mushaf-tr-meta {
+  /* Over `.mushaf-root * { font-family: inherit !important }`. */
+  font-family: serif !important;
+}
+
 .mushaf-translation-ayah-num {
   font-weight: 600;
   color: var(--mushaf-read-meta);
@@ -2911,6 +2922,14 @@ html.black .listen-reciter-card {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--home-heading);
+}
+
+/* Home's compact lines: the date, and how long until the next prayer. */
+.home-date--small {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--home-muted);
 }
 
 html[lang='ar'] .home-date {

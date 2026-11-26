@@ -9,9 +9,9 @@ import { useAppSettings } from '@/hooks/useAppSettings'
 import { BOTTOM_NAV_HEIGHT_REM } from '@/lib/bottom-nav'
 
 /**
- * Home: black, a few large pieces and little text — the next prayer under the
- * name, the reciter to carry on listening to, three favourite sheikhs, the
- * shortcuts with their pictures, where reading stopped, and the ayah of the week.
+ * Home: black and compact — the next prayer in big type under the salam, the
+ * reciter to carry on listening to, three shortcut tiles, three favourite
+ * sheikhs, where reading stopped, and the ayah of the week.
  */
 export default function Home() {
   // Re-renders Home when the language changes.
@@ -31,19 +31,19 @@ export default function Home() {
         <div className="reveal mt-6" style={{ animationDelay: '40ms' }}>
           <NextPrayerCard />
         </div>
-        <div className="reveal mt-8" style={{ animationDelay: '60ms' }}>
+        <div className="reveal mt-6" style={{ animationDelay: '60ms' }}>
           <ListeningHero />
         </div>
-        <div className="reveal mt-7" style={{ animationDelay: '80ms' }}>
-          <FavouriteSheikhs />
-        </div>
-        <div className="reveal mt-7" style={{ animationDelay: '120ms' }}>
+        <div className="reveal mt-5" style={{ animationDelay: '80ms' }}>
           <QuickAccess />
         </div>
-        <div className="reveal mt-7" style={{ animationDelay: '160ms' }}>
+        <div className="reveal mt-5" style={{ animationDelay: '120ms' }}>
+          <FavouriteSheikhs />
+        </div>
+        <div className="reveal mt-5" style={{ animationDelay: '160ms' }}>
           <ContinueReadingCard />
         </div>
-        <div className="reveal mt-8" style={{ animationDelay: '200ms' }}>
+        <div className="reveal mt-6" style={{ animationDelay: '200ms' }}>
           <DailyVerseCard />
         </div>
       </div>

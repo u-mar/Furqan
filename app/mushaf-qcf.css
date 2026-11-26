@@ -116,21 +116,21 @@
   text-rendering: geometricPrecision;
   padding-inline: 0.08em;
   box-sizing: content-box;
-  /* A hairline in the page's own colour over the edge of each letter takes a little off its
-     weight, so the script is neither heavy nor thin. It is a share of the letter (em), not a fixed
-     pixel width, so the weight looks the same on a small phone and on a tablet. Light script on a
-     dark page looks heavier than dark on light, so it is thinned a little more there (below). */
-  -webkit-text-stroke: 0.004em var(--mushaf-read-bg, transparent);
+  /* A hairline in the ink over the edge of each letter gives the V4 script a little more weight than
+     the font's own, short of the heavy V2 look. It is a share of the letter (em), not a fixed pixel
+     width, so the weight looks the same on a small phone and on a tablet. Light script on a dark page
+     already looks heavier than dark on light, so it gets none there (below). */
+  -webkit-text-stroke: 0.006em currentColor;
 }
 
 /* Continuous scroll's flowing text gets the same weight as the page modes. */
 .mushaf-qcf-flow__text {
-  -webkit-text-stroke: 0.004em var(--mushaf-read-bg, transparent);
+  -webkit-text-stroke: 0.006em currentColor;
 }
 
 html.dark .mushaf-qcf-line__glyphs,
 html.dark .mushaf-qcf-flow__text {
-  -webkit-text-stroke-width: 0.009em;
+  -webkit-text-stroke-width: 0;
 }
 
 /* The ayah ornament is a colour glyph (lib/mushaf-fonts.ts), which a stroke would draw as an outline only. */

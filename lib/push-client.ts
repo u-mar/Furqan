@@ -168,12 +168,18 @@ function setQariChoice(on: boolean): void {
   }
 }
 
+/**
+ * Whether Qari notifications were turned off on this phone. The notifications page no longer has the
+ * switch, so a choice made with it before is let go (2026-11): it could not be undone any more, and
+ * the app then never told that qari about their likes and followers again.
+ */
 function turnedQariOff(): boolean {
   try {
-    return localStorage.getItem(QARI_CHOICE_KEY) === 'off'
+    if (localStorage.getItem(QARI_CHOICE_KEY) === 'off') localStorage.removeItem(QARI_CHOICE_KEY)
   } catch {
-    return false
+    // Nothing kept, nothing to let go.
   }
+  return false
 }
 
 /**

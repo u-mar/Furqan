@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  Bell,
   BookOpen,
   CalendarDays,
   ChevronRight,
@@ -46,6 +47,7 @@ import {
   type HalaqaDetail,
   type HalaqaMemberView,
 } from '@/lib/halaqa'
+import { disableHalaqaPush, enableHalaqaPush, keepHalaqaPushOn, pushState, type PushState } from '@/lib/push-client'
 import { errorMessage, toastError, toastSuccess } from '@/lib/toast'
 import { tr, useT } from '@/lib/i18n'
 
@@ -250,6 +252,11 @@ export default function HalaqaSettingsPage() {
             </div>
           ) : null}
         </div>
+      </Rise>
+
+      <Rise order={2}>
+        <SectionLabel>{t('Reminders')}</SectionLabel>
+        <ReminderRow />
       </Rise>
 
       <Rise order={2}>
@@ -685,5 +692,59 @@ function FinishSheet({
           {t('Save')}</ActionButton>
       </div>
     </SettingsSheet>
+  )
+}
+
+/**
+ * Whether this phone hears the reminders the others in the halaqa send ("Send reminder"). On by itself
+ * (keepHalaqaPushOn, wherever the phone allows Naba's notifications); turned off here, it stays off.
+ */
+function ReminderRow() {
+  const t = useT()
+  const [push, setPush] = useState<PushState | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void keepHalaqaPushOn()
+      .catch(() => {})
+      .then(() => pushState())
+      .then(setPush)
+  }, [])
+
+  const toggle = async (next: boolean) => {
+    if (busy) return
+    tapFeedback()
+    setBusy(true)
+    try {
+      setPush(next ? await enableHalaqaPush() : await disableHalaqaPush())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const note =
+    push === 'needs-install'
+      ? t('On iPhone, first add this app to your Home Screen (Share, then Add to Home Screen), then open it from there.')
+      : push === 'blocked'
+        ? t('Notifications are blocked. Allow them for this app in your phone’s settings.')
+        : push === 'unsupported' || push === 'unconfigured'
+          ? t('This browser cannot show notifications when it is closed.')
+          : t('Hear it here when someone in this halaqa sends a reminder.')
+
+  return (
+    <div className="home-card overflow-hidden rounded-2xl">
+      <label className={cn('set-row', (push === 'on' || push === 'off') && 'cursor-pointer')}>
+        <span className="set-row__icon" aria-hidden>
+          <Bell className="h-[17px] w-[17px]" strokeWidth={1.9} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="set-row__label block">{t('Get reminded to read')}</span>
+          <span className="mt-0.5 block text-[0.75rem] leading-snug text-[var(--home-muted)]">{note}</span>
+        </span>
+        {push === 'on' || push === 'off' ? (
+          <Switch checked={push === 'on'} onChange={(next) => void toggle(next)} label={t('Get reminded to read')} />
+        ) : null}
+      </label>
+    </div>
   )
 }

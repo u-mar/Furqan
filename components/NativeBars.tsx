@@ -23,6 +23,9 @@ function opaqueHex(css: string): string | null {
  * edge while scrolling would otherwise flash both bars that colour.
  */
 function topColor(): string | null {
+  // The mushaf (Read, and the other screens showing its pages) keeps both bars black in every theme:
+  // on the light page they turned its off-white, and changing the theme flashed them light and dark.
+  if (document.querySelector('.mushaf-reader-immersive')) return '#000000'
   for (let el = document.elementFromPoint(window.innerWidth / 2, 1); el; el = el.parentElement) {
     if (el.getBoundingClientRect().width < window.innerWidth - 1) continue
     const hex = opaqueHex(getComputedStyle(el).backgroundColor)

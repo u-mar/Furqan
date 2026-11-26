@@ -68,7 +68,7 @@ export default function ContinueReadingCard() {
     }
   }, [])
 
-  if (!state) return <div className="h-[4.5rem] animate-pulse rounded-full bg-[var(--home-card-bg)]" aria-hidden />
+  if (!state) return <div className="h-14" aria-hidden />
 
   const surah = language === 'ar' && state.arabicName ? state.arabicName : state.surahName
 
@@ -76,17 +76,17 @@ export default function ContinueReadingCard() {
   return (
     <Link
       href={`/read?page=${state.page}`}
-      className="home-press ed-focus flex items-center gap-3 rounded-full bg-[var(--home-card-bg)] py-3 pe-3 ps-6"
+      className="home-press ed-focus flex items-center gap-3 rounded-2xl bg-[var(--home-card-bg)] py-2.5 pe-2.5 ps-4"
       aria-label={t('Continue reading {surahName}, page {page}', { surahName: state.surahName, page: state.page })}
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.78125rem] text-[var(--home-muted)]">{t('Continue reading')}</span>
-        <span className="mt-0.5 block truncate text-[1.0625rem] font-semibold text-[var(--home-heading)]">
+        <span className="block text-[0.75rem] text-[var(--home-muted)]">{t('Continue reading')}</span>
+        <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">
           {surah} · {t('Page')} {state.page}
         </span>
       </span>
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white" aria-hidden>
-        <ArrowRight className="h-5 w-5 rtl:-scale-x-100" strokeWidth={2.4} />
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--home-sage-deep)] text-white" aria-hidden>
+        <ArrowRight className="h-4 w-4 rtl:-scale-x-100" strokeWidth={2.4} />
       </span>
     </Link>
   )
