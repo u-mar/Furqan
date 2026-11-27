@@ -58,6 +58,12 @@ final class AppShell {
         if (path.startsWith("/_next/static/") || "/quran-chapters.json".equals(path)) {
             return open(path.substring(1), mimeFor(path), null);
         }
+        // The pictures and fonts the screens use from the site's own folders (Home's prayer picture,
+        // the icons, the surah-banner font), saved with them by the snapshot.
+        if (path.startsWith("/icons/") || path.startsWith("/images/") || path.startsWith("/brand/")
+            || path.startsWith("/fonts/") || path.startsWith("/img/")) {
+            return open(path.substring(1), mimeFor(path), null);
+        }
         return null;
     }
 
@@ -100,6 +106,9 @@ final class AppShell {
         if (path.endsWith(".svg")) return "image/svg+xml";
         if (path.endsWith(".png")) return "image/png";
         if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+        if (path.endsWith(".webp")) return "image/webp";
+        if (path.endsWith(".gif")) return "image/gif";
+        if (path.endsWith(".ico")) return "image/x-icon";
         return "application/octet-stream";
     }
 }

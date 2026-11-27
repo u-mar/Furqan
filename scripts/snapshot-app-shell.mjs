@@ -75,6 +75,26 @@ for (const file of wanted) {
     }
   }
 }
+// The pictures and fonts the screens and their code use from the site's own folders (Home's prayer
+// picture, the icons, the surah-banner font): without them a first launch offline showed broken images.
+// (Not a path built in code, such as `/fonts/qcf/p${page}.woff2`: no `$`.)
+const assetPattern = /["'`](\/(?:icons|images|brand|fonts|img)\/[^"'`?\s)$]+\.(?:png|svg|jpe?g|webp|gif|ico|woff2?|ttf))["'`]/g
+const assets = new Set()
+for (const rel of [...Object.values(pages), ...[...wanted].map((file) => file.slice(1))]) {
+  const file = path.join(OUT, rel)
+  if (!fs.existsSync(file) || !/\.(html|js|css)$/.test(file)) continue
+  for (const m of fs.readFileSync(file, 'utf8').matchAll(assetPattern)) assets.add(m[1])
+}
+for (const asset of assets) {
+  try {
+    const data = await get(`${SITE}${asset}`)
+    bytes += data.length
+    save(asset.slice(1), data)
+  } catch (err) {
+    console.warn(`[app-shell] skipped ${asset}: ${err.message}`)
+  }
+}
+
 for (const file of EXTRA) {
   const data = await get(`${SITE}${file}`)
   bytes += data.length
@@ -82,4 +102,4 @@ for (const file of EXTRA) {
 }
 
 save('manifest.json', JSON.stringify({ site: SITE, buildId: list.buildId, savedAt: new Date().toISOString(), pages }))
-console.log(`[app-shell] ${Object.keys(pages).length} screens and ${wanted.size + EXTRA.length} files (${(bytes / 1048576).toFixed(1)} MB) saved to ${OUT}`)
+console.log(`[app-shell] ${Object.keys(pages).length} screens and ${wanted.size + EXTRA.length + assets.size} files (${(bytes / 1048576).toFixed(1)} MB) saved to ${OUT}`)

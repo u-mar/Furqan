@@ -228,7 +228,7 @@ export default function ListenScreen() {
         {hydrated ? (
           <ReciterCard reciter={reciter} onChoose={() => setPickerOpen(true)} onSelect={selectReciter} />
         ) : (
-          <div className="home-card mt-4 h-[5.25rem] rounded-2xl" aria-hidden />
+          <div className="home-card mt-4 h-[7.5rem] rounded-[1.25rem]" aria-hidden />
         )}
 
         {favoritesReady ? (
@@ -416,20 +416,20 @@ function ReciterCard({
   }, [reciter.id])
 
   return (
-    <section className="home-card listen-reciter-card mt-4 rounded-2xl p-3" aria-label={t('Reciting')}>
-      <div className="flex items-center gap-3">
+    <section className="home-card listen-reciter-card mt-4 rounded-[1.25rem] p-4" aria-label={t('Reciting')}>
+      <div className="flex items-center gap-3.5">
         <button type="button" onClick={onChoose} className="ed-focus fx-press shrink-0 rounded-full" aria-label={t('Choose a reciter')}>
-          <ReciterAvatar key={reciter.id} reciter={reciter} size={56} className="home-fade" />
+          <ReciterAvatar key={reciter.id} reciter={reciter} size={76} className="home-fade" />
         </button>
         <button type="button" onClick={onChoose} className="ed-focus min-w-0 flex-1 rounded-lg text-left">
-          <span className="block text-[0.75rem] text-[var(--home-muted)]">{t('Reciting')}</span>
+          <span className="block text-[0.8125rem] text-[var(--home-muted)]">{t('Reciting')}</span>
           <span
             key={reciter.id}
-            className="home-fade line-clamp-1 text-[1rem] font-semibold leading-snug text-[var(--home-heading)]"
+            className="home-fade line-clamp-2 text-[1.1875rem] font-bold leading-tight text-[var(--home-heading)]"
           >
             {reciter.name}
           </span>
-          <span className="block truncate text-[0.75rem] text-[var(--home-muted)]">
+          <span className="mt-0.5 block truncate text-[0.8125rem] text-[var(--home-muted)]">
             {narrations.length > 1 ? reciter.style : `${getQiraat(reciter.qiraat).short} · ${reciter.style}`}
           </span>
         </button>
@@ -437,10 +437,10 @@ function ReciterCard({
       </div>
 
       {narrations.length > 1 ? (
-        <div className="mt-2.5">
+        <div className="mt-3.5">
           <div
             ref={rail}
-            className="qari-no-scrollbar -mx-3 flex gap-4 overflow-x-auto border-b border-[var(--home-rule)] px-3"
+            className="qari-no-scrollbar -mx-4 flex gap-5 overflow-x-auto border-b border-[var(--home-rule)] px-4"
             role="radiogroup"
             aria-label={t('Narration')}
           >
@@ -459,7 +459,7 @@ function ReciterCard({
                     }
                   }}
                   className={cn(
-                    'ed-focus relative shrink-0 whitespace-nowrap pb-1.5 pt-1 text-[0.8125rem] transition-colors',
+                    'ed-focus relative shrink-0 whitespace-nowrap pb-2 pt-1 text-[0.875rem] transition-colors',
                     on ? 'font-semibold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
                   )}
                 >

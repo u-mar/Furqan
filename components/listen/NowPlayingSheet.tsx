@@ -46,6 +46,8 @@ export default function NowPlayingSheet({
   const [dragging, setDragging] = useState(false)
   const [closing, setClosing] = useState(false)
   const [art, setArt] = useState(232)
+  const rate = useListenRate()
+  const [volumeOpen, setVolumeOpen] = useState(false)
   const start = useRef<{ y: number; t: number } | null>(null)
   const closeTimer = useRef<number | undefined>(undefined)
 
@@ -84,10 +86,10 @@ export default function NowPlayingSheet({
     if (open && !surah) onClose()
   }, [open, surah, onClose])
 
+  // Every hook is above this line: React needs the same ones on every render, and this return
+  // skips whatever comes after it (two hooks once below it crashed the page when a surah opened).
   if (!open || !surah || !reciterId || typeof document === 'undefined') return null
   const reciter = getReciterById(reciterId)
-  const rate = useListenRate()
-  const [volumeOpen, setVolumeOpen] = useState(false)
 
   const grab = (e: ReactPointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return
