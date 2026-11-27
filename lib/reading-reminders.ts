@@ -170,6 +170,17 @@ export function noteReading(): void {
     .catch(() => {})
 }
 
+/**
+ * The daily reminders to read are no longer offered (2026-11): on opening the app, any still scheduled on
+ * the phone from before are cancelled. A reminder already showing can still be tapped (below).
+ */
+export function stopReadingReminders(): void {
+  if (!remindersSupported()) return
+  void notifications()
+    .then(({ plugin: local }) => local.cancel({ notifications: IDS.map((id) => ({ id })) }))
+    .catch(() => {})
+}
+
 /** On opening the app: puts the reminders back if they are on (after a phone restart or an update). */
 export function keepRemindersScheduled(): void {
   void remindersOn()

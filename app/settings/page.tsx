@@ -33,7 +33,6 @@ import DeleteAccountSheet from '@/components/settings/DeleteAccountSheet'
 import SettingsSheet from '@/components/settings/SettingsSheet'
 import QariAvatar from '@/components/qari/QariAvatar'
 import BlockedAccountsSheet from '@/components/qari/BlockedAccountsSheet'
-import ReadingRemindersRow from '@/components/settings/ReadingRemindersRow'
 import Switch from '@/components/qari/Switch'
 import { clearSignedInUser, getSignedInUser, type AppUser } from '@/lib/auth'
 import {
@@ -394,7 +393,6 @@ export default function SettingsPage() {
             <span className="set-row__value">{APP_LANGUAGES.find((l) => l.id === language)?.name}</span>
             <RowChevron />
           </button>
-          <ReadingRemindersRow divider />
         </div>
 
         {/* About */}

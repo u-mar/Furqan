@@ -1,22 +1,21 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useViewer } from '@/hooks/useViewer'
 import { keepHalaqaPushOn, keepQariPushOn, listenForAppNotificationTaps } from '@/lib/push-client'
-import { keepRemindersScheduled, listenForReminderTaps, noteReading } from '@/lib/reading-reminders'
+import { listenForReminderTaps, stopReadingReminders } from '@/lib/reading-reminders'
 
 /**
- * In the Play Store app: a tapped notification (a like, a halaqa reminder, a
- * reminder to read) opens the page it is about, and opening the mushaf counts
- * as reading, so the reading reminders move on (lib/reading-reminders.ts). A
- * signed-in qari's phone, and a halaqa member's, is kept hearing about them
+ * In the Play Store app: a tapped notification (a like, a halaqa reminder, or
+ * an old reminder to read) opens the page it is about. The daily reminders to
+ * read are no longer scheduled, and any left from before are cancelled
+ * (lib/reading-reminders.ts). A signed-in qari's phone, and a halaqa member's, is kept hearing about them
  * (keepQariPushOn, keepHalaqaPushOn). On the website, notifications go through
  * the service worker (public/sw.js).
  */
 export default function NativeNotifications() {
   const router = useRouter()
-  const pathname = usePathname()
   const viewer = useViewer()
   const viewerId = viewer?.id
   const viewerUsername = viewer?.username
@@ -26,7 +25,8 @@ export default function NativeNotifications() {
     const open = (url: string) => {
       if (url.startsWith('/') && !url.startsWith('//')) router.push(url)
     }
-    keepRemindersScheduled()
+    // The daily reminders to read are gone: any left on the phone from before are cancelled.
+    stopReadingReminders()
     void keepHalaqaPushOn().catch(() => {})
     const stopPush = listenForAppNotificationTaps(open)
     const stopReminders = listenForReminderTaps(open)
@@ -40,10 +40,6 @@ export default function NativeNotifications() {
   useEffect(() => {
     if (viewerId && viewerUsername) void keepQariPushOn({ id: viewerId, username: viewerUsername }).catch(() => {})
   }, [viewerId, viewerUsername])
-
-  useEffect(() => {
-    if (pathname === '/read') noteReading()
-  }, [pathname])
 
   return null
 }
