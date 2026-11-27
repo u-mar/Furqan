@@ -102,6 +102,7 @@ export const LISTEN: Dict = {
   'Light rain': { so: 'Roob khafiif ah', ar: 'مطر خفيف' },
   'Rain on window': { so: 'Roob daaqadda', ar: 'مطر على النافذة' },
   'Distant thunder': { so: 'Onkod fog', ar: 'رعد بعيد' },
+  Thunder: { so: 'Onkod', ar: 'رعد' },
   Waterfall: { so: 'Biyo-dhac', ar: 'شلال' },
   Crickets: { so: 'Jiirjiir', ar: 'صراصير الليل' },
   'Brown noise': { so: 'Dhawaq qoto dheer', ar: 'ضوضاء بنية' },

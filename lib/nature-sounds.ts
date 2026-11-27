@@ -9,7 +9,7 @@ import { toast } from '@/lib/toast'
  * under a recitation, and kept outside React like the Listen player.
  *
  * The recordings are CC0 field recordings (BigSoundBank) and, for light rain,
- * rain on a window, distant thunder, the waterfall and crickets, Pixabay
+ * rain on a window, distant and close thunder, the waterfall and crickets, Pixabay
  * recordings (free to use, no credit needed); brown noise is made with ffmpeg.
  * They are cut into loops of one to three minutes whose first and last FADE_S seconds are baked
  * equal-power fades. Each sound has two audio elements: as one nears its end
@@ -32,6 +32,7 @@ export type NatureId =
   | 'rain-window'
   | 'thunderstorm'
   | 'thunder'
+  | 'thunderclap'
   | 'waves'
   | 'stream'
   | 'waterfall'
@@ -68,6 +69,7 @@ export const NATURE_SOUNDS: readonly NatureSound[] = [
   { id: 'rain-window', name: 'Rain on window', group: 'rain' },
   { id: 'thunderstorm', name: 'Storm', group: 'rain' },
   { id: 'thunder', name: 'Distant thunder', group: 'rain' },
+  { id: 'thunderclap', name: 'Thunder', group: 'rain' },
   { id: 'waves', name: 'Waves', group: 'water', ahead: true },
   { id: 'stream', name: 'Stream', group: 'water', ahead: true },
   { id: 'waterfall', name: 'Waterfall', group: 'water' },

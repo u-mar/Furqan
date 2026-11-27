@@ -26,6 +26,7 @@ import {
   Waves,
   Wind,
   X,
+  Zap,
 } from 'lucide-react'
 import { SleepLeft } from '@/components/listen/SleepControls'
 import SettingsSheet from '@/components/settings/SettingsSheet'
@@ -59,6 +60,7 @@ const ICONS: Record<NatureId, LucideIcon> = {
   'rain-window': CloudRainWind,
   thunderstorm: CloudLightning,
   thunder: Cloudy,
+  thunderclap: Zap,
   waves: Waves,
   stream: Mountain,
   waterfall: Droplets,
