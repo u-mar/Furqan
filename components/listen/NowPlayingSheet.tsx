@@ -200,7 +200,7 @@ export default function NowPlayingSheet({
 
           <SeekBar />
 
-          {/* Speed, back, play, on, sleep: in the same places as in translation mode. */}
+          {/* Speed, back, play, on. */}
           <div className="mt-2.5 grid grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-4">
             <button
               type="button"
@@ -216,40 +216,40 @@ export default function NowPlayingSheet({
             <SkipButton seconds={-SKIP_SECONDS} size={54} raised />
             <PlayPauseButton status={status} size={74} className="shadow-[0_16px_32px_-14px_rgba(0,0,0,0.55)]" />
             <SkipButton seconds={SKIP_SECONDS} size={54} raised />
-            <span className="justify-self-end">
-              <SleepTopButton onOpen={onOpenSleep} />
-            </span>
+            <span aria-hidden />
           </div>
 
-          <div className="mt-7 flex items-center justify-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                tapFeedback()
-                setListenVideo(true)
-              }}
-              className="fx-press ed-focus inline-flex h-10 items-center gap-2 rounded-full bg-[var(--home-card-bg)] pl-3.5 pr-4 text-[0.875rem] font-semibold text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
-            >
-              <Languages className="h-[17px] w-[17px]" strokeWidth={2} aria-hidden />
-              {t('Translation mode')}
-            </button>
+          {/* Sleep, volume and translation mode, side by side, all the same round size. */}
+          <div className="mt-7 flex items-center justify-center gap-3">
+            <SleepTopButton onOpen={onOpenSleep} />
             <button
               type="button"
               onClick={() => {
                 tapFeedback()
                 setVolumeOpen(true)
               }}
-              className="fx-press ed-focus inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--home-card-bg)] text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
+              className="fx-press ed-focus inline-flex h-[2.625rem] w-[2.625rem] items-center justify-center rounded-full bg-[var(--home-card-bg)] text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
               aria-label={t('Volume')}
             >
               <Volume2 className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setListenVideo(true)
+              }}
+              aria-label={t('Translation mode')}
+              className="fx-press ed-focus inline-flex h-[2.625rem] w-[2.625rem] items-center justify-center rounded-full bg-[var(--home-card-bg)] text-[var(--home-heading)] shadow-[var(--home-lift-sm)]"
+            >
+              <Languages className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
             </button>
           </div>
         </div>
       </div>
       {/* Full screen over everything, the tab bar too (it portals itself to the page). */}
       <VolumeSheet open={volumeOpen} reciterName={reciter.name} onClose={() => setVolumeOpen(false)} />
-      {video ? <VideoMode onClose={onClose} onOpenSleep={onOpenSleep} onOpenNature={onOpenNature} /> : null}
+      {video ? <VideoMode onOpenSleep={onOpenSleep} onOpenNature={onOpenNature} /> : null}
     </div>,
     document.body
   )

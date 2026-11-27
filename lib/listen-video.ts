@@ -33,6 +33,22 @@ export const LISTEN_VIDEO_BACKGROUNDS: VideoBackground[] = (
   group: 'Translation mode',
 }))
 
+let scenesKept = false
+
+/**
+ * Loads every translation-mode picture and its small copy once a visit while online, so the service
+ * worker (public/sw.js) keeps them all on the phone: the scene shows offline too, even one never chosen.
+ */
+export function keepListenScenes(): void {
+  if (scenesKept || typeof window === 'undefined' || !navigator.onLine) return
+  scenesKept = true
+  for (const scene of LISTEN_VIDEO_BACKGROUNDS) {
+    for (const url of [scene.url, scene.thumb]) {
+      if (url) void fetch(url, { mode: 'no-cors' }).catch(() => {})
+    }
+  }
+}
+
 /** The default scene, the alpine valley by day. */
 export const LISTEN_VIDEO_BACKGROUND: VideoBackground = LISTEN_VIDEO_BACKGROUNDS[0]
 

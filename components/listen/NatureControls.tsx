@@ -33,7 +33,8 @@ import {
   getServerNatureOffline,
   getServerNatureState,
   natureName,
-  saveAllNatureSounds,
+  AHEAD_NATURE_IDS,
+  saveAheadNatureSounds,
   setNatureVolume,
   stopNature,
   subscribeNature,
@@ -154,15 +155,16 @@ export function NatureSheet({ open, onClose }: { open: boolean; onClose: () => v
   const { saved, saving, online } = useNatureOffline()
   const percent = Math.round(volume * 100)
 
-  // Every sound kept on the phone the first time this opens with a connection (about 23 MB, once),
-  // so Nature mode then works offline with nothing to do. Not while the phone asks to save data.
-  const allSaved = saved.size >= NATURE_SOUNDS.length
+  // The sounds most played (lib/nature-sounds.ts, `ahead`: about 12 MB) kept on the phone the first time
+  // this opens with a connection, so they then work offline with nothing to do; every other sound is
+  // kept the first time it plays. Not while the phone asks to save data.
+  const aheadSaved = AHEAD_NATURE_IDS.every((id) => saved.has(id))
   useEffect(() => {
-    if (!open || !online || allSaved || saving !== null) return
+    if (!open || !online || aheadSaved || saving !== null) return
     const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
     if (connection?.saveData) return
-    void saveAllNatureSounds()
-  }, [open, online, allSaved, saving])
+    void saveAheadNatureSounds()
+  }, [open, online, aheadSaved, saving])
   const on = sounds.length > 0
   const latest = sounds[sounds.length - 1]
   const StatusIcon = on && latest ? ICONS[latest] : Leaf
@@ -211,9 +213,10 @@ export function NatureSheet({ open, onClose }: { open: boolean; onClose: () => v
                   tapFeedback()
                   stopNature()
                 }}
-                className="fx-press ed-focus h-10 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] px-4 text-[0.875rem] font-semibold text-[var(--home-heading)]"
+                aria-label={t('Turn off')}
+                className="fx-press ed-focus flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] text-[var(--home-heading)]"
               >
-                {t('Turn off')}
+                <X className="h-[17px] w-[17px]" strokeWidth={2.2} />
               </button>
             </>
           ) : null}
@@ -269,7 +272,7 @@ export function NatureSheet({ open, onClose }: { open: boolean; onClose: () => v
           {t('Mix up to three sounds. Sleep mode stops them with the recitation.')}{' '}
           {saving !== null
             ? t('Saving the sounds for offline · {percent}%', { percent: saving })
-            : allSaved
+            : saved.size >= NATURE_SOUNDS.length
               ? t('All the sounds are on this phone, so they play offline too.')
               : t('A sound you play stays on this phone, so it plays offline too.')}
         </p>

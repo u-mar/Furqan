@@ -44,9 +44,33 @@ final class AppShell {
         this.assets = context.getAssets();
     }
 
+    /**
+     * Listen's translation-mode pictures (lib/listen-video.ts), from Naba's storage domain: answered
+     * from the copy the app carries whenever it has one, online too, so they show at once, cost no
+     * data, and are there offline even on a first launch. Null for anything else.
+     */
+    WebResourceResponse serveScene(WebResourceRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
+        Uri url = request.getUrl();
+        String path = url.getPath();
+        if (!"audio.qurannaba.com".equals(url.getHost()) || path == null || !path.startsWith("/scenes/")) return null;
+        if (path.contains("..")) return null;
+        WebResourceResponse response = open(path.substring(1), mimeFor(path), null);
+        if (response != null) {
+            Map<String, String> headers = new HashMap<>(response.getResponseHeaders());
+            // The page and its service worker fetch these from another domain.
+            headers.put("Access-Control-Allow-Origin", "*");
+            headers.put("Cache-Control", "public, max-age=31536000, immutable");
+            response.setResponseHeaders(headers);
+        }
+        return response;
+    }
+
     /** The app's own copy of what `request` asks for, when offline; null otherwise (or if not carried). */
     WebResourceResponse serve(WebResourceRequest request) {
         if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
+        WebResourceResponse scene = serveScene(request);
+        if (scene != null) return scene;
         Uri url = request.getUrl();
         if (!"qurannaba.com".equals(url.getHost()) || url.getPath() == null) return null;
         if (isOnline()) return null;

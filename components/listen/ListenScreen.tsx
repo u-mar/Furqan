@@ -31,6 +31,7 @@ import {
 } from '@/lib/listen-player'
 import { getChapters } from '@/lib/quran'
 import { getQiraat, getReciterById, hasSurah, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
+import { keepListenScenes } from '@/lib/listen-video'
 import { filterChapters } from '@/lib/search-chapters'
 import { toast, toastError, toastSuccess } from '@/lib/toast'
 import type { Chapter } from '@/types'
@@ -41,6 +42,8 @@ type Filter = 'all' | 'downloaded'
 export default function ListenScreen() {
   const t = useT()
   const hydrated = useHydrated()
+  // Translation mode's pictures kept on the phone while online, so they show offline too (public/sw.js).
+  useEffect(() => keepListenScenes(), [])
   const settings = useAppSettings()
   const reciter = getReciterById(settings.listenReciterId)
   const listen = useListenState()

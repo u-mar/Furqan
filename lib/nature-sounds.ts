@@ -17,8 +17,10 @@ import { toast } from '@/lib/toast'
  * scripts/upload-nature-sounds.mjs.
  *
  * Offline: a sound is kept on the phone (Cache Storage) the first time it
- * plays, and Nature mode can keep all of them at once. A kept sound plays from
- * that copy, so it needs no connection at all.
+ * plays. The ones most played (`ahead`) are also kept as soon as Nature mode
+ * is opened online, so they work offline without ever having been played; the
+ * rest wait for their first play, which spares every phone the whole set. A
+ * kept sound plays from that copy, so it needs no connection at all.
  */
 
 export type NatureId = 'rain' | 'thunderstorm' | 'roof' | 'waves' | 'birds' | 'stream' | 'forest' | 'wind' | 'night' | 'fire'
@@ -26,20 +28,25 @@ export type NatureId = 'rain' | 'thunderstorm' | 'roof' | 'waves' | 'birds' | 's
 export interface NatureSound {
   id: NatureId
   name: string
+  /** Kept on the phone ahead, when Nature mode opens online: the ones most played (rain, water, night). */
+  ahead?: boolean
 }
 
 export const NATURE_SOUNDS: readonly NatureSound[] = [
-  { id: 'rain', name: 'Rain' },
+  { id: 'rain', name: 'Rain', ahead: true },
   { id: 'thunderstorm', name: 'Storm' },
-  { id: 'roof', name: 'Rain on roof' },
-  { id: 'waves', name: 'Waves' },
+  { id: 'roof', name: 'Rain on roof', ahead: true },
+  { id: 'waves', name: 'Waves', ahead: true },
   { id: 'birds', name: 'Birds' },
-  { id: 'stream', name: 'Stream' },
+  { id: 'stream', name: 'Stream', ahead: true },
   { id: 'forest', name: 'Forest' },
   { id: 'wind', name: 'Wind' },
-  { id: 'night', name: 'Night' },
+  { id: 'night', name: 'Night', ahead: true },
   { id: 'fire', name: 'Fireplace' },
 ]
+
+/** The sounds kept on the phone ahead of their first play (the others are kept when first played). */
+export const AHEAD_NATURE_IDS: readonly NatureId[] = NATURE_SOUNDS.filter((s) => s.ahead).map((s) => s.id)
 
 /** R2, through the bucket's own domain; a changed loop goes up under a new version. */
 const BASE = 'https://audio.qurannaba.com/nature/v1/'
@@ -447,11 +454,11 @@ function keepSound(id: NatureId, onProgress?: (fraction: number) => void): Promi
   return job
 }
 
-/** Keep every sound on the phone, one after another; true once all are there. */
-export async function saveAllNatureSounds(): Promise<boolean> {
+/** Keep the sounds most played on the phone, one after another; true once all are there. */
+export async function saveAheadNatureSounds(): Promise<boolean> {
   checkOffline()
   if (offline.saving !== null) return false
-  const left = NATURE_SOUNDS.map((s) => s.id).filter((id) => !offline.saved.has(id))
+  const left = AHEAD_NATURE_IDS.filter((id) => !offline.saved.has(id))
   if (!left.length) return true
   setOffline({ saving: 0 })
   let done = 0

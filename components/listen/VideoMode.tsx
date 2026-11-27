@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, FastForward, Image as ImageIcon, Languages, ListMusic, Loader2, Pause, Play, Rewind, Volume2 } from 'lucide-react'
+import { Check, FastForward, Image as ImageIcon, Languages, Loader2, Pause, Play, Rewind, Volume2 } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
 import { NatureChip } from '@/components/listen/NatureControls'
 import { SeekBar, SleepTopButton } from '@/components/listen/NowPlayingParts'
@@ -50,12 +50,9 @@ const SEEK_SECONDS = 10
 const CONTROLS_STAY_MS = 4000
 
 export default function VideoMode({
-  onClose,
   onOpenSleep,
   onOpenNature,
 }: {
-  /** Closes Now playing, back to the list of surahs. */
-  onClose: () => void
   onOpenSleep: () => void
   onOpenNature: () => void
 }) {
@@ -143,19 +140,7 @@ export default function VideoMode({
         <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(0,0,0,0.5))]" aria-hidden />
 
         <div className="relative mx-auto flex h-full w-full max-w-lg flex-col px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))]">
-          {/* The handle: a tap goes back to Now playing. */}
-          <button
-            type="button"
-            onClick={() => {
-              tapFeedback()
-              exit()
-            }}
-            className="ed-focus mx-auto flex h-7 w-24 items-center justify-center"
-            aria-label={t('Turn off translation mode')}
-          >
-            <span className="h-1 w-10 rounded-full bg-white/50" aria-hidden />
-          </button>
-          <div className="mt-2 flex justify-center">
+          <div className="mt-3 flex justify-center">
             <NatureChip onOpen={onOpenNature} />
           </div>
 
@@ -262,7 +247,7 @@ export default function VideoMode({
 
           <SeekBar className="mt-4" remaining />
 
-          {/* Along the bottom: the translation's language, the scene behind, and the list of surahs. */}
+          {/* Along the bottom: the translation's language, the volume, the scene behind, and off. */}
           <div className="mt-4 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -298,17 +283,21 @@ export default function VideoMode({
             >
               <ImageIcon className="h-[22px] w-[22px]" strokeWidth={1.9} />
             </button>
+            {/* Translation mode's icon crossed out: off, back to Now playing. */}
             <button
               type="button"
               onClick={() => {
                 tapFeedback()
                 exit()
-                onClose()
               }}
-              className="listen-video__button ed-focus"
-              aria-label={t('Surahs')}
+              className="listen-video__button ed-focus fx-press relative"
+              aria-label={t('Turn off translation mode')}
             >
-              <ListMusic className="h-6 w-6" strokeWidth={1.9} />
+              <Languages className="h-[21px] w-[21px]" strokeWidth={1.9} aria-hidden />
+              <span
+                className="pointer-events-none absolute left-1/2 top-1/2 h-[2px] w-[26px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-current shadow-[0_0_0_1.5px_rgba(0,0,0,0.35)]"
+                aria-hidden
+              />
             </button>
           </div>
         </div>

@@ -27,6 +27,7 @@ import {
   Scissors,
 } from 'lucide-react'
 import BackgroundCover from '@/components/qari/BackgroundCover'
+import ConfirmDialog from '@/components/qari/ConfirmDialog'
 import MushafReadAlong from '@/components/qari/MushafReadAlong'
 import { AudienceSheet, SheikhSheet, SoundSheet } from '@/components/qari/RecordPickers'
 import { SheikhMonogram } from '@/components/qari/SheikhCards'
@@ -76,8 +77,6 @@ type Step = 'ready' | 'countdown' | 'recording' | 'importing' | 'edit' | 'post'
 
 const MAX_SECONDS = 600
 const LIVE_BARS = 40
-const MAX_TAGS = 6
-const SUGGESTED_TAGS = ['tajweed', 'hifdh', 'murattal', 'fajr', 'juzamma', 'ramadan']
 
 function clock(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -145,6 +144,8 @@ function RecordFlow() {
   const countdownRef = useRef<number | null>(null)
   const [discardArmed, setDiscardArmed] = useArmed()
   const [draftDiscardArmed, setDraftDiscardArmed] = useArmed()
+  /** Asking whether to delete the take being previewed (its ✕). */
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [retakeArmed, setRetakeArmed] = useArmed()
 
   const [levels, setLevels] = useState<number[]>([])
@@ -468,6 +469,17 @@ function RecordFlow() {
     qariNotice(tr('Kept in your drafts.'))
   }, [forgetTake])
 
+  /** The take, and its draft, gone for good: back to the camera with nothing kept. */
+  const deleteTake = useCallback(() => {
+    setConfirmDelete(false)
+    strongFeedback()
+    forgetTake()
+    setStep('ready')
+    void clearDraft()
+    setDraftMeta(null)
+    qariNotice(tr('Recording deleted.'))
+  }, [forgetTake])
+
   const recordAgain = useCallback(() => {
     if (!retakeArmed) {
       tapFeedback()
@@ -492,15 +504,6 @@ function RecordFlow() {
   /* ---------------------------------------------------------- post */
 
   const tags = useMemo(() => tidyHashtags(hashtags), [hashtags])
-
-  const addTag = useCallback(
-    (tag: string) => {
-      if (tags.includes(tag) || tags.length >= MAX_TAGS) return
-      tapFeedback()
-      setHashtags((prev) => `${prev.trim()} #${tag}`.trim())
-    },
-    [tags]
-  )
 
   const handlePost = useCallback(() => {
     if (!state.blob) return
@@ -597,15 +600,14 @@ function RecordFlow() {
             <button type="button" onClick={() => setStep('edit')} aria-label={t('Back')} className="home-round ed-focus">
               <ChevronLeft className="h-5 w-5" strokeWidth={1.9} />
             </button>
-            <h1 className="home-serif text-center text-[1.3125rem] font-medium tracking-[-0.01em] text-[var(--home-heading)]">
-              {t('Post')}
-            </h1>
+            <h1 className="sr-only">{t('Post')}</h1>
+            <span aria-hidden />
             <span aria-hidden />
           </header>
 
           <div className="qari-step">
-            {/* What people will read, beside what they will see. */}
-            <div className="home-card mt-5 rounded-[20px] p-3.5">
+            {/* As on TikTok: what people will read, open on the page, beside the cover they will see. */}
+            <div className="mt-4">
               <div className="flex gap-3.5">
                 <div className="min-w-0 flex-1">
                   <label className={cn('block', titleShake && 'fx-shake')} htmlFor="qari-title">
@@ -617,7 +619,7 @@ function RecordFlow() {
                       onChange={(e) => setTitle(e.target.value.slice(0, 80))}
                       placeholder={t('Give it a title')}
                       enterKeyHint="next"
-                      className="home-serif w-full bg-transparent text-[1.1875rem] font-medium leading-snug text-[var(--home-heading)] outline-none placeholder:text-[color-mix(in_srgb,var(--home-muted)_80%,transparent)]"
+                      className="w-full bg-transparent text-[1.125rem] font-semibold leading-snug text-[var(--home-heading)] outline-none placeholder:font-medium placeholder:text-[color-mix(in_srgb,var(--home-muted)_85%,transparent)]"
                     />
                   </label>
                   <label className="mt-2 block" htmlFor="qari-caption">
@@ -626,9 +628,9 @@ function RecordFlow() {
                       id="qari-caption"
                       value={caption}
                       onChange={(e) => setCaption(e.target.value.slice(0, 280))}
-                      rows={4}
+                      rows={5}
                       placeholder={t('Add a note: what you recited, or a du’a to ask for')}
-                      className="w-full resize-none bg-transparent text-[14.5px] leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+                      className="w-full resize-none bg-transparent text-[14px] leading-relaxed text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
                     />
                   </label>
                 </div>
@@ -639,22 +641,25 @@ function RecordFlow() {
                     setStep('edit')
                   }}
                   aria-label={t('Change background')}
-                  className="qari-press ed-focus relative aspect-[9/16] w-[5.75rem] shrink-0 self-start overflow-hidden rounded-[14px] shadow-[0_10px_24px_-14px_rgba(0,0,0,0.6)]"
+                  className="qari-press ed-focus relative aspect-[3/4] w-[6.5rem] shrink-0 self-start overflow-hidden rounded-xl"
                 >
                   <BackgroundCover background={background} />
                   <span className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/70" />
                   <span className="absolute inset-x-2 top-1/2 -translate-y-1/2">
                     <Waveform peaks={peaks} seed={String(state.durationSec)} progress={0} bars={14} tone="dark" className="h-6 w-full" />
                   </span>
-                  <span className="absolute inset-x-0 bottom-0 pb-1.5 text-center text-[11px] font-semibold text-white">
-                    {t('Change')}
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 py-1 text-center text-[11px] font-semibold text-white">
+                    {t('Edit cover')}
                   </span>
                 </button>
               </div>
 
-              <div className="mt-3 border-t border-[var(--home-rule)] pt-3">
-                <label className="flex items-center gap-2" htmlFor="qari-tags">
-                  <Hash className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+              <div className="mt-4">
+                <label
+                  className="flex h-8 w-fit max-w-full items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--home-heading)_9%,transparent)] px-3"
+                  htmlFor="qari-tags"
+                >
+                  <Hash className="h-3.5 w-3.5 shrink-0 text-[var(--home-heading)]" strokeWidth={2.2} aria-hidden />
                   <span className="sr-only">{t('Hashtags')}</span>
                   <input
                     id="qari-tags"
@@ -665,33 +670,23 @@ function RecordFlow() {
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
-                    className="w-full bg-transparent text-[14.5px] font-medium text-[var(--home-heading)] outline-none placeholder:font-normal placeholder:text-[var(--home-muted)]"
+                    className="w-[9rem] bg-transparent text-[13px] font-medium text-[var(--home-heading)] outline-none placeholder:text-[var(--home-heading)]"
                   />
                 </label>
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {tags.map((tag) => (
-                    <span key={tag} className="qari-chip qari-enter" style={{ height: '1.75rem', paddingInline: '0.625rem', fontSize: '0.78125rem' }}>
-                      #{tag}
-                    </span>
-                  ))}
-                  {tags.length < MAX_TAGS
-                    ? SUGGESTED_TAGS.filter((tag) => !tags.includes(tag)).map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => addTag(tag)}
-                          className="qari-press ed-focus flex h-7 items-center rounded-full border border-dashed border-[var(--home-rule-strong)] px-2.5 text-[12.5px] font-medium text-[var(--home-muted)]"
-                        >
-                          + #{tag}
-                        </button>
-                      ))
-                    : null}
-                </div>
+                {/* Only the hashtags typed: no suggested ones. */}
+                {tags.length ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {tags.map((tag) => (
+                      <span key={tag} className="qari-chip qari-enter" style={{ height: '1.75rem', paddingInline: '0.625rem', fontSize: '0.78125rem' }}>
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            <p className="mx-1 mb-2 mt-6 text-[13px] font-medium text-[var(--home-muted)]">{t('Recitation')}</p>
-            <div className="home-card overflow-hidden rounded-[20px]">
+            <div className="-mx-1 mt-5 border-t border-[var(--home-rule)]">
               <PostRow Icon={AudioLines} label={t('Sound')} value={t(space.label)} onClick={() => openPicker('sound')} />
               <RowDivider />
               {IMITATE_ON ? (
@@ -727,7 +722,7 @@ function RecordFlow() {
                 onClick={() => openPicker('audience')}
               />
             </div>
-            <p className="mx-1 mt-3 text-[12.5px] leading-relaxed text-[var(--home-muted)]">
+            <p className="mx-1 mt-2 border-t border-[var(--home-rule)] pt-3 text-[12px] leading-relaxed text-[var(--home-muted)]">
               {isPrivate
                 ? t('Only you can hear it, on your profile.')
                 : imitate && sheikh
@@ -743,7 +738,7 @@ function RecordFlow() {
             <button
               type="button"
               onClick={() => void saveToDrafts()}
-              className="qari-press ed-focus flex h-[52px] flex-1 items-center justify-center gap-2 rounded-full border border-[var(--home-rule-strong)] text-[15px] font-semibold text-[var(--home-heading)]"
+              className="qari-press ed-focus flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--home-heading)_10%,transparent)] text-[15px] font-semibold text-[var(--home-heading)]"
             >
               <FileAudio className="h-[17px] w-[17px]" strokeWidth={2} />
               {t('Drafts')}
@@ -751,7 +746,7 @@ function RecordFlow() {
             <button
               type="button"
               onClick={handlePost}
-              className="ed-ink ed-focus qari-press flex h-[52px] flex-[1.6] items-center justify-center gap-2 rounded-full text-[15px] font-semibold"
+              className="ed-ink ed-focus qari-press flex h-12 flex-1 items-center justify-center gap-2 rounded-xl text-[15px] font-semibold"
             >
               <Send className="h-[17px] w-[17px]" strokeWidth={2.1} />
               {!viewer ? t('Sign in to post') : isPrivate ? t('Save') : t('Post')}
@@ -775,8 +770,27 @@ function RecordFlow() {
             <ChevronLeft className="h-5 w-5" strokeWidth={2} />
           </button>
           <span className="qari-cam-text text-[15px] font-semibold">{t('Preview')}</span>
-          <span className="w-[2.625rem]" aria-hidden />
+          <button
+            type="button"
+            onClick={() => {
+              tapFeedback()
+              stopPreview()
+              setConfirmDelete(true)
+            }}
+            aria-label={t('Delete recording')}
+            className="qari-cam-round qari-glass ed-focus"
+          >
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
         </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          title={t('Delete this recording?')}
+          body={t('It will be gone for good, and not kept in your drafts.')}
+          confirmLabel={t('Delete')}
+          onConfirm={deleteTake}
+          onCancel={() => setConfirmDelete(false)}
+        />
 
         <div className="relative flex min-h-0 flex-1">
           {/* Tap anywhere on the picture to listen. */}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { tapFeedback } from '@/lib/haptics'
-import { toggleLike, type Recitation } from '@/lib/qari'
+import { knownLike, subscribeLikes, toggleLike, type Recitation } from '@/lib/qari'
 import { cn } from '@/lib/cn'
 import { tr, useT } from '@/lib/i18n'
 import { askToSignIn } from '@/lib/account-prompt'
@@ -22,15 +22,22 @@ export default function LikeButton({
   compact?: boolean
 }) {
   const t = useT()
-  const [liked, setLiked] = useState(recitation.liked)
-  const [count, setCount] = useState(recitation.likeCount)
+  // A heart tapped this visit wins over a list loaded before it (lib/qari.ts, knownLike).
+  const [liked, setLiked] = useState(() => knownLike(recitation.id)?.liked ?? recitation.liked)
+  const [count, setCount] = useState(() => knownLike(recitation.id)?.likeCount ?? recitation.likeCount)
   const [popKey, setPopKey] = useState(0)
 
-  // The feed can load before the viewer is known; follow the server's answer.
+  // The feed can load before the viewer is known; follow the server's answer, and any heart tapped
+  // since on another card showing this recitation.
   useEffect(() => {
-    setLiked(recitation.liked)
-    setCount(recitation.likeCount)
-  }, [recitation.liked, recitation.likeCount])
+    const sync = () => {
+      const known = knownLike(recitation.id)
+      setLiked(known?.liked ?? recitation.liked)
+      setCount(known?.likeCount ?? recitation.likeCount)
+    }
+    sync()
+    return subscribeLikes(sync)
+  }, [recitation.id, recitation.liked, recitation.likeCount])
 
   const handle = useCallback(async () => {
     // No account needed to like: a phone without one likes as its guest id,

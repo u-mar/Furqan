@@ -110,6 +110,8 @@ public class MainActivity extends BridgeActivity {
                 @Override
                 public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
                     WebResourceResponse own = quran.serve(request);
+                    // Translation mode's pictures, which the site's service worker fetches once it runs.
+                    if (own == null) own = shell.serveScene(request);
                     return own != null ? own : bridge.getLocalServer().shouldInterceptRequest(request);
                 }
             }

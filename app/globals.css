@@ -1519,9 +1519,21 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
    number are given that plain serif outright. */
 .mushaf-root .mushaf-translation-text,
 .mushaf-root .mushaf-tr-translator,
-.mushaf-root .mushaf-tr-meta {
+.mushaf-root .mushaf-tr-meta,
+.mushaf-root .mushaf-tr-surah-header {
   /* Over `.mushaf-root * { font-family: inherit !important }`. */
   font-family: serif !important;
+}
+
+/* The same for the Arabic when it is shown as plain text (offline, or before the page font has
+   loaded): the Uthmanic text font, not the page font's hairline space running its words together.
+   The ayah number in it keeps the page font when it is drawn as the mushaf's own ornament. */
+.mushaf-root .mushaf-translation-arabic-line--plain {
+  font-family: 'UthmanicHafs', 'KFGQPC Uthmanic Script HAFS', var(--font-amiri), 'Amiri', 'Traditional Arabic',
+    'Scheherazade New', serif !important;
+}
+.mushaf-root .mushaf-translation-arabic-line--plain .mushaf-ayah-end--glyph {
+  font-family: var(--mushaf-qcf-font-family, serif) !important;
 }
 
 .mushaf-translation-ayah-num {
@@ -2651,6 +2663,7 @@ html.dark.accent-neutral .pt-bell[aria-pressed='true'] {
 html.dark.accent-neutral .qari-switch[aria-checked='true'] .qari-switch__knob {
   background: #000000;
 }
+
 
 /* --- Loading placeholders that shimmer instead of a blank screen --- */
 

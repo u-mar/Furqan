@@ -95,6 +95,22 @@ for (const asset of assets) {
   }
 }
 
+// Listen's translation-mode pictures and their small copies (lib/listen-video.ts), from Naba's storage
+// domain: the app answers them itself (AppShell.serveScene), so they show offline from the first launch.
+const scenesSource = fs.readFileSync(new URL('../lib/listen-video.ts', import.meta.url), 'utf8')
+const sceneBase = scenesSource.match(/const SCENES_BASE = '([^']+)'/)?.[1]
+const sceneIds = [...scenesSource.matchAll(/\['([a-z0-9-]+)', '[^']+'\]/g)].map((m) => m[1])
+if (!sceneBase || !sceneIds.length) throw new Error('No translation-mode pictures found in lib/listen-video.ts')
+let scenes = 0
+for (const id of sceneIds) {
+  for (const rel of [`scenes/${id}.jpg`, `scenes/thumbs/${id}.jpg`]) {
+    const data = await get(`${sceneBase}/${rel.slice('scenes/'.length)}`)
+    bytes += data.length
+    save(rel, data)
+    scenes++
+  }
+}
+
 for (const file of EXTRA) {
   const data = await get(`${SITE}${file}`)
   bytes += data.length
@@ -102,4 +118,4 @@ for (const file of EXTRA) {
 }
 
 save('manifest.json', JSON.stringify({ site: SITE, buildId: list.buildId, savedAt: new Date().toISOString(), pages }))
-console.log(`[app-shell] ${Object.keys(pages).length} screens and ${wanted.size + EXTRA.length + assets.size} files (${(bytes / 1048576).toFixed(1)} MB) saved to ${OUT}`)
+console.log(`[app-shell] ${Object.keys(pages).length} screens and ${wanted.size + EXTRA.length + assets.size + scenes} files (${(bytes / 1048576).toFixed(1)} MB) saved to ${OUT}`)

@@ -241,11 +241,57 @@ async function post(id: string, body: Record<string, unknown>) {
   return res.json()
 }
 
-export function toggleLike(id: string, userId: string, liked: boolean) {
-  return post(id, { action: liked ? 'unlike' : 'like', userId }) as Promise<{
+/* ------------------------------------------------------------------ likes */
+
+/*
+ * A heart tapped, as the server answered it, for every card that shows that recitation. A card is
+ * often made again from a list loaded before the tap (the full-screen feed rebuilds the cards it has
+ * scrolled away from; the feed opens from the copy kept on the phone, or from the list kept while a
+ * profile was open), and it then showed the heart empty: a second tap sent a second like, which the
+ * server ignores, and the count went back down.
+ */
+const knownLikes = new Map<string, { liked: boolean; likeCount: number }>()
+const likeListeners = new Set<() => void>()
+
+/** The latest liked state and count for a recitation, where a heart was tapped this visit. */
+export function knownLike(id: string): { liked: boolean; likeCount: number } | null {
+  return knownLikes.get(id) ?? null
+}
+
+export function subscribeLikes(listener: () => void): () => void {
+  likeListeners.add(listener)
+  return () => likeListeners.delete(listener)
+}
+
+/** Keeps a heart's answer for the cards, and in the lists kept on the phone, so they open with it. */
+function rememberLike(id: string, liked: boolean, likeCount: number) {
+  knownLikes.set(id, { liked, likeCount })
+  likeListeners.forEach((listener) => listener())
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith(MEMORY_PREFIX + 'feed:')) continue
+      const raw = localStorage.getItem(key)
+      if (!raw || !raw.includes(id)) continue
+      const saved = JSON.parse(raw) as { at: number; data?: { items?: Recitation[] } }
+      const item = saved.data?.items?.find((r) => r.id === id)
+      if (!item) continue
+      item.liked = liked
+      item.likeCount = likeCount
+      localStorage.setItem(key, JSON.stringify(saved))
+    }
+  } catch {
+    // Only the copies on the phone: the card itself already has it.
+  }
+}
+
+export async function toggleLike(id: string, userId: string, liked: boolean) {
+  const result = (await post(id, { action: liked ? 'unlike' : 'like', userId })) as {
     liked: boolean
     likeCount: number
-  }>
+  }
+  rememberLike(id, result.liked, result.likeCount)
+  return result
 }
 
 /** The reciter's own listens don't count, so the id has to travel with it. */

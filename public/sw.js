@@ -9,6 +9,8 @@ const TRANSLATIONS_CACHE = 'muyassar-translations-v1'
  *  change, so a dedicated stable cache keeps them offline across app updates
  *  the same way fonts and translations do. */
 const RECITER_PHOTOS_CACHE = 'muyassar-reciter-photos-v1'
+// Listen's translation-mode pictures (lib/listen-video.ts), from Naba's storage domain.
+const SCENES_CACHE = 'naba-scenes-v1'
 
 /** Shown for a screen opened offline that has never been opened online — the one page safe to precache, since it never goes stale. */
 const OFFLINE_PAGE = '/offline.html'
@@ -179,6 +181,12 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
 
   const url = new URL(event.request.url)
+  // Translation mode's pictures, kept on the phone the first time they load (Listen loads all of them
+  // when it opens), so the scene behind the recitation shows offline too.
+  if (url.hostname === 'audio.qurannaba.com' && url.pathname.startsWith('/scenes/')) {
+    event.respondWith(sceneCacheFirst(event.request))
+    return
+  }
   if (url.origin !== self.location.origin) return
 
   // A screen: the newest from the network when it answers within a few seconds, so an update shows
@@ -350,6 +358,20 @@ async function qcfFontCacheFirst(request) {
   }
 
   return new Response('QCF font not cached', { status: 404, statusText: 'Not Found' })
+}
+
+/** A picture from another domain: its copy on the phone, else the network, kept (an <img> reply is opaque). */
+async function sceneCacheFirst(request) {
+  const cache = await caches.open(SCENES_CACHE)
+  const cached = await cache.match(request.url)
+  if (cached) return cached
+  try {
+    const response = await fetch(request)
+    if (response.ok || response.type === 'opaque') cache.put(request.url, response.clone()).catch(() => {})
+    return response
+  } catch {
+    return Response.error()
+  }
 }
 
 async function cacheFirst(request, cacheName = STATIC_CACHE) {
