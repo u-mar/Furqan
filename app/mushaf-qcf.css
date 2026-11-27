@@ -215,44 +215,40 @@ html.dark .mushaf-qcf-flow__text {
   touch-action: manipulation;
 }
 
-.mushaf-qcf-segment--reciting {
-  background: rgba(45, 212, 191, 0.34);
-  border-radius: 5px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  /* No drop-shadow glow here on purpose: an ayah that spans several mushaf
-     lines gets a highlighted segment on each one, and a vertically-offset
-     blurred shadow on one line bleeds into the highlighted segment on the
-     next, reading as a doubled/overlaid highlight right at the seam. */
-  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.2);
-}
-
+.mushaf-qcf-segment--reciting,
 .mushaf-qcf-segment--selected {
-  background: rgba(45, 212, 191, 0.2);
+  /* The highlight is a band 1.5 times the script's height, centred on the line, not the segment's own
+     box: the page fonts' boxes are far taller than their letters (65px on a 44px line), so each
+     line's highlight reached into the lines above and below and, see-through, showed darker where
+     two overlapped. Each line's own piece (box-decoration-break), with no ring around it. */
+  background-color: transparent;
+  background-image: linear-gradient(var(--mushaf-hl), var(--mushaf-hl));
+  background-size: 100% 1.5em;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: 5px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
-  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.14);
+  box-shadow: none;
 }
 
+.mushaf-qcf-segment--reciting {
+  --mushaf-hl: rgba(45, 212, 191, 0.34);
+}
+.mushaf-qcf-segment--selected {
+  --mushaf-hl: rgba(45, 212, 191, 0.2);
+}
 html:not(.dark) .mushaf-qcf-segment--reciting {
-  background: rgba(13, 107, 99, 0.24);
-  box-shadow: 0 0 0 1px rgba(13, 107, 99, 0.18);
+  --mushaf-hl: rgba(13, 107, 99, 0.24);
 }
-
 html:not(.dark) .mushaf-qcf-segment--selected {
-  background: rgba(13, 107, 99, 0.15);
-  box-shadow: 0 0 0 1px rgba(13, 107, 99, 0.12);
+  --mushaf-hl: rgba(13, 107, 99, 0.15);
 }
-
 html.dark .mushaf-qcf-segment--reciting {
-  background: rgba(77, 184, 168, 0.28);
-  box-shadow: 0 0 0 1px rgba(77, 184, 168, 0.18);
+  --mushaf-hl: rgba(77, 184, 168, 0.28);
 }
-
 html.dark .mushaf-qcf-segment--selected {
-  background: rgba(77, 184, 168, 0.17);
-  box-shadow: 0 0 0 1px rgba(77, 184, 168, 0.12);
+  --mushaf-hl: rgba(77, 184, 168, 0.17);
 }
 
 .mushaf-qcf-line--reveal-target {
