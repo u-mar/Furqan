@@ -2,12 +2,19 @@
 
 import { useEffect, useSyncExternalStore } from 'react'
 import {
+  AudioWaveform,
   Bird,
+  Bug,
+  CloudDrizzle,
   CloudLightning,
   CloudRain,
+  CloudRainWind,
+  Cloudy,
+  Droplets,
   Flame,
   House,
   Leaf,
+  type LucideIcon,
   Moon,
   MoonStar,
   Mountain,
@@ -19,7 +26,6 @@ import {
   Waves,
   Wind,
   X,
-  type LucideIcon,
 } from 'lucide-react'
 import { SleepLeft } from '@/components/listen/SleepControls'
 import SettingsSheet from '@/components/settings/SettingsSheet'
@@ -27,6 +33,7 @@ import { useListenState } from '@/hooks/useListen'
 import { BOTTOM_NAV_HEIGHT_REM, BOTTOM_NAV_RAISE_REM } from '@/lib/bottom-nav'
 import { tapFeedback } from '@/lib/haptics'
 import {
+  NATURE_GROUPS,
   NATURE_SOUNDS,
   getNatureOffline,
   getNatureState,
@@ -47,15 +54,21 @@ import { useT } from '@/lib/i18n'
 
 const ICONS: Record<NatureId, LucideIcon> = {
   rain: CloudRain,
-  thunderstorm: CloudLightning,
+  'light-rain': CloudDrizzle,
   roof: House,
+  'rain-window': CloudRainWind,
+  thunderstorm: CloudLightning,
+  thunder: Cloudy,
   waves: Waves,
-  birds: Bird,
   stream: Mountain,
+  waterfall: Droplets,
+  birds: Bird,
   forest: Trees,
   wind: Wind,
   night: MoonStar,
+  crickets: Bug,
   fire: Flame,
+  'brown-noise': AudioWaveform,
 }
 
 export function useNature() {
@@ -222,29 +235,40 @@ export function NatureSheet({ open, onClose }: { open: boolean; onClose: () => v
           ) : null}
         </div>
 
-        {/* The sounds, as Sleep mode's choices: a tap adds one to the mix, or takes it out. */}
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {NATURE_SOUNDS.map((sound) => {
-            const Icon = ICONS[sound.id]
-            const chosen = sounds.includes(sound.id)
+        {/* The sounds, as Sleep mode's choices, under their headings: a tap adds one to the mix, or takes it out. */}
+        <div className="mt-1">
+          {NATURE_GROUPS.map((group) => {
+            const members = NATURE_SOUNDS.filter((sound) => sound.group === group.id)
+            if (!members.length) return null
             return (
-              <button
-                key={sound.id}
-                type="button"
-                role="checkbox"
-                aria-checked={chosen}
-                onClick={() => {
-                  tapFeedback()
-                  toggleNatureSound(sound.id)
-                }}
-                // Offline, a sound never kept cannot play: shown faded (a tap says why).
-                className={`sleep-chip nature-chip ed-focus${!online && !saved.has(sound.id) ? ' nature-chip--away' : ''}`}
-              >
-                <Icon className="h-[22px] w-[22px]" strokeWidth={1.8} aria-hidden />
-                <span className="mt-1.5 line-clamp-2 px-1 text-center text-[0.6875rem] font-semibold leading-tight">
-                  {natureName(sound.id)}
-                </span>
-              </button>
+              <section key={group.id} className="mt-3" aria-label={t(group.name)}>
+                <h3 className="mx-1 mb-1.5 text-[0.75rem] font-semibold text-[var(--home-muted)]">{t(group.name)}</h3>
+                <div className="grid grid-cols-4 gap-2">
+                  {members.map((sound) => {
+                    const Icon = ICONS[sound.id]
+                    const chosen = sounds.includes(sound.id)
+                    return (
+                      <button
+                        key={sound.id}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={chosen}
+                        onClick={() => {
+                          tapFeedback()
+                          toggleNatureSound(sound.id)
+                        }}
+                        // Offline, a sound never kept cannot play: shown faded (a tap says why).
+                        className={`sleep-chip nature-chip ed-focus${!online && !saved.has(sound.id) ? ' nature-chip--away' : ''}`}
+                      >
+                        <Icon className="h-[19px] w-[19px]" strokeWidth={1.8} aria-hidden />
+                        <span className="mt-1 line-clamp-2 px-1 text-center text-[0.65625rem] font-semibold leading-tight">
+                          {natureName(sound.id)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
             )
           })}
         </div>

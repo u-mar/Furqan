@@ -8,8 +8,10 @@ import { toast } from '@/lib/toast'
  * Nature mode: rain, waves, birds and the like, played on their own or
  * under a recitation, and kept outside React like the Listen player.
  *
- * The recordings are CC0 field recordings (BigSoundBank), cut into loops of
- * two or three minutes whose first and last FADE_S seconds are baked
+ * The recordings are CC0 field recordings (BigSoundBank) and, for light rain,
+ * rain on a window, distant thunder, the waterfall and crickets, Pixabay
+ * recordings (free to use, no credit needed); brown noise is made with ffmpeg.
+ * They are cut into loops of one to three minutes whose first and last FADE_S seconds are baked
  * equal-power fades. Each sound has two audio elements: as one nears its end
  * the other starts from the top, and the overlapping fades add up to a steady
  * level — no gap where an <audio loop> would stutter, and no volume ramps to
@@ -23,26 +25,59 @@ import { toast } from '@/lib/toast'
  * kept sound plays from that copy, so it needs no connection at all.
  */
 
-export type NatureId = 'rain' | 'thunderstorm' | 'roof' | 'waves' | 'birds' | 'stream' | 'forest' | 'wind' | 'night' | 'fire'
+export type NatureId =
+  | 'rain'
+  | 'light-rain'
+  | 'roof'
+  | 'rain-window'
+  | 'thunderstorm'
+  | 'thunder'
+  | 'waves'
+  | 'stream'
+  | 'waterfall'
+  | 'birds'
+  | 'forest'
+  | 'wind'
+  | 'night'
+  | 'crickets'
+  | 'fire'
+  | 'brown-noise'
+
+/** The headings the sounds are listed under in Nature mode. */
+export type NatureGroup = 'rain' | 'water' | 'nature' | 'night'
+
+export const NATURE_GROUPS: readonly { id: NatureGroup; name: string }[] = [
+  { id: 'rain', name: 'Rain' },
+  { id: 'water', name: 'Water' },
+  { id: 'nature', name: 'Nature' },
+  { id: 'night', name: 'Night' },
+]
 
 export interface NatureSound {
   id: NatureId
   name: string
+  group: NatureGroup
   /** Kept on the phone ahead, when Nature mode opens online: the ones most played (rain, water, night). */
   ahead?: boolean
 }
 
 export const NATURE_SOUNDS: readonly NatureSound[] = [
-  { id: 'rain', name: 'Rain', ahead: true },
-  { id: 'thunderstorm', name: 'Storm' },
-  { id: 'roof', name: 'Rain on roof', ahead: true },
-  { id: 'waves', name: 'Waves', ahead: true },
-  { id: 'birds', name: 'Birds' },
-  { id: 'stream', name: 'Stream', ahead: true },
-  { id: 'forest', name: 'Forest' },
-  { id: 'wind', name: 'Wind' },
-  { id: 'night', name: 'Night', ahead: true },
-  { id: 'fire', name: 'Fireplace' },
+  { id: 'rain', name: 'Rain', group: 'rain', ahead: true },
+  { id: 'light-rain', name: 'Light rain', group: 'rain' },
+  { id: 'roof', name: 'Rain on roof', group: 'rain', ahead: true },
+  { id: 'rain-window', name: 'Rain on window', group: 'rain' },
+  { id: 'thunderstorm', name: 'Storm', group: 'rain' },
+  { id: 'thunder', name: 'Distant thunder', group: 'rain' },
+  { id: 'waves', name: 'Waves', group: 'water', ahead: true },
+  { id: 'stream', name: 'Stream', group: 'water', ahead: true },
+  { id: 'waterfall', name: 'Waterfall', group: 'water' },
+  { id: 'birds', name: 'Birds', group: 'nature' },
+  { id: 'forest', name: 'Forest', group: 'nature' },
+  { id: 'wind', name: 'Wind', group: 'nature' },
+  { id: 'night', name: 'Night', group: 'night', ahead: true },
+  { id: 'crickets', name: 'Crickets', group: 'night' },
+  { id: 'fire', name: 'Fireplace', group: 'night' },
+  { id: 'brown-noise', name: 'Brown noise', group: 'night' },
 ]
 
 /** The sounds kept on the phone ahead of their first play (the others are kept when first played). */

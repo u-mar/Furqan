@@ -1502,7 +1502,7 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
 }
 
 .mushaf-translation-text {
-  font-size: clamp(0.95rem, 3.8vw, 1.05rem);
+  font-size: clamp(0.875rem, 3.5vw, 0.96875rem);
   line-height: 1.75;
   letter-spacing: 0.01em;
   color: var(--mushaf-read-text);
@@ -1514,15 +1514,15 @@ html.dark .mushaf-translation-body .mushaf-translation-text {
 }
 
 /* The translation page sits in the mushaf's page font (.mushaf-root), which has no Latin letters, so
-   its words always showed in the phone's plain serif. The V4 page fonts do have a space, a hairline
-   one, and it ran the words together ("Indeed,thosewho…"): the words, the translator and the ayah
-   number are given that plain serif outright. */
+   its words always showed in the phone's own text font (in the app, its sans-serif). The V4 page fonts
+   do have a space, a hairline one, and it ran the words together ("Indeed,thosewho…"): the words, the
+   translator and the ayah number are given that font outright. */
 .mushaf-root .mushaf-translation-text,
 .mushaf-root .mushaf-tr-translator,
 .mushaf-root .mushaf-tr-meta,
 .mushaf-root .mushaf-tr-surah-header {
   /* Over `.mushaf-root * { font-family: inherit !important }`. */
-  font-family: serif !important;
+  font-family: sans-serif !important;
 }
 
 /* The same for the Arabic when it is shown as plain text (offline, or before the page font has
@@ -3752,6 +3752,11 @@ html.dark.black .nature-accent {
 }
 .nature-chip--away {
   opacity: 0.4;
+}
+/* Nature mode's sounds, sixteen of them: a smaller button than Sleep mode's choices. */
+.sleep-chip.nature-chip {
+  height: 3.875rem;
+  border-radius: 0.9375rem;
 }
 
 .sleep-chip--wide {
