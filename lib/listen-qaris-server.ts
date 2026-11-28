@@ -119,7 +119,7 @@ export function serializeReciter(row: ListenReciter, surahs: ListenSurah[]): Adm
  * A new upload of `surah` for this qari: its record, and what the admin's browser needs to send the
  * file to the speech service, which checks it and saves the result at `audioKey` itself.
  */
-export async function startSurahUpload(reciter: ListenReciter, surah: number, fileName: string) {
+export async function startSurahUpload(reciter: ListenReciter, surah: number, fileName: string, join: ListenSurah[] = []) {
   const service = speechService()
   if (!service) throw new Error('The speech service is not set up (ASR_URL, ASR_API_KEY).')
   if (!r2Ready()) throw new Error('Storage is not set up (R2_*).')
@@ -128,15 +128,26 @@ export async function startSurahUpload(reciter: ListenReciter, surah: number, fi
   const audioKey = `${STORAGE_PREFIX}/${reciter.slug}/${pad(surah)}-${job.slice(0, 8)}.mp3`
   const putUrl = await r2PresignPut(audioKey, UPLOAD_SECONDS + 60 * 60)
   const expires = Math.floor(Date.now() / 1000) + UPLOAD_SECONDS
-  const target = createHash('sha256').update(putUrl).digest('hex')
+  // Earlier uploads joined with the new parts: the speech service fetches their saved files. Signed
+  // with the rest, so the permission can't be used to fetch anything else.
+  const joinUrls = join.map((row) => r2PublicUrl(row.audioKey))
+  const target = createHash('sha256').update(`${putUrl}\n${joinUrls.join('\n')}`).digest('hex')
   const signature = createHmac('sha256', service.key).update(`listen:${job}:${surah}:${expires}:${target}`).digest('hex')
 
   const row = await prisma.listenSurah.create({
-    data: { reciterId: reciter.id, surah, status: 'uploading', jobId: job, audioKey, fileName: fileName.slice(0, 200) || null },
+    data: {
+      reciterId: reciter.id,
+      surah,
+      status: 'uploading',
+      jobId: job,
+      audioKey,
+      fileName: fileName.slice(0, 200) || null,
+      joinedFrom: join.map((row) => row.id),
+    },
   })
   return {
     surah: serializeSurah(row),
-    upload: { url: `${service.url}/listen/upload`, job, surah, putUrl, token: `${expires}.${signature}` },
+    upload: { url: `${service.url}/listen/upload`, job, surah, putUrl, token: `${expires}.${signature}`, joinUrls },
   }
 }
 
@@ -186,10 +197,18 @@ export async function refreshSurah(row: ListenSurah): Promise<ListenSurah> {
   return row
 }
 
-/** Approves one upload; an older approved upload of the same surah is replaced and its file removed. */
+/**
+ * Approves one upload. An older approved upload of the same surah, and the parts this one joined,
+ * are replaced and their files removed.
+ */
 export async function approveSurah(row: ListenSurah): Promise<ListenSurah> {
   const older = await prisma.listenSurah.findMany({
-    where: { reciterId: row.reciterId, surah: row.surah, status: 'approved', NOT: { id: row.id } },
+    where: {
+      reciterId: row.reciterId,
+      surah: row.surah,
+      NOT: { id: row.id },
+      OR: [{ status: 'approved' }, ...(row.joinedFrom.length ? [{ id: { in: row.joinedFrom } }] : [])],
+    },
   })
   for (const old of older) {
     await prisma.listenSurah.update({ where: { id: old.id }, data: { status: 'replaced' } })

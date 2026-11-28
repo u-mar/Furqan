@@ -1,7 +1,8 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Check, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Check, ChevronDown, Globe, Search, SlidersHorizontal, UserRound, X } from 'lucide-react'
 import HeartButton from '@/components/listen/HeartButton'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import Radio from '@/components/settings/Radio'
@@ -9,7 +10,7 @@ import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
-import { countryFlag, countryName } from '@/lib/listen-qaris'
+import { allCountryCodes, countryFlag, countryName } from '@/lib/listen-qaris'
 import { allReciters, availableQiraat, getQiraat, type QiraatId, type Reciter } from '@/lib/reciters'
 import { useLocalReciters } from '@/lib/verified-reciters'
 import { useLanguage, useT } from '@/lib/i18n'
@@ -39,6 +40,7 @@ function ReciterRow({
   detail: string
   onSelect: () => void
 }) {
+  const t = useT()
   return (
     <div
       className={cn(
@@ -64,6 +66,17 @@ function ReciterRow({
         </span>
         {active ? <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} /> : null}
       </button>
+      {reciter.local && reciter.username ? (
+        // A verified qari's Qari profile, where they can be followed.
+        <Link
+          href={`/qari/${encodeURIComponent(reciter.username)}`}
+          onClick={() => tapFeedback()}
+          className="ed-focus fx-press flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--home-muted)]"
+          aria-label={t('Open the profile of {name}', { name: reciter.name })}
+        >
+          <UserRound className="h-[19px] w-[19px]" strokeWidth={2} />
+        </Link>
+      ) : null}
       <HeartButton reciter={reciter} size={40} iconSize={19} />
     </div>
   )
@@ -108,12 +121,39 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
   const mode = kind
   const [narrationOpen, setNarrationOpen] = useState(false)
+  const [countryOpen, setCountryOpen] = useState(false)
+  const [countryQuery, setCountryQuery] = useState('')
+  const countryMenu = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!countryOpen) return
+    const away = (e: PointerEvent) => {
+      if (!countryMenu.current?.contains(e.target as Node)) {
+        setCountryOpen(false)
+        setCountryQuery('')
+      }
+    }
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setCountryOpen(false)
+        setCountryQuery('')
+      }
+    }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', escape, true)
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', escape, true)
+    }
+  }, [countryOpen])
   const { favoriteIds, atLimit, maxFavorites } = useReciterFavorites()
   const locals = useLocalReciters()
   const language = useLanguage()
   /** Local mode's country: the viewer's own when someone there is verified, else every country. */
   const [country, setCountry] = useState<string>('all')
   const reciters = allReciters()
+  /** The reciters this list is of: the verified local qaris, or the well-known ones. */
+  const listReciters = useMemo(() => reciters.filter((r) => Boolean(r.local) === (kind === 'local')), [reciters, kind])
   const countries = useMemo(() => {
     const present = [...new Set(locals.reciters.map((r) => r.country).filter((c): c is string => Boolean(c)))]
     return present.sort((a, b) => (a === locals.country ? -1 : b === locals.country ? 1 : a.localeCompare(b)))
@@ -124,6 +164,8 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
     setQuery('')
     setQiraat('all')
     setNarrationOpen(false)
+    setCountryOpen(false)
+    setCountryQuery('')
   }, [open])
 
   // The local list opens on the viewer's own country when someone there is verified.
@@ -189,6 +231,8 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
   const empty =
     mode === 'local' && !locals.reciters.length
         ? t('Verified local reciters will appear here.')
+        : mode === 'local' && country !== 'all' && !query.trim()
+          ? t('No verified reciters from {country} yet.', { country: countryName(country, language) })
         : t('No reciter matches that.')
   /** "Mogadishu, Somalia" for a verified qari. */
   const localDetail = (r: Reciter) => {
@@ -198,7 +242,7 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
 
   return (
     <div className="reciter-picker qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label={t('Choose a reciter')}>
-      <div className="shrink-0">
+      <div className="relative z-20 shrink-0">
         <div className="mx-auto w-full max-w-lg px-4 pb-1 pt-[max(1rem,env(safe-area-inset-top))]">
           <header className="flex items-center gap-3">
             <button type="button" onClick={onClose} className="home-round ed-focus" aria-label={t('Close')}>
@@ -253,28 +297,96 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
             ) : null}
           </label>
 
-          {mode === 'local' && countries.length > 0 ? (
-            <div className="qari-no-scrollbar -mx-4 mt-2.5 flex gap-1.5 overflow-x-auto px-4" role="group" aria-label={t('Country')}>
-              {['all', ...countries].map((code) => {
-                const on = country === code
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => {
-                      if (!on) tapFeedback()
-                      setCountry(code)
-                    }}
-                    className={cn(
-                      'ed-focus fx-press h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold transition-colors',
-                      on ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]' : 'border border-[var(--home-rule)] text-[var(--home-muted)]'
-                    )}
-                  >
-                    {code === 'all' ? t('All countries') : `${countryFlag(code)} ${countryName(code, language)}`}
-                  </button>
-                )
-              })}
+          {mode === 'local' ? (
+            <div ref={countryMenu} className="relative mt-2.5 w-fit">
+              <button
+                type="button"
+                onClick={() => {
+                  tapFeedback()
+                  setCountryOpen((v) => !v)
+                }}
+                className="home-card ed-focus fx-press flex h-10 items-center gap-2 rounded-full px-3.5 text-[0.8125rem] font-semibold text-[var(--home-heading)]"
+                aria-label={`${t('Country')}: ${country === 'all' ? t('All countries') : countryName(country, language)}`}
+                aria-expanded={countryOpen}
+              >
+                {country === 'all' ? (
+                  <Globe className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+                ) : (
+                  <span className="text-[0.9375rem] leading-none" aria-hidden>
+                    {countryFlag(country)}
+                  </span>
+                )}
+                {country === 'all' ? t('All countries') : countryName(country, language)}
+                <ChevronDown className="h-4 w-4 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+              </button>
+              {countryOpen ? (
+                <div className="qari-enter absolute left-0 top-full z-30 mt-1.5 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-[var(--home-rule)] bg-[var(--home-card-bg)] p-2 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]">
+                <label className="home-card mb-2 flex h-10 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]">
+                  <Search className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
+                  <input
+                    value={countryQuery}
+                    onChange={(e) => setCountryQuery(e.target.value)}
+                    inputMode="search"
+                    enterKeyHint="search"
+                    placeholder={t('Search country')}
+                    aria-label={t('Search country')}
+                    className="h-full min-w-0 flex-1 bg-transparent text-[0.9375rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+                  />
+                </label>
+                <div className="max-h-[min(20rem,55dvh)] overflow-y-auto overscroll-contain rounded-xl" role="radiogroup" aria-label={t('Country')}>
+                  {(() => {
+                    const q = countryQuery.trim().toLowerCase()
+                    const counts = new Map<string, number>()
+                    for (const r of locals.reciters) if (r.country) counts.set(r.country, (counts.get(r.country) ?? 0) + 1)
+                    const others = allCountryCodes()
+                      .filter((code) => !counts.has(code))
+                      .sort((a, b) => countryName(a, language).localeCompare(countryName(b, language), language))
+                    const options = ['all', ...countries, ...others].filter(
+                      (code) =>
+                        !q ||
+                        (code === 'all'
+                          ? t('All countries').toLowerCase().includes(q)
+                          : countryName(code, language).toLowerCase().includes(q) || countryName(code).toLowerCase().includes(q) || code.toLowerCase() === q)
+                    )
+                    if (!options.length) return <p className="px-4 py-6 text-center text-sm text-[var(--home-muted)]">{t('No country matches that.')}</p>
+                    return options.map((code, i) => {
+                      const on = country === code
+                      const count = code === 'all' ? locals.reciters.length : counts.get(code) ?? 0
+                      return (
+                        <div key={code}>
+                          {i ? <div className="set-row__divider" style={{ marginLeft: 14 }} aria-hidden /> : null}
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={on}
+                            onClick={() => {
+                              tapFeedback()
+                              setCountry(code)
+                              setCountryOpen(false)
+                              setCountryQuery('')
+                            }}
+                            className="set-row"
+                          >
+                            <span className="set-row__label flex items-center gap-2">
+                              {code === 'all' ? (
+                                <Globe className="h-4 w-4 shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
+                              ) : (
+                                <span className="shrink-0 text-[1rem] leading-none" aria-hidden>
+                                  {countryFlag(code)}
+                                </span>
+                              )}
+                              {code === 'all' ? t('All countries') : countryName(code, language)}
+                            </span>
+                            {count ? <span className="set-row__value tabular-nums">{count}</span> : null}
+                            <Radio on={on} />
+                          </button>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -315,9 +427,10 @@ export default function ReciterPickerSheet({ open, kind = 'international', selec
 
       <SettingsSheet open={narrationOpen} title={t('Narration')} onClose={() => setNarrationOpen(false)}>
         <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Narration')}>
-          {[{ id: 'all' as const, label: t('All narrations') }, ...availableQiraat()].map((option, i) => {
+          {[{ id: 'all' as const, label: t('All narrations') }, ...availableQiraat().filter((q) => listReciters.some((r) => r.qiraat === q.id))].map((option, i) => {
             const on = qiraat === option.id
-            const count = option.id === 'all' ? reciters.length : reciters.filter((r) => r.qiraat === option.id).length
+            // Counted in this list only: the local qaris, or the well-known reciters.
+            const count = option.id === 'all' ? listReciters.length : listReciters.filter((r) => r.qiraat === option.id).length
             return (
               <div key={option.id}>
                 {i ? <div className="set-row__divider" style={{ marginLeft: 14 }} aria-hidden /> : null}

@@ -56,6 +56,8 @@ export interface ListenSurahReport {
     otherSurah: { surah: number; ayahs: number } | null
   }
   output: { bytes: number; channels: number; bitrateKbps: number }
+  /** When parts were joined: the ayat each part gave, in the order they were joined. */
+  joinedParts?: Array<{ first: number; last: number }>
 }
 
 export type ListenSurahStatus = 'uploading' | 'checking' | 'checked' | 'approved' | 'rejected' | 'replaced' | 'failed'
@@ -92,6 +94,32 @@ export function countryFlag(code: string): string {
   const letters = code.toUpperCase()
   if (!/^[A-Z]{2}$/.test(letters)) return ''
   return String.fromCodePoint(...[...letters].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+}
+
+/** Two-letter codes that are not countries (groupings, private use, the unknown region). */
+const NOT_COUNTRIES = new Set(['EU', 'EZ', 'UN', 'ZZ', 'QO', 'XA', 'XB', 'XK', 'AC', 'CP', 'DG', 'EA', 'IC', 'TA', 'CQ'])
+
+let everyCountry: string[] | null = null
+
+/** Every country's two-letter code, as far as this phone's language knows them. */
+export function allCountryCodes(): string[] {
+  if (everyCountry) return everyCountry
+  const codes: string[] = []
+  try {
+    const names = new Intl.DisplayNames(['en'], { type: 'region' })
+    for (let a = 65; a <= 90; a++) {
+      for (let b = 65; b <= 90; b++) {
+        const code = String.fromCharCode(a, b)
+        if (NOT_COUNTRIES.has(code)) continue
+        const name = names.of(code)
+        if (name && name !== code) codes.push(code)
+      }
+    }
+  } catch {
+    codes.push(...LISTEN_COUNTRIES)
+  }
+  everyCountry = codes
+  return codes
 }
 
 export function countryName(code: string, locale = 'en'): string {

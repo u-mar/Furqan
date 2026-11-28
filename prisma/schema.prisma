@@ -395,6 +395,9 @@ model ListenSurah {
   /// R2 key of the evened, trimmed MP3 the check saves.
   audioKey   String
   fileName   String?
+  /// Earlier uploads of this surah this one joins with the new parts (Admin → "Add the rest"). They are
+  /// replaced, and their files removed, once this one is approved.
+  joinedFrom String[]
   /// What the check is doing now, while it runs.
   step       String?
   report     Json?

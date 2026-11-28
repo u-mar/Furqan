@@ -17,6 +17,7 @@ import { getChapters } from '@/lib/quran'
 import { DAILY_PRAYERS, homeSkyState, type DailyPrayer } from '@/lib/home-sky'
 import { PRAYER_NAMES, formatTime, minutesUntil } from '@/lib/prayer'
 import { RECITERS, getReciterById, topReciters, type Reciter } from '@/lib/reciters'
+import { useLocalReciters } from '@/lib/verified-reciters'
 import { tr, useLanguage, useT } from '@/lib/i18n'
 
 function locale(language: string): string {
@@ -303,14 +304,21 @@ export function QuickAccess() {
   )
 }
 
-/** Three of your favourite sheikhs; each opens Listen with them reciting. */
+/**
+ * Your three latest favourite sheikhs, the well-known reciters and the verified local qaris mixed;
+ * each opens Listen with them reciting.
+ */
 export function FavouriteSheikhs() {
   const t = useT()
   const { favoriteIds, ready } = useReciterFavorites()
+  const locals = useLocalReciters()
   const sheikhs = useMemo(() => {
-    const favourites = favoriteIds.map((id) => RECITERS.find((r) => r.id === id)).filter((r): r is Reciter => Boolean(r))
+    // Newest first, as they are kept.
+    const favourites = favoriteIds
+      .map((id) => RECITERS.find((r) => r.id === id) ?? locals.reciters.find((r) => r.id === id))
+      .filter((r): r is Reciter => Boolean(r))
     return (favourites.length ? favourites : topReciters()).slice(0, 3)
-  }, [favoriteIds])
+  }, [favoriteIds, locals])
 
   return (
     <section aria-label={t('Your favourites')}>

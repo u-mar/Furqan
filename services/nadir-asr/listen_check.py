@@ -270,3 +270,89 @@ def run_check(path: str, surah: int, put_url: str, recognizer: Any, marker: Any,
         "output": {"bytes": out_bytes, "channels": min(channels, 2), "bitrateKbps": 128},
         "timings": timings,
     }
+
+
+# --------------------------------------------------------------------------- joining parts
+
+PART_GAP_SEC = 0.8
+# How far before the first new ayah a later part is cut in, so its first word is whole.
+CUT_LEAD_SEC = 0.4
+
+
+def _download(url: str, path: str) -> None:
+    with urllib.request.urlopen(url, timeout=600) as res, open(path, "wb") as out:
+        while chunk := res.read(1024 * 1024):
+            out.write(chunk)
+
+
+def _part(path: str, surah: int, recognizer: Any, marker: Any, progress: Callable[[str], None]) -> dict[str, Any]:
+    """Where a part's recitation starts and ends, and the ayat of `surah` it holds (times from its own start)."""
+    samples, _channels = _decode_file(path)
+    original = len(samples) / SAMPLE_RATE
+    db = _frame_db(samples)
+    loud_frames = np.nonzero(db > SPEECH_DB)[0]
+    if len(loud_frames) == 0:
+        raise ValueError("One of the parts is silent.")
+    start = max(0.0, loud_frames[0] * FRAME_SEC - 0.3)
+    end = min(original, (loud_frames[-1] + 1) * FRAME_SEC + 0.6)
+    entries, _heard, _repeated = _match(samples[int(start * SAMPLE_RATE) : int(end * SAMPLE_RATE)], recognizer, marker, progress)
+    prefix = f"{surah}:"
+    own = [e for e in entries if e["verseKey"].startswith(prefix)]
+    numbers = [int(e["verseKey"].split(":")[1]) for e in own]
+    return {"path": path, "start": start, "end": end, "entries": own, "first": min(numbers) if numbers else None, "last": max(numbers) if numbers else None}
+
+
+def run_join(paths: list[str], surah: int, put_url: str, recognizer: Any, marker: Any, progress: Callable[[str], None]) -> dict[str, Any]:
+    """
+    Parts of one surah recorded separately, made one: put in the order of the ayat they hold, an ayah
+    recited at the end of one part and again at the start of the next kept once (the later part is cut
+    in just before its first new ayah), and joined with a short pause between them. The joined
+    recording then goes through the same check as a single upload.
+    """
+    parts = []
+    for n, path in enumerate(paths):
+        parts.append(_part(path, surah, recognizer, marker, lambda step, n=n: progress(f"Part {n + 1} of {len(paths)}: {step.lower()}")))
+    unknown = [n + 1 for n, p in enumerate(parts) if p["first"] is None]
+    if unknown:
+        raise ValueError(f"Part {', '.join(map(str, unknown))} does not sound like surah {surah}.")
+    parts.sort(key=lambda p: (p["first"], p["last"]))
+
+    segments: list[tuple[str, float, float]] = []
+    kept: list[dict[str, int]] = []
+    reached = 0
+    for p in parts:
+        cut = p["start"]
+        first = p["first"]
+        if p["first"] <= reached:
+            later = [e for e in p["entries"] if int(e["verseKey"].split(":")[1]) > reached]
+            if not later:
+                continue  # Nothing in it that the parts before did not already have.
+            cut = p["start"] + max(0.0, later[0]["atSeconds"] - CUT_LEAD_SEC)
+            first = int(later[0]["verseKey"].split(":")[1])
+        segments.append((p["path"], cut, p["end"]))
+        kept.append({"first": first, "last": p["last"]})
+        reached = max(reached, p["last"])
+
+    progress("Joining the parts")
+    joined = f"{paths[0]}.joined.flac"
+    args: list[str] = ["-y"]
+    for path, start, end in segments:
+        args += ["-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", path]
+    chain = []
+    labels = []
+    for i in range(len(segments)):
+        chain.append(f"[{i}:a]aformat=sample_rates=44100:channel_layouts=stereo[p{i}]")
+        labels.append(f"[p{i}]")
+        if i + 1 < len(segments):
+            chain.append(f"anullsrc=r=44100:cl=stereo,atrim=duration={PART_GAP_SEC}[g{i}]")
+            labels.append(f"[g{i}]")
+    chain.append(f"{''.join(labels)}concat=n={len(labels)}:v=0:a=1[out]")
+    _ffmpeg([*args, "-filter_complex", ";".join(chain), "-map", "[out]", "-c:a", "flac", joined])
+
+    try:
+        report = run_check(joined, surah, put_url, recognizer, marker, progress)
+    finally:
+        if os.path.exists(joined):
+            os.remove(joined)
+    report["joinedParts"] = kept
+    return report

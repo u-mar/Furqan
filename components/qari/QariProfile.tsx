@@ -274,9 +274,10 @@ export default function QariProfile() {
   const tabs: { id: TabId; label: string }[] = isMe
     ? [
         { id: 'recitations', label: t('Recitations') },
-        { id: 'playlist', label: t('Playlist') },
         { id: 'private', label: t('Private') },
         { id: 'favourites', label: t('Favourites') },
+        // Last, after everything else on your own profile.
+        { id: 'playlist', label: t('Playlist') },
       ]
     : [
         { id: 'recitations', label: t('Recitations') },

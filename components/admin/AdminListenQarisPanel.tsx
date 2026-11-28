@@ -63,8 +63,8 @@ interface QueuedFile {
 
 /** Sends one file to the speech service with the permission the server gave; resolves when it has it. */
 function sendFile(
-  upload: { url: string; job: string; surah: number; putUrl: string; token: string },
-  file: File,
+  upload: { url: string; job: string; surah: number; putUrl: string; token: string; joinUrls?: string[] },
+  files: File[],
   onProgress: (share: number) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -73,7 +73,9 @@ function sendFile(
     form.append('surah', String(upload.surah))
     form.append('putUrl', upload.putUrl)
     form.append('token', upload.token)
-    form.append('audio', file, file.name)
+    form.append('joinUrls', (upload.joinUrls ?? []).join('\n'))
+    // Several parts of one surah go together; the check joins them in the order of their ayat.
+    for (const file of files) form.append('audio', file, file.name)
     const xhr = new XMLHttpRequest()
     xhr.open('POST', upload.url)
     xhr.upload.onprogress = (e) => {
@@ -463,30 +465,58 @@ function QariDetail({
     setQueue((q) => [...q, ...added].sort((a, b) => (a.surah ?? 999) - (b.surah ?? 999)))
   }
 
+  /**
+   * Starts one upload of `surah` from `files` (several are parts, joined into one), adding `join`, the
+   * ids of earlier uploads of it whose saved files are joined with them.
+   */
+  const upload = async (surah: number, files: File[], join: string[], onProgress: (share: number) => void) => {
+    let started: { surah: AdminListenSurah; upload: Parameters<typeof sendFile>[0] } | null = null
+    try {
+      started = await api(
+        `/api/admin/listen-qaris/${reciter.id}/surahs`,
+        json({ surah, fileName: files.map((f) => f.name).join(' + '), join })
+      )
+      onSurah(started!.surah)
+      await sendFile(started!.upload, files, onProgress)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The upload failed.'
+      if (started) {
+        void api<AdminListenSurah>(`/api/admin/listen-qaris/surahs/${started.surah.id}`, json({ action: 'failed', error: message }))
+          .then((next) => onSurah(next))
+          .catch(() => {})
+      }
+      throw new Error(message)
+    }
+  }
+
   const sendAll = async () => {
     const ready = queue.filter((q) => q.surah && q.progress === null)
     if (!ready.length) return
     setSending(true)
-    for (const item of ready) {
-      const update = (patch: Partial<QueuedFile>) => setQueue((q) => q.map((x) => (x.key === item.key ? { ...x, ...patch } : x)))
+    // Files given the same surah are its parts: sent together, and joined into one.
+    const groups = new Map<number, QueuedFile[]>()
+    for (const item of ready) groups.set(item.surah!, [...(groups.get(item.surah!) ?? []), item])
+    for (const [surah, items] of groups) {
+      const keys = new Set(items.map((i) => i.key))
+      const update = (patch: Partial<QueuedFile>) => setQueue((q) => q.map((x) => (keys.has(x.key) ? { ...x, ...patch } : x)))
       update({ progress: 0, error: undefined })
-      let started: { surah: AdminListenSurah; upload: Parameters<typeof sendFile>[0] } | null = null
       try {
-        started = await api(`/api/admin/listen-qaris/${reciter.id}/surahs`, json({ surah: item.surah, fileName: item.file.name }))
-        onSurah(started!.surah)
-        await sendFile(started!.upload, item.file, (share) => update({ progress: share }))
-        setQueue((q) => q.filter((x) => x.key !== item.key))
+        await upload(surah, items.map((i) => i.file), [], (share) => update({ progress: share }))
+        setQueue((q) => q.filter((x) => !keys.has(x.key)))
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'The upload failed.'
-        update({ progress: null, error: message })
-        if (started) {
-          void api<AdminListenSurah>(`/api/admin/listen-qaris/surahs/${started.surah.id}`, json({ action: 'failed', error: message }))
-            .then((next) => onSurah(next))
-            .catch(() => {})
-        }
+        update({ progress: null, error: err instanceof Error ? err.message : 'The upload failed.' })
       }
     }
     setSending(false)
+  }
+
+  /** "Add the rest" on a surah missing ayat: the new parts are joined with the saved upload. */
+  const addRest = async (base: AdminListenSurah, files: File[]) => {
+    try {
+      await upload(base.surah, files, [base.id], () => {})
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'The upload failed.')
+    }
   }
 
   return (
@@ -641,6 +671,9 @@ function QariDetail({
                 {sending ? 'Uploading…' : `Upload ${queue.filter((q) => q.surah && q.progress === null).length} file(s)`}
               </button>
               {queue.some((q) => !q.surah) ? <p className="text-xs text-[var(--home-muted)]">Choose the surah for each file without a number.</p> : null}
+              {new Set(queue.filter((q) => q.surah).map((q) => q.surah)).size < queue.filter((q) => q.surah).length ? (
+                <p className="text-xs text-[var(--home-muted)]">Files given the same surah are its parts: they are joined into one.</p>
+              ) : null}
             </div>
           </>
         ) : null}
@@ -653,7 +686,14 @@ function QariDetail({
         ) : (
           <ul className="space-y-3">
             {reciter.surahs.map((s) => (
-              <SurahRow key={s.id} surah={s} name={chapterName(s.surah)} onChange={onSurah} onError={onError} />
+              <SurahRow
+                key={s.id}
+                surah={s}
+                name={chapterName(s.surah)}
+                onChange={onSurah}
+                onError={onError}
+                onAddRest={(files) => void addRest(s, files)}
+              />
             ))}
           </ul>
         )}
@@ -678,12 +718,16 @@ function SurahRow({
   name,
   onChange,
   onError,
+  onAddRest,
 }: {
   surah: AdminListenSurah
   name: string
   onChange: (next: AdminListenSurah | null, removeId?: string) => void
   onError: (message: string) => void
+  /** The rest of a surah missing ayat, to join with this upload. */
+  onAddRest: (files: File[]) => void
 }) {
+  const restInput = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(surah.status === 'checked')
   const [busy, setBusy] = useState(false)
   const audio = useRef<HTMLAudioElement>(null)
@@ -723,6 +767,7 @@ function SurahRow({
   }
 
   const hasFile = surah.status === 'checked' || surah.status === 'approved' || surah.status === 'rejected'
+  const missing = surah.report?.ayahs.missing.length ?? 0
 
   return (
     <li className="rounded-xl border border-[var(--home-card-border)] p-3">
@@ -765,6 +810,29 @@ function SurahRow({
 
       {hasFile && open ? <audio ref={audio} src={surah.audioUrl} controls preload="none" className="mt-3 w-full" /> : null}
 
+      {hasFile && missing ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2">
+          <p className="min-w-0 flex-1 text-xs text-amber-800 dark:text-amber-200">
+            {missing} ayah{missing === 1 ? '' : 's'} missing. Have the rest in another recording? Add it and the two are joined into one surah.
+          </p>
+          <button type="button" className={cn(secondary, 'flex items-center gap-1.5')} onClick={() => restInput.current?.click()}>
+            <Plus className="h-3.5 w-3.5" /> Add the rest
+          </button>
+          <input
+            ref={restInput}
+            type="file"
+            accept="audio/*,.mp3,.m4a,.wav,.ogg,.opus,.aac,.flac"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = [...(e.target.files ?? [])]
+              e.target.value = ''
+              if (files.length) onAddRest(files)
+            }}
+          />
+        </div>
+      ) : null}
+
       {!BUSY.has(surah.status) ? (
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" className={cn(secondary, 'text-red-600 dark:text-red-400')} disabled={busy} onClick={() => void remove()}>
@@ -800,6 +868,12 @@ function ReportView({ report, onListen }: { report: ListenSurahReport; onListen:
   )
   return (
     <div className="mt-3 space-y-3 text-sm">
+      {report.joinedParts?.length ? (
+        <p className="rounded-lg bg-[var(--app-surface)] px-3 py-2 text-xs text-[var(--home-heading)]">
+          Joined from {report.joinedParts.length} parts:{' '}
+          {report.joinedParts.map((part) => (part.first === part.last ? `ayah ${part.first}` : `ayahs ${part.first}–${part.last}`)).join(', then ')}
+        </p>
+      ) : null}
       <ReportGroup title="Ayahs">
         <Line ok={!a.otherSurah} label="Right surah" detail={a.otherSurah ? `Sounds like surah ${a.otherSurah.surah} (${a.otherSurah.ayahs} ayahs)` : 'Matches'} />
         <Line ok={a.missing.length === 0} label="All ayahs present" detail={a.missing.length ? `Missing: ${a.missing.slice(0, 20).join(', ')}${a.missing.length > 20 ? '…' : ''}` : `${a.found} of ${a.expected}`} />

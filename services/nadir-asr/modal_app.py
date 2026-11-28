@@ -63,36 +63,54 @@ MAX_SURAH_BYTES = 400 * 1024 * 1024
     volumes={UPLOADS: uploads},
     secrets=[modal.Secret.from_name("nadir-asr-key")],
 )
-def check_surah(job: str, surah: int, put_url: str) -> None:
+def check_surah(job: str, surah: int, put_url: str, files: int = 1, join_urls: list[str] | None = None) -> None:
+    """One surah: a single file is checked; several parts (uploaded now, or saved before) are joined first."""
     sys.path.insert(0, CODE_DIR)
     from app import marker, recognizer
-    from listen_check import run_check
+    from listen_check import _download, run_check, run_join
 
     def progress(step: str) -> None:
         jobs[job] = {"status": "checking", "step": step, "updatedAt": time.time()}
 
     uploads.reload()
-    path = f"{UPLOADS}/{job}"
+    uploaded = [f"{UPLOADS}/{job}" if n == 0 else f"{UPLOADS}/{job}-{n}" for n in range(files)]
+    earlier: list[str] = []
     try:
-        report = run_check(path, surah, put_url, recognizer(), marker(), progress)
+        for n, url in enumerate(join_urls or []):
+            progress(f"Fetching saved part {n + 1}")
+            path = f"/tmp/{job}-saved-{n}.mp3"
+            _download(url, path)
+            earlier.append(path)
+        paths = earlier + uploaded
+        if len(paths) == 1:
+            report = run_check(paths[0], surah, put_url, recognizer(), marker(), progress)
+        else:
+            report = run_join(paths, surah, put_url, recognizer(), marker(), progress)
         jobs[job] = {"status": "done", "report": report, "updatedAt": time.time()}
     except Exception as err:  # noqa: BLE001 — the admin sees what went wrong
         jobs[job] = {"status": "failed", "error": str(err)[:500], "updatedAt": time.time()}
     finally:
+        for path in earlier + uploaded:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
         try:
-            os.remove(path)
             uploads.commit()
-        except OSError:
+        except Exception:  # noqa: BLE001
             pass
 
 
-def _listen_token_ok(token: str, job: str, surah: int, put_url: str) -> bool:
-    """`<expiry>.<signature>`, signed by the app's server (lib/listen-qaris-server.ts) for this one upload."""
+def _listen_token_ok(token: str, job: str, surah: int, put_url: str, join_urls: str) -> bool:
+    """
+    `<expiry>.<signature>`, signed by the app's server (lib/listen-qaris-server.ts) for this one
+    upload: where its result is saved and which saved parts it joins, so neither can be changed.
+    """
     key = os.environ.get("ASR_API_KEY", "")
     expires, _, signature = (token or "").partition(".")
     if not key or not expires.isdigit() or int(expires) < time.time():
         return False
-    target = hashlib.sha256(put_url.encode()).hexdigest()
+    target = hashlib.sha256(f"{put_url}\n{join_urls}".encode()).hexdigest()
     expected = hmac.new(key.encode(), f"listen:{job}:{surah}:{expires}:{target}".encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(signature.encode(), expected.encode())
 
@@ -102,31 +120,35 @@ def _add_listen_routes(service) -> None:
 
     @service.post("/listen/upload")
     async def listen_upload(
-        audio: UploadFile = File(...),
+        audio: list[UploadFile] = File(...),
         job: str = Form(...),
         surah: int = Form(...),
         putUrl: str = Form(...),
         token: str = Form(...),
+        joinUrls: str = Form(""),
     ) -> dict:
         try:
             uuid.UUID(job)
         except ValueError as err:
             raise HTTPException(status_code=400, detail="Bad job id.") from err
-        if not 1 <= surah <= 114 or not _listen_token_ok(token, job, surah, putUrl):
+        if not 1 <= surah <= 114 or not _listen_token_ok(token, job, surah, putUrl, joinUrls):
             raise HTTPException(status_code=401, detail="Missing or expired permission.")
-        path = f"{UPLOADS}/{job}"
-        size = 0
-        with open(path, "wb") as out:
-            while chunk := await audio.read(1024 * 1024):
-                size += len(chunk)
-                if size > MAX_SURAH_BYTES:
-                    out.close()
-                    os.remove(path)
-                    raise HTTPException(status_code=413, detail="That file is too large (400 MB at most).")
-                out.write(chunk)
+        if not 1 <= len(audio) <= 20:
+            raise HTTPException(status_code=400, detail="Send between 1 and 20 files.")
+        for n, part in enumerate(audio):
+            path = f"{UPLOADS}/{job}" if n == 0 else f"{UPLOADS}/{job}-{n}"
+            size = 0
+            with open(path, "wb") as out:
+                while chunk := await part.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_SURAH_BYTES:
+                        out.close()
+                        os.remove(path)
+                        raise HTTPException(status_code=413, detail="A file is too large (400 MB at most).")
+                    out.write(chunk)
         uploads.commit()
         jobs[job] = {"status": "queued", "step": "Waiting to start", "updatedAt": time.time()}
-        check_surah.spawn(job, surah, putUrl)
+        check_surah.spawn(job, surah, putUrl, len(audio), [u for u in joinUrls.split("\n") if u])
         return {"job": job}
 
     @service.get("/listen/status/{job}")

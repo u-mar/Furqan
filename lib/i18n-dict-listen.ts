@@ -22,6 +22,13 @@ export const LISTEN: Dict = {
   International: { so: 'Caalami', ar: 'عالمي' },
   Country: { so: 'Dal', ar: 'البلد' },
   'All countries': { so: 'Dhammaan dalalka', ar: 'كل البلدان' },
+  'Search country': { so: 'Raadi dal', ar: 'ابحث عن بلد' },
+  'Open the profile of {name}': { so: 'Fur bogga {name}', ar: 'افتح ملف {name}' },
+  'No country matches that.': { so: 'Dal sidaas la mid ah lama helin.', ar: 'لا يوجد بلد مطابق.' },
+  'No verified reciters from {country} yet.': {
+    so: 'Weli ma jiraan qaariyeyaal la xaqiijiyay oo ka yimid {country}.',
+    ar: 'لا يوجد بعد قرّاء موثّقون من {country}.',
+  },
   'Verified local reciters will appear here.': {
     so: 'Qaariyeyaasha deegaanka ee la xaqiijiyay halkan ayay ka muuqan doonaan.',
     ar: 'سيظهر هنا القرّاء المحليون الموثّقون.',
