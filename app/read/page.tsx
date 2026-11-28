@@ -11,15 +11,13 @@ import {
   type MouseEvent,
   type TouchEvent,
 } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   RotateCcw,
   RotateCw,
   ArrowLeftRight,
   ArrowUpDown,
-  ChevronDown,
-  ChevronLeft,
+  Menu,
   Moon,
   ScrollText,
   Search,
@@ -1462,36 +1460,27 @@ function ReadPageContent() {
         </div>
       )}
 
-      {/* Expanded chrome — tap screen to toggle. Back on the left, the surah in the middle (tap it
-          for the contents, as in other mushaf apps), the reading controls on the right. */}
+      {/* Expanded chrome — tap screen to toggle. The contents (☰: surah, quarters, juz and topic) on
+          the left, the reading controls on the right. */}
       <header
         ref={topBarRef}
         className={cn(
-          'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-1 border-b px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
+          'mushaf-read-chrome-bar absolute inset-x-0 top-0 z-30 flex items-center gap-1 border-b px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
           chromeAnimates ? 'transition-transform duration-300' : 'transition-none',
           uiVisible ? 'translate-y-0' : '-translate-y-full'
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <Link href="/" className="mushaf-read-chrome-btn justify-self-start rounded-lg p-1.5" aria-label={t('Back')}>
-          <ChevronLeft className="h-6 w-6" />
-        </Link>
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="mushaf-read-chrome-btn flex min-w-0 max-w-[calc(100vw-14.5rem)] flex-col items-center rounded-xl px-1.5 py-1 sm:max-w-[18rem]"
+          className="mushaf-read-chrome-btn shrink-0 rounded-lg p-1.5"
           aria-label={t('Open contents')}
           aria-haspopup="dialog"
         >
-          <span className="flex max-w-full items-center gap-1">
-            <span className="mushaf-read-chrome-title truncate text-[15px] font-semibold">{surahTitle}</span>
-            <ChevronDown className="mushaf-read-chrome-subtitle h-4 w-4 shrink-0" strokeWidth={2.2} />
-          </span>
-          <span className="mushaf-read-chrome-subtitle text-xs">
-            {t('Juz')} {juzPart}
-          </span>
+          <Menu className="h-6 w-6" />
         </button>
-        <div className="flex items-center gap-0.5 justify-self-end">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={openSearch}

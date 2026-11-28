@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, List, Search, X } from 'lucide-react'
+import { ArrowLeft, Bookmark, CheckCircle2, List, Menu, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, type ChapterMeta } from '@/lib/chapters-meta'
@@ -185,20 +185,30 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
       <div className={cn('shrink-0', (!onTopicTab || topicTabsOpen) && 'border-b border-[var(--home-rule)]')}>
         <div className="mx-auto w-full max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <header className="flex h-14 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                if (inTopic) {
+            {onTopicTab ? (
+              // On Topic, as in Read, ☰ is always at hand: it shows the four tabs.
+              <button
+                type="button"
+                onClick={() => {
                   tapFeedback()
-                  setTopicPath((p) => p.slice(0, -1))
-                  list.current?.scrollTo({ top: 0 })
-                } else onClose()
-              }}
-              className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]"
-              aria-label={inTopic ? t('Back') : t('Close')}
-            >
-              <ArrowLeft className="h-6 w-6" strokeWidth={2} />
-            </button>
+                  setTopicTabsOpen((v) => !v)
+                }}
+                aria-expanded={topicTabsOpen}
+                className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--mushaf-read-accent)]"
+                aria-label={t('Open contents')}
+              >
+                <Menu className="h-6 w-6" strokeWidth={2} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]"
+                aria-label={t('Close')}
+              >
+                <ArrowLeft className="h-6 w-6" strokeWidth={2} />
+              </button>
+            )}
             {searching && bottomNav === 'chapters' && !inTopic ? (
               <input
                 ref={searchInput}
@@ -212,22 +222,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
               />
             ) : (
               onTopicTab ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    tapFeedback()
-                    setTopicTabsOpen((v) => !v)
-                  }}
-                  aria-expanded={topicTabsOpen}
-                  className="ed-focus flex min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left"
-                >
-                  <h2 className="min-w-0 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">{t('Topic')}</h2>
-                  <ChevronDown
-                    className={cn('h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform', topicTabsOpen && 'rotate-180')}
-                    strokeWidth={2.2}
-                    aria-hidden
-                  />
-                </button>
+                <h2 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">{t('Topic')}</h2>
               ) : (
                 <h2 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">
                   {bottomNav === 'khatmah' ? t('Khatmah') : bottomNav === 'bookmarks' ? t('Bookmarks') : t('Quran')}
@@ -245,6 +240,16 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                 aria-label={searching ? t('Close search') : t('Search')}
               >
                 {searching ? <X className="h-[21px] w-[21px]" strokeWidth={2} /> : <Search className="h-6 w-6" strokeWidth={2} />}
+              </button>
+            ) : null}
+            {onTopicTab ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="ed-focus -mr-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]"
+                aria-label={t('Close')}
+              >
+                <X className="h-[22px] w-[22px]" strokeWidth={2} />
               </button>
             ) : null}
           </header>
@@ -400,7 +405,19 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
             {bottomNav === 'chapters' && tab === 'topic' ? (
               <>
               {inTopic && topicTitle ? (
-                <h3 className="mx-1 mb-3 text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">{topicTitle}</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    tapFeedback()
+                    setTopicPath((p) => p.slice(0, -1))
+                    list.current?.scrollTo({ top: 0 })
+                  }}
+                  className="ed-focus -mx-1 mb-3 flex items-center gap-2 rounded-lg px-1 py-1 text-left"
+                  aria-label={`${t('Back')}: ${topicTitle}`}
+                >
+                  <ArrowLeft className="h-5 w-5 shrink-0 text-[var(--home-heading)]" strokeWidth={2} />
+                  <span className="text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">{topicTitle}</span>
+                </button>
               ) : null}
               <TopicsTab
                 query={query}
