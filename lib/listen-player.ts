@@ -501,6 +501,28 @@ export function stopListening(): void {
 export function changeReciter(reciterId: string): void {
   const { surah, status } = state
   if (!surah || state.reciterId === reciterId) return
+  // The new reciter has not recorded this surah (a verified local qari with only a few): playing,
+  // it moves on to the next surah they have, from its start; paused, nothing stays loaded.
+  if (!hasSurah(getReciterById(reciterId), surah.id)) {
+    const playing = status === 'playing' || status === 'loading'
+    const el = peekListenAudio()
+    if (el) unload(el)
+    if (!playing) {
+      session++
+      switching = false
+      setState({ surah: null, reciterId, status: 'idle', error: null })
+      setProgress(NO_PROGRESS)
+      clearLockScreen()
+      return
+    }
+    setState({ reciterId, status: 'loading', error: null })
+    void neighbour(surah.id, reciterId, 1).then((next) => {
+      if (state.reciterId !== reciterId || state.surah?.id !== surah.id) return
+      if (next) void playSurah(next, reciterId)
+      else setState({ status: 'paused', error: tr('This surah could not be played.') })
+    })
+    return
+  }
   if (status === 'playing' || status === 'loading') {
     void playSurah(surah, reciterId, progress.position)
     return

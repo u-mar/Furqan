@@ -1,29 +1,40 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import {
-  Bookmark,
-  CheckCircle2,
-  List,
-  X,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, Bookmark, CheckCircle2, List, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
-import { getChaptersMeta, chapterStartPage, type ChapterMeta } from '@/lib/chapters-meta'
+import { getChaptersMeta, type ChapterMeta } from '@/lib/chapters-meta'
+import { tapFeedback } from '@/lib/haptics'
 import { buildQuarterMarkers, type QuarterMarker } from '@/lib/quarters'
-import { getVersesByJuz } from '@/lib/quran'
-import { JUZ_START_PAGES, juzForChapter, revelationLabel } from '@/lib/mushaf'
+import { JUZ_START_PAGES, revelationLabel } from '@/lib/mushaf'
 import { loadPageFont } from '@/lib/mushaf-fonts'
 import { KhatmahDrawerLayout } from '@/components/read/KhatmahPanel'
 import QuarterAyahPreview from '@/components/read/QuarterAyahPreview'
+import TopicsTab from '@/components/read/TopicsTab'
 import type { Chapter } from '@/types'
 import { useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
+import { lockPageScroll } from '@/lib/scroll-lock'
 
-type TopTab = 'chapters' | 'quarters'
+/**
+ * Read's contents, as a page of its own: the Quran by surah, by quarter (hizb quarters) and by juz,
+ * each a list of cards with a search at the top; and, from the bar at the bottom, the khatmah and
+ * your bookmarks.
+ */
+
+type TopTab = 'surah' | 'quarters' | 'juz' | 'topic'
 type BottomNav = 'chapters' | 'khatmah' | 'bookmarks'
 
-const QUARTERS_PER_JUZ = 8
+const TABS: Array<[TopTab, string]> = [
+  ['surah', 'Surah'],
+  ['quarters', 'Quarters'],
+  ['juz', 'Juz'],
+  ['topic', 'Topic'],
+]
+
+/** ¼, ½, ¾ and the start of a hizb, as a quarter's place in its hizb. */
+const QUARTER_MARKS = ['●', '¼', '½', '¾']
 
 interface ContentsDrawerProps {
   open: boolean
@@ -34,321 +45,323 @@ interface ContentsDrawerProps {
   onGoToPage: (page: number, verseKey?: string) => void
 }
 
-function ProgressRing({ progress }: { progress: number }) {
-  const pct = Math.min(1, Math.max(0, progress))
-  const deg = pct * 360
-  return (
-    <span
-      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-800"
-      aria-hidden
-    >
-      <span
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: `conic-gradient(#14b8a6 ${deg}deg, #3f3f46 0deg)`,
-        }}
-      />
-      <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-[#0d0d0d] text-[10px] text-stone-400" />
-    </span>
-  )
-}
-
 const bottomItems: { id: BottomNav; label: string; Icon: typeof List }[] = [
   { id: 'chapters', label: 'Chapters', Icon: List },
   { id: 'khatmah', label: 'Khatmah', Icon: CheckCircle2 },
   { id: 'bookmarks', label: 'Bookmarks', Icon: Bookmark },
 ]
 
-export default function ContentsDrawer({
-  open,
-  chapters,
-  currentSurahId,
-  onClose,
-  onSelectSurah,
-  onGoToPage,
-}: ContentsDrawerProps) {
+const card = 'home-card ed-focus fx-press flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-[1.125rem] px-4 py-4 text-left'
+
+export default function ContentsDrawer({ open, chapters, currentSurahId, onClose, onSelectSurah, onGoToPage }: ContentsDrawerProps) {
   const t = useT()
   useCloseOnBack(open, onClose)
-  const [topTab, setTopTab] = useState<TopTab>('chapters')
+  const [tab, setTab] = useState<TopTab>('surah')
   const [bottomNav, setBottomNav] = useState<BottomNav>('chapters')
   const [meta, setMeta] = useState<ChapterMeta[]>([])
   const [quarters, setQuarters] = useState<QuarterMarker[]>([])
   const [bookmarks, setBookmarks] = useState<AyahBookmark[]>([])
+  const [searching, setSearching] = useState(false)
+  const [query, setQuery] = useState('')
+  const searchInput = useRef<HTMLInputElement>(null)
+  const list = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
+    const unlock = lockPageScroll()
     getChaptersMeta()
       .then((m) => {
         setMeta(m)
         setQuarters(buildQuarterMarkers(m))
       })
       .catch(() => {})
+    return unlock
   }, [open])
 
-  // Each surah under the juz it begins in.
-  const chaptersByPart = useMemo(() => {
-    const groups = new Map<number, Chapter[]>()
-    for (const chapter of chapters) {
-      const part = juzForChapter(chapter.id)
-      const list = groups.get(part) || []
-      list.push(chapter)
-      groups.set(part, list)
-    }
-    for (let juz = 1; juz <= 30; juz++) {
-      if (!groups.has(juz)) groups.set(juz, [])
-    }
-    return Array.from(groups.entries()).sort(([a], [b]) => a - b)
-  }, [chapters])
+  useEffect(() => {
+    if (open) return
+    setSearching(false)
+    setQuery('')
+  }, [open])
 
-  const quartersByPart = useMemo(() => {
-    const groups = new Map<number, QuarterMarker[]>()
-    for (const q of quarters) {
-      const list = groups.get(q.juz) || []
-      list.push(q)
-      groups.set(q.juz, list)
-    }
-    return Array.from(groups.entries()).sort(([a], [b]) => a - b)
-  }, [quarters])
+  // A new tab starts at its top, with the search cleared.
+  useEffect(() => {
+    setQuery('')
+    list.current?.scrollTo({ top: 0 })
+  }, [tab])
+
+  // The surah being read is brought into view when the list opens.
+  useEffect(() => {
+    if (!open || tab !== 'surah' || bottomNav !== 'chapters') return
+    const frame = requestAnimationFrame(() => {
+      list.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: 'center' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, tab, bottomNav])
+
+  useEffect(() => {
+    if (searching) searchInput.current?.focus()
+  }, [searching])
 
   useEffect(() => {
     if (!open || bottomNav !== 'bookmarks') return
     const saved = getBookmarks()
     setBookmarks(saved)
-    // Bookmarked ayat can be on a page that has never been read, so its QCF
-    // font may not be loaded yet — fetch each one that needs it.
+    // Bookmarked ayat can be on a page that has never been read, so its QCF font may not be loaded yet.
     for (const bookmark of saved) {
       if (bookmark.qcfGlyphs) void loadPageFont(bookmark.page, bookmark.qcfGlyphs)
     }
   }, [open, bottomNav])
 
+  const q = query.trim().toLowerCase()
+  const metaById = useMemo(() => new Map(meta.map((m) => [m.id, m])), [meta])
+
+  const surahs = useMemo(() => {
+    if (!q) return chapters
+    return chapters.filter((c) => {
+      const m = metaById.get(c.id)
+      return (
+        String(c.id) === q ||
+        c.englishName.toLowerCase().replace(/['-]/g, '').includes(q.replace(/['-]/g, '')) ||
+        (m?.name_arabic ?? '').includes(query.trim())
+      )
+    })
+  }, [chapters, metaById, q, query])
+
+  const quartersByJuz = useMemo(() => {
+    const shown = q
+      ? quarters.filter((m) => String(m.juz) === q || m.surahName.toLowerCase().includes(q) || m.verseKey === q)
+      : quarters
+    const groups = new Map<number, QuarterMarker[]>()
+    for (const m of shown) groups.set(m.juz, [...(groups.get(m.juz) ?? []), m])
+    return [...groups.entries()].sort(([a], [b]) => a - b)
+  }, [quarters, q])
+
+  /** Each juz with where it begins (its first quarter). */
+  const juzList = useMemo(() => {
+    const all = Array.from({ length: 30 }, (_, i) => {
+      const juz = i + 1
+      const first = quarters.find((m) => m.juz === juz && m.indexInJuz === 1)
+      return { juz, first, page: first?.page ?? JUZ_START_PAGES[i] ?? 1 }
+    })
+    if (!q) return all
+    return all.filter((j) => String(j.juz) === q || (j.first?.surahName ?? '').toLowerCase().includes(q))
+  }, [quarters, q])
+
   if (!open) return null
 
-  const showContentsHeader = bottomNav === 'chapters'
+  const go = (page: number, verseKey?: string) => {
+    tapFeedback()
+    onClose()
+    onGoToPage(page, verseKey)
+  }
+
+  const empty = <p className="px-6 py-14 text-center text-sm text-[var(--home-muted)]">{t('Nothing matches that.')}</p>
 
   return (
-    <>
-      <button
-        type="button"
-        className="fixed inset-0 z-40 bg-black/60"
-        aria-label={t('Close contents')}
-        onClick={onClose}
-      />
-      <aside
-        className="fixed inset-y-0 left-0 z-50 flex w-[min(100%,360px)] flex-col bg-[#0d0d0d] text-white shadow-2xl"
-        role="dialog"
-        aria-label={t('Contents')}
-      >
-        {showContentsHeader && (
-          <div className="flex items-center justify-end px-4 pt-4">
-            <div className="mr-auto flex items-center gap-2">
+    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]" role="dialog" aria-modal="true" aria-label={t('Contents')}>
+      <div className="shrink-0 border-b border-[var(--home-rule)]">
+        <div className="mx-auto w-full max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <header className="flex h-14 items-center gap-3">
+            <button type="button" onClick={onClose} className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]" aria-label={t('Close')}>
+              <ArrowLeft className="h-6 w-6" strokeWidth={2} />
+            </button>
+            {searching && bottomNav === 'chapters' ? (
+              <input
+                ref={searchInput}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder={tab === 'surah' ? t('Search surah') : tab === 'juz' ? t('Juz number or surah') : tab === 'topic' ? t('Search topic') : t('Surah or juz')}
+                aria-label={t('Search')}
+                className="h-10 min-w-0 flex-1 bg-transparent text-[1.1875rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
+              />
+            ) : (
+              <h2 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">
+                {bottomNav === 'khatmah' ? t('Khatmah') : bottomNav === 'bookmarks' ? t('Bookmarks') : t('Quran')}
+              </h2>
+            )}
+            {bottomNav === 'chapters' ? (
               <button
                 type="button"
-                onClick={() => setTopTab('chapters')}
-                className={cn(
-                  'rounded-lg border px-4 py-2 text-xs font-bold tracking-wide',
-                  topTab === 'chapters'
-                    ? 'border-teal-500 text-teal-400'
-                    : 'border-stone-600 text-stone-300'
-                )}
+                onClick={() => {
+                  setSearching((v) => !v)
+                  setQuery('')
+                }}
+                className="ed-focus -mr-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]"
+                aria-label={searching ? t('Close search') : t('Search')}
               >
-                {t('CHAPTERS')}</button>
-              <button
-                type="button"
-                onClick={() => setTopTab('quarters')}
-                className={cn(
-                  'rounded-lg border px-4 py-2 text-xs font-bold tracking-wide',
-                  topTab === 'quarters'
-                    ? 'border-teal-500 text-teal-400'
-                    : 'border-stone-600 text-stone-300'
-                )}
-              >
-                {t('QUARTERS')}</button>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-2 text-stone-400 hover:bg-white/10"
-              aria-label={t('Close')}
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
-        {(bottomNav === 'khatmah' || bottomNav === 'bookmarks') && (
-          <div className="flex justify-end px-4 pt-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-2 text-stone-400 hover:bg-white/10"
-              aria-label={t('Close')}
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
-        {showContentsHeader && <h2 className="px-4 pt-2 text-2xl font-semibold">{t('Contents')}</h2>}
-        {bottomNav === 'bookmarks' && (
-          <div className="px-4 pt-1">
-            <h2 className="text-2xl font-semibold">{t('Bookmarks')}</h2>
-            <p className="mt-1 text-xs text-stone-500">{t('Double-tap an ayah to save it here.')}</p>
-          </div>
-        )}
+                {searching ? <X className="h-[21px] w-[21px]" strokeWidth={2} /> : <Search className="h-6 w-6" strokeWidth={2} />}
+              </button>
+            ) : null}
+          </header>
+          {bottomNav === 'chapters' ? (
+            <nav className="mt-2 flex gap-8" aria-label={t('Contents')}>
+              {TABS.map(([id, label]) => {
+                const on = tab === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      if (!on) tapFeedback()
+                      setTab(id)
+                    }}
+                    aria-pressed={on}
+                    className={cn(
+                      'relative pb-3.5 pt-2 text-[1.0625rem] transition-colors',
+                      on ? 'font-semibold text-[var(--home-heading)]' : 'text-[var(--home-muted)]'
+                    )}
+                  >
+                    {t(label)}
+                    <span
+                      className={cn('absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-[var(--mushaf-read-accent)] transition-opacity', on ? 'opacity-100' : 'opacity-0')}
+                      aria-hidden
+                    />
+                  </button>
+                )
+              })}
+            </nav>
+          ) : null}
+        </div>
+      </div>
 
-        <div
-          className={cn(
-            'flex-1 min-h-0',
-            bottomNav === 'khatmah'
-              ? 'flex flex-col overflow-hidden'
-              : 'overflow-y-auto px-2 pb-2 pt-2'
-          )}
-        >
-          {bottomNav === 'khatmah' && (
-            <KhatmahDrawerLayout
-              onGoToPage={(page) => {
-                onGoToPage(page)
-              }}
-              onClose={onClose}
-            />
-          )}
-
-          {bottomNav === 'chapters' && topTab === 'chapters' &&
-            chaptersByPart.map(([part, partChapters]) => (
-              <div key={part} className="mb-4">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const verses = await getVersesByJuz(part)
-                      const page = verses[0]?.page_number || JUZ_START_PAGES[part - 1] || 1
-                      onGoToPage(page)
-                      onClose()
-                    } catch {
-                      onGoToPage(JUZ_START_PAGES[part - 1] || 1)
-                      onClose()
-                    }
-                  }}
-                  className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500 hover:text-teal-400"
-                >
-                  {t('Juz')} {part}
-                </button>
-                {partChapters.length === 0 && (
-                  <p className="px-2 pb-1 text-xs text-stone-500">{t('Continues from previous surah')}</p>
-                )}
-                <ul>
-                  {partChapters.map((chapter) => {
+      <div ref={list} className={cn('min-h-0 flex-1', bottomNav === 'khatmah' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain')}>
+        {bottomNav === 'khatmah' ? (
+          <KhatmahDrawerLayout onGoToPage={(page) => onGoToPage(page)} onClose={onClose} />
+        ) : (
+          <div className="mx-auto w-full max-w-lg px-4 pb-6 pt-4">
+            {bottomNav === 'chapters' && tab === 'surah' ? (
+              surahs.length ? (
+                <ul className="space-y-2.5">
+                  {surahs.map((chapter) => {
                     const active = chapter.id === currentSurahId
-                    const startPage = meta.length
-                      ? chapterStartPage(chapter.id, meta)
-                      : 1
+                    const m = metaById.get(chapter.id)
                     return (
                       <li key={chapter.id}>
                         <button
                           type="button"
+                          aria-current={active || undefined}
                           onClick={() => {
+                            tapFeedback()
                             onSelectSurah(chapter.id)
                             onClose()
                           }}
-                          className="flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left hover:bg-white/5"
+                          className={card}
+                          // The card's own shadow would hide a ring: the outline of the surah being read is its shadow.
+                          style={active ? { boxShadow: 'inset 0 0 0 1.5px var(--mushaf-read-accent)' } : undefined}
                         >
-                          <span
-                            className={cn(
-                              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium',
-                              active ? 'bg-teal-600 text-white' : 'bg-stone-800 text-stone-300'
-                            )}
-                          >
-                            {chapter.id}
+                          <span className="w-9 shrink-0 text-[1.1875rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
+                            {String(chapter.id).padStart(2, '0')}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-base font-medium text-white">
-                              {chapter.englishName}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-stone-500">
-                              {t('Page')} {startPage} · {chapter.versesCount} {t('verses ·')}{' '}
-                              {t(revelationLabel(chapter.id))}
+                            <span className="block truncate text-[1.125rem] font-semibold text-[var(--home-heading)]">{chapter.englishName}</span>
+                            <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                              {t(revelationLabel(chapter.id))} · {chapter.versesCount} {t('ayahs')}
                             </span>
                           </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            ))}
-
-          {bottomNav === 'chapters' && topTab === 'quarters' &&
-            quartersByPart.map(([part, partQuarters]) => (
-              <div key={part} className="mb-4">
-                <p className="px-2 pb-2 text-[11px] font-medium uppercase tracking-wider text-stone-500">
-                  {t('Juz')} {part}
-                </p>
-                <ul>
-                  {partQuarters.map((q, idx) => {
-                    const progress = (idx + 1) / QUARTERS_PER_JUZ
-                    const showRing = idx > 0 && idx < partQuarters.length - 1
-                    return (
-                      <li key={q.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onClose()
-                            onGoToPage(q.page, q.verseKey)
-                          }}
-                          className="flex w-full items-start gap-2 rounded-lg px-2 py-3 text-left hover:bg-white/5"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-teal-400">
-                              {t('Quarter')} {q.indexInJuz} {t('starts at')} {q.verseKey}
-                            </p>
-                            <QuarterAyahPreview
-                              verseKey={q.verseKey}
-                              className="mt-1 flex h-[1.75em] flex-wrap gap-y-[3em] overflow-hidden text-xl leading-snug text-white"
-                            />
-                            <p className="mt-1 text-xs text-stone-500">
-                              {q.surahName} {t('· Ayah')} {q.ayah} {t('· Page')} {q.page}
-                            </p>
-                          </div>
-                          {showRing ? (
-                            <ProgressRing progress={progress} />
-                          ) : (
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-800 text-sm text-stone-400">
-                              {q.indexInJuz}
+                          {m?.name_arabic ? (
+                            <span className="arabic-text shrink-0 text-[1.5rem] leading-none text-[var(--home-heading)]" dir="rtl" lang="ar">
+                              {m.name_arabic}
                             </span>
-                          )}
+                          ) : null}
                         </button>
                       </li>
                     )
                   })}
                 </ul>
-              </div>
-            ))}
-
-          {bottomNav === 'bookmarks' && (
-            <div className="px-2 pt-3">
-              {bookmarks.length === 0 ? (
-                <p className="px-4 py-12 text-center text-sm text-stone-500">
-                  {t('No bookmarks yet. Double-tap an ayah, then tap Bookmark.')}</p>
               ) : (
-                <ul className="space-y-1">
-                  {bookmarks.map((bookmark) => (
-                    <li key={bookmark.verseKey}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onGoToPage(bookmark.page)
-                          onClose()
-                        }}
-                        className="flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left hover:bg-white/5"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-800 text-teal-400">
-                          <Bookmark className="h-4 w-4 fill-current" />
+                empty
+              )
+            ) : null}
+
+            {bottomNav === 'chapters' && tab === 'quarters' ? (
+              quartersByJuz.length ? (
+                quartersByJuz.map(([juz, items]) => (
+                  <section key={juz} className="mb-4">
+                    <h3 className="home-label mx-1 mb-2.5 mt-3">
+                      {t('Juz')} {juz}
+                    </h3>
+                    <ul className="space-y-2.5">
+                      {items.map((m) => (
+                        <li key={m.id}>
+                          <button type="button" onClick={() => go(m.page, m.verseKey)} className={card}>
+                            <span className="w-9 shrink-0 text-center text-[1.25rem] font-semibold text-[var(--mushaf-read-accent)]" aria-hidden>
+                              {QUARTER_MARKS[(m.indexInJuz - 1) % 4]}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <QuarterAyahPreview
+                                verseKey={m.verseKey}
+                                className="flex h-[1.75em] flex-wrap justify-start gap-y-[3em] overflow-hidden text-[1.3125rem] leading-snug text-[var(--home-heading)]"
+                              />
+                              <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                                {t('Hizb')} {(juz - 1) * 2 + Math.ceil(m.indexInJuz / 4)} · {m.surahName} {m.ayah} · {t('Page')} {m.page}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))
+              ) : (
+                empty
+              )
+            ) : null}
+
+            {bottomNav === 'chapters' && tab === 'juz' ? (
+              juzList.length ? (
+                <ul className="space-y-2.5">
+                  {juzList.map((j) => (
+                    <li key={j.juz}>
+                      <button type="button" onClick={() => go(j.page, j.first?.verseKey)} className={card}>
+                        <span className="w-9 shrink-0 text-[1.1875rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
+                          {String(j.juz).padStart(2, '0')}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-xs font-medium text-teal-400">
+                          <span className="block text-[1.125rem] font-semibold text-[var(--home-heading)]">
+                            {t('Juz')} {j.juz}
+                          </span>
+                          <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                            {j.first ? `${j.first.surahName} ${j.first.ayah}` : `${t('Page')} ${j.page}`}
+                          </span>
+                        </span>
+                        {j.first ? (
+                          <QuarterAyahPreview
+                            verseKey={j.first.verseKey}
+                            className="flex h-[1.75em] max-w-[42%] shrink-0 flex-wrap justify-end gap-y-[3em] overflow-hidden text-[1.25rem] leading-snug text-[var(--home-heading)]"
+                          />
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                empty
+              )
+            ) : null}
+
+            {bottomNav === 'chapters' && tab === 'topic' ? (
+              <TopicsTab query={query} chapters={chapters} onGoToPage={(page, verseKey) => go(page, verseKey)} />
+            ) : null}
+
+            {bottomNav === 'bookmarks' ? (
+              bookmarks.length === 0 ? (
+                <p className="px-4 py-12 text-center text-sm text-[var(--home-muted)]">{t('No bookmarks yet. Double-tap an ayah, then tap Bookmark.')}</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {bookmarks.map((bookmark) => (
+                    <li key={bookmark.verseKey}>
+                      <button type="button" onClick={() => go(bookmark.page)} className={cn(card, 'items-start')}>
+                        <Bookmark className="mt-0.5 h-[18px] w-[18px] shrink-0 fill-current text-[var(--mushaf-read-accent)]" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[0.8125rem] font-semibold text-[var(--mushaf-read-accent)]">
                             {bookmark.surahName} {t('· Ayah')} {bookmark.ayah}
                           </span>
                           {bookmark.qcfGlyphs && bookmark.qcfFontFamily ? (
                             <span
-                              className="mt-1 line-clamp-2 block text-xl leading-snug text-white"
+                              className="mt-1 line-clamp-2 block text-xl leading-snug text-[var(--home-heading)]"
                               dir="rtl"
                               lang="ar"
                               style={{
@@ -361,15 +374,11 @@ export default function ContentsDrawer({
                               {bookmark.qcfGlyphs}
                             </span>
                           ) : (
-                            <span
-                              className="arabic-text mt-1 line-clamp-2 block text-base leading-snug text-white"
-                              dir="rtl"
-                              lang="ar"
-                            >
+                            <span className="arabic-text mt-1 line-clamp-2 block text-base leading-snug text-[var(--home-heading)]" dir="rtl" lang="ar">
                               {bookmark.arabic}
                             </span>
                           )}
-                          <span className="mt-1 block text-xs text-stone-500">
+                          <span className="mt-1 block text-[0.8125rem] text-[var(--home-muted)]">
                             {bookmark.verseKey} {t('· Page')} {bookmark.page}
                           </span>
                         </span>
@@ -377,31 +386,33 @@ export default function ContentsDrawer({
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          )}
-        </div>
+              )
+            ) : null}
+          </div>
+        )}
+      </div>
 
-        <nav className="flex shrink-0 items-end justify-around border-t border-white/10 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-          {bottomItems.map(({ id, label, Icon }) => {
-            const active = bottomNav === id
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setBottomNav(id)}
-                className={cn(
-                  'flex flex-col items-center gap-0.5 px-2 py-1 text-[10px]',
-                  active ? 'text-teal-400' : 'text-stone-500'
-                )}
-              >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 1.75} />
-                {t(label)}
-              </button>
-            )
-          })}
-        </nav>
-      </aside>
-    </>
+      <nav className="flex shrink-0 items-end justify-around border-t border-[var(--home-rule)] px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+        {bottomItems.map(({ id, label, Icon }) => {
+          const active = bottomNav === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                if (!active) tapFeedback()
+                setBottomNav(id)
+                setSearching(false)
+                setQuery('')
+              }}
+              className={cn('flex flex-col items-center gap-1 px-3 py-1 text-[0.75rem]', active ? 'text-[var(--mushaf-read-accent)]' : 'text-[var(--home-muted)]')}
+            >
+              <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.8} />
+              {t(label)}
+            </button>
+          )
+        })}
+      </nav>
+    </div>
   )
 }
