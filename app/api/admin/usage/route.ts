@@ -10,6 +10,18 @@ import { resolveUserKind } from '@/lib/presence'
  * when both try to create the visitor's first record. Rather than answer 500,
  * the whole read-and-write is tried again, so it works from the latest record.
  */
+const marked = new Map<string, string>()
+
+/** Records that `userId` used the app today (UTC), unless already recorded. */
+async function markActiveToday(userId: string, userKind: string): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10)
+  if (marked.get(userId) === day) return
+  const existing = await prisma.activeDay.findFirst({ where: { day, userId }, select: { id: true } })
+  if (!existing) await prisma.activeDay.create({ data: { day, userId, userKind } })
+  marked.set(userId, day)
+  if (marked.size > 20000) marked.clear()
+}
+
 async function withWriteRetry<T>(write: () => Promise<T>, attempts = 4): Promise<T> {
   for (let attempt = 1; ; attempt += 1) {
     try {
@@ -104,6 +116,9 @@ export async function POST(req: Request) {
       lastOfflineAt: upserted.lastOfflineAt?.getTime() ?? null,
     }
   })
+
+  // The admin's "active today": one row per person per day, written once.
+  if (isActive) await markActiveToday(userId, userKind).catch(() => {})
 
   return NextResponse.json({ ok: true, ...result })
 }

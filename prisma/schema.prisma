@@ -410,3 +410,17 @@ model ListenSurah {
 
   @@index([reciterId])
 }
+
+/// Who used the app on which day (UTC), one row per person per day: the admin's "active today" and
+/// its trend. Recorded from 2026-11-28 on; there is no history before that.
+model ActiveDay {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// YYYY-MM-DD, UTC.
+  day       String
+  userId    String
+  /// "registered" or "guest".
+  userKind  String
+  createdAt DateTime @default(now())
+
+  @@index([day])
+}
