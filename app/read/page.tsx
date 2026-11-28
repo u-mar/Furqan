@@ -1175,9 +1175,13 @@ function ReadPageContent() {
   }, [navigatePage])
 
   const handleGoToPageFromDrawer = useCallback(
-    (page: number, verseKey?: string) => {
+    (page: number, verseKey?: string, options?: { highlight?: boolean }) => {
       void navigatePage(page)
-      if (verseKey) openAyahMenuRef.current(verseKey, { scrollTo: true })
+      if (verseKey && options?.highlight) {
+        // A bookmark: its ayah is marked on the page (and scrolled to in translation mode), no menu.
+        setAyahMenu(null)
+        setNavSelectedVerseKey(verseKey)
+      } else if (verseKey) openAyahMenuRef.current(verseKey, { scrollTo: true })
       else setNavSelectedVerseKey(null)
     },
     [navigatePage]
@@ -1704,6 +1708,7 @@ function ReadPageContent() {
         onClose={() => setDrawerOpen(false)}
         onSelectSurah={handleSelectSurah}
         onGoToPage={handleGoToPageFromDrawer}
+        onBeforePlay={() => pauseAllRef.current()}
       />
 
       <ShareVerseSheet

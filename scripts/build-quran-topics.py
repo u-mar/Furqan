@@ -124,6 +124,18 @@ RENAME_MORE = {
     819: "Ayyub",
     821: "Yunus",
     1837: "The Unseen",
+    1885: "Foundations of Islam",
+    1891: "Faith in Allah and doing good",
+    1886: "The religion perfected",
+    1887: "Islam, the only religion accepted by Allah",
+    1888: "No compulsion in religion",
+    1889: "One faith, different laws",
+    1890: "The prophets of Islam",
+    1892: "Protecting faith",
+    1893: "Protecting life",
+    1894: "Protecting wealth",
+    1895: "Protecting honour",
+    1896: "Protecting the mind",
 }
 TYPOS = {"Chief Minster": "Chief Minister", "eventhing": "everything", "Ettiquette": "Etiquette", "ettiquette": "etiquette"}
 OUT = Path(__file__).resolve().parent.parent / "lib" / "quran-topics.json"

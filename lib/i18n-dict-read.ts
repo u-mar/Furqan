@@ -46,6 +46,7 @@ export const READ: Dict = {
   Quarters: { so: 'Rubuc', ar: 'الأرباع' },
   Topic: { so: 'Mawduuc', ar: 'المواضيع' },
   'Search topic': { so: 'Raadi mawduuc', ar: 'ابحث عن موضوع' },
+  'Play ayah {key}': { so: 'Dhageyso aayadda {key}', ar: 'تشغيل الآية {key}' },
   'Topics from The Clear Quran, through QUL by Tarteel.': {
     so: 'Mawduucyada waxaa laga soo qaatay The Clear Quran, iyadoo loo marayo QUL ee Tarteel.',
     ar: 'المواضيع من The Clear Quran عبر مكتبة QUL من ترتيل.',
@@ -53,7 +54,7 @@ export const READ: Dict = {
   'Aqidah (Belief)': { so: 'Caqiido (Iimaan)', ar: 'العقيدة' },
   'Qasas (Stories)': { so: 'Qisas (Sheekooyin)', ar: 'القصص' },
   'Al-Ghayb (The Unseen)': { so: 'Ghaybka', ar: 'الغيب' },
-  'Basic tenets': { so: 'Aasaaska diinta', ar: 'أصول الدين' },
+  'Foundations of Islam': { so: 'Aasaaska Islaamka', ar: 'أسس الإسلام' },
   'Relationship with Allah': { so: 'Xiriirka Allah', ar: 'العلاقة مع الله' },
   'Relationship with people': { so: 'Xiriirka dadka', ar: 'العلاقة مع الناس' },
   Prophets: { so: 'Nebiyada', ar: 'الأنبياء' },

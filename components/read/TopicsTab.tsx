@@ -1,27 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ArrowLeft,
-  BookOpen,
-  ChevronRight,
-  Eye,
-  HeartHandshake,
-  Lightbulb,
-  ScrollText,
-  Signpost,
-  Sparkles,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
-import { Copy, Share2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { ChevronRight, Copy, Loader2, Pause, Play, Share2 } from 'lucide-react'
 import { useAppSettings } from '@/hooks/useAppSettings'
 import { getOfflineTranslations } from '@/lib/offline-translations'
 import { fetchPageTranslations } from '@/lib/qari-ayah'
+import { getChapterAudio } from '@/lib/chapter-audio'
+import { getPlayableAyahAudioUrl } from '@/lib/offline-audio'
 import { getVerseByKey } from '@/lib/quran'
+import { getReciterById, hasOwnAyahFiles } from '@/lib/reciters'
 import { getTranslationOption, isRtlTranslationEdition } from '@/lib/translations'
 import { tapFeedback } from '@/lib/haptics'
 import { useLanguage, useT } from '@/lib/i18n'
+import { cn } from '@/lib/cn'
 import type { Chapter, Verse } from '@/types'
 
 /**
@@ -49,19 +40,7 @@ function loadTopics(): Promise<TopicData> {
   return data
 }
 
-/** The topics just under Doctrine, Stories and The Unseen get a picture. */
-const ICONS: Record<number, LucideIcon> = {
-  1885: Sparkles, // Basic tenets
-  1897: HeartHandshake, // Relationship with Allah
-  2208: Users, // Relationship with people
-  2284: ScrollText, // Prophets
-  2361: BookOpen, // Other stories
-  2380: Lightbulb, // Parables
-  1837: Eye, // Unseen
-  2481: Signpost, // Road to the hereafter
-}
-
-const card = 'home-card ed-focus fx-press flex min-h-[4.25rem] w-full items-center gap-3.5 rounded-[1.125rem] px-4 py-3.5 text-left'
+const card = 'home-card ed-focus fx-press flex min-h-[3.5rem] w-full items-center gap-3 rounded-2xl px-4 py-3 text-left'
 
 function pageOf(verse: Verse): number {
   const first = verse.words?.[0]
@@ -72,28 +51,179 @@ function verseText(verse: Verse): string {
   return verse.text_uthmani || (verse.words ?? []).filter((w) => w.char_type_name === 'word').map((w) => w.text_uthmani).join(' ')
 }
 
+/* ------------------------------------------------------------------ playing a topic's ayat */
+
+/**
+ * One topic's ayat, played one after another in Read's reciter: each from its own file, or from its
+ * place in the reciter's whole-surah recording; a reciter with neither for an ayah is stood in for
+ * by Alafasy. Kept outside the screen, so the row playing can be shown wherever it is.
+ */
+const player = {
+  el: null as HTMLAudioElement | null,
+  key: null as string | null,
+  loading: false,
+  stopAt: 0,
+  queue: [] as string[],
+  reciterId: '',
+  session: 0,
+  listeners: new Set<() => void>(),
+}
+
+function notify() {
+  for (const listener of player.listeners) listener()
+}
+
+function audio(): HTMLAudioElement {
+  if (player.el) return player.el
+  const el = new Audio()
+  el.preload = 'auto'
+  el.addEventListener('timeupdate', () => {
+    if (player.stopAt && el.currentTime >= player.stopAt) next()
+  })
+  el.addEventListener('ended', () => next())
+  player.el = el
+  return el
+}
+
+function next() {
+  const at = player.key ? player.queue.indexOf(player.key) : -1
+  const following = at >= 0 ? player.queue[at + 1] : undefined
+  if (following) void play(following)
+  else stopTopicAudio()
+}
+
+async function sourceFor(verseKey: string, reciterId: string): Promise<{ url: string; from: number; to: number } | null> {
+  const [surah, ayah] = verseKey.split(':').map(Number)
+  const reciter = getReciterById(reciterId)
+  if (hasOwnAyahFiles(reciter)) {
+    const url = await getPlayableAyahAudioUrl(reciterId, surah, ayah)
+    if (url) return { url, from: 0, to: 0 }
+  } else {
+    const chapter = await getChapterAudio(reciterId, surah)
+    const place = chapter?.byKey.get(verseKey)
+    if (chapter && place) return { url: chapter.url, from: place.from / 1000, to: place.to / 1000 }
+  }
+  const url = await getPlayableAyahAudioUrl('alafasy', surah, ayah)
+  return url ? { url, from: 0, to: 0 } : null
+}
+
+async function play(verseKey: string) {
+  const session = ++player.session
+  const el = audio()
+  el.pause()
+  player.key = verseKey
+  player.loading = true
+  player.stopAt = 0
+  notify()
+  const source = await sourceFor(verseKey, player.reciterId).catch(() => null)
+  if (session !== player.session) return
+  if (!source) {
+    stopTopicAudio()
+    return
+  }
+  if (el.src !== source.url) el.src = source.url
+  try {
+    // An ayah deep in a whole-surah recording (2:183 is an hour into Al-Baqarah) can only be reached
+    // once the file's length is known: a jump made earlier is lost and it plays from the start.
+    if (el.readyState < HTMLMediaElement.HAVE_METADATA) {
+      await new Promise<void>((resolve, reject) => {
+        const done = () => {
+          el.removeEventListener('loadedmetadata', done)
+          el.removeEventListener('error', failed)
+          resolve()
+        }
+        const failed = () => {
+          el.removeEventListener('loadedmetadata', done)
+          el.removeEventListener('error', failed)
+          reject(new Error('audio'))
+        }
+        el.addEventListener('loadedmetadata', done)
+        el.addEventListener('error', failed)
+        el.load()
+      })
+    }
+    if (session !== player.session) return
+    el.currentTime = source.from
+    player.stopAt = source.to
+    await el.play()
+    if (source.from && Math.abs(el.currentTime - source.from) > 2) el.currentTime = source.from
+  } catch {
+    if (session === player.session) stopTopicAudio()
+    return
+  }
+  if (session !== player.session) return
+  player.loading = false
+  notify()
+}
+
+/** Plays `verseKey`, then the ayat after it in `queue`. */
+export function playTopicAyah(verseKey: string, queue: string[], reciterId: string) {
+  player.queue = queue
+  player.reciterId = reciterId
+  void play(verseKey)
+}
+
+export function stopTopicAudio() {
+  player.session++
+  player.el?.pause()
+  player.key = null
+  player.loading = false
+  player.stopAt = 0
+  notify()
+}
+
+function useTopicPlaying(): { key: string | null; loading: boolean } {
+  const key = useSyncExternalStore(
+    (listener) => {
+      player.listeners.add(listener)
+      return () => player.listeners.delete(listener)
+    },
+    () => (player.key ? `${player.key}|${player.loading ? 1 : 0}` : ''),
+    () => ''
+  )
+  const [verseKey, loading] = key ? key.split('|') : [null, '0']
+  return { key: verseKey, loading: loading === '1' }
+}
+
+/* ------------------------------------------------------------------ the tab */
+
 export default function TopicsTab({
   query,
   chapters,
   onGoToPage,
+  path,
+  onPathChange,
+  onTitle,
+  onBeforePlay,
 }: {
   query: string
   chapters: Chapter[]
   onGoToPage: (page: number, verseKey: string) => void
+  /** The topics opened, from the top level down: the Contents page's header shows the last one and goes back up. */
+  path: number[]
+  onPathChange: (path: number[]) => void
+  /** The open topic's name, for that header (null at the top level). */
+  onTitle: (title: string | null) => void
+  /** Read's own recitation is stopped before a topic's ayah plays. */
+  onBeforePlay?: () => void
 }) {
   const t = useT()
   const language = useLanguage()
+  const settings = useAppSettings()
   const [topics, setTopics] = useState<TopicData | null>(null)
-  const [path, setPath] = useState<number[]>([])
   const top = useRef<HTMLDivElement>(null)
+  const setPath = (next: number[] | ((p: number[]) => number[])) => onPathChange(typeof next === 'function' ? next(path) : next)
 
   useEffect(() => {
     void loadTopics().then(setTopics).catch(() => {})
   }, [])
 
+  // Leaving the tab, or the Contents page, stops a topic's ayah playing.
+  useEffect(() => () => stopTopicAudio(), [])
+
   // A new search starts from the top level.
   useEffect(() => {
-    if (query) setPath([])
+    if (query) onPathChange([])
   }, [query])
 
   const name = (id: number) => {
@@ -113,6 +243,12 @@ export default function TopicsTab({
       .map(([id]) => Number(id))
   }, [query, topics])
 
+  const openId = path[path.length - 1]
+  const title = openId && topics ? name(openId) : null
+  useEffect(() => {
+    onTitle(title)
+  }, [title, onTitle])
+
   if (!topics) return <p className="px-6 py-14 text-center text-sm text-[var(--home-muted)]">{t('Loading…')}</p>
 
   const open = (id: number) => {
@@ -124,13 +260,11 @@ export default function TopicsTab({
   const row = (id: number) => {
     const topic = topics.topics[String(id)]
     if (!topic) return null
-    const Icon = ICONS[id]
     return (
       <li key={id}>
         <button type="button" onClick={() => open(id)} className={card}>
-          {Icon ? <Icon className="h-[22px] w-[22px] shrink-0 text-[var(--mushaf-read-accent)]" strokeWidth={1.8} aria-hidden /> : null}
-          <span className="min-w-0 flex-1 text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">{name(id)}</span>
-          <span className="shrink-0 text-[0.9375rem] tabular-nums text-[var(--home-muted)]">{topic.count}</span>
+          <span className="min-w-0 flex-1 text-[0.96875rem] font-semibold leading-snug text-[var(--home-heading)]">{name(id)}</span>
+          <span className="shrink-0 text-[0.8125rem] tabular-nums text-[var(--home-muted)]">{topic.count}</span>
           <ChevronRight className="-mr-1 h-[18px] w-[18px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} aria-hidden />
         </button>
       </li>
@@ -142,7 +276,7 @@ export default function TopicsTab({
     return (
       <div ref={top}>
         {results.length ? (
-          <ul className="space-y-2.5">{results.map(row)}</ul>
+          <ul className="space-y-2">{results.map(row)}</ul>
         ) : (
           <p className="px-6 py-14 text-center text-sm text-[var(--home-muted)]">{t('Nothing matches that.')}</p>
         )}
@@ -157,7 +291,7 @@ export default function TopicsTab({
         {topics.roots.map((root) => (
           <section key={root} className="mb-5">
             <h3 className="home-label mx-1 mb-2.5 mt-1">{name(root)}</h3>
-            <ul className="space-y-2.5">{(topics.topics[String(root)]?.children ?? []).map(row)}</ul>
+            <ul className="space-y-2">{(topics.topics[String(root)]?.children ?? []).map(row)}</ul>
           </section>
         ))}
         <p className="mx-1 mt-2 text-[0.75rem] leading-relaxed text-[var(--home-muted)]">{t('Topics from The Clear Quran, through QUL by Tarteel.')}</p>
@@ -169,18 +303,7 @@ export default function TopicsTab({
   const topic = topics.topics[String(id)]
   return (
     <div ref={top}>
-      <button
-        type="button"
-        onClick={() => {
-          tapFeedback()
-          setPath((p) => p.slice(0, -1))
-        }}
-        className="ed-focus -mx-1 mb-3 flex items-center gap-2 rounded-lg px-1 py-1 text-left"
-      >
-        <ArrowLeft className="h-5 w-5 shrink-0 text-[var(--home-heading)]" strokeWidth={2} />
-        <span className="text-[1.1875rem] font-semibold leading-snug text-[var(--home-heading)]">{name(id)}</span>
-      </button>
-      {topic?.children?.length ? <ul className="mb-5 space-y-2.5">{topic.children.map(row)}</ul> : null}
+      {topic?.children?.length ? <ul className="mb-5 space-y-2">{topic.children.map(row)}</ul> : null}
       {topic?.ayahs?.length ? (
         <>
           {topic.children?.length ? (
@@ -191,7 +314,16 @@ export default function TopicsTab({
           {/* Ayat follow one another as in Read's translation mode: no cards, a line between each. */}
           <ul>
             {topic.ayahs.map((key) => (
-              <AyahRow key={key} verseKey={key} chapters={chapters} onGoToPage={onGoToPage} />
+              <AyahRow
+                key={key}
+                verseKey={key}
+                chapters={chapters}
+                onGoToPage={onGoToPage}
+                onPlay={() => {
+                  onBeforePlay?.()
+                  playTopicAyah(key, topic.ayahs ?? [], settings.reciterId)
+                }}
+              />
             ))}
           </ul>
         </>
@@ -213,8 +345,20 @@ async function translationOf(verseKey: string, page: number, edition: string): P
  * share, the Arabic, then the translation. Its words come when the row comes into view; tapping it
  * opens its page.
  */
-function AyahRow({ verseKey, chapters, onGoToPage }: { verseKey: string; chapters: Chapter[]; onGoToPage: (page: number, verseKey: string) => void }) {
+function AyahRow({
+  verseKey,
+  chapters,
+  onGoToPage,
+  onPlay,
+}: {
+  verseKey: string
+  chapters: Chapter[]
+  onGoToPage: (page: number, verseKey: string) => void
+  onPlay: () => void
+}) {
   const t = useT()
+  const playing = useTopicPlaying()
+  const isPlaying = playing.key === verseKey
   const settings = useAppSettings()
   const edition = settings.translationEditionId
   const [verse, setVerse] = useState<Verse | null>(null)
@@ -252,6 +396,11 @@ function AyahRow({ verseKey, chapters, onGoToPage }: { verseKey: string; chapter
     }
   }, [verseKey, edition])
 
+  // The ayah playing is kept in view as the recitation moves on through the topic.
+  useEffect(() => {
+    if (isPlaying) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [isPlaying])
+
   const arabic = verse ? verseText(verse) : ''
   const shareText = `${arabic}
 
@@ -267,6 +416,7 @@ ${translation ?? ''}
         tabIndex={0}
         onClick={async () => {
           tapFeedback()
+          stopTopicAudio()
           const v = verse ?? (await getVerseByKey(verseKey).catch(() => null))
           onGoToPage(v ? pageOf(v) : 1, verseKey)
         }}
@@ -275,7 +425,7 @@ ${translation ?? ''}
         }}
         className="ed-focus cursor-pointer"
       >
-        <div className="mushaf-translation-body px-2.5 py-6">
+        <div className={cn('mushaf-translation-body px-2.5 py-6', isPlaying && 'mushaf-translation-body--reciting')}>
           <div className="mushaf-tr-meta">
             <span className="mushaf-tr-badge" aria-hidden>
               {ayah}
@@ -284,6 +434,25 @@ ${translation ?? ''}
               {chapter?.englishName ?? t('Surah')} {verseKey}
             </span>
             <span className="mushaf-tr-actions">
+              <button
+                type="button"
+                className="mushaf-tr-action"
+                aria-label={isPlaying ? t('Pause') : t('Play ayah {key}', { key: verseKey })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  tapFeedback()
+                  if (isPlaying) stopTopicAudio()
+                  else onPlay()
+                }}
+              >
+                {isPlaying && playing.loading ? (
+                  <Loader2 className="h-[15px] w-[15px] animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="h-[15px] w-[15px] fill-current" />
+                ) : (
+                  <Play className="h-[15px] w-[15px] fill-current" />
+                )}
+              </button>
               <button
                 type="button"
                 className="mushaf-tr-action"

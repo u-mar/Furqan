@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Bookmark, CheckCircle2, List, Search, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, List, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { getBookmarks, type AyahBookmark } from '@/lib/bookmarks'
 import { getChaptersMeta, type ChapterMeta } from '@/lib/chapters-meta'
@@ -42,7 +42,10 @@ interface ContentsDrawerProps {
   currentSurahId: number
   onClose: () => void
   onSelectSurah: (chapterId: number) => void
-  onGoToPage: (page: number, verseKey?: string) => void
+  /** `highlight`: the ayah is only marked on its page, without opening its menu (a bookmark). */
+  onGoToPage: (page: number, verseKey?: string, options?: { highlight?: boolean }) => void
+  /** Stops Read's own recitation, before an ayah in Topic plays. */
+  onBeforePlay?: () => void
 }
 
 const bottomItems: { id: BottomNav; label: string; Icon: typeof List }[] = [
@@ -51,9 +54,9 @@ const bottomItems: { id: BottomNav; label: string; Icon: typeof List }[] = [
   { id: 'bookmarks', label: 'Bookmarks', Icon: Bookmark },
 ]
 
-const card = 'home-card ed-focus fx-press flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-[1.125rem] px-4 py-4 text-left'
+const card = 'home-card ed-focus fx-press flex min-h-[4rem] w-full items-center gap-3 rounded-2xl px-4 py-3 text-left'
 
-export default function ContentsDrawer({ open, chapters, currentSurahId, onClose, onSelectSurah, onGoToPage }: ContentsDrawerProps) {
+export default function ContentsDrawer({ open, chapters, currentSurahId, onClose, onSelectSurah, onGoToPage, onBeforePlay }: ContentsDrawerProps) {
   const t = useT()
   useCloseOnBack(open, onClose)
   const [tab, setTab] = useState<TopTab>('surah')
@@ -63,6 +66,14 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
   const [bookmarks, setBookmarks] = useState<AyahBookmark[]>([])
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
+  // Topic: the topics opened, and the open one's name, which takes the header's place.
+  const [topicPath, setTopicPath] = useState<number[]>([])
+  const [topicTitle, setTopicTitle] = useState<string | null>(null)
+  const onTopicTitle = useCallback((title: string | null) => setTopicTitle(title), [])
+  const inTopic = tab === 'topic' && topicPath.length > 0
+  // In a topic its name is the title, as a surah's is in Read; tapping it shows the tabs again.
+  const [topicTabsOpen, setTopicTabsOpen] = useState(false)
+  useEffect(() => setTopicTabsOpen(false), [topicPath])
   const searchInput = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
 
@@ -82,6 +93,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
     if (open) return
     setSearching(false)
     setQuery('')
+    setTopicPath([])
   }, [open])
 
   // A new tab starts at its top, with the search cleared.
@@ -150,23 +162,43 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
 
   if (!open) return null
 
-  const go = (page: number, verseKey?: string) => {
+  const go = (page: number, verseKey?: string, options?: { highlight?: boolean }) => {
     tapFeedback()
     onClose()
-    onGoToPage(page, verseKey)
+    onGoToPage(page, verseKey, options)
   }
 
   const empty = <p className="px-6 py-14 text-center text-sm text-[var(--home-muted)]">{t('Nothing matches that.')}</p>
 
   return (
-    <div className="qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)] text-[var(--app-text)]" role="dialog" aria-modal="true" aria-label={t('Contents')}>
-      <div className="shrink-0 border-b border-[var(--home-rule)]">
+    <div
+      className={cn(
+        'qari-sheet fixed inset-0 z-50 flex flex-col',
+        // Topic reads like Read itself: its page colour and ink.
+        tab === 'topic' && bottomNav === 'chapters' ? 'bg-[var(--mushaf-read-bg)] text-[var(--mushaf-read-text)]' : 'bg-[var(--app-bg)] text-[var(--app-text)]'
+      )}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('Contents')}
+    >
+      <div className={cn('shrink-0', (!inTopic || topicTabsOpen) && 'border-b border-[var(--home-rule)]')}>
         <div className="mx-auto w-full max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <header className="flex h-14 items-center gap-3">
-            <button type="button" onClick={onClose} className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]" aria-label={t('Close')}>
+            <button
+              type="button"
+              onClick={() => {
+                if (inTopic) {
+                  tapFeedback()
+                  setTopicPath((p) => p.slice(0, -1))
+                  list.current?.scrollTo({ top: 0 })
+                } else onClose()
+              }}
+              className="ed-focus -ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[var(--home-heading)]"
+              aria-label={inTopic ? t('Back') : t('Close')}
+            >
               <ArrowLeft className="h-6 w-6" strokeWidth={2} />
             </button>
-            {searching && bottomNav === 'chapters' ? (
+            {searching && bottomNav === 'chapters' && !inTopic ? (
               <input
                 ref={searchInput}
                 value={query}
@@ -178,11 +210,30 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                 className="h-10 min-w-0 flex-1 bg-transparent text-[1.1875rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
               />
             ) : (
-              <h2 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">
-                {bottomNav === 'khatmah' ? t('Khatmah') : bottomNav === 'bookmarks' ? t('Bookmarks') : t('Quran')}
-              </h2>
+              inTopic && topicTitle ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    tapFeedback()
+                    setTopicTabsOpen((v) => !v)
+                  }}
+                  aria-expanded={topicTabsOpen}
+                  className="ed-focus flex min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left"
+                >
+                  <h2 className="min-w-0 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">{topicTitle}</h2>
+                  <ChevronDown
+                    className={cn('h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform', topicTabsOpen && 'rotate-180')}
+                    strokeWidth={2.2}
+                    aria-hidden
+                  />
+                </button>
+              ) : (
+                <h2 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">
+                  {bottomNav === 'khatmah' ? t('Khatmah') : bottomNav === 'bookmarks' ? t('Bookmarks') : t('Quran')}
+                </h2>
+              )
             )}
-            {bottomNav === 'chapters' ? (
+            {bottomNav === 'chapters' && !inTopic ? (
               <button
                 type="button"
                 onClick={() => {
@@ -196,7 +247,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
               </button>
             ) : null}
           </header>
-          {bottomNav === 'chapters' ? (
+          {bottomNav === 'chapters' && (!inTopic || topicTabsOpen) ? (
             <nav className="mt-2 flex gap-8" aria-label={t('Contents')}>
               {TABS.map(([id, label]) => {
                 const on = tab === id
@@ -205,8 +256,11 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                     key={id}
                     type="button"
                     onClick={() => {
-                      if (!on) tapFeedback()
+                      tapFeedback()
                       setTab(id)
+                      // Topic, from inside a topic: back to all the topics.
+                      if (id === 'topic') setTopicPath([])
+                      setTopicTabsOpen(false)
                     }}
                     aria-pressed={on}
                     className={cn(
@@ -234,7 +288,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
           <div className="mx-auto w-full max-w-lg px-4 pb-6 pt-4">
             {bottomNav === 'chapters' && tab === 'surah' ? (
               surahs.length ? (
-                <ul className="space-y-2.5">
+                <ul className="space-y-2">
                   {surahs.map((chapter) => {
                     const active = chapter.id === currentSurahId
                     const m = metaById.get(chapter.id)
@@ -252,17 +306,17 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                           // The card's own shadow would hide a ring: the outline of the surah being read is its shadow.
                           style={active ? { boxShadow: 'inset 0 0 0 1.5px var(--mushaf-read-accent)' } : undefined}
                         >
-                          <span className="w-9 shrink-0 text-[1.1875rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
+                          <span className="w-8 shrink-0 text-[1rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
                             {String(chapter.id).padStart(2, '0')}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[1.125rem] font-semibold text-[var(--home-heading)]">{chapter.englishName}</span>
-                            <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                            <span className="block truncate text-[0.96875rem] font-semibold text-[var(--home-heading)]">{chapter.englishName}</span>
+                            <span className="mt-0.5 block truncate text-[0.8125rem] text-[var(--home-muted)]">
                               {t(revelationLabel(chapter.id))} · {chapter.versesCount} {t('ayahs')}
                             </span>
                           </span>
                           {m?.name_arabic ? (
-                            <span className="arabic-text shrink-0 text-[1.5rem] leading-none text-[var(--home-heading)]" dir="rtl" lang="ar">
+                            <span className="arabic-text shrink-0 text-[1.25rem] leading-none text-[var(--home-heading)]" dir="rtl" lang="ar">
                               {m.name_arabic}
                             </span>
                           ) : null}
@@ -283,19 +337,19 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                     <h3 className="home-label mx-1 mb-2.5 mt-3">
                       {t('Juz')} {juz}
                     </h3>
-                    <ul className="space-y-2.5">
+                    <ul className="space-y-2">
                       {items.map((m) => (
                         <li key={m.id}>
                           <button type="button" onClick={() => go(m.page, m.verseKey)} className={card}>
-                            <span className="w-9 shrink-0 text-center text-[1.25rem] font-semibold text-[var(--mushaf-read-accent)]" aria-hidden>
+                            <span className="w-8 shrink-0 text-center text-[1.0625rem] font-semibold text-[var(--mushaf-read-accent)]" aria-hidden>
                               {QUARTER_MARKS[(m.indexInJuz - 1) % 4]}
                             </span>
                             <span className="min-w-0 flex-1">
                               <QuarterAyahPreview
                                 verseKey={m.verseKey}
-                                className="flex h-[1.75em] flex-wrap justify-start gap-y-[3em] overflow-hidden text-[1.3125rem] leading-snug text-[var(--home-heading)]"
+                                className="flex h-[1.75em] flex-wrap justify-start gap-y-[3em] overflow-hidden text-[1.125rem] leading-snug text-[var(--home-heading)]"
                               />
-                              <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                              <span className="mt-0.5 block truncate text-[0.8125rem] text-[var(--home-muted)]">
                                 {t('Hizb')} {(juz - 1) * 2 + Math.ceil(m.indexInJuz / 4)} · {m.surahName} {m.ayah} · {t('Page')} {m.page}
                               </span>
                             </span>
@@ -312,25 +366,25 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
 
             {bottomNav === 'chapters' && tab === 'juz' ? (
               juzList.length ? (
-                <ul className="space-y-2.5">
+                <ul className="space-y-2">
                   {juzList.map((j) => (
                     <li key={j.juz}>
                       <button type="button" onClick={() => go(j.page, j.first?.verseKey)} className={card}>
-                        <span className="w-9 shrink-0 text-[1.1875rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
+                        <span className="w-8 shrink-0 text-[1rem] font-semibold tabular-nums text-[var(--mushaf-read-accent)]">
                           {String(j.juz).padStart(2, '0')}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[1.125rem] font-semibold text-[var(--home-heading)]">
+                          <span className="block text-[0.96875rem] font-semibold text-[var(--home-heading)]">
                             {t('Juz')} {j.juz}
                           </span>
-                          <span className="mt-1 block truncate text-[0.9375rem] text-[var(--home-muted)]">
+                          <span className="mt-0.5 block truncate text-[0.8125rem] text-[var(--home-muted)]">
                             {j.first ? `${j.first.surahName} ${j.first.ayah}` : `${t('Page')} ${j.page}`}
                           </span>
                         </span>
                         {j.first ? (
                           <QuarterAyahPreview
                             verseKey={j.first.verseKey}
-                            className="flex h-[1.75em] max-w-[42%] shrink-0 flex-wrap justify-end gap-y-[3em] overflow-hidden text-[1.25rem] leading-snug text-[var(--home-heading)]"
+                            className="flex h-[1.75em] max-w-[42%] shrink-0 flex-wrap justify-end gap-y-[3em] overflow-hidden text-[1.0625rem] leading-snug text-[var(--home-heading)]"
                           />
                         ) : null}
                       </button>
@@ -343,17 +397,28 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
             ) : null}
 
             {bottomNav === 'chapters' && tab === 'topic' ? (
-              <TopicsTab query={query} chapters={chapters} onGoToPage={(page, verseKey) => go(page, verseKey)} />
+              <TopicsTab
+                query={query}
+                chapters={chapters}
+                onGoToPage={(page, verseKey) => go(page, verseKey)}
+                path={topicPath}
+                onPathChange={(path) => {
+                  setTopicPath(path)
+                  list.current?.scrollTo({ top: 0 })
+                }}
+                onTitle={onTopicTitle}
+                onBeforePlay={onBeforePlay}
+              />
             ) : null}
 
             {bottomNav === 'bookmarks' ? (
               bookmarks.length === 0 ? (
                 <p className="px-4 py-12 text-center text-sm text-[var(--home-muted)]">{t('No bookmarks yet. Double-tap an ayah, then tap Bookmark.')}</p>
               ) : (
-                <ul className="space-y-2.5">
+                <ul className="space-y-2">
                   {bookmarks.map((bookmark) => (
                     <li key={bookmark.verseKey}>
-                      <button type="button" onClick={() => go(bookmark.page)} className={cn(card, 'items-start')}>
+                      <button type="button" onClick={() => go(bookmark.page, bookmark.verseKey, { highlight: true })} className={cn(card, 'items-start')}>
                         <Bookmark className="mt-0.5 h-[18px] w-[18px] shrink-0 fill-current text-[var(--mushaf-read-accent)]" />
                         <span className="min-w-0 flex-1">
                           <span className="block text-[0.8125rem] font-semibold text-[var(--mushaf-read-accent)]">
@@ -392,6 +457,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
         )}
       </div>
 
+      {tab === 'topic' && bottomNav === 'chapters' ? null : (
       <nav className="flex shrink-0 items-end justify-around border-t border-[var(--home-rule)] px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
         {bottomItems.map(({ id, label, Icon }) => {
           const active = bottomNav === id
@@ -413,6 +479,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
           )
         })}
       </nav>
+      )}
     </div>
   )
 }
