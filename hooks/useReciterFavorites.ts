@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  favoritesInGroup,
   getFavoriteReciterIds,
   toggleFavoriteReciter,
   MAX_FAVORITE_RECITERS,
@@ -28,7 +29,10 @@ export function useReciterFavorites() {
   /** Returns the new favorited state — stays `false` if the 5-favorite cap blocked an add. */
   const toggle = useCallback((id: string) => toggleFavoriteReciter(id), [])
 
-  const atLimit = favoriteIds.length >= MAX_FAVORITE_RECITERS
+  /** The well-known reciters' five are all taken. */
+  const atLimit = favoritesInGroup(favoriteIds, '') >= MAX_FAVORITE_RECITERS
+  /** The five that `id` would join are all taken. */
+  const isFullFor = useCallback((id: string) => favoritesInGroup(favoriteIds, id) >= MAX_FAVORITE_RECITERS, [favoriteIds])
 
-  return { favoriteIds, isFavorite, toggle, atLimit, ready, maxFavorites: MAX_FAVORITE_RECITERS }
+  return { favoriteIds, isFavorite, toggle, atLimit, isFullFor, ready, maxFavorites: MAX_FAVORITE_RECITERS }
 }

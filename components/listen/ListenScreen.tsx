@@ -30,7 +30,9 @@ import {
   type ListenStatus,
 } from '@/lib/listen-player'
 import { getChapters } from '@/lib/quran'
-import { getQiraat, getReciterById, hasSurah, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
+import { isListenQariId } from '@/lib/listen-qaris'
+import { getQiraat, getReciterById, hasSurah, isKnownReciter, narrationChoices, RECITERS, topReciters, type Reciter } from '@/lib/reciters'
+import { useLocalReciters } from '@/lib/verified-reciters'
 import { keepListenScenes } from '@/lib/listen-video'
 import { filterChapters } from '@/lib/search-chapters'
 import { toast, toastError, toastSuccess } from '@/lib/toast'
@@ -39,12 +41,75 @@ import { tr, useT } from '@/lib/i18n'
 
 type Filter = 'all' | 'downloaded'
 
+/** A row of five reciters to switch between with one tap; the chosen one is brought into view. */
+function PicksRow({
+  title,
+  reciters,
+  selectedId,
+  onSelect,
+  more,
+}: {
+  title: string
+  reciters: Reciter[]
+  selectedId: string
+  onSelect: (id: string) => void
+  more?: { onClick: () => void; label: string }
+}) {
+  const rail = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const box = rail.current
+    const on = box?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (!box || !on) return
+    box.scrollTo({ left: Math.max(0, on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2), behavior: 'smooth' })
+  }, [selectedId])
+  return (
+    <div className="home-fade mt-5">
+      <SectionTitle star more={more}>
+        {title}
+      </SectionTitle>
+      <div ref={rail} className="qari-no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        {reciters.map((r) => {
+          const active = r.id === selectedId
+          return (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onSelect(r.id)}
+              aria-pressed={active}
+              className={cn(
+                'ed-focus fx-press flex w-[5.25rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl px-1 pb-2 pt-1.5 text-center transition-colors',
+                active && 'bg-[var(--home-card-bg)]'
+              )}
+            >
+              <ReciterAvatar reciter={r} size={56} />
+              <span
+                className={cn(
+                  'line-clamp-2 text-[0.75rem] leading-snug',
+                  active ? 'font-semibold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
+                )}
+              >
+                {r.name}
+              </span>
+              <span
+                className={cn('h-[3px] w-4 rounded-full bg-[var(--home-sage)] transition-opacity', active ? 'opacity-100' : 'opacity-0')}
+                aria-hidden
+              />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function ListenScreen() {
   const t = useT()
   const hydrated = useHydrated()
   // Translation mode's pictures kept on the phone while online, so they show offline too (public/sw.js).
   useEffect(() => keepListenScenes(), [])
   const settings = useAppSettings()
+  // The verified qaris: Listen draws again when their list comes, so a chosen one is found.
+  const locals = useLocalReciters()
   const reciter = getReciterById(settings.listenReciterId)
   const listen = useListenState()
   const downloadsVersion = useDownloadsVersion()
@@ -56,6 +121,12 @@ export default function ListenScreen() {
   const [filter, setFilter] = useState<Filter>('all')
   const [offline, setOffline] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  // Which reciters "All reciters" lists: the well-known ones, or the verified local qaris.
+  const [pickerKind, setPickerKind] = useState<'international' | 'local'>('international')
+  const openPicker = (kind: 'international' | 'local') => {
+    setPickerKind(kind)
+    setPickerOpen(true)
+  }
   const [playerOpen, setPlayerOpen] = useState(false)
   const [sleepOpen, setSleepOpen] = useState(false)
   const [natureOpen, setNatureOpen] = useState(false)
@@ -70,7 +141,7 @@ export default function ListenScreen() {
     const all = url.searchParams.get('reciters') === '1'
     const player = url.searchParams.get('player') === '1'
     if (!asked && !nature && !all && !player) return
-    if (asked && RECITERS.some((r) => r.id === asked)) {
+    if (asked && isKnownReciter(asked)) {
       setAppSettings({ listenReciterId: asked })
       changeReciter(asked)
     }
@@ -153,6 +224,17 @@ export default function ListenScreen() {
     [favoriteIds]
   )
   const picks = favorites.length ? favorites : topReciters()
+  // Local reciters: the verified qaris kept as favourites or, until some are, those of the
+  // viewer's country (all of them while the country is not known). No row when there are none.
+  const localPicks = useMemo(() => {
+    const kept = favoriteIds
+      .filter(isListenQariId)
+      .map((id) => locals.reciters.find((r) => r.id === id))
+      .filter((r): r is Reciter => Boolean(r))
+    if (kept.length) return kept
+    const mine = locals.country ? locals.reciters.filter((r) => r.country === locals.country) : locals.reciters
+    return mine.slice(0, 5)
+  }, [favoriteIds, locals])
 
   const selectReciter = useCallback((id: string) => {
     if (id === reciterId.current) return
@@ -184,15 +266,6 @@ export default function ListenScreen() {
   }
 
   const listening = Boolean(listen.surah)
-
-  // The row of reciters is wider than the screen: the chosen one is brought into view.
-  const picksRail = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const box = picksRail.current
-    const on = box?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    if (!box || !on) return
-    box.scrollTo({ left: Math.max(0, on.offsetLeft - box.clientWidth / 2 + on.offsetWidth / 2), behavior: 'smooth' })
-  }, [reciter.id, favoritesReady])
 
   return (
     <main className="cool-page min-h-[100dvh] bg-[var(--app-bg)] text-[var(--app-text)]">
@@ -229,54 +302,36 @@ export default function ListenScreen() {
         ) : null}
 
         {hydrated ? (
-          <ReciterCard reciter={reciter} onChoose={() => setPickerOpen(true)} onSelect={selectReciter} />
+          <ReciterCard reciter={reciter} onChoose={() => openPicker(reciter.local ? 'local' : 'international')} onSelect={selectReciter} />
         ) : (
           <div className="home-card mt-4 h-[7.5rem] rounded-[1.25rem]" aria-hidden />
         )}
 
         {favoritesReady ? (
-          <div className="home-fade mt-5">
-            <SectionTitle star more={{ onClick: () => setPickerOpen(true), label: t('All reciters') }}>
-              {favorites.length ? t('Your favourites') : t('Popular reciters')}
-            </SectionTitle>
-            <div ref={picksRail} className="qari-no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-              {picks.map((r) => {
-                const active = r.id === reciter.id
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => selectReciter(r.id)}
-                    aria-pressed={active}
-                    className={cn(
-                      'ed-focus fx-press flex w-[5.25rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl px-1 pb-2 pt-1.5 text-center transition-colors',
-                      active && 'bg-[var(--home-card-bg)]'
-                    )}
-                  >
-                    <ReciterAvatar reciter={r} size={56} />
-                    <span
-                      className={cn(
-                        'line-clamp-2 text-[0.75rem] leading-snug',
-                        active ? 'font-semibold text-[var(--home-heading)]' : 'font-medium text-[var(--home-muted)]'
-                      )}
-                    >
-                      {r.name}
-                    </span>
-                    <span
-                      className={cn('h-[3px] w-4 rounded-full bg-[var(--home-sage)] transition-opacity', active ? 'opacity-100' : 'opacity-0')}
-                      aria-hidden
-                    />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          <>
+            <PicksRow
+              title={t('International reciters')}
+              reciters={picks}
+              selectedId={reciter.id}
+              onSelect={selectReciter}
+              more={{ onClick: () => openPicker('international'), label: t('All reciters') }}
+            />
+            {localPicks.length ? (
+              <PicksRow
+                title={t('Local reciters')}
+                reciters={localPicks}
+                selectedId={reciter.id}
+                onSelect={selectReciter}
+                more={{ onClick: () => openPicker('local'), label: t('All reciters') }}
+              />
+            ) : null}
+          </>
         ) : (
           <div className="mt-5 h-[8.25rem]" aria-hidden />
         )}
 
         <div className="mt-5">
-          <SectionTitle star>
+          <SectionTitle>
             <span className="tabular-nums">
               {t('Surahs ·')} {loading ? '114' : visible.length}
             </span>
@@ -388,6 +443,7 @@ export default function ListenScreen() {
       <SleepSheet open={sleepOpen} onClose={() => setSleepOpen(false)} />
       <ReciterPickerSheet
         open={pickerOpen}
+        kind={pickerKind}
         selectedId={reciter.id}
         onClose={() => setPickerOpen(false)}
         onSelect={selectReciter}

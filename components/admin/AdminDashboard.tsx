@@ -6,6 +6,7 @@ import AdminShell, { type AdminSection } from '@/components/admin/AdminShell'
 import AdminReportsPanel from '@/components/admin/AdminReportsPanel'
 import AdminUploadersPanel from '@/components/admin/AdminUploadersPanel'
 import AdminVerificationPanel from '@/components/admin/AdminVerificationPanel'
+import AdminListenQarisPanel from '@/components/admin/AdminListenQarisPanel'
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel'
 import {
   listAdminData,
@@ -191,6 +192,8 @@ export default function AdminDashboard() {
       {section === 'uploaders' && <AdminUploadersPanel />}
 
       {section === 'verification' && <AdminVerificationPanel />}
+
+      {section === 'listen-qaris' && <AdminListenQarisPanel />}
 
       {section === 'popups' && (
         <section className="rounded-2xl border border-[var(--home-card-border)] bg-[var(--home-card-bg)] p-5 shadow-[var(--home-card-shadow)]">

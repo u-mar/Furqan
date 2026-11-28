@@ -355,3 +355,55 @@ model AiTranslation {
   texts     String[]
   createdAt DateTime @default(now())
 }
+
+/// A verified qari whose own whole-surah recordings play in Listen beside the well-known reciters,
+/// added and looked after by the admin (Admin → Listen qaris). Listen knows them as `naba_<slug>`.
+model ListenReciter {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// Lower-case letters, digits and "_"; never changes once made. Unique, guarded in code.
+  slug      String
+  name      String
+  /// Their name in Arabic script, when it is known.
+  nameAr    String?
+  /// ISO 3166 alpha-2 code ("SO"), which Listen's "Local reciters" row and country filter use.
+  country   String
+  city      String?
+  qiraat    String   @default("hafs")
+  style     String   @default("Murattal")
+  /// Their Qari account, when they have one: the profile Listen links to.
+  username  String?
+  /// R2 key of their portrait (square JPEG).
+  photoKey  String?
+  /// Shown in Listen. Off while the admin is still adding surahs.
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}
+
+/// One upload of a surah for a Listen qari, with what the check found (services/nadir-asr/listen_check.py).
+/// Only an approved one plays in Listen; a newer approval of the same surah replaces the older.
+model ListenSurah {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  reciterId  String    @db.ObjectId
+  surah      Int
+  /// uploading | checking | checked | approved | rejected | replaced | failed
+  status     String
+  /// The check's id on the speech service.
+  jobId      String
+  /// R2 key of the evened, trimmed MP3 the check saves.
+  audioKey   String
+  fileName   String?
+  /// What the check is doing now, while it runs.
+  step       String?
+  report     Json?
+  /// verse key → [from ms, to ms] in the saved MP3.
+  timings    Json?
+  error      String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([reciterId])
+}

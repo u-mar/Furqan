@@ -4,6 +4,8 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { stopListening } from '@/lib/listen-player'
 import { stopPlayback } from '@/lib/qari-player'
+// Loaded with the app, so a verified qari chosen before is known before Listen or Home asks for them.
+import '@/lib/verified-reciters'
 
 /**
  * Listen keeps playing as you move around the app — stepping back to the home

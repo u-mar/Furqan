@@ -32,7 +32,8 @@ export default function ReciterAvatar({
   square = false,
   eager = false,
 }: ReciterAvatarProps) {
-  const candidates = [reciter.photoUrl, `/reciters/${reciter.id}.jpg`].filter(
+  // A verified qari's picture is only ever their own (from the admin), never a file in /reciters.
+  const candidates = [reciter.photoUrl, reciter.local ? null : `/reciters/${reciter.id}.jpg`].filter(
     (url): url is string => Boolean(url)
   )
   const [attempt, setAttempt] = useState(0)

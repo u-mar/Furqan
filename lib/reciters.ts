@@ -66,6 +66,17 @@ export interface Reciter {
   top?: boolean
   /** The surahs recorded in full, for a reciter who has not recorded them all; Listen offers only these. */
   surahs?: readonly number[]
+  /** A verified qari the admin added (lib/listen-qaris.ts): each surah's own recording, by number. */
+  surahUrls?: Readonly<Record<number, string>>
+  /** A verified qari's country (two letters) and city, for "Local reciters". */
+  country?: string
+  city?: string
+  /** Their name in Arabic script, when known. */
+  nameAr?: string
+  /** Their Qari account, when they have one. */
+  username?: string
+  /** Set for the verified qaris the admin added, whose ayah timings come from their check. */
+  local?: boolean
 }
 
 /**
@@ -1026,8 +1037,41 @@ export const RECITERS: Reciter[] = [
  */
 export const DEFAULT_RECITER_ID = 'soufi'
 
+/**
+ * The verified qaris the admin has added to Listen (lib/verified-reciters.ts fills this from the
+ * server, and from what was saved on the phone before it).
+ */
+let localReciters: Reciter[] = []
+const LOCAL_RECITERS_EVENT = 'naba-local-reciters'
+
+export function setLocalReciters(list: Reciter[]): void {
+  localReciters = list
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(LOCAL_RECITERS_EVENT))
+}
+
+export function getLocalReciters(): Reciter[] {
+  return localReciters
+}
+
+/** Calls `listener` whenever the verified qaris change; returns how to stop. */
+export function onLocalRecitersChange(listener: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener(LOCAL_RECITERS_EVENT, listener)
+  return () => window.removeEventListener(LOCAL_RECITERS_EVENT, listener)
+}
+
+/** The built-in reciters and the verified qaris together. */
+export function allReciters(): Reciter[] {
+  return localReciters.length ? [...RECITERS, ...localReciters] : RECITERS
+}
+
 export function getReciterById(id: string): Reciter {
-  return RECITERS.find((r) => r.id === id) ?? RECITERS[0]
+  return RECITERS.find((r) => r.id === id) ?? localReciters.find((r) => r.id === id) ?? RECITERS[0]
+}
+
+/** Whether `id` is a reciter this phone knows of (a verified qari only once the list has come). */
+export function isKnownReciter(id: string): boolean {
+  return RECITERS.some((r) => r.id === id) || localReciters.some((r) => r.id === id)
 }
 
 /**
@@ -1035,7 +1079,7 @@ export function getReciterById(id: string): Reciter {
  * exact display name), sorted with Hafs first. Includes `reciter` itself.
  */
 export function getReciterVariants(reciter: Reciter): Reciter[] {
-  const variants = RECITERS.filter((r) => r.name === reciter.name)
+  const variants = allReciters().filter((r) => r.name === reciter.name)
   return variants.sort((a, b) => {
     if (a.qiraat === b.qiraat) return a.style === b.style ? 0 : a.style === 'Murattal' ? -1 : 1
     if (a.qiraat === 'hafs') return -1
@@ -1128,7 +1172,7 @@ const BUNDLED_TIMED_RECITERS = new Set(['hadi_toure'])
 
 export type TimedSurahSource =
   | { source: 'quran.com' | 'mp3quran'; id: number }
-  | { source: 'local'; id: string }
+  | { source: 'local' | 'naba'; id: string }
 
 /**
  * Listen's own recordings MP3Quran keeps ayah timings for, beyond the ones above: the whole-surah
@@ -1154,6 +1198,7 @@ const LISTEN_MP3QURAN_TIMINGS: Record<string, number> = {
 
 /** Where the ayah timings for the recording Listen plays come from (Video mode), or null when there are none. */
 export function listenTimingSource(reciter: Reciter): TimedSurahSource | null {
+  if (reciter.local) return { source: 'naba', id: reciter.id }
   const mp3quran = MP3QURAN_TIMED_RECITERS[reciter.id] ?? LISTEN_MP3QURAN_TIMINGS[reciter.id]
   if (mp3quran !== undefined) return { source: 'mp3quran', id: mp3quran }
   if (BUNDLED_TIMED_RECITERS.has(reciter.id)) return { source: 'local', id: reciter.id }
@@ -1162,6 +1207,7 @@ export function listenTimingSource(reciter: Reciter): TimedSurahSource | null {
 
 /** Where this reciter's ayah timings come from, or null when there are none. */
 export function timedSurahSource(reciter: Reciter): TimedSurahSource | null {
+  if (reciter.local) return { source: 'naba', id: reciter.id }
   const quranCom = TIMED_SURAH_RECITERS[reciter.id]
   if (quranCom !== undefined) return { source: 'quran.com', id: quranCom }
   const mp3quran = MP3QURAN_TIMED_RECITERS[reciter.id]
@@ -1185,6 +1231,7 @@ export function isSurahOnlyReciter(reciter: Reciter): boolean {
 
 /** Whether this reciter has recorded this surah in full (all of them, unless `surahs` says otherwise). */
 export function hasSurah(reciter: Reciter, surah: number): boolean {
+  if (reciter.surahUrls) return Boolean(reciter.surahUrls[surah])
   return !reciter.surahs || reciter.surahs.includes(surah)
 }
 
@@ -1195,7 +1242,7 @@ export function ayahCapableReciters(): Reciter[] {
 
 /** Narrations that actually have at least one reciter. */
 export function availableQiraat(): QiraatInfo[] {
-  const present = new Set(RECITERS.map((r) => r.qiraat))
+  const present = new Set(allReciters().map((r) => r.qiraat))
   return QIRAAT.filter((q) => present.has(q.id))
 }
 
@@ -1213,6 +1260,8 @@ export function everyAyahAudioUrl(reciterFolder: string, surah: number, ayah: nu
 
 /** A surah's file for reciters whose files are not named `001.mp3`. */
 function templatedSurahUrl(reciter: Reciter, surah: number): string | null {
+  const own = reciter.surahUrls?.[surah]
+  if (own) return own
   return reciter.surahUrlTemplate ? reciter.surahUrlTemplate.replace('{n}', String(surah)) : null
 }
 

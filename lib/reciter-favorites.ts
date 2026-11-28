@@ -1,8 +1,24 @@
+import { isListenQariId } from '@/lib/listen-qaris'
+
 const STORAGE_KEY = 'muyassar_favorite_reciters'
 const EVENT_NAME = 'reciter-favorites-changed'
 
-/** You can keep a small, curated bench of favorites — not the whole list. */
+/**
+ * You can keep a small, curated bench of favorites — not the whole list. Five of the well-known
+ * reciters (Listen's "International reciters") and, apart from those, five of the verified qaris
+ * the admin added ("Local reciters").
+ */
 export const MAX_FAVORITE_RECITERS = 5
+
+/** Whether two reciters count towards the same five favourites. */
+export function sameFavoriteGroup(a: string, b: string): boolean {
+  return isListenQariId(a) === isListenQariId(b)
+}
+
+/** How many of `ids` share `id`'s five. */
+export function favoritesInGroup(ids: string[], id: string): number {
+  return ids.filter((existing) => sameFavoriteGroup(existing, id)).length
+}
 
 /** Shown until the user customizes their favorites — they're free to unfavorite any of these. */
 const DEFAULT_FAVORITE_RECITER_IDS = [
@@ -68,7 +84,7 @@ export function isFavoriteReciter(id: string): boolean {
 export function addFavoriteReciter(id: string): boolean {
   const ids = readIds()
   if (ids.includes(id)) return true
-  if (ids.length >= MAX_FAVORITE_RECITERS) return false
+  if (favoritesInGroup(ids, id) >= MAX_FAVORITE_RECITERS) return false
   writeIds([id, ...ids])
   return true
 }

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   LayoutDashboard,
   LogOut,
+  Headphones,
   Megaphone,
   MessageSquare,
   Menu,
@@ -20,7 +21,7 @@ import { cn } from '@/lib/cn'
 import { logoutAdmin } from '@/lib/admin-api'
 import { APP_NAME } from '@/lib/app-brand'
 
-export type AdminSection = 'overview' | 'daily-verse' | 'feedback' | 'users' | 'uploaders' | 'verification' | 'popups' | 'reports'
+export type AdminSection = 'overview' | 'daily-verse' | 'feedback' | 'users' | 'uploaders' | 'verification' | 'listen-qaris' | 'popups' | 'reports'
 
 const NAV: { id: AdminSection; label: string; Icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
@@ -30,6 +31,7 @@ const NAV: { id: AdminSection; label: string; Icon: typeof LayoutDashboard }[] =
   { id: 'users', label: 'Users', Icon: Users },
   { id: 'uploaders', label: 'Uploaders', Icon: Upload },
   { id: 'verification', label: 'Verification', Icon: BadgeCheck },
+  { id: 'listen-qaris', label: 'Listen qaris', Icon: Headphones },
   { id: 'popups', label: 'Popups', Icon: Megaphone },
 ]
 
@@ -41,6 +43,7 @@ const SECTION_TITLES: Record<AdminSection, string> = {
   users: 'Users & presence',
   uploaders: 'Uploaders',
   verification: 'Verified reciters',
+  'listen-qaris': 'Listen qaris',
   popups: 'In-app popup',
 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, Mic, Search, X } from 'lucide-react'
+import { Check, Search, SlidersHorizontal, X } from 'lucide-react'
 import HeartButton from '@/components/listen/HeartButton'
 import ReciterAvatar from '@/components/listen/ReciterAvatar'
 import Radio from '@/components/settings/Radio'
@@ -9,25 +9,24 @@ import SettingsSheet from '@/components/settings/SettingsSheet'
 import { useReciterFavorites } from '@/hooks/useReciterFavorites'
 import { cn } from '@/lib/cn'
 import { tapFeedback } from '@/lib/haptics'
-import { availableQiraat, getQiraat, RECITERS, type QiraatId, type Reciter } from '@/lib/reciters'
-import { useT } from '@/lib/i18n'
+import { countryFlag, countryName } from '@/lib/listen-qaris'
+import { allReciters, availableQiraat, getQiraat, type QiraatId, type Reciter } from '@/lib/reciters'
+import { useLocalReciters } from '@/lib/verified-reciters'
+import { useLanguage, useT } from '@/lib/i18n'
 import { useCloseOnBack } from '@/lib/native-back'
 import { lockPageScroll } from '@/lib/scroll-lock'
 
 interface ReciterPickerSheetProps {
   open: boolean
+  /** Which reciters it lists. */
+  kind?: ListMode
   selectedId: string
   onClose: () => void
   onSelect: (id: string) => void
 }
 
-type ListMode = 'all' | 'top' | 'favorites'
-
-const MODES: Array<[ListMode, string]> = [
-  ['all', 'All'],
-  ['top', 'Top'],
-  ['favorites', 'Favourites'],
-]
+/** The well-known reciters (Listen's "International reciters"), or the verified local qaris. */
+type ListMode = 'international' | 'local'
 
 function ReciterRow({
   reciter,
@@ -57,7 +56,10 @@ function ReciterRow({
           <ReciterAvatar reciter={reciter} size={42} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">{reciter.name}</span>
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="truncate text-[0.9375rem] font-semibold text-[var(--home-heading)]">{reciter.name}</span>
+            {reciter.local && reciter.country ? <span className="shrink-0 text-[0.9375rem] leading-none">{countryFlag(reciter.country)}</span> : null}
+          </span>
           <span className="mt-px block truncate text-[0.78125rem] text-[var(--home-muted)]">{detail}</span>
         </span>
         {active ? <Check className="h-[18px] w-[18px] shrink-0 text-[var(--home-sage-deep)]" strokeWidth={2.6} /> : null}
@@ -99,22 +101,36 @@ function Label({ children }: { children: React.ReactNode }) {
   return <h3 className="home-label mx-1 mb-2 mt-[22px]">{children}</h3>
 }
 
-export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect }: ReciterPickerSheetProps) {
+export default function ReciterPickerSheet({ open, kind = 'international', selectedId, onClose, onSelect }: ReciterPickerSheetProps) {
   const t = useT()
   useCloseOnBack(open, onClose)
   const [query, setQuery] = useState('')
   const [qiraat, setQiraat] = useState<QiraatId | 'all'>('all')
-  const [mode, setMode] = useState<ListMode>('all')
+  const mode = kind
   const [narrationOpen, setNarrationOpen] = useState(false)
   const { favoriteIds, atLimit, maxFavorites } = useReciterFavorites()
+  const locals = useLocalReciters()
+  const language = useLanguage()
+  /** Local mode's country: the viewer's own when someone there is verified, else every country. */
+  const [country, setCountry] = useState<string>('all')
+  const reciters = allReciters()
+  const countries = useMemo(() => {
+    const present = [...new Set(locals.reciters.map((r) => r.country).filter((c): c is string => Boolean(c)))]
+    return present.sort((a, b) => (a === locals.country ? -1 : b === locals.country ? 1 : a.localeCompare(b)))
+  }, [locals])
 
   useEffect(() => {
     if (open) return
     setQuery('')
     setQiraat('all')
-    setMode('all')
     setNarrationOpen(false)
   }, [open])
+
+  // The local list opens on the viewer's own country when someone there is verified.
+  useEffect(() => {
+    if (open) setCountry(kind === 'local' && locals.country && countries.includes(locals.country) ? locals.country : 'all')
+    // Only when it opens: a country chosen after that stays.
+  }, [open, kind])
 
   useEffect(() => {
     if (!open) return
@@ -131,22 +147,27 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return RECITERS.filter((r) => {
-      if (mode === 'favorites' && !favoriteIds.includes(r.id)) return false
-      if (mode === 'top' && !r.top) return false
+    return reciters.filter((r) => {
+      if (mode === 'international' && r.local) return false
+      if (mode === 'local' && (!r.local || (country !== 'all' && r.country !== country))) return false
       if (qiraat !== 'all' && r.qiraat !== qiraat) return false
       if (!q) return true
       return (
         r.name.toLowerCase().includes(q) ||
+        (r.nameAr ?? '').includes(query.trim()) ||
+        (r.city ?? '').toLowerCase().includes(q) ||
         getQiraat(r.qiraat).label.toLowerCase().includes(q) ||
         r.style.toLowerCase().includes(q)
       )
     })
-  }, [query, qiraat, mode, favoriteIds])
+  }, [query, qiraat, mode, reciters, country])
 
   const favorites = useMemo(
-    () => favoriteIds.map((id) => RECITERS.find((r) => r.id === id)).filter((r): r is Reciter => Boolean(r)),
-    [favoriteIds]
+    () =>
+      favoriteIds
+        .map((id) => reciters.find((r) => r.id === id))
+        .filter((r): r is Reciter => Boolean(r) && Boolean(r?.local) === (mode === 'local')),
+    [favoriteIds, reciters, mode]
   )
 
   /** Grouped by narration, so the variety of qira'at is visible. */
@@ -164,11 +185,16 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
     onClose()
   }
 
-  const showFavorites = mode === 'all' && favorites.length > 0 && !query.trim() && qiraat === 'all'
+  const showFavorites = favorites.length > 0 && !query.trim() && qiraat === 'all' && (mode === 'international' || country === 'all')
   const empty =
-    mode === 'favorites' && !query.trim() && qiraat === 'all'
-      ? t('No favourites yet. Tap the heart on a reciter to keep them here.')
-      : t('No reciter matches that.')
+    mode === 'local' && !locals.reciters.length
+        ? t('Verified local reciters will appear here.')
+        : t('No reciter matches that.')
+  /** "Mogadishu, Somalia" for a verified qari. */
+  const localDetail = (r: Reciter) => {
+    if (!r.local) return null
+    return [r.city, r.country ? countryName(r.country, language) : null].filter(Boolean).join(', ') || null
+  }
 
   return (
     <div className="reciter-picker qari-sheet fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]" role="dialog" aria-modal="true" aria-label={t('Choose a reciter')}>
@@ -182,8 +208,26 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               <h2 className="home-serif truncate text-[1.625rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--home-heading)]">
                 {t('Choose a reciter')}</h2>
               <p className="truncate text-[0.8125rem] text-[var(--home-muted)]">
-                {t('{count} reciters · {saved} of {max} favourites', { count: RECITERS.length, saved: favoriteIds.length, max: maxFavorites })}</p>
+                {(() => {
+                  const count = reciters.filter((r) => Boolean(r.local) === (mode === 'local')).length
+                  const values = { count, saved: favoriteIds.filter((id) => id.startsWith('naba_') === (mode === 'local')).length, max: maxFavorites }
+                  return count === 1 ? t('1 reciter · {saved} of {max} favourites', values) : t('{count} reciters · {saved} of {max} favourites', values)
+                })()}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                tapFeedback()
+                setNarrationOpen(true)
+              }}
+              className="home-round ed-focus relative"
+              aria-label={qiraat === 'all' ? t('Narration') : `${t('Narration')}: ${getQiraat(qiraat).short}`}
+            >
+              <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={1.9} />
+              {qiraat !== 'all' ? (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--home-sage)]" aria-hidden />
+              ) : null}
+            </button>
           </header>
 
           <label className="home-card mt-4 flex h-12 items-center gap-2.5 rounded-[14px] px-3.5 focus-within:ring-2 focus-within:ring-[var(--home-sage)]">
@@ -209,40 +253,30 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
             ) : null}
           </label>
 
-          <div className="ed-seg mt-2.5 grid-cols-3">
-            {MODES.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => {
-                  if (mode !== value) tapFeedback()
-                  setMode(value)
-                }}
-                aria-pressed={mode === value}
-                className="ed-seg__item ed-focus h-9 text-[0.8125rem] font-semibold"
-              >
-                {t(label)}
-              </button>
-            ))}
-          </div>
-
-          <div className="home-card mt-2.5 overflow-hidden rounded-2xl">
-            <button
-              type="button"
-              className="set-row"
-              onClick={() => {
-                tapFeedback()
-                setNarrationOpen(true)
-              }}
-            >
-              <span className="set-row__icon" aria-hidden>
-                <Mic className="h-[17px] w-[17px]" strokeWidth={1.9} />
-              </span>
-              <span className="set-row__label">{t('Narration')}</span>
-              <span className="set-row__value">{qiraat === 'all' ? t('All') : getQiraat(qiraat).short}</span>
-              <ChevronRight className="h-[17px] w-[17px] shrink-0 text-[var(--home-muted)]" strokeWidth={2} />
-            </button>
-          </div>
+          {mode === 'local' && countries.length > 0 ? (
+            <div className="qari-no-scrollbar -mx-4 mt-2.5 flex gap-1.5 overflow-x-auto px-4" role="group" aria-label={t('Country')}>
+              {['all', ...countries].map((code) => {
+                const on = country === code
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      if (!on) tapFeedback()
+                      setCountry(code)
+                    }}
+                    className={cn(
+                      'ed-focus fx-press h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold transition-colors',
+                      on ? 'bg-[var(--home-sage-soft)] text-[var(--home-sage-deep)]' : 'border border-[var(--home-rule)] text-[var(--home-muted)]'
+                    )}
+                  >
+                    {code === 'all' ? t('All countries') : `${countryFlag(code)} ${countryName(code, language)}`}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -254,7 +288,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               <ReciterCard
                 reciters={favorites}
                 selectedId={selectedId}
-                detail={(r) => `${getQiraat(r.qiraat).short} · ${r.style}`}
+                detail={(r) => localDetail(r) ?? `${getQiraat(r.qiraat).short} · ${r.style}`}
                 onSelect={choose}
               />
               {atLimit ? (
@@ -269,7 +303,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
               <Label>
                 {getQiraat(qid).label} · {list.length}
               </Label>
-              <ReciterCard reciters={list} selectedId={selectedId} detail={(r) => r.style} onSelect={choose} />
+              <ReciterCard reciters={list} selectedId={selectedId} detail={(r) => localDetail(r) ?? r.style} onSelect={choose} />
             </Fragment>
           ))}
 
@@ -283,7 +317,7 @@ export default function ReciterPickerSheet({ open, selectedId, onClose, onSelect
         <div className="overflow-hidden rounded-2xl border border-[var(--home-rule)]" role="radiogroup" aria-label={t('Narration')}>
           {[{ id: 'all' as const, label: t('All narrations') }, ...availableQiraat()].map((option, i) => {
             const on = qiraat === option.id
-            const count = option.id === 'all' ? RECITERS.length : RECITERS.filter((r) => r.qiraat === option.id).length
+            const count = option.id === 'all' ? reciters.length : reciters.filter((r) => r.qiraat === option.id).length
             return (
               <div key={option.id}>
                 {i ? <div className="set-row__divider" style={{ marginLeft: 14 }} aria-hidden /> : null}

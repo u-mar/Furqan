@@ -27,12 +27,12 @@ export default function HeartButton({
   className?: string
 }) {
   const t = useT()
-  const { isFavorite, toggle, atLimit, maxFavorites } = useReciterFavorites()
+  const { isFavorite, toggle, isFullFor, maxFavorites } = useReciterFavorites()
   const [motion, setMotion] = useState<{ kind: 'pop' | 'shake'; n: number } | null>(null)
   const on = isFavorite(reciter.id)
 
   const press = () => {
-    if (!on && atLimit) {
+    if (!on && isFullFor(reciter.id)) {
       errorFeedback()
       setMotion((m) => ({ kind: 'shake', n: (m?.n ?? 0) + 1 }))
       toastError(tr('You can keep {maxFavorites} favourites. Remove one first.', { maxFavorites }))

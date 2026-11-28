@@ -71,3 +71,16 @@ export async function r2Delete(key: string): Promise<void> {
   if (!c) return
   await c.client.fetch(`${c.endpoint}/${key}`, { method: 'DELETE' }).catch(() => {})
 }
+
+/**
+ * An address that lets whoever holds it PUT one file at `key` for `seconds`, signed in its query so
+ * no key travels with it. The speech service uses one to save a Listen qari's checked surah.
+ */
+export async function r2PresignPut(key: string, seconds = 3600): Promise<string> {
+  const c = config()
+  if (!c) throw new Error('R2 is not set up')
+  const url = new URL(`${c.endpoint}/${key}`)
+  url.searchParams.set('X-Amz-Expires', String(seconds))
+  const signed = await c.client.sign(url.toString(), { method: 'PUT', aws: { signQuery: true } })
+  return signed.url
+}

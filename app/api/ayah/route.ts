@@ -5,6 +5,7 @@ import { API_TIMEOUT_MS, QURAN_API_BASE, fetchTranslationsForPage } from '@/lib/
 import { PartRequestError, partTranslationFor, phraseTranslationsFor } from '@/lib/part-translation-store'
 import type { Verse } from '@/types'
 import hadiToureTimings from '@/lib/reciter-timings/hadi_toure.json'
+import { listenQariTimings } from '@/lib/listen-qaris-server'
 
 
 /** Ayah timings that ship with the app, for reciters no public API has them for: verse key → [start, end] ms. */
@@ -251,6 +252,18 @@ export async function GET(request: NextRequest) {
         : DEFAULT_TRANSLATION_EDITION[lang]
       const items = await fetchTranslationsForPage(page, editionId)
       return NextResponse.json(items)
+    }
+
+    // A verified qari's surah the admin approved: its timings come from its check.
+    if (type === 'chapter-audio' && searchParams.get('source') === 'naba') {
+      const chapter = Number(searchParams.get('chapter'))
+      if (!chapter || chapter < 1 || chapter > 114) {
+        return NextResponse.json({ error: 'reciter and chapter (1-114) required' }, { status: 400 })
+      }
+      const ayat = await listenQariTimings(searchParams.get('reciter') ?? '', chapter)
+      if (!ayat?.length) return NextResponse.json({ error: 'No timings for this surah' }, { status: 404 })
+      // Short: a surah uploaded again gets new timings.
+      return NextResponse.json({ ayat }, { headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=600' } })
     }
 
     if (type === 'chapter-audio' && searchParams.get('source') === 'local') {

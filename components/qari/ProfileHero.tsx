@@ -22,13 +22,12 @@ export function ProfileTopBar({
   avatarVersion,
   showNotifications = false,
   findPeople = false,
-  verified = false,
   extra,
 }: {
   username: string
   name: string
   avatarVersion?: number
-  /** A verified reciter: the badge follows the @handle, as it does on other apps. */
+  /** A verified reciter. The badge shows beside their name below, not after the @handle. */
   verified?: boolean
   /** Your own profile carries the bell: notifications no longer have a button on the feed. */
   showNotifications?: boolean
@@ -66,7 +65,6 @@ export function ProfileTopBar({
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {condensed ? <QariAvatar username={username} name={name} size={28} version={avatarVersion} /> : null}
         <h1 className="truncate text-[1.25rem] font-bold tracking-[-0.01em] text-[var(--home-heading)]">@{username}</h1>
-        {verified ? <VerifiedBadge className="text-[1.125rem]" /> : null}
       </div>
       <div className="ml-auto flex items-center gap-2">
         {findPeople ? (
@@ -184,8 +182,8 @@ export default function ProfileHero({
       </div>
 
       <div className="mt-3 flex min-w-0 items-center gap-1.5">
-        <p className="truncate text-[0.9375rem] font-bold text-[var(--home-heading)]">{name}</p>
-        {verified ? <VerifiedBadge className="text-[0.9375rem]" /> : null}
+        <p className="truncate text-[1.0625rem] font-bold text-[var(--home-heading)]">{name}</p>
+        {verified ? <VerifiedBadge className="text-[1.0625rem]" /> : null}
         {nameExtra}
       </div>
       {bio ? <p className="mt-0.5 whitespace-pre-line text-[0.84375rem] leading-snug text-[var(--home-heading)]">{bio}</p> : null}
