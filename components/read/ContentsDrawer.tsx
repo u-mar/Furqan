@@ -70,8 +70,9 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
   const [topicPath, setTopicPath] = useState<number[]>([])
   const [topicTitle, setTopicTitle] = useState<string | null>(null)
   const onTopicTitle = useCallback((title: string | null) => setTopicTitle(title), [])
-  const inTopic = tab === 'topic' && topicPath.length > 0
-  // In a topic its name is the title, as a surah's is in Read; tapping it shows the tabs again.
+  const onTopicTab = tab === 'topic' && bottomNav === 'chapters'
+  const inTopic = onTopicTab && topicPath.length > 0
+  // On Topic the title says "Topic", as Read's says the surah; tapping it shows the four tabs.
   const [topicTabsOpen, setTopicTabsOpen] = useState(false)
   useEffect(() => setTopicTabsOpen(false), [topicPath])
   const searchInput = useRef<HTMLInputElement>(null)
@@ -181,7 +182,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
       aria-modal="true"
       aria-label={t('Contents')}
     >
-      <div className={cn('shrink-0', (!inTopic || topicTabsOpen) && 'border-b border-[var(--home-rule)]')}>
+      <div className={cn('shrink-0', (!onTopicTab || topicTabsOpen) && 'border-b border-[var(--home-rule)]')}>
         <div className="mx-auto w-full max-w-lg px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <header className="flex h-14 items-center gap-3">
             <button
@@ -210,7 +211,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                 className="h-10 min-w-0 flex-1 bg-transparent text-[1.1875rem] text-[var(--home-heading)] outline-none placeholder:text-[var(--home-muted)]"
               />
             ) : (
-              inTopic && topicTitle ? (
+              onTopicTab ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -220,7 +221,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                   aria-expanded={topicTabsOpen}
                   className="ed-focus flex min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left"
                 >
-                  <h2 className="min-w-0 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">{topicTitle}</h2>
+                  <h2 className="min-w-0 truncate text-[1.375rem] font-semibold text-[var(--home-heading)]">{t('Topic')}</h2>
                   <ChevronDown
                     className={cn('h-5 w-5 shrink-0 text-[var(--home-muted)] transition-transform', topicTabsOpen && 'rotate-180')}
                     strokeWidth={2.2}
@@ -247,7 +248,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
               </button>
             ) : null}
           </header>
-          {bottomNav === 'chapters' && (!inTopic || topicTabsOpen) ? (
+          {bottomNav === 'chapters' && (!onTopicTab || topicTabsOpen) ? (
             <nav className="mt-2 flex gap-8" aria-label={t('Contents')}>
               {TABS.map(([id, label]) => {
                 const on = tab === id
@@ -397,6 +398,10 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
             ) : null}
 
             {bottomNav === 'chapters' && tab === 'topic' ? (
+              <>
+              {inTopic && topicTitle ? (
+                <h3 className="mx-1 mb-3 text-[1.0625rem] font-semibold leading-snug text-[var(--home-heading)]">{topicTitle}</h3>
+              ) : null}
               <TopicsTab
                 query={query}
                 chapters={chapters}
@@ -409,6 +414,7 @@ export default function ContentsDrawer({ open, chapters, currentSurahId, onClose
                 onTitle={onTopicTitle}
                 onBeforePlay={onBeforePlay}
               />
+              </>
             ) : null}
 
             {bottomNav === 'bookmarks' ? (
